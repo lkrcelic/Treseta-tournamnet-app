@@ -1,0 +1,94 @@
+# Bela Tournament App - Windsurf Rules
+
+## Grid import
+- When importing the Grid use import {Grid} from "@mui/system";
+
+## Layout.tsx files
+- Project has layout files don't forget about them when building the UI.
+
+## Project Focus
+- Focus primarily on frontend development (TSX files and page-related components)
+- Only modify backend/API code when explicitly instructed
+- Make UI/UX the primary focus, especially for mobile browser usage
+
+## UI/UX Priority Guidelines
+- Design with mobile-first approach as the app is primarily used on mobile browsers
+- Ensure touch-friendly interface elements (appropriate sizing and spacing)
+- Optimize layouts for various mobile screen sizes and orientations
+- Minimize load times and optimize for mobile network conditions
+- Implement intuitive navigation patterns suitable for one-handed mobile use
+- Consider thumb zones when placing interactive elements
+- Use visual feedback for touch interactions (button states, loading indicators)
+- Ensure readable typography at mobile screen sizes
+- Test designs on actual mobile devices whenever possible
+
+## Frontend Development Guidelines
+- Follow TypeScript best practices with proper type definitions
+- Maintain component-based architecture with clear separation of concerns
+- Use React hooks appropriately and avoid class components
+- Implement responsive design principles for all UI components
+- Follow established styling patterns (CSS modules, styled-components, etc.)
+
+## Code Quality Standards
+- Maintain consistent code formatting and naming conventions
+- Write self-documenting code with appropriate comments where necessary
+- Ensure proper error handling in UI components
+- Follow accessibility best practices (WCAG guidelines)
+- Optimize for performance (minimize re-renders, lazy loading, etc.)
+
+## Collaboration Guidelines
+- Provide clear explanations for code changes
+- Suggest improvements to existing code when appropriate
+- Respect the established project architecture
+- Ask clarifying questions when requirements are ambiguous
+
+## Testing Considerations
+- Consider testability when designing components
+- Suggest test cases for critical functionality
+- Include mobile-specific testing scenarios
+
+## API Integration
+- Use the established API response handling patterns
+- Follow the existing error handling conventions
+- Only suggest backend changes when explicitly requested# Bela Tournament App - Windsurf Rules
+
+## Project Focus
+- Focus primarily on frontend development (TSX files and page-related components)
+- Only modify backend/API code when explicitly instructed
+- Make UI/UX the primary focus, especially for mobile browser usage
+
+## UI/UX Priority Guidelines
+- Design with mobile-first approach as the app is primarily used on mobile browsers
+- Ensure touch-friendly interface elements (appropriate sizing and spacing)
+- Optimize layouts for various mobile screen sizes and orientations
+- Minimize load times and optimize for mobile network conditions
+- Implement intuitive navigation patterns suitable for one-handed mobile use
+- Consider thumb zones when placing interactive elements
+- Use visual feedback for touch interactions (button states, loading indicators)
+- Ensure readable typography at mobile screen sizes
+- Test designs on actual mobile devices whenever possible
+
+## Frontend Development Guidelines
+- Follow TypeScript best practices with proper type definitions
+- Maintain component-based architecture with clear separation of concerns
+- Use React hooks appropriately and avoid class components
+- Implement responsive design principles for all UI components
+- Follow established styling patterns (CSS modules, styled-components, etc.)
+
+## Code Quality Standards
+- Maintain consistent code formatting and naming conventions
+- Write self-documenting code with appropriate comments where necessary
+- Ensure proper error handling in UI components
+- Follow accessibility best practices (WCAG guidelines)
+- Optimize for performance (minimize re-renders, lazy loading, etc.)
+
+## Collaboration Guidelines
+- Provide clear explanations for code changes
+- Suggest improvements to existing code when appropriate
+- Respect the established project architecture
+- Ask clarifying questions when requirements are ambiguous
+
+## API Integration
+- Use the established API response handling patterns
+- Follow the existing error handling conventions
+- Only suggest backend changes when explicitly requested
