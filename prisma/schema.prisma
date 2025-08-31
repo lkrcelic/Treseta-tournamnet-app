@@ -1,0 +1,256 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["views"]
+}
+
+enum RoleEnum {
+  ADMIN
+  PLAYER
+}
+
+model Player {
+  id              Int       @id @default(autoincrement())
+  username        String    @unique @db.VarChar(100)
+  password_hash   String
+  email           String    @unique @db.VarChar(100)
+  player_role     RoleEnum
+  first_name      String    @db.VarChar(100)
+  last_name       String    @db.VarChar(100)
+  birth_date      DateTime  @db.Date
+  created_at      DateTime  @default(now())
+  last_updated_at DateTime? @updatedAt
+
+  // NextAuth required fields
+  emailVerified DateTime?
+  image         String?   @db.Text
+  name          String?   @db.VarChar(100)
+
+  // Relationships
+  founder1Teams              Team[]          @relation("PlayerFounder1")
+  founder2Teams              Team[]          @relation("PlayerFounder2")
+  creatorTeams               Team[]          @relation("PlayerCreator")
+  teamPlayers                TeamPlayer[]
+  playerPairs1               PlayerPair[]    @relation("Player1Pair")
+  playerPairs2               PlayerPair[]    @relation("Player2Pair")
+  sessions                   Session[]
+  luciaSessions              LuciaSession[]
+  accounts                   Account[]
+}
+
+model Session {
+  id           String   @id @default(uuid()) @db.Uuid
+  sessionToken String?  @unique
+  userId       Int
+  expires      DateTime
+  user         Player   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model LuciaSession {
+  id        String   @id @db.Uuid
+  userId    Int
+  expiresAt DateTime
+  player    Player   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            Int
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user Player @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model League {
+  league_id   Int    @id @default(autoincrement())
+  league_name String @db.VarChar(100)
+
+  // Relationships
+  leagueTeams  LeagueTeam[]
+  leagueRounds LeagueRound[]
+  teamScore    TeamScore[]
+}
+
+model Team {
+  team_id         Int       @id @default(autoincrement())
+  team_name       String    @unique @db.VarChar(100)
+  founder_id1     Int?
+  founder_id2     Int?
+  creator_id      Int?
+  created_at      DateTime  @default(now())
+  last_updated_at DateTime? @updatedAt
+
+  // Relationships
+  founder1      Player?      @relation("PlayerFounder1", fields: [founder_id1], references: [id], onDelete: SetNull)
+  founder2      Player?      @relation("PlayerFounder2", fields: [founder_id2], references: [id], onDelete: SetNull)
+  creator       Player?      @relation("PlayerCreator", fields: [creator_id], references: [id], onDelete: SetNull)
+  teamPlayers   TeamPlayer[]
+  leagueTeams   LeagueTeam[]
+  roundsAsTeam1 Round[]      @relation("RoundTeam1")
+  roundsAsTeam2 Round[]      @relation("RoundTeam2")
+  teamScore     TeamScore[]
+}
+
+model TeamScore {
+  id               Int  @id @default(autoincrement())
+  team_id          Int
+  league_id        Int?
+  rounds_played    Int  @default(0)
+  wins             Int  @default(0)
+  draws            Int  @default(0)
+  losses           Int  @default(0)
+  point_difference Int  @default(0)
+  score            Int  @default(0)
+
+  // Relationships
+  team   Team    @relation(fields: [team_id], references: [team_id], onDelete: Cascade)
+  league League? @relation(fields: [league_id], references: [league_id], onDelete: Cascade)
+
+  // This model is additionaly modified in the migration script to add a constraint of
+  // either league_id or tournament_id not being null!
+  // CHECK if this constraint is removed after every modification of TeamScore model!
+  @@unique([team_id, league_id])
+}
+
+model TeamPlayer {
+  team_id   Int
+  player_id Int
+
+  team   Team   @relation(fields: [team_id], references: [team_id], onDelete: Cascade)
+  player Player @relation(fields: [player_id], references: [id], onDelete: Cascade)
+
+  @@id([team_id, player_id])
+}
+
+model LeagueTeam {
+  league_id Int
+  team_id   Int
+
+  league League @relation(fields: [league_id], references: [league_id], onDelete: Cascade)
+  team   Team   @relation(fields: [team_id], references: [team_id], onDelete: Cascade)
+
+  @@id([league_id, team_id])
+}
+
+model Round {
+  id           Int       @id @default(autoincrement())
+  round_number Int?
+  round_date   DateTime? @default(now()) @db.Date
+  team1_id     Int
+  team2_id     Int
+  team1_wins   Int       @default(0)
+  team2_wins   Int       @default(0)
+  open         Boolean   @default(true)
+  active       Boolean   @default(false)
+  table_number Int?
+
+  team1          Team           @relation("RoundTeam1", fields: [team1_id], references: [team_id], onDelete: Cascade)
+  team2          Team           @relation("RoundTeam2", fields: [team2_id], references: [team_id], onDelete: Cascade)
+  matches        Match[]
+  ongoingMatches OngoingMatch[]
+  leagueRounds   LeagueRound[]
+}
+
+model LeagueRound {
+  league_id Int
+  round_id  Int
+
+  league League @relation(fields: [league_id], references: [league_id], onDelete: Cascade)
+  round  Round  @relation(fields: [round_id], references: [id], onDelete: Cascade)
+
+  @@id([league_id, round_id])
+}
+
+model PlayerPair {
+  id         Int @id @default(autoincrement())
+  player_id1 Int
+  player_id2 Int
+
+  player1          Player         @relation("Player1Pair", fields: [player_id1], references: [id], onDelete: Cascade)
+  player2          Player         @relation("Player2Pair", fields: [player_id2], references: [id], onDelete: Cascade)
+  matchesAsPair1   Match[]        @relation("MatchPair1")
+  matchesAsPair2   Match[]        @relation("MatchPair2")
+  ongoingMatchesp1 OngoingMatch[] @relation("MatchPair1")
+  ongoingMatchesp2 OngoingMatch[] @relation("MatchPair2")
+
+  @@unique([player_id1, player_id2])
+}
+
+model Match {
+  id                 Int       @id @default(autoincrement())
+  round_id           Int?
+  player_pair1_score Int       @default(0)
+  player_pair2_score Int       @default(0)
+  player_pair_id1    Int?
+  player_pair_id2    Int?
+  score_threshold    Int?
+  start_time         DateTime?
+  end_time           DateTime?
+  match_date         DateTime? @default(now()) @db.Date
+
+  round       Round?      @relation(fields: [round_id], references: [id], onDelete: SetNull)
+  playerPair1 PlayerPair? @relation("MatchPair1", fields: [player_pair_id1], references: [id], onDelete: Cascade)
+  playerPair2 PlayerPair? @relation("MatchPair2", fields: [player_pair_id2], references: [id], onDelete: Cascade)
+  results     Result[]
+}
+
+model OngoingMatch {
+  id                     Int       @id @default(autoincrement())
+  round_id               Int?
+  player_pair1_score     Int       @default(0)
+  player_pair2_score     Int       @default(0)
+  player_pair_id1        Int?
+  player_pair_id2        Int?
+  score_threshold        Int?
+  start_time             DateTime? @default(dbgenerated("CURRENT_TIME")) @db.Time()
+  end_time               DateTime? @db.Time()
+  match_date             DateTime? @default(now()) @db.Date
+
+  round       Round?          @relation(fields: [round_id], references: [id], onDelete: SetNull)
+  playerPair1 PlayerPair?     @relation("MatchPair1", fields: [player_pair_id1], references: [id], onDelete: Cascade)
+  playerPair2 PlayerPair?     @relation("MatchPair2", fields: [player_pair_id2], references: [id], onDelete: Cascade)
+  results     OngoingResult[]
+}
+
+model Result {
+  result_id                Int     @id @default(autoincrement())
+  match_id                 Int
+  player_pair1_game_points Int     @default(0)
+  player_pair2_game_points Int     @default(0)
+  complete_victory         Boolean @default(false)
+
+  match        Match   @relation(fields: [match_id], references: [id], onDelete: Cascade)
+}
+
+model OngoingResult {
+  result_id                Int     @id @default(autoincrement())
+  match_id                 Int
+  player_pair1_game_points Int     @default(0)
+  player_pair2_game_points Int     @default(0)
+  complete_victory         Boolean @default(false)
+
+  match               OngoingMatch @relation(fields: [match_id], references: [id], onDelete: Cascade)
+}
