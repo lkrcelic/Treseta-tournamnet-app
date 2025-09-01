@@ -140,7 +140,6 @@ CREATE TABLE "LeagueRound" (
     CONSTRAINT "LeagueRound_pkey" PRIMARY KEY ("league_id","round_id")
 );
 
-
 -- CreateTable
 CREATE TABLE "Match" (
     "id" SERIAL NOT NULL,
@@ -271,19 +270,7 @@ ALTER TABLE "LeagueRound" ADD CONSTRAINT "LeagueRound_round_id_fkey" FOREIGN KEY
 ALTER TABLE "Match" ADD CONSTRAINT "Match_round_id_fkey" FOREIGN KEY ("round_id") REFERENCES "Round"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Match" ADD CONSTRAINT "Match_team_id1_fkey" FOREIGN KEY ("team1_id") REFERENCES "Team"("team_id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Match" ADD CONSTRAINT "Match_team_id2_fkey" FOREIGN KEY ("team2_id") REFERENCES "Team"("team_id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "OngoingMatch" ADD CONSTRAINT "OngoingMatch_round_id_fkey" FOREIGN KEY ("round_id") REFERENCES "Round"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "OngoingMatch" ADD CONSTRAINT "OngoingMatch_team_id1_fkey" FOREIGN KEY ("team1_id") REFERENCES "Team"("team_id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "OngoingMatch" ADD CONSTRAINT "OngoingMatch_team_id2_fkey" FOREIGN KEY ("team2_id") REFERENCES "Team"("team_id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Result" ADD CONSTRAINT "Result_match_id_fkey" FOREIGN KEY ("match_id") REFERENCES "Match"("id") ON DELETE CASCADE ON UPDATE CASCADE;
