@@ -1,0 +1,75 @@
+/* Basic form styling */
+form {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+label {
+    font-size: 14px;
+    margin-bottom: 5px;
+    color: #333;
+    text-align: center;
+}
+
+p.error {
+    color: red;
+    font-size: 14px;
+    margin-top: -10px;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+p.error-button {
+    color: red;
+    font-size: 14px;
+    margin-top: 5px;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+p.success {
+    color: green;
+    font-size: 14px;
+    margin-top: 5px;
+    margin-bottom: 15px;
+    padding-top: 5px;
+    text-align: center;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="date"] {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+
+button[type="submit"] {
+    width: 100%;
+    padding: 12px;
+    background-color: #3C4A67; /* Green background color */
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+/* Additional mobile-specific styling */
+@media (max-width: 600px) {
+    input,
+    button {
+        font-size: 18px;
+    }
+
+    label {
+        font-size: 18px;
+    }
+}
