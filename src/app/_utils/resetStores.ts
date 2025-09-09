@@ -1,15 +1,12 @@
 import useAuthStore from "@/app/_store/authStore";
-import useOngoingMatchStore from "@/app/_store/ongoingMatchStore";
-import useAnnouncementStore from "@/app/_store/bela/announcementStore";
-import useResultStore from "@/app/_store/bela/resultStore";
-import useRoundStore from "@/app/_store/RoundStore";
+import useMatchStore from "@/app/_store/matchStore";
+import useResultStore from "@/app/_store/resultStore";
+import useRoundStore from "@/app/_store/roundStore";
 
 export function resetAllStores() {
   useAuthStore.getState().reset();
 
-  useOngoingMatchStore.getState().hardResetOngoingMatch();
-
-  useAnnouncementStore.getState().resetAnnouncements();
+  useMatchStore.getState().resetMatchStore();
 
   useResultStore.getState().resetResult();
 

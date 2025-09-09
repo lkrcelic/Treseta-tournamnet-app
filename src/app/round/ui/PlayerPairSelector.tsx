@@ -1,6 +1,6 @@
 import {PlayerPartialResponse} from "@/app/_interfaces/player";
 import {TeamResponse} from "@/app/_interfaces/team";
-import useOngoingMatchStore from "@/app/_store/ongoingMatchStore";
+import useMatchStore from "@/app/_store/matchStore";
 import PlayerName from "@/app/_ui/PlayerName";
 import {Button, Menu, MenuItem} from "@mui/material";
 import {Grid} from "@mui/system";
@@ -10,7 +10,7 @@ export default function PlayerPairSelector({team1, team2}: {team1: TeamResponse;
   const {
     ongoingMatch: {seating_order},
     setSeatingOrder,
-  } = useOngoingMatchStore();
+  } = useMatchStore();
 
   const handlePlayerSelection = (seatIndex: number) => (player: PlayerPartialResponse | null) => {
     const newSeatingOrder = [...seating_order];

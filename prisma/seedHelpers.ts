@@ -53,7 +53,7 @@ export async function createMatch(round_id: number | null, p1_id: number, p2_id:
       player_pair2_score: p1_won ? 450 : 1002,
       player_pair_id1: p1_id,
       player_pair_id2: p2_id,
-      score_threshold: 1001,
+      score_threshold: 41,
     },
   });
 }

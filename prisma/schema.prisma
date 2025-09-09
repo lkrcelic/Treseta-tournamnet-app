@@ -186,12 +186,10 @@ model Match {
   round_id        Int?
   team1_score     Int       @default(0)
   team2_score     Int       @default(0)
-  team1_id        Int?
-  team2_id        Int?
   score_threshold Int?
-  start_time      DateTime?
+  start_time      DateTime  @default(now())
   end_time        DateTime?
-  match_date      DateTime? @default(now()) @db.Date
+  match_date      DateTime  @default(now()) @db.Date
   active          Boolean   @default(false)
 
   round   Round?   @relation(fields: [round_id], references: [id], onDelete: SetNull)
@@ -203,7 +201,6 @@ model Result {
   match_id          Int
   team1_game_points Int     @default(0)
   team2_game_points Int     @default(0)
-  complete_victory  Boolean @default(false)
 
   match Match @relation(fields: [match_id], references: [id], onDelete: Cascade)
 }

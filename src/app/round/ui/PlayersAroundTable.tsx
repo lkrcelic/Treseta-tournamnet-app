@@ -2,7 +2,7 @@
 
 import {PlayerPartialResponse} from "@/app/_interfaces/player";
 import {TeamResponse} from "@/app/_interfaces/team";
-import useRoundStore from "@/app/_store/RoundStore";
+import useRoundStore from "@/app/_store/roundStore";
 import useAuthStore from "@/app/_store/authStore";
 import PlayerPairSelector from "@/app/round/ui/PlayerPairSelector";
 import {Box, Typography} from "@mui/material";

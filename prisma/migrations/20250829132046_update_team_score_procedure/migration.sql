@@ -80,9 +80,9 @@ SELECT COALESCE(SUM(team_score - opponent_score), 0)
 INTO v_point_difference
 FROM match_points;
 
--- Calculate total score (wins * 3 + draws * 1)
+-- Calculate total score (wins * 2 + draws * 1)
 v_score
-:= (COALESCE(v_wins, 0) * 3) + COALESCE(v_draws, 0);
+:= (COALESCE(v_wins, 0) * 2) + COALESCE(v_draws, 0);
 
     -- Update or insert TeamScore record
 INSERT INTO "TeamScore" (team_id,

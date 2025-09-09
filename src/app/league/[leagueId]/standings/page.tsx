@@ -1,13 +1,20 @@
 "use client";
 
-import React from "react";
-import {Box, CircularProgress, Divider, Paper, Typography} from "@mui/material";
-import {getLeagueStandingsAPI} from "@/app/_fetchers/league/getStandings";
+import { getLeagueStandingsAPI } from "@/app/_fetchers/league/getStandings";
 import SingleActionButton from "@/app/_ui/SingleActionButton";
-import StandingsTable, {LeagueStandingsItem} from "@/app/_ui/StandingsTable";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import StandingsTable, { LeagueStandingsItem } from "@/app/_ui/StandingsTable";
+import { Home } from "@mui/icons-material";
+import { Box, CircularProgress, Divider, Paper, Typography } from "@mui/material";
+import React from "react";
+import { useMediaQuery } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import { useRouter } from "next/navigation";
 
 export default function PlayersSeating() {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+    const router = useRouter();
+
   const [leagueStandings, setLeagueStandings] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -78,12 +85,13 @@ export default function PlayersSeating() {
         </Paper>
       </Box>
       <Box sx={{gridArea: "actions"}}>
-        <SingleActionButton
-          fullWidth={true}
-          label={"Nazad"}
-          onClick={() => window.history.back()}
-          icon={<ArrowBackIcon/>}
-        /> </Box>
+      <SingleActionButton
+          label={"Početni zaslon"}
+          icon={<Home />}
+          fullWidth={isMobile}
+          onClick={() => router.push(`/`)}
+        />
+      </Box>
     </>
   );
 }

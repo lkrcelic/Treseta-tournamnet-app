@@ -2,7 +2,7 @@ import {NextRequest, NextResponse} from "next/server";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {generateMultipleRoundPairings} from "@/app/_lib/matching/multipleRoundMatching";
 import {getLeagueTeamsWithScores} from "@/app/_lib/helpers/query/leagueScores";
-import {CreateRound} from "@/app/_interfaces/round";
+import {CreateRoundRequestValidation} from "@/app/_interfaces/round";
 import {checkCurrentUserIsAdmin} from "@/app/_lib/auth";
 import {insertPairRounds} from "@/app/_lib/service/round/insertPairRounds";
 
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const createRound = CreateRound.parse(body);
+    const createRound = CreateRoundRequestValidation.parse(body);
     const {league_id, present_teams} = createRound;
 
     const teamsWithScores = await getLeagueTeamsWithScores(league_id);

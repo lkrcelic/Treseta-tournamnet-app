@@ -1,45 +1,41 @@
-import {NextRequest, NextResponse} from "next/server";
-import {STATUS} from "@/app/_lib/statusCodes";
-import {matchTeams} from "@/app/_lib/matching/multipleRoundMatching";
-import {getLeagueTeamsWithScores} from "@/app/_lib/helpers/query/leagueScores";
-import {CreateRound} from "@/app/_interfaces/round";
+import {CreateRoundRequestValidation} from "@/app/_interfaces/round";
 import {checkCurrentUserIsAdmin} from "@/app/_lib/auth";
-import {insertPairRounds} from "@/app/_lib/service/round/insertPairRounds";
+import {getLeagueTeamsWithScores} from "@/app/_lib/helpers/query/leagueScores";
+import {matchTeams} from "@/app/_lib/matching/multipleRoundMatching";
 import {prisma} from "@/app/_lib/prisma";
+import {insertPairRounds} from "@/app/_lib/service/round/insertPairRounds";
+import {STATUS} from "@/app/_lib/statusCodes";
+import {NextRequest, NextResponse} from "next/server";
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
 
-    const roundDate = searchParams.get('round_date');
-    const open = searchParams.get('open');
-    const roundNumber = searchParams.get('round_number');
-    const teamId = searchParams.get('team_id');
-    const leagueId = searchParams.get('league_id');
+    const roundDate = searchParams.get("round_date");
+    const open = searchParams.get("open");
+    const roundNumber = searchParams.get("round_number");
+    const teamId = searchParams.get("team_id");
+    const leagueId = searchParams.get("league_id");
 
     const whereClause: Record<string, unknown> = {};
     const includeExtra: Record<string, unknown> = {};
 
     if (roundDate) {
-      const dateStr = new Date(roundDate).toISOString().split('T')[0];
+      const dateStr = new Date(roundDate).toISOString().split("T")[0];
       whereClause.round_date = {
-        equals: new Date(dateStr)
+        equals: new Date(dateStr),
       };
-
-      const currentDateStr = new Date().toISOString().split('T')[0];
-      if (dateStr === currentDateStr) {
-        includeExtra.ongoingMatches = {
+      includeExtra.matches = {
           select: {
             id: true,
-            player_pair1_score: true,
-            player_pair2_score: true,
+            team1_score: true,
+            team2_score: true,
           },
         };
-      }
     }
 
     if (open !== null) {
-      whereClause.active = open === 'true';
+      whereClause.active = open === "true";
     }
 
     if (roundNumber) {
@@ -48,17 +44,14 @@ export async function GET(request: NextRequest) {
 
     if (teamId) {
       const teamIdNum = parseInt(teamId);
-      whereClause.OR = [
-        {team1_id: teamIdNum},
-        {team2_id: teamIdNum}
-      ];
+      whereClause.OR = [{team1_id: teamIdNum}, {team2_id: teamIdNum}];
     }
 
     if (leagueId) {
       whereClause.leagueRounds = {
         every: {
-          league_id: parseInt(leagueId)
-        }
+          league_id: parseInt(leagueId),
+        },
       };
     }
 
@@ -79,10 +72,7 @@ export async function GET(request: NextRequest) {
         },
         ...(includeExtra as object),
       },
-      orderBy: [
-        {round_number: 'asc'},
-        {id: 'asc'}
-      ],
+      orderBy: [{round_number: "asc"}, {id: "asc"}],
     });
 
     return NextResponse.json(rounds, {status: STATUS.OK});
@@ -100,8 +90,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const createRound = CreateRound.parse(body);
-    const {league_id, present_teams} = createRound;
+    const createRoundRequest = CreateRoundRequestValidation.parse(body);
+    const {league_id, present_teams} = createRoundRequest;
 
     const teamsWithScores = await getLeagueTeamsWithScores(league_id);
 

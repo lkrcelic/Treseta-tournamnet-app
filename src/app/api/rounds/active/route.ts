@@ -2,7 +2,7 @@ import {NextRequest, NextResponse} from "next/server";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {getLastOpenRoundByPlayerId} from "@/app/_lib/service/round/getLastOpenByPlayerId";
 import {getAuthorizedUser} from "@/app/_lib/auth";
-import {getNewestOngoingMatchByRoundId} from "@/app/_lib/service/match/getActiveMatchByRoundId";
+import {getNewestOngoingMatchByRoundId} from "@/app/_lib/service/match/getActiveByRoundId";
 
 export async function GET(request: NextRequest) {
 

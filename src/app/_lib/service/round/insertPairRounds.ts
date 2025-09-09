@@ -104,7 +104,7 @@ export async function createByeMatches(
         round_id: roundId,
         player_pair1_score: isByeTeam1 ? 0 : 301, // If bye is team1, team2 (real team) gets points
         player_pair2_score: isByeTeam1 ? 301 : 0, // If bye is team2, team1 (real team) gets points
-        score_threshold: 1001,
+        score_threshold: 41,
         match_date: now
       }
     });

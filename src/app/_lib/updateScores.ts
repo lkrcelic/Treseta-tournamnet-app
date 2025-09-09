@@ -4,7 +4,6 @@ import {TeamScore} from "@prisma/client";
 export interface UpdateScoreParameters {
   roundId: number;
   leagueId?: number | undefined;
-  tournamentId?: number | undefined;
 }
 
 async function getTeamScores(params: UpdateScoreParameters, teamIds: number[]): Promise<TeamScore[]> {
@@ -14,11 +13,7 @@ async function getTeamScores(params: UpdateScoreParameters, teamIds: number[]): 
       where: {team_id: {in: teamIds}, league_id: params.leagueId},
     });
   }
-  if (params.tournamentId) {
-    existingScores = await prisma.teamScore.findMany({
-      where: {team_id: {in: teamIds}, league_id: params.leagueId},
-    });
-  }
+  
   return existingScores;
 }
 
@@ -33,7 +28,7 @@ async function checkAndCreateTeamScores(
   const to_create = teamIds.filter((id) => !existing_ids.includes(id));
 
   const teamScores = to_create.map((id) =>
-    params.leagueId ? {team_id: id, league_id: params.leagueId} : {team_id: id, tournament_id: params.tournamentId}
+    params.leagueId ? {team_id: id, league_id: params.leagueId} : {team_id: id}
   );
 
   if (teamScores.length > 0) await prisma.teamScore.createMany({data: teamScores});
@@ -46,15 +41,23 @@ export async function updateScores(roundId: number): Promise<void> {
     // TODO: Why is does round have m2m connections to tournament and league???
     const round = await prisma.round.findUnique({
       where: {id: roundId},
-      include: {tournamentRounds: true, leagueRounds: true},
+      include: {leagueRounds: true},
     });
-    if (!round) return;
+
+    if (!round) {
+      console.error("Round not found");
+      throw new Error("Round not found");
+    };
+
     const params: UpdateScoreParameters = {
       roundId: roundId,
       leagueId: round.leagueRounds[0].league_id,
-      tournamentId: round.tournamentRounds[0].tournament_id,
     };
-    if (!params.leagueId && !params.tournamentId) return;
+
+    if (!params.leagueId) {
+      console.error("League not found");
+      throw new Error("League not found");
+    };
 
     const teamIds: number[] = [round.team1_id, round.team2_id];
 
@@ -72,7 +75,7 @@ export async function updateScores(roundId: number): Promise<void> {
     switch (t1_wins) {
       case 0: {
         // team 2 won both matches
-        scoreTeam2.score += 3;
+        scoreTeam2.score += 2;
         break;
       }
       case 1: {
@@ -83,7 +86,7 @@ export async function updateScores(roundId: number): Promise<void> {
       }
       case 2: {
         // team1 won both matches
-        scoreTeam1.score += 3;
+        scoreTeam1.score += 2;
         break;
       }
       default: {
