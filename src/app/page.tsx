@@ -7,20 +7,20 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import { Box, Button, Container, Paper, Stack, Typography } from "@mui/material";
+import { Box, Button, Container, Paper, Stack, Typography, CircularProgress } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 // API fetchers
 import { getActiveOrCreateMatchByPlayerIdAPI } from "@/app/_fetchers/match/getActiveOrCreateByPlayerIdAPI";
 
-const ActionButton = ({onClick, label, color = "primary", fullWidth = true, icon = null, disabled = false}) => (
+const ActionButton = ({onClick, label, color = "primary", fullWidth = true, icon = null, disabled = false, loading = false}) => (
   <Button
     variant="contained"
     color={color}
     onClick={onClick}
     fullWidth={fullWidth}
-    disabled={disabled}
+    disabled={disabled || loading}
     sx={{
       py: 1.8,
       px: 3,
@@ -41,7 +41,7 @@ const ActionButton = ({onClick, label, color = "primary", fullWidth = true, icon
       transition: 'transform 0.1s, box-shadow 0.1s'
     }}
   >
-    {icon}
+    {loading ? <CircularProgress size={20} color="inherit" /> : icon}
     {label}
   </Button>
 );
@@ -50,6 +50,7 @@ export default function Home() {
   const router = useRouter();
   const [isAdmin, setIsAdmin] = useState(false);
   const { logout, loggingOut } = useLogout();
+  const [startingGame, setStartingGame] = useState(false);
 
   // Check if user is admin
   useEffect(() => {
@@ -62,12 +63,14 @@ export default function Home() {
   // Navigation handlers
   const handleStartGame = async () => {
     try {
+      setStartingGame(true);
       const {id: activeMatchId} = await getActiveOrCreateMatchByPlayerIdAPI();
 
-      router.push(`/ongoing-match/${activeMatchId}`);
+      router.push(`/match/${activeMatchId}`);
 
     } catch (error) {
       console.error('Error starting game:', error);
+      setStartingGame(false);
     }
   };
 
@@ -99,7 +102,7 @@ export default function Home() {
           textAlign: 'center',
           color: 'primary.main'
         }}>
-          Piatnik Bela Liga
+          Trešeta Liga
         </Typography>
       </Box>
 
@@ -135,6 +138,8 @@ export default function Home() {
               label="Start Game"
               color="primary"
               icon={<PlayArrowIcon/>}
+              disabled={startingGame}
+              loading={startingGame}
             />
 
             <ActionButton

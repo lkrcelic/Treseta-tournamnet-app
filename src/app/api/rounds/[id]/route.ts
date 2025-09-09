@@ -1,12 +1,12 @@
 import {NextResponse} from "next/server";
 import {STATUS} from "@/app/_lib/statusCodes";
-import {getOneRound} from "@/app/_lib/service/round/getOne";
+import roundService from "@/app/_lib/service/round";
 
 export async function GET(request: Request, {params}: { params: { id: string } }) {
     const {id} = params;
 
     try {
-        const round = await getOneRound(Number(id))
+        const round = await roundService.getRoundById(Number(id))
 
         return NextResponse.json(round, {status: STATUS.OK});
     } catch (error) {

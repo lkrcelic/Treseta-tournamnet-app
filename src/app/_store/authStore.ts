@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 
 export type AuthUser = { id: number; username: string } | null;
 
@@ -8,10 +9,19 @@ type AuthState = {
   reset: () => void;
 };
 
-const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  setUser: (user) => set({ user }),
-  reset: () => set({ user: null }),
-}));
+// authStore.ts
+const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      user: null,
+      setUser: (user) => set({ user }),
+      reset: () => set({ user: null }),
+    }),
+    {
+      name: "auth-store",
+      storage: createJSONStorage(() => localStorage),
+    }
+  )
+);
 
 export default useAuthStore;

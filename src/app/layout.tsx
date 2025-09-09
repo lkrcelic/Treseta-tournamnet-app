@@ -1,8 +1,7 @@
 "use client";
 
-import UserBootstrapper from "@/app/_bootstrap/UserBootstrapper";
 import theme from "@/app/_styles/theme";
-import { Box, CssBaseline, ThemeProvider } from "@mui/material";
+import {Box, CssBaseline, ThemeProvider} from "@mui/material";
 import React from "react";
 
 export default function RootLayout({children}: Readonly<{children: React.ReactNode}>) {
@@ -11,6 +10,7 @@ export default function RootLayout({children}: Readonly<{children: React.ReactNo
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <meta name="theme-color" content={theme.palette.primary.main} />
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
@@ -25,7 +25,6 @@ export default function RootLayout({children}: Readonly<{children: React.ReactNo
       >
         <ThemeProvider theme={theme}>
           <CssBaseline />
-          <UserBootstrapper />
           <Box
             sx={{
               display: "flex",

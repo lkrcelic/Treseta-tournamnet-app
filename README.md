@@ -1,6 +1,6 @@
-# BelaTotalTournament
+# Treseta Tournament App
 
-App for Bela tournament management
+App for Treseta tournament management
 
 This is a [Next.js](https://nextjs.org) project bootstrapped
 with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).

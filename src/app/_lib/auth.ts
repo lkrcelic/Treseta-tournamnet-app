@@ -74,7 +74,6 @@ export async function getAuthorizedUser(req: NextRequest): Promise<Player | null
     if (cookie) {
       try {
         const result = await lucia.validateSession(cookie.value);
-        console.log("Result: ", result);
         if (result.user) {
           return prisma.player.findUnique({
             where: {id: result.user.id},

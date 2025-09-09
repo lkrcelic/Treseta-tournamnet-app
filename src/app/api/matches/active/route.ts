@@ -1,5 +1,5 @@
 import { getAuthorizedUser } from "@/app/_lib/auth";
-import { getActiveMatchByRoundId } from "@/app/_lib/service/match/getActiveMatchByRoundId";
+import { getActiveMatchByRoundId } from "@/app/_lib/service/match/getActiveByRoundId";
 import { getLastOpenRoundByPlayerId } from "@/app/_lib/service/round/getLastOpenByPlayerId";
 import { STATUS } from "@/app/_lib/statusCodes";
 import { NextRequest, NextResponse } from "next/server";

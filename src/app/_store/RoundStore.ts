@@ -1,12 +1,12 @@
 import {create} from "zustand";
-import {RoundType} from "@/app/_interfaces/round";
+import {RoundExtendedResponse} from "@/app/_interfaces/round";
 import { persist } from "zustand/middleware";
 import {createJSONStorage} from "zustand/middleware";
 
 export type RoundState = {
-    roundData: RoundType;
+    roundData: RoundExtendedResponse;
     resetRound: () => void;
-    setRoundData: (data: RoundType) => void;
+    setRoundData: (data: RoundExtendedResponse) => void;
 };
 
 const useRoundStore = create<RoundState>()(persist(
@@ -14,6 +14,8 @@ const useRoundStore = create<RoundState>()(persist(
     roundData: {
       team1_id: null,
       team2_id: null,
+      team1_wins: 0,
+      team2_wins: 0,
     },
 
     setRoundData: (data) => set((state) => ({roundData: {...state.roundData, ...data}})),

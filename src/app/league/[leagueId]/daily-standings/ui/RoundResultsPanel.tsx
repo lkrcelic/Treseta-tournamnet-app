@@ -1,27 +1,27 @@
 import React from "react";
 import {Box, Chip, Divider, Paper, Typography} from "@mui/material";
-import {MatchResultCard} from "./MatchResultCard";
+import {RoundResultCard} from "./RoundResultCard";
 import Circle from '@mui/icons-material/Circle';
 import {Grid} from '@mui/system'
-import { OngoingMatchExtendedResponse } from "@/app/_interfaces/match";
+import { MatchResponse } from "@/app/_interfaces/match";
 
-type MatchResult = {
+type RoundResult = {
   team1Name: string;
   team2Name: string;
-  team1Score: number;
-  team2Score: number;
+  team1Wins: number;
+  team2Wins: number;
   active: boolean;
   tableNumber: number;
-  ongoingMatches: OngoingMatchExtendedResponse[];
+  matches: MatchResponse[];
 };
 
 type RoundResultsPanelProps = {
   roundNumber: number;
-  matches: MatchResult[];
+  rounds: RoundResult[];
   activeRounds?: number;
 };
 
-export function RoundResultsPanel({roundNumber, matches, activeRounds = 0}: RoundResultsPanelProps) {
+export function RoundResultsPanel({roundNumber, rounds, activeRounds = 0}: RoundResultsPanelProps) {
   return (
     <Paper
       elevation={0}
@@ -91,16 +91,16 @@ export function RoundResultsPanel({roundNumber, matches, activeRounds = 0}: Roun
         pr: 1.5
       }}>
         <Grid container spacing={2} sx={{pb:1}}>
-          {matches.map((match, index) => (
+          {rounds.map((round, index) => (
             <Grid item key={index} size={{xs: 12, md: 6, lg: 4}}>
-              <MatchResultCard
-                team1Name={match.team1Name}
-                team2Name={match.team2Name}
-                team1Score={match.team1Score}
-                team2Score={match.team2Score}
-                active={match.active}
-                tableNumber={match.tableNumber}
-                ongoingMatches={match.ongoingMatches}
+              <RoundResultCard
+                team1Name={round.team1Name}
+                team2Name={round.team2Name}
+                team1Wins={round.team1Wins}
+                team2Wins={round.team2Wins}
+                active={round.active}
+                tableNumber={round.tableNumber}
+                matches={round.matches}
               />
             </Grid>
           ))}

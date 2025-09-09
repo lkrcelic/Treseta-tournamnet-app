@@ -1,8 +1,8 @@
-import {RoundPartialType} from "@/app/_interfaces/round";
+import {RoundResponse, RoundResponseValidation} from "@/app/_interfaces/round";
 import {prisma} from "@/app/_lib/prisma";
 import {Prisma} from "@prisma/client";
 
-export async function getLastOpenRoundByPlayerId(playerId: number): Promise<RoundPartialType> {
+export async function getLastOpenRoundByPlayerId(playerId: number): Promise<RoundResponse> {
   const dbRound = await prisma.round.findFirst({
     where: {
       open: true,
@@ -32,5 +32,5 @@ export async function getLastOpenRoundByPlayerId(playerId: number): Promise<Roun
     },
   } as Prisma.RoundFindFirstArgs);
 
-  return dbRound;
+  return RoundResponseValidation.parse(dbRound);
 }

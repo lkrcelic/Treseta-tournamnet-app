@@ -41,7 +41,7 @@ export default function LogIn() {
           color: 'primary.main',
           pb: 1,
         }}>
-          Piatnik Bela Liga
+          Trešeta Liga
         </Typography>
         <Divider/>
       </Box>

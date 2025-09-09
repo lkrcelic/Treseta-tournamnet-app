@@ -1,4 +1,4 @@
-# Bela Tournament App - Windsurf Rules
+# Treseta Tournament App - Windsurf Rules
 
 ## Grid import
 - When importing the Grid use import {Grid} from "@mui/system";
@@ -50,7 +50,7 @@
 ## API Integration
 - Use the established API response handling patterns
 - Follow the existing error handling conventions
-- Only suggest backend changes when explicitly requested# Bela Tournament App - Windsurf Rules
+- Only suggest backend changes when explicitly requested# Treseta Tournament App - Windsurf Rules
 
 ## Project Focus
 - Focus primarily on frontend development (TSX files and page-related components)

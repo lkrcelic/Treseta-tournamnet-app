@@ -1,5 +1,5 @@
 export * from './TabPanel';
-export * from './MatchResultCard';
+export * from './RoundResultCard';
 export * from './RoundResultsPanel';
 export * from './PageHeader';
 export * from './StandingsTabContent';
