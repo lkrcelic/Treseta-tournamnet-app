@@ -1,4 +1,4 @@
-import useRoundStore from "@/app/_store/roundStore";
+import useRoundStore from "../../_store/roundStore";
 import useAuthStore from "@/app/_store/authStore";
 import useMatchStore from "@/app/_store/matchStore";
 import {Box, Typography} from "@mui/material";

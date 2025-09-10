@@ -2,7 +2,7 @@ import {createMatchAPI} from "@/app/_fetchers/match/create";
 import {finishMatchAPI} from "@/app/_fetchers/match/finish";
 import {finishRoundAPI} from "@/app/_fetchers/round/finish";
 import useMatchStore from "@/app/_store/matchStore";
-import useRoundStore from "@/app/_store/roundStore";
+import useRoundStore from "../../_store/roundStore";
 import theme from "@/app/_styles/theme";
 import SingleActionButton from "@/app/_ui/SingleActionButton";
 import AddCircleIcon from "@mui/icons-material/AddCircle";
