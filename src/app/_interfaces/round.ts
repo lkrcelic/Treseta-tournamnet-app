@@ -26,6 +26,8 @@ export const ExtendedRoundResponseValidation = RoundResponseValidation.extend({
 export const CreateRoundRequestValidation = z.object({
   league_id: z.number().int(),
   present_teams: z.array(z.number().int()).min(1),
+  numberOfRounds: z.number().int().min(1).max(5).optional(),
+  windowSize: z.number().int().min(2).max(200).optional(),
 });
 
 export type CreateRoundRequest = z.infer<typeof CreateRoundRequestValidation>;

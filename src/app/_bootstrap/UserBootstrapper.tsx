@@ -9,6 +9,11 @@ export default function UserBootstrapper() {
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
+      // 1) If store already has a user, do nothing
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser !== null && currentUser !== undefined) return;
+
+      // 2) Fallback: fetch current user once
       try {
         const res = await fetch("/api/auth/me", {credentials: "include"});
         if (!res.ok) {
