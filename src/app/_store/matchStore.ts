@@ -1,6 +1,6 @@
-import {MatchExtendedResponse} from "@/app/_interfaces/match";
-import {create} from "zustand";
-import {createJSONStorage, persist} from "zustand/middleware";
+import { MatchExtendedResponse } from "@/app/_interfaces/match";
+import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 
 export type MatchState = {
   match: MatchExtendedResponse;

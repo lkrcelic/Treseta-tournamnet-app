@@ -4,7 +4,7 @@ import useAuthStore from "@/app/_store/authStore";
 import theme from "@/app/_styles/theme";
 import GroupsIcon from "@mui/icons-material/Groups";
 import HomeIcon from "@mui/icons-material/Home";
-import {Avatar, Box, CircularProgress, Paper, Stack, Typography, useMediaQuery, Container} from "@mui/material";
+import {Avatar, Box, CircularProgress, Container, Paper, Stack, Typography, useMediaQuery} from "@mui/material";
 import {useRouter} from "next/navigation";
 import React from "react";
 import SingleActionButton from "../_ui/SingleActionButton";
@@ -28,13 +28,6 @@ type Team = {
   team_name: string;
   teamPlayers: TeamPlayer[];
 };
-
-function formatDate(value?: string | Date): string | undefined {
-  if (!value) return undefined;
-  const d = typeof value === "string" ? new Date(value) : value;
-  if (Number.isNaN(d.getTime())) return undefined;
-  return d.toLocaleDateString("hr-HR", {day: "2-digit", month: "2-digit", year: "numeric"});
-}
 
 function DetailRow({label, value}: {label: string; value?: string}) {
   return (
@@ -158,68 +151,68 @@ export default function ProfilePage() {
           }}
         >
           <Container maxWidth="sm" sx={{display: "flex", flexDirection: "column", gap: 2, p: 1}}>
-          {loading ? (
-            <Box sx={{display: "flex", justifyContent: "center", alignItems: "center", height: "40vh"}}>
-              <CircularProgress />
-            </Box>
-          ) : (
-            <Stack spacing={2}>
-              {/* Classic Details */}
-              <Paper elevation={2} sx={{p: 2, borderRadius: 4}}>
-                <Typography variant="subtitle1" sx={{mb: 1, fontWeight: 600}}>
-                  Details
-                </Typography>
-                <Stack spacing={1.25}>
-                  <DetailRow label="Username" value={player?.username} />
-                  <DetailRow label="Email" value={player?.email} />
-                  <DetailRow label="First name" value={player?.first_name} />
-                  <DetailRow label="Last name" value={player?.last_name} />
-                </Stack>
-              </Paper>
-
-              {/* My Teams */}
-              <Paper elevation={2} sx={{p: 2, borderRadius: 4}}>
-                <Typography variant="subtitle1" sx={{mb: 1, fontWeight: 600}}>
-                  My Teams
-                </Typography>
-                {teams.length === 0 ? (
-                  <Typography variant="body2" color="text.secondary">
-                    You are not a member of any team yet.
+            {loading ? (
+              <Box sx={{display: "flex", justifyContent: "center", alignItems: "center", height: "40vh"}}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <Stack spacing={2}>
+                {/* Classic Details */}
+                <Paper elevation={2} sx={{p: 2, borderRadius: 4}}>
+                  <Typography variant="subtitle1" sx={{mb: 1, fontWeight: 600}}>
+                    Details
                   </Typography>
-                ) : (
-                  <Stack spacing={1}>
-                    {teams.map((team) => (
-                      <Box
-                        key={team.team_id}
-                        sx={{
-                          backgroundColor: theme.palette.secondary.main,
-                          color: theme.palette.secondary.contrastText,
-                          borderRadius: 3,
-                          px: 2,
-                          py: 1.5,
-                        }}
-                      >
-                        <Typography variant="subtitle1" sx={{fontWeight: 600}}>
-                          {team.team_name}
-                        </Typography>
-                        <Typography variant="caption" sx={{opacity: 0.9, display: "block"}}>
-                          Teammates:
-                        </Typography>
-                        <Stack direction="column" spacing={0.5} sx={{mt: 0.5}}>
-                          {team.teamPlayers?.map((tp, idx) => (
-                            <Stack key={idx} direction="row" spacing={0.75} alignItems="center">
-                              <GroupsIcon fontSize="small" />
-                              <Typography variant="body2">{tp.player?.username}</Typography>
-                            </Stack>
-                          ))}
-                        </Stack>
-                      </Box>
-                    ))}
+                  <Stack spacing={1.25}>
+                    <DetailRow label="Username" value={player?.username} />
+                    <DetailRow label="Email" value={player?.email} />
+                    <DetailRow label="First name" value={player?.first_name} />
+                    <DetailRow label="Last name" value={player?.last_name} />
                   </Stack>
-                )}
-              </Paper>
-            </Stack>
-          )}
+                </Paper>
+
+                {/* My Teams */}
+                <Paper elevation={2} sx={{p: 2, borderRadius: 4}}>
+                  <Typography variant="subtitle1" sx={{mb: 1, fontWeight: 600}}>
+                    My Teams
+                  </Typography>
+                  {teams.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary">
+                      You are not a member of any team yet.
+                    </Typography>
+                  ) : (
+                    <Stack spacing={1}>
+                      {teams.map((team) => (
+                        <Box
+                          key={team.team_id}
+                          sx={{
+                            backgroundColor: theme.palette.secondary.main,
+                            color: theme.palette.secondary.contrastText,
+                            borderRadius: 3,
+                            px: 2,
+                            py: 1.5,
+                          }}
+                        >
+                          <Typography variant="subtitle1" sx={{fontWeight: 600}}>
+                            {team.team_name}
+                          </Typography>
+                          <Typography variant="caption" sx={{opacity: 0.9, display: "block"}}>
+                            Teammates:
+                          </Typography>
+                          <Stack direction="column" spacing={0.5} sx={{mt: 0.5}}>
+                            {team.teamPlayers?.map((tp, idx) => (
+                              <Stack key={idx} direction="row" spacing={0.75} alignItems="center">
+                                <GroupsIcon fontSize="small" />
+                                <Typography variant="body2">{tp.player?.username}</Typography>
+                              </Stack>
+                            ))}
+                          </Stack>
+                        </Box>
+                      ))}
+                    </Stack>
+                  )}
+                </Paper>
+              </Stack>
+            )}
           </Container>
         </Box>
 
