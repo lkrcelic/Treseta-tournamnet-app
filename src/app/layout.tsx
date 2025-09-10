@@ -1,7 +1,8 @@
 "use client";
 
+import UserBootstrapper from "@/app/_bootstrap/UserBootstrapper";
 import theme from "@/app/_styles/theme";
-import {Box, CssBaseline, ThemeProvider} from "@mui/material";
+import { Box, CssBaseline, ThemeProvider } from "@mui/material";
 import React from "react";
 
 export default function RootLayout({children}: Readonly<{children: React.ReactNode}>) {
@@ -25,6 +26,7 @@ export default function RootLayout({children}: Readonly<{children: React.ReactNo
       >
         <ThemeProvider theme={theme}>
           <CssBaseline />
+          <UserBootstrapper />
           <Box
             sx={{
               display: "flex",

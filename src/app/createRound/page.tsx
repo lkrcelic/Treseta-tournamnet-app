@@ -1,6 +1,6 @@
 "use client";
 
-import {Box} from "@mui/material";
+import {Box, Stack, TextField, Typography, Button, Collapse} from "@mui/material";
 import Dropdown, {DropdownOption} from "@/app/createRound/ui/Dropdown";
 import {useState} from "react";
 import SelectTable, {TableEntry} from "@/app/createRound/ui/SelectTable";
@@ -21,6 +21,9 @@ interface League {
 export default function CreateRound() {
   const router = useRouter();
   const [selectedLeagueId, setSelectedLeagueId] = useState<number | null>(null);
+  const [numberOfRounds, setNumberOfRounds] = useState<number>(4);
+  const [windowSize, setWindowSize] = useState<number>(8);
+  const [showOptions, setShowOptions] = useState<boolean>(false);
 
   const handleSelect = (leagueId: number) => {
     setSelectedLeagueId(leagueId);
@@ -57,7 +60,7 @@ export default function CreateRound() {
       return;
     }
 
-    const createdRoundNumber = await createMultipleRoundsAPI(selectedLeagueId, teamIds);
+    const createdRoundNumber = await createMultipleRoundsAPI(selectedLeagueId, teamIds, numberOfRounds, windowSize);
     router.push(`/round/pairings/${createdRoundNumber}`);
   };
 
@@ -76,9 +79,39 @@ export default function CreateRound() {
         }}
       >
         {selectedLeagueId === null ? (
-          <Dropdown onSelect={handleSelect} getOptions={fetchLeagues}/>
+          <Dropdown onSelect={handleSelect} getOptions={fetchLeagues} />
         ) : (
-          <SelectTable onLoad={fetchTeams} onCreate={createRound}/>
+          <>
+            <Stack direction="row" spacing={1} sx={{justifyContent: "center", alignItems: "center", mb: 1}}>
+              <Button variant="text" size="small" onClick={() => setShowOptions((s) => !s)}>
+                Options
+              </Button>
+              <Typography variant="caption" color="text.secondary">
+                Rounds: {numberOfRounds}, Window: {windowSize}
+              </Typography>
+            </Stack>
+            <Collapse in={showOptions} timeout="auto" unmountOnExit>
+              <Stack direction="row" spacing={2} sx={{justifyContent: "center", alignItems: "center", mb: 1}}>
+                <TextField
+                  label="Number of rounds"
+                  type="number"
+                  inputProps={{min: 1, max: 5}}
+                  value={numberOfRounds}
+                  onChange={(e) => setNumberOfRounds(Math.max(1, Math.min(5, Number(e.target.value))))}
+                  size="small"
+                />
+                <TextField
+                  label="Window size"
+                  type="number"
+                  inputProps={{min: 2, max: 200}}
+                  value={windowSize}
+                  onChange={(e) => setWindowSize(Math.max(2, Math.min(200, Number(e.target.value))))}
+                  size="small"
+                />
+              </Stack>
+            </Collapse>
+            <SelectTable onLoad={fetchTeams} onCreate={createRound} />
+          </>
         )}
       </Box>
     </>
