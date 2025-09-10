@@ -1,6 +1,6 @@
 "use client";
 
-import { getOpenRoundByPlayerIdAPI } from "@/app/_fetchers/round/getActiveByPlayerId";
+import { getOpenRoundByPlayerIdAPI } from "@/app/_fetchers/round/getOpenByPlayerId";
 import useLogout from "@/app/_hooks/useLogout";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
