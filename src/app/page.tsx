@@ -11,7 +11,7 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import {Box, Button, CircularProgress, Container, IconButton, Paper, Typography} from "@mui/material";
 import {useRouter} from "next/navigation";
 import {useEffect, useState} from "react";
-import {getOpenRoundByPlayerIdAPI} from "./_fetchers/round/getActiveByPlayerId";
+import {getOpenRoundByPlayerIdAPI} from "./_fetchers/round/getOpenByPlayerId";
 
 const ActionButton = ({
   onClick,
