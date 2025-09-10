@@ -2,7 +2,7 @@ import {getResultByIdAPI} from "@/app/_fetchers/result/getById";
 import useAuthStore from "@/app/_store/authStore";
 import useMatchStore from "@/app/_store/matchStore";
 import useResultStore from "@/app/_store/resultStore";
-import useRoundStore from "../../_store/roundStore";
+import useRoundStore from "@/app/_store/roundStore";
 import {ButtonBase, Typography} from "@mui/material";
 import {Grid} from "@mui/system";
 import {usePathname, useRouter} from "next/navigation";

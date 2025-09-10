@@ -1,6 +1,6 @@
 import useAuthStore from "@/app/_store/authStore";
 import useResultStore from "@/app/_store/resultStore";
-import useRoundStore from "../../../../_store/roundStore";
+import useRoundStore from "@/app/_store/roundStore";
 import {TeamScoreBox} from "@/app/match/[matchId]/result/ui/TeamScoreBox";
 import {Grid} from "@mui/system";
 import React from "react";
