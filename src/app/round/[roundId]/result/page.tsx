@@ -3,7 +3,7 @@
 import { getAllMatchesByQueryAPI } from "@/app/_fetchers/match/getAllByQuery";
 import { getRoundByIdAPI } from "@/app/_fetchers/round/getByIdAPI";
 import { MatchResponse } from "@/app/_interfaces/match";
-import useRoundStore from "@/app/_store/roundStore";
+import useRoundStore from "../_store/roundStore";
 import theme from "@/app/_styles/theme";
 import SingleActionButton from "@/app/_ui/SingleActionButton";
 import Home from "@mui/icons-material/Home";
