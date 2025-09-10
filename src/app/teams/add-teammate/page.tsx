@@ -1,21 +1,21 @@
 "use client";
 
-import React, {useCallback, useState} from "react";
-import {Autocomplete, Box, Button, TextField, Typography} from "@mui/material";
-import Image from "next/image";
-import {searchTeamsAPI} from "@/app/_fetchers/team/searchTeams";
 import {searchPlayersAPI} from "@/app/_fetchers/player/search";
 import {addTeammateAPI} from "@/app/_fetchers/team/addTeammate";
+import {searchTeamsAPI} from "@/app/_fetchers/team/searchTeams";
+import { PlayerResponse } from "@/app/_interfaces/player";
 import type {TeamExtendedResponse} from "@/app/_interfaces/team";
+import {Autocomplete, Box, Button, TextField, Typography} from "@mui/material";
+import React, {useCallback, useState} from "react";
 
 export default function AddTeammate() {
   const [teams, setTeams] = useState<TeamExtendedResponse[]>([]);
-  const [players, setPlayers] = useState<any[]>([]);
+  const [players, setPlayers] = useState<PlayerResponse[]>([]);
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [loadingPlayers, setLoadingPlayers] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const [formData, setFormData] = useState<{ team: TeamExtendedResponse | null; player: any | null }>({
+  const [formData, setFormData] = useState<{team: TeamExtendedResponse | null; player: PlayerResponse | null}>({
     team: null,
     player: null,
   });
@@ -44,8 +44,8 @@ export default function AddTeammate() {
     }
   }, []);
 
-  const handleAutocompleteChange = (name: "team" | "player", value: any) => {
-    setFormData(prev => ({...prev, [name]: value}));
+  const handleAutocompleteChange = (name: "team" | "player", value: TeamExtendedResponse | PlayerResponse) => {
+    setFormData((prev) => ({...prev, [name]: value}));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
