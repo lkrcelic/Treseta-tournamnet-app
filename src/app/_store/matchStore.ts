@@ -23,7 +23,7 @@ const useMatchStore = create<MatchState>()(
         })),
 
       resetMatchStore: () =>
-        set((state) => ({
+        set(() => ({
           match: {
             team1_score: 0,
             team2_score: 0,
