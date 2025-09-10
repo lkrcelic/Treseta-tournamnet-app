@@ -1,5 +1,6 @@
 "use client";
 
+import { getOpenRoundByPlayerIdAPI } from "@/app/_fetchers/round/getActiveByPlayerId";
 import useLogout from "@/app/_hooks/useLogout";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
@@ -8,12 +9,9 @@ import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import GroupAddIcon from "@mui/icons-material/GroupAdd";
 import LogoutIcon from "@mui/icons-material/Logout";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import {Box, Button, CircularProgress, Container, IconButton, Paper, Typography} from "@mui/material";
-import {useRouter} from "next/navigation";
-import {useEffect, useState} from "react";
-
-// API fetchers
-import {getOpenRoundByPlayerIdAPI} from "@/app/_fetchers/round/getOpenByPlayerId";
+import { Box, Button, CircularProgress, Container, IconButton, Paper, Typography } from "@mui/material";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const ActionButton = ({
   onClick,
