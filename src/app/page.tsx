@@ -8,10 +8,10 @@ import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import GroupAddIcon from "@mui/icons-material/GroupAdd";
 import LogoutIcon from "@mui/icons-material/Logout";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import {Box, Button, CircularProgress, Container, IconButton, Paper, Typography} from "@mui/material";
-import {useRouter} from "next/navigation";
-import {useEffect, useState} from "react";
-import {getOpenRoundByPlayerIdAPI} from "./_fetchers/round/getOpenByPlayerId";
+import { Box, Button, CircularProgress, Container, IconButton, Paper, Typography } from "@mui/material";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { getActiveOrCreateMatchByPlayerIdAPI } from "./_fetchers/match/getActiveOrCreateByPlayerIdAPI";
 
 const ActionButton = ({
   onClick,
@@ -72,13 +72,9 @@ export default function Home() {
     try {
       setStartingGame(true);
 
-      const {roundId, ongoingMatchId} = await getOpenRoundByPlayerIdAPI();
+      const {id: activeMatchId} = await getActiveOrCreateMatchByPlayerIdAPI();
+      router.push(`/match/${activeMatchId}`);
 
-      if (ongoingMatchId) {
-        router.push(`/ongoing-match/${ongoingMatchId}`);
-      } else {
-        router.push(`/round/${roundId}/players-seating`);
-      }
     } catch (error) {
       setStartingGame(false);
     }
