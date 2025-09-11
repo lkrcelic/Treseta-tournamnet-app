@@ -14,17 +14,26 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const createRound = CreateRoundRequestValidation.parse(body);
-    const {league_id, present_teams} = createRound;
+    const parsed = CreateRoundRequestValidation.parse(body);
+    const {league_id, present_teams} = parsed;
+    const numberOfRounds = parsed.numberOfRounds ?? 3;
+    const windowSize = parsed.windowSize ?? 8;
+
+    if (numberOfRounds >= windowSize) {
+      return NextResponse.json(
+        {error: "Invalid arguments: numberOfRounds must be less than windowSize."},
+        {status: STATUS.BadRequest}
+      );
+    }
 
     const teamsWithScores = await getLeagueTeamsWithScores(league_id);
 
     const filteredTeams = teamsWithScores.filter((team) => present_teams.includes(team.id));
     
-    // Generate multiple rounds with hardcoded values (3 rounds, window size 6)
+    // Generate multiple rounds with provided or default values
     const allRoundPairings = generateMultipleRoundPairings(filteredTeams, {
-      windowSize: 6,
-      numberOfRounds: 3
+      windowSize,
+      numberOfRounds,
     });
 
     // Insert each round of pairings
