@@ -3,6 +3,7 @@
 import { getAllMatchesByQueryAPI } from "@/app/_fetchers/match/getAllByQuery";
 import { getRoundByIdAPI } from "@/app/_fetchers/round/getByIdAPI";
 import { MatchResponse } from "@/app/_interfaces/match";
+import useAuthStore from "@/app/_store/authStore";
 import useRoundStore from "@/app/_store/roundStore";
 import theme from "@/app/_styles/theme";
 import SingleActionButton from "@/app/_ui/SingleActionButton";
@@ -22,6 +23,7 @@ const MobileScoreBoard = () => {
     roundData: {team1_wins, team2_wins, team1, team2},
     setRoundData,
   } = useRoundStore();
+  const {user} = useAuthStore();
   const [matches, setMatches] = useState<MatchResponse[]>();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -61,6 +63,13 @@ const MobileScoreBoard = () => {
     return <LoadingScoreBoard isMobile={isMobile} />;
   }
 
+  const userId = user?.id;
+  const team1PlayerIds = team1?.teamPlayers?.map((tp) => tp.player.id) ?? [];
+  const team2PlayerIds = team2?.teamPlayers?.map((tp) => tp.player.id) ?? [];
+  const isUserInTeam1 = userId != null && team1PlayerIds.includes(userId);
+  const isUserInTeam2 = userId != null && team2PlayerIds.includes(userId);
+  const showTeam1Left = isUserInTeam1 || (!isUserInTeam1 && !isUserInTeam2);
+
   return (
     <>
       <Box sx={{gridArea: "top", alignSelf: "end"}}>
@@ -80,10 +89,10 @@ const MobileScoreBoard = () => {
                 }}
               >
                 <Typography variant="h4" color="#fff">
-                  {team1_wins}
+                  {showTeam1Left ? team1_wins : team2_wins}
                 </Typography>
               </Box>
-              <Typography variant="h7">{team1?.team_name}</Typography>
+              <Typography variant="h7">{showTeam1Left ? team1?.team_name : team2?.team_name}</Typography>
             </Grid>
           </Grid>
           <Grid item size={{xs: 6}}>
@@ -101,11 +110,11 @@ const MobileScoreBoard = () => {
                 }}
               >
                 <Typography variant="h4" color="#fff">
-                  {team2_wins}
+                  {showTeam1Left ? team2_wins : team1_wins}
                 </Typography>
               </Box>
               <Typography variant="h7" align="center">
-                {team2?.team_name}
+                {showTeam1Left ? team2?.team_name : team1?.team_name}
               </Typography>
             </Grid>
           </Grid>
@@ -125,7 +134,7 @@ const MobileScoreBoard = () => {
               >
                 <Grid item size={{xs: 4}}>
                   <Typography variant="h4" textAlign="center" color={"default"} paddingRight={1}>
-                    {match.team1_score}
+                    {showTeam1Left ? match.team1_score : match.team2_score}
                   </Typography>
                 </Grid>
 
@@ -137,7 +146,7 @@ const MobileScoreBoard = () => {
 
                 <Grid item size={{xs: 4}}>
                   <Typography variant="h4" textAlign="center" color={"default"} paddingLeft={1}>
-                    {match.team2_score}
+                    {showTeam1Left ? match.team2_score : match.team1_score}
                   </Typography>
                 </Grid>
               </Grid>
