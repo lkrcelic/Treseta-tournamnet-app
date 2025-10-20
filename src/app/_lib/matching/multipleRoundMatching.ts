@@ -24,7 +24,7 @@ export interface MultiRoundMatchingOptions {
 function createByeTeam(): Team {
   return {
     id: parseInt(process.env.BYE_ID ?? "0"), 
-    name: "bye", 
+    name: "Bye", 
     score: 0, 
     point_difference: 0,
     played_against: []
@@ -45,16 +45,14 @@ function divideTeamsIntoWindows(teams: Team[], windowSize: number, numberOfRound
   }
   
   // Add a bye team to the last window if it has an odd size
-  if (windows.length > 0 && windows[windows.length - 1].length % 2 !== 0) {
+  if (windows[windows.length - 1].length % 2 === 1) {
     windows[windows.length - 1].push(createByeTeam());
   }
   
-  // Handle the last window if it's smaller than the window size
-  if (windows.length > 1 && windows[windows.length - 1].length < Math.max(windowSize / 2, numberOfRounds)) {
+  // Handle the last window if it's smaller than or equal round number
+  if (numberOfRounds >= windows[windows.length - 1].length) {
     const lastWindow = windows.pop();
-    if (lastWindow) {
-      windows[windows.length - 1] = [...windows[windows.length - 1], ...lastWindow];
-    }
+    windows[windows.length - 1] = [...windows[windows.length - 1], ...lastWindow];
   }
   
   return windows;
@@ -129,13 +127,11 @@ function generateRoundRobinRounds(teams: Team[]): TeamPair[][] {
 /**
  * Calculates the total cost of a round based on the cost matrix
  */
-function calculateRoundCost(round: TeamPair[], teams: Team[], costMatrix: number[][]): number {
+function calculateRoundCost(round: TeamPair[], costMatrix: number[][], teamIdToIndex: Map<number, number>): number {
   let totalCost = 0;
-  
   for (const pair of round) {
-    const team1Index = teams.findIndex(t => t.id === pair.teamOne.id);
-    const team2Index = teams.findIndex(t => t.id === pair.teamTwo.id);
-    
+    const team1Index = teamIdToIndex.get(pair.teamOne.id)!;
+    const team2Index = teamIdToIndex.get(pair.teamTwo.id)!;
     totalCost += costMatrix[team1Index][team2Index];
   }
   
@@ -152,13 +148,16 @@ export function generateMultipleRoundPairings(
   const { windowSize, numberOfRounds } = options;
   const allRoundPairings: TeamPair[][] = [];
 
-  // Validate inputs
-  if (teams.length === 0) {
-    return [];
+  if (windowSize % 2 === 1) {
+    throw new Error("Invalid arguments, window size must be even!");
   }
 
   if (numberOfRounds >= windowSize) {
     throw new Error("Invalid arguments, number of rounds can't be bigger or equal than window size!")
+  }
+
+   if (numberOfRounds >= teams.length) {
+    throw new Error("Invalid arguments, number of rounds can't be bigger than number of teams!")
   }
   
   const windows = divideTeamsIntoWindows(teams, windowSize, numberOfRounds);
@@ -167,10 +166,14 @@ export function generateMultipleRoundPairings(
   for (const window of windows) {
     const allRounds = generateRoundRobinRounds(window);
     const costMatrix = calculateCostMatrix(window);
+    const teamIdToIndex = new Map<number, number>();
+    for (let i = 0; i < window.length; i++) {
+      teamIdToIndex.set(window[i].id, i);
+    }
     
     const roundsWithCosts = allRounds.map(round => ({
       round,
-      cost: calculateRoundCost(round, window, costMatrix)
+      cost: calculateRoundCost(round, costMatrix, teamIdToIndex)
     }));
     
     roundsWithCosts.sort((a, b) => a.cost - b.cost);
@@ -188,7 +191,7 @@ export function generateMultipleRoundPairings(
     
     // Move bye pair to the end
     const byeIndex = roundPairings.findIndex(pair => 
-      pair.teamOne.name.toLowerCase() === 'bye' || pair.teamTwo.name.toLowerCase() === 'bye'
+      pair.teamOne.id === parseInt(process.env.BYE_ID)|| pair.teamTwo.id === parseInt(process.env.BYE_ID)
     );
     if (byeIndex !== -1) {
       const byePair = roundPairings.splice(byeIndex, 1)[0];

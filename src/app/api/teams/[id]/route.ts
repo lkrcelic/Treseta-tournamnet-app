@@ -1,7 +1,7 @@
 // src/app/api/teams/[id]/route.ts
 import {NextResponse} from "next/server";
 import {prisma} from "@/app/_lib/prisma";
-import {TeamResponseValidation} from "@/app/_interfaces/team";
+import {TeamExtendedResponseValidation} from "@/app/_interfaces/team";
 import {STATUS} from "@/app/_lib/statusCodes";
 
 // Handle GET request to fetch a single team by ID
@@ -21,7 +21,7 @@ export async function GET(
         if (!dbTeam) {
             return NextResponse.json({error: "Team not found."}, {status: STATUS.NotFound});
         }
-        const team = TeamResponseValidation.parse(dbTeam);
+        const team = TeamExtendedResponseValidation.parse(dbTeam);
 
         return NextResponse.json(team, {status: STATUS.OK});
     } catch (error) {

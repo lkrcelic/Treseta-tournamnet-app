@@ -21,7 +21,7 @@ export interface Team {
     if (teams.length % 2) {
       team_pairs.push({
         teamOne: teams.pop(),
-        teamTwo: {id: parseInt(process.env.BYE_ID ?? "0"), name: "bye", score: 0, played_against: []},
+        teamTwo: {id: parseInt(process.env.BYE_ID ?? "0"), name: "Bye", score: 0, played_against: []},
       });
     }
   
