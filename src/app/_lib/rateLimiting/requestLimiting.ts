@@ -1,6 +1,6 @@
 import {NextRequest} from "next/server";
 
-const MAX_REQUESTS = 100;
+const MAX_REQUESTS = 1000;
 const TIME_WINDOW = 1 * 60 * 1000; // minute * seconds * miliseconds
 
 const rateLimitStore = new Map<string, {count: number; lastRequest: number}>();
