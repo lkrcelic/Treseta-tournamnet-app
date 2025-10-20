@@ -235,7 +235,7 @@ async function main() {
   await prisma.team.create({
     data: {
       team_id: 0,
-      team_name: "bye",
+      team_name: "Bye",
       creator_id: player0.id,
     },
   });

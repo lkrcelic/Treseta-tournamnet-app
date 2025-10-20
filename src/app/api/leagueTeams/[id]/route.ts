@@ -11,10 +11,11 @@ export async function GET(request: NextRequest, {params}: {params: {id: string}}
     if (!isAdmin)
       return NextResponse.json({error: "You are not authorized for this action."}, {status: STATUS.Unauthorized});
 
-    const teams = await prisma.leagueTeam.findMany({where: {league_id: parseInt(id)}, include: {team: true}});
+    const teams = await prisma.leagueTeam.findMany({where: {league_id: parseInt(id), team_id: {not: Number(process.env.BYE_ID)}}, include: {team: true}});
 
     return NextResponse.json(teams, {status: STATUS.OK});
   } catch (error) {
+    console.log(error);
     return NextResponse.json({error: "Failed to fetch teams."}, {status: STATUS.BadRequest});
   }
 }
