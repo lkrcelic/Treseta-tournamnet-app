@@ -150,15 +150,10 @@ export const {handlers: {GET, POST}, auth, signIn, signOut} = NextAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
     }),
   ],
-  // Add CSRF protection settings
-  secret: process.env.NEXTAUTH_SECRET,
-
-  session: {
+   session: {
     strategy: "database",
-    maxAge: 4 * 60 * 60, // 4 hours
-    updateAge: 60 * 15, // 15 minutes
+    maxAge: 4 * 60 * 60, // 4 hours in seconds
   },
-
   cookies: {
     sessionToken: {
       name: process.env.GOOGLE_AUTH_COOKIE,
@@ -169,21 +164,5 @@ export const {handlers: {GET, POST}, auth, signIn, signOut} = NextAuth({
         secure: process.env.NODE_ENV === "production",
       },
     },
-  },
-
-  callbacks: {
-    async session({session, user}) {
-      // Add user ID to the session
-      if (session?.user) {
-        session.user.id = user.id;
-        if (user.username) {
-          session.user.username = user.username;
-        }
-      }
-      return session;
-    },
-  },
-  pages: {
-    signIn: '/login',
   },
 });
