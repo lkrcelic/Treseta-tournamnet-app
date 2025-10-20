@@ -32,7 +32,7 @@ export default function RootLayout({children}: Readonly<{children: React.ReactNo
               display: "flex",
               flexDirection: "column",
               minHeight: "100vh",
-              maxWidth: "1100px",
+              maxWidth: "1800px",
               margin: "0 auto",
               paddingY: 2,
               paddingX: 2,

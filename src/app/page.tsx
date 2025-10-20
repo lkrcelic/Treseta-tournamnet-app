@@ -12,6 +12,7 @@ import { Box, Button, CircularProgress, Container, IconButton, Paper, Typography
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getActiveOrCreateMatchByPlayerIdAPI } from "./_fetchers/match/getActiveOrCreateByPlayerIdAPI";
+import UserBootstrapper from "./_bootstrap/UserBootstrapper";
 
 const ActionButton = ({
   onClick,
@@ -95,6 +96,7 @@ export default function Home() {
         overflowY: "hidden",
       }}
     >
+      <UserBootstrapper />
       {/* Fixed Header - Top Grid Area */}
       <Box
         sx={{
