@@ -92,7 +92,7 @@ export function RoundResultsPanel({roundNumber, rounds, activeRounds = 0}: Round
       }}>
         <Grid container spacing={2} sx={{pb:1}}>
           {rounds.map((round, index) => (
-            <Grid item key={index} size={{xs: 12, md: 6, lg: 4}}>
+            <Grid item key={index} size={{xs: 12, md: 4, lg: 2}}>
               <RoundResultCard
                 team1Name={round.team1Name}
                 team2Name={round.team2Name}
