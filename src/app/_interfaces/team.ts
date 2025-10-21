@@ -14,8 +14,8 @@ export const TeamRequestValidation = z.object({
   founder_id1: z.number().int().optional(),
   founder_id2: z.number().int().optional(),
   creator_id: z.number().int().optional(),
-  created_at: parseDate.optional(),
-  last_updated_at: parseDate.optional(),
+  created_at: parseDate.optional().nullable(),
+  last_updated_at: parseDate.optional().nullable(),
 });
 
 export const TeamResponseValidation = z.object({
@@ -24,8 +24,8 @@ export const TeamResponseValidation = z.object({
   founder_id1: z.number().int().nullable(),
   founder_id2: z.number().int().nullable(),
   creator_id: z.number().int().nullable(),
-  created_at: parseDate.optional(),
-  last_updated_at: parseDate.optional(),
+  created_at: parseDate.optional().nullable(),
+  last_updated_at: parseDate.optional().nullable(),
   teamPlayers: z.array(
     z.object({
       player: PlayerPartialResponseValidation,
