@@ -74,7 +74,7 @@ export function RoundResultCard({
               {team1Name}
             </Typography>
            {active && matches.length > 0 && <Typography variant="body2" color="text.secondary" sx={{fontWeight: "medium", pr: 1}}>
-              ({matches[matches.length - 1].team1_score})
+              ({matches.sort((a, b) => b.id - a.id)[0].team1_score})
             </Typography>}
             <Typography variant="body1" sx={{fontWeight: "bold"}}>
               {team1Wins}
@@ -85,7 +85,7 @@ export function RoundResultCard({
               {team2Name}
             </Typography>
             {active && matches.length > 0 && <Typography variant="body2" color="text.secondary" sx={{fontWeight: "medium", pr: 1}}>
-              ({matches[matches.length - 1].team2_score})
+              ({matches.sort((a, b) => b.id - a.id)[0].team2_score})
             </Typography>}
             <Typography variant="body1" sx={{fontWeight: "bold"}}>
               {team2Wins}
