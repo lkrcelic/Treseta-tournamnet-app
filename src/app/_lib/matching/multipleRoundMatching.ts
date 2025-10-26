@@ -3,9 +3,7 @@ export interface Team {
   readonly name: string;
   readonly point_difference: number;
   readonly score: number;
-  modified_score?: number | null | undefined;
   played_against: number[]; // ids of teams already played against!
-  current_execution_played_against?: number[]; // teams played against in this execution
 }
 
 export interface TeamPair {
@@ -84,8 +82,9 @@ function calculateCostMatrix(teams: Team[]): number[][] {
   for (let i = 0; i < n; i++) {
     for (let j = i + 1; j < n; j++) {
       const matchupCount = countMatchups(teams[i], teams[j]);
-      costMatrix[i][j] = matchupCount;
-      costMatrix[j][i] = matchupCount;
+      const scoreDifference = teams[i].score - teams[j].score;
+      costMatrix[i][j] = matchupCount * 20 + scoreDifference;
+      costMatrix[j][i] = matchupCount * 20 + scoreDifference;
     }
   }
   
