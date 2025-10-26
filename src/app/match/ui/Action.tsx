@@ -9,6 +9,7 @@ import AddCircleIcon from "@mui/icons-material/AddCircle";
 import DoneIcon from "@mui/icons-material/Done";
 import {useMediaQuery} from "@mui/material";
 import {useParams, usePathname, useRouter} from "next/navigation";
+import {useState} from "react";
 
 export default function Action() {
   const {
@@ -19,6 +20,7 @@ export default function Action() {
     roundData: {id, team1_wins, team2_wins},
   } = useRoundStore();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const [isLoading, setIsLoading] = useState(false);
 
   const router = useRouter();
   const {matchId} = useParams();
@@ -30,20 +32,26 @@ export default function Action() {
         label: "Završi meč",
         icon: <DoneIcon />,
         onClick: async () => {
-          await finishMatchAPI(Number(matchId));
+          if (isLoading) return;
+          setIsLoading(true);
+          try {
+            await finishMatchAPI(Number(matchId));
 
-          if (team1_wins + team2_wins == 0) {
-            const response = await createMatchAPI(Number(id), 41);
+            if (team1_wins + team2_wins == 0) {
+              const response = await createMatchAPI(Number(id), 41);
 
-            resetMatchStore();
-            router.push(`/match/${response.id}`);
-          }
+              resetMatchStore();
+              router.push(`/match/${response.id}`);
+            }
 
-          if (team1_wins + team2_wins > 0) {
-            router.push(`/round/${id}/result`);
-            await finishRoundAPI(Number(id));
-            resetMatchStore();
-            localStorage.clear();
+            if (team1_wins + team2_wins > 0) {
+              router.push(`/round/${id}/result`);
+              await finishRoundAPI(Number(id));
+              resetMatchStore();
+              localStorage.clear();
+            }
+          } finally {
+            setIsLoading(false);
           }
         },
       };
@@ -60,5 +68,5 @@ export default function Action() {
 
   const props = getProps();
 
-  return <SingleActionButton fullWidth={isMobile} label={props.label} onClick={props.onClick} icon={props.icon} />;
+  return <SingleActionButton fullWidth={isMobile} label={props.label} onClick={props.onClick} icon={props.icon} disabled={isLoading} />;
 }

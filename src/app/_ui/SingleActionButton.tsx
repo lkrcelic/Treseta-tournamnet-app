@@ -7,6 +7,7 @@ type SingleActionButtonProps = {
   icon?: React.ReactNode;
   color?: "primary" | "secondary" | "error" | "info" | "success" | "warning";
   fullWidth?: boolean;
+  disabled?: boolean;
 }
 
 export default function SingleActionButton({
@@ -14,7 +15,8 @@ export default function SingleActionButton({
                                              label,
                                              icon = null,
                                              color = "primary",
-                                             fullWidth = false
+                                             fullWidth = false,
+                                             disabled = false
                                            }: SingleActionButtonProps) {
   return (
     <Box sx={{width: fullWidth ? '100%' : 'auto'}}>
@@ -22,6 +24,7 @@ export default function SingleActionButton({
         variant="contained"
         color={color}
         onClick={onClick}
+        disabled={disabled}
         sx={{
           py: 1.5,
           px: 3,
