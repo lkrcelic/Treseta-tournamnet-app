@@ -31,41 +31,46 @@ export async function insertPairRounds(pairs: TeamPair[], leagueId: number): Pro
   const bye_id = parseInt(process.env.BYE_ID ?? "0");
   const byeRoundIndex = findByeRoundIndex(insertData, bye_id);
 
-  // Loop through each pair and create both Round and LeagueRound
-  for (let i = 0; i < insertData.length; i++) {
-    const roundData = insertData[i];
-    const isByeRound = i === byeRoundIndex;
-
-    // If this is a bye round, update the data before creating
-    if (isByeRound) {
-      if (roundData.team1_id === bye_id) {
-        roundData.team2_wins = 2; // Team 2 wins automatically
-      } else {
-        roundData.team1_wins = 2; // Team 1 wins automatically
-      }
-      roundData.open = false;
+  // Apply bye round logic to data before batch creation
+  if (byeRoundIndex !== -1) {
+    const byeRound = insertData[byeRoundIndex];
+    if (byeRound.team1_id === bye_id) {
+      byeRound.team2_wins = 2;
+    } else {
+      byeRound.team1_wins = 2;
     }
+    byeRound.open = false;
+  }
 
-    const createdRound = await prisma.round.create({
-      data: roundData,
-    });
+  // Batch create all rounds
+  await prisma.round.createMany({
+    data: insertData,
+  });
 
-    // Create LeagueRound entry
-    await prisma.leagueRound.create({
-      data: {
-        league_id: leagueId,
-        round_id: createdRound.id,
-      },
-    });
+  // Query back the created rounds to get their IDs
+  const createdRounds = await prisma.round.findMany({
+    where: {
+      round_number: roundNum,
+    },
+    select: {
+      id: true,
+    },
+  });
 
-    // Create automatic matches if this is a bye round
-    if (isByeRound) {
-      await createByeMatches(createdRound.id, roundData.team1_id, roundData.team2_id, bye_id);
-      const nonByeTeamId = roundData.team1_id === bye_id ? roundData.team2_id : roundData.team1_id;
-      await prisma.$queryRaw`
+  // Batch create league rounds
+  await prisma.leagueRound.createMany({
+    data: createdRounds.map((round) => ({
+      league_id: leagueId,
+      round_id: round.id,
+    })),
+  });
+
+  if (byeRoundIndex !== -1) {
+    await createByeMatches(createdRounds[byeRoundIndex].id, insertData[byeRoundIndex].team1_id, insertData[byeRoundIndex].team2_id, bye_id);
+    const nonByeTeamId = insertData[byeRoundIndex].team1_id === bye_id ? insertData[byeRoundIndex].team2_id : insertData[byeRoundIndex].team1_id;
+    await prisma.$queryRaw`
       CALL update_team_score(${nonByeTeamId}, ${leagueId})
     `;
-    }
   }
 
   return roundNum;
@@ -102,8 +107,8 @@ export async function createByeMatches(
     await prisma.match.create({
       data: {
         round_id: roundId,
-        player_pair1_score: isByeTeam1 ? 0 : 301, // If bye is team1, team2 (real team) gets points
-        player_pair2_score: isByeTeam1 ? 301 : 0, // If bye is team2, team1 (real team) gets points
+        team1_score: isByeTeam1 ? 0 : 5, // If bye is team1, team2 (real team) gets points
+        team2_score: isByeTeam1 ? 5 : 0, // If bye is team2, team1 (real team) gets points
         score_threshold: 41,
         match_date: now
       }
