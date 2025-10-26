@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
             id: true,
             team1_score: true,
             team2_score: true,
+            active: true,
           },
         };
     }
