@@ -25,6 +25,7 @@ export async function getLeagueTeamsWithScores(leagueId: number): Promise<Team[]
                     ON lt.team_id = t.team_id
       WHERE lt.league_id = ${leagueId}
       GROUP BY t.team_id, t.team_name, ts.score, ts.point_difference
+      ORDER BY ts.score DESC, ts.point_difference DESC
   `;
 
   return data as Team[];
