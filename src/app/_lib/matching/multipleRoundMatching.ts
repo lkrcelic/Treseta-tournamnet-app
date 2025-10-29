@@ -82,7 +82,7 @@ function calculateCostMatrix(teams: Team[]): number[][] {
   for (let i = 0; i < n; i++) {
     for (let j = i + 1; j < n; j++) {
       const matchupCount = countMatchups(teams[i], teams[j]);
-      const scoreDifference = teams[i].score - teams[j].score;
+      const scoreDifference = Math.abs(teams[i].score - teams[j].score);
       costMatrix[i][j] = matchupCount * 20 + scoreDifference;
       costMatrix[j][i] = matchupCount * 20 + scoreDifference;
     }
