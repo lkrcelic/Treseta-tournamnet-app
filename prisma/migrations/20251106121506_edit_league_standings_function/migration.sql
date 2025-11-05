@@ -1,4 +1,4 @@
-CREATE FUNCTION get_league_standings_by_date(
+CREATE OR REPLACE FUNCTION get_league_standings_by_date(
     p_league_id BIGINT,
     p_round_date DATE
 )
