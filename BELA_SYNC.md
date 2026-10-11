@@ -50,6 +50,7 @@ local database and check for drift, then apply them to a restored copy of produc
 
 ```bash
 export DATABASE_URL=postgresql://postgres@localhost:5433/bela_sync_check
+export DATABASE_URL_UNPOOLED=$DATABASE_URL   # migrations connect through this one; without it .env's database is used
 echo 'CREATE DATABASE bela_sync_check' | npx prisma db execute --url postgresql://postgres@localhost:5433/postgres --stdin
 npx prisma migrate deploy
 npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
@@ -125,7 +126,7 @@ New Bela text with the app's name or the sponsor uses `BRAND` here, and its file
 
 | Path (root) | Kind | Treseta's |
 |---|---|---|
-| `prisma/schema.prisma` | Own version | Bela's schema with Treseta's hand tables (`Result`, `OngoingResult`: `team1_game_points`, `team2_game_points`, `custom`) and without Bela's tournament and announcement tables. Bela's changes to the other models are merged in |
+| `prisma/schema.prisma` | Own version | Bela's schema with Treseta's hand tables (`Result`, `OngoingResult`: `team1_game_points`, `team2_game_points`, `custom`) and without Bela's tournament and announcement tables. Bela's changes to the other models are merged in. The datasource also has `directUrl = env("DATABASE_URL_UNPOOLED")`, so migrations use Neon's direct connection (Bela has only `url`) |
 | `prisma/migrations/**` | Treseta only | This database's history. Bela's migrations are never copied: a Bela schema change gets a Treseta migration with Bela's SQL adapted to this schema, named with a timestamp after the newest migration here. Bela's names can collide with Treseta's (its work in progress uses `20261011120000`, which Treseta already has) |
 | `prisma/seed.ts` | Own version | The Treseta seed (users `admin` and `player`, a league of 8 teams). Seed data for new Bela tables is added here |
 | `prisma/usefulQueries/**` | Own version | Treseta's queries, with `transition_checks.sql`. Bela's aren't copied |
