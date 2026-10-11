@@ -36,7 +36,6 @@ import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import {Box, Skeleton} from "@mui/material";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {useCallback, useEffect, useState} from "react";
-import BurzaSection from "./BurzaSection";
 
 export default function ProfilePage() {
   const router = useTransitionRouter();
@@ -205,7 +204,6 @@ export default function ProfilePage() {
           <Box sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "20px", alignItems: "start"}}>
             {detailsBlock(true)}
             {teamsBlock(true)}
-            {user?.id != null && <BurzaSection playerId={user.id} />}
           </Box>
         </Box>
       </DesktopShell>
@@ -217,7 +215,6 @@ export default function ProfilePage() {
       {hero(false)}
       {errorNote}
       <ScrollArea bleed>
-        {user?.id != null && <BurzaSection playerId={user.id} />}
         {detailsBlock(false)}
         {teamsBlock(false)}
       </ScrollArea>
