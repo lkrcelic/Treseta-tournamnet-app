@@ -8,11 +8,13 @@ import {createLeagueAPI} from "@/app/_fetchers/league/leagues";
 import {END_DATE_ERROR, endsAfterStart} from "@/app/_interfaces/league";
 import {invalidateLeagues} from "@/app/_hooks/useLeagues";
 import {conferencesError} from "@/app/_lib/conferences";
+import {generateNights, isIsoDate, nightLabel, sortNights} from "@/app/_lib/nights";
 import {color, font} from "@/app/_styles/tokens";
 import {ConferenceDraft, ConferenceEditor, startingDrafts} from "@/app/_ui/league/ConferenceEditor";
 import {
   buttonBase,
   Card,
+  dateInputFix,
   DesktopShell,
   ellipsis,
   EmptyState,
@@ -28,6 +30,7 @@ import {
   TextField,
 } from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import ErrorRoundedIcon from "@mui/icons-material/ErrorRounded";
@@ -52,6 +55,10 @@ export default function CreateLeague() {
   const [endDate, setEndDate] = useState("");
   const [playDay, setPlayDay] = useState(1);
   const [roundsPerNight, setRoundsPerNight] = useState(3);
+  // the nights filled in from the dates and the play day, minus the removed ones, plus the added ones
+  const [removedNights, setRemovedNights] = useState<string[]>([]);
+  const [extraNights, setExtraNights] = useState<string[]>([]);
+  const [newNight, setNewNight] = useState("");
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [query, setQuery] = useState("");
   const [teams, setTeams] = useState<TeamItem[] | null>(null);
@@ -80,6 +87,21 @@ export default function CreateLeague() {
   }, []);
 
   const visible = useMemo(() => (teams ?? []).filter((t) => matchesQuery(t.name, query)), [teams, query]);
+  const nights = useMemo(
+    () => sortNights([...generateNights(startDate, endDate, playDay).filter((n) => !removedNights.includes(n)), ...extraNights]),
+    [startDate, endDate, playDay, removedNights, extraNights]
+  );
+  const canAddNight = isIsoDate(newNight) && !nights.includes(newNight);
+  const removeNight = (n: string) => {
+    setRemovedNights((r) => [...r, n]);
+    setExtraNights((e) => e.filter((x) => x !== n));
+  };
+  const addNight = () => {
+    if (!canAddNight) return;
+    setExtraNights((e) => [...e, newNight]);
+    setRemovedNights((r) => r.filter((x) => x !== newNight));
+    setNewNight("");
+  };
   const count = selected.size;
 
   const toggle = (id: number) =>
@@ -111,18 +133,21 @@ export default function CreateLeague() {
         rounds_per_night: roundsPerNight,
         team_ids: Array.from(selected),
         conferences,
+        nights,
       });
       invalidateLeagues();
       const confText = conferences.length ? `, ${conferences.length} ${plural(conferences.length, "konferencija", "konferencije", "konferencija")}` : "";
       setCreated({
         id: league.league_id,
-        text: `„${league.league_name}" je napravljena (${league.team_count} ${plural(league.team_count, "ekipa", "ekipe", "ekipa")}${confText}, ${DAY_NAMES[playDay]}).`,
+        text: `„${league.league_name}" je napravljena (${league.team_count} ${plural(league.team_count, "ekipa", "ekipe", "ekipa")}${confText}, ${DAY_NAMES[playDay]}, ${nights.length} ${plural(nights.length, "večer", "večeri", "večeri")}).`,
         conferences: conferences.length > 0,
       });
       setName("");
       setSelected(new Set());
       setWithConferences(false);
       setConferenceDrafts(startingDrafts());
+      setRemovedNights([]);
+      setExtraNights([]);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Ligu nije moguće napraviti.");
     }
@@ -191,6 +216,67 @@ export default function CreateLeague() {
               {d}
             </Box>
           ))}
+        </Box>
+      </Box>
+      <Box role="group" aria-labelledby="league-nights" sx={{display: "flex", flexDirection: "column", gap: "10px"}}>
+        <Box sx={{display: "flex", alignItems: "baseline", justifyContent: "space-between", px: "4px"}}>
+          <Box id="league-nights" sx={{fontSize: 14, fontWeight: 600, color: color.inkSoft}}>
+            League nights
+          </Box>
+          <Box component="span" aria-live="polite" sx={{fontSize: 13, color: color.muted}}>
+            {nights.length} {nights.length === 1 ? "night" : "nights"}
+          </Box>
+        </Box>
+        <Box sx={{fontSize: 13, lineHeight: 1.45, color: color.muted, px: "4px"}}>
+          Filled in from start date, end date and play day. Remove a night that isn&apos;t played (holiday) or add an extra one.
+        </Box>
+        {nights.length > 0 && (
+          <Box component="ul" sx={{listStyle: "none", m: 0, p: 0, display: "flex", flexWrap: "wrap", gap: "6px"}}>
+            {nights.map((n) => (
+              <Box
+                component="li"
+                key={n}
+                sx={{height: 36, display: "flex", alignItems: "center", gap: "2px", pl: "12px", pr: "4px", borderRadius: "18px", background: extraNights.includes(n) ? color.cream : color.paper, color: color.ink, fontSize: 14, fontWeight: 600, whiteSpace: "nowrap"}}
+              >
+                {nightLabel(n)}
+                <Box
+                  component="button"
+                  type="button"
+                  onClick={() => removeNight(n)}
+                  aria-label={`Remove the night ${nightLabel(n)}`}
+                  sx={{...buttonBase, width: 28, height: 28, borderRadius: "50%", color: color.muted, display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 18}, "&:hover": {background: "rgba(188,71,73,.12)", color: color.red}}}
+                >
+                  <CloseRoundedIcon />
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        )}
+        <Box sx={{display: "flex", gap: "8px"}}>
+          <Box
+            component="input"
+            type="date"
+            aria-label="Extra night"
+            value={newNight}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewNight(e.target.value)}
+            onKeyDown={(e: React.KeyboardEvent) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addNight();
+              }
+            }}
+            sx={{...dateInputFix, flex: 1, minWidth: 0, height: 48, boxSizing: "border-box", borderRadius: "14px", border: "1.5px solid rgba(60,74,103,.18)", background: color.tableHead, px: "14px", font: "inherit", fontSize: 15, color: color.ink, outline: "none", "&:focus": {borderColor: color.navy, background: color.card}}}
+          />
+          <Box
+            component="button"
+            type="button"
+            onClick={addNight}
+            disabled={!canAddNight}
+            sx={{...buttonBase, flex: "none", height: 48, px: "16px", border: "1.5px solid rgba(60,74,103,.2)", borderRadius: "14px", background: color.card, color: color.navy, display: "flex", alignItems: "center", gap: "6px", fontSize: 15, fontWeight: 600, "&:disabled": {opacity: 0.4}, "& svg": {fontSize: 20}}}
+          >
+            <AddRoundedIcon />
+            Add night
+          </Box>
         </Box>
       </Box>
       <Box role="group" aria-labelledby="rpn" sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", p: "12px 14px", borderRadius: "16px", background: color.tableHead}}>

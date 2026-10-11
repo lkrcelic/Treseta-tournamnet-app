@@ -2,6 +2,7 @@
 
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useLeagues from "@/app/_hooks/useLeagues";
+import useLeagueNights from "@/app/_hooks/useLeagueNights";
 import useLeagueTeams from "@/app/_hooks/useLeagueTeams";
 import {useLeagueStandings} from "@/app/_hooks/useStandings";
 import {matchesQuery} from "@/app/_lib/ui/text";
@@ -45,8 +46,10 @@ import {Box} from "@mui/material";
 import {useParams, useSearchParams} from "next/navigation";
 import LeagueDetailsView from "./LeagueDetailsView";
 import LeagueNameCard from "./LeagueNameCard";
+import DatesView from "./DatesView";
 import RoundsView, {useLeagueRounds} from "./RoundsView";
 import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
+import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import EventNoteRoundedIcon from "@mui/icons-material/EventNoteRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import {CreateRoundView} from "@/app/_ui/round/CreateRound";
@@ -55,8 +58,8 @@ import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {ReactNode, useCallback, useEffect, useMemo, useRef, useState} from "react";
 
 type Filter = "all" | "active" | "inactive";
-type View = "create" | "teams" | "rounds" | "details";
-const VIEWS: View[] = ["create", "teams", "rounds", "details"];
+type View = "create" | "teams" | "rounds" | "dates" | "details";
+const VIEWS: View[] = ["create", "teams", "rounds", "dates", "details"];
 type Row = {id: number; name: string; players: string[]; played: number | null; active: boolean; conferenceId: number | null};
 // the conference filter of the team list: every team, one conference's (its id), or the teams without one
 const ALL_CONFERENCES = 0;
@@ -87,10 +90,12 @@ export default function ManageLeague() {
   const [query, setQuery] = useState("");
   const [justAdded, setJustAdded] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  // desktop: create a round (the first view), the league's teams, its rounds (delete a round) or its details; ?view= opens another
+  // desktop: create a round (the first view), the league's teams, its rounds (delete a round), its nights or its details;
+  // ?view= opens another
   const viewParam = useSearchParams().get("view") as View | null;
   const [view, setView] = useState<View>(viewParam && VIEWS.includes(viewParam) ? viewParam : "create");
   const leagueRounds = useLeagueRounds(leagueId);
+  const leagueNights = useLeagueNights(isDesktop ? leagueId : null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [pending, setPending] = useState<PendingRemoval | null>(null);
   const pendingRef = useRef<PendingRemoval | null>(null);
@@ -346,13 +351,15 @@ export default function ManageLeague() {
         title="Manage League"
         right={<LeagueMenuButton leagues={leagues} value={leagueId} onChange={(id) => router.router.push(`/league/${id}/manage?view=${view}`)} />}
       >
-        <ViewSwitch view={view} onChange={setView} teams={rows.length} rounds={leagueRounds.rounds?.length ?? null} />
+        <ViewSwitch view={view} onChange={setView} teams={rows.length} rounds={leagueRounds.rounds?.length ?? null} nights={leagueNights.nights?.length ?? null} />
         {view === "create" ? (
           <CreateRoundView leagueId={leagueId} defaultRounds={leagues.find((l) => l.id === leagueId)?.roundsPerNight} />
         ) : view === "details" ? (
           <LeagueDetailsView key={leagueId} leagueId={leagueId} leagues={leagues} aside={conferencesCard} />
         ) : view === "rounds" ? (
           <RoundsView leagueId={leagueId} data={leagueRounds} />
+        ) : view === "dates" ? (
+          <DatesView leagueId={leagueId} data={leagueNights} />
         ) : (
           <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) 380px", gap: "20px"}}>
             <Card component="section" aria-label={`Ekipe lige ${leagueName}`} sx={{minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderRadius: "24px"}}>
@@ -660,16 +667,19 @@ function ViewSwitch({
   onChange,
   teams,
   rounds,
+  nights,
 }: {
   view: View;
   onChange: (v: View) => void;
   teams: number;
   rounds: number | null;
+  nights: number | null;
 }) {
   const items: {key: View; label: string; icon: ReactNode; count: number | null}[] = [
     {key: "create", label: "Create round", icon: <AddCircleRoundedIcon />, count: null},
     {key: "teams", label: "Teams", icon: <GroupsRoundedIcon />, count: teams},
     {key: "rounds", label: "Rounds", icon: <EventNoteRoundedIcon />, count: rounds},
+    {key: "dates", label: "Dates", icon: <CalendarMonthRoundedIcon />, count: nights},
     {key: "details", label: "Details", icon: <TuneRoundedIcon />, count: null},
   ];
   return (
