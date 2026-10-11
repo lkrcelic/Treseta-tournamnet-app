@@ -1,24 +1,22 @@
 import {prisma} from "@/app/_lib/prisma";
-import {PlayerPartialResponseArrayValidation} from "@/app/_interfaces/player";
+import {PlayerPartialResponse, PlayerPartialResponseArrayValidation} from "@/app/_interfaces/player";
 
-export async function searchPlayers(query: string): Promise<PlayerPartialResponseArrayValidation> {
+// Every word of the query must match the username, first name or last name ("marko mar" finds Marko Marković)
+export async function searchPlayers(query: string): Promise<PlayerPartialResponse[]> {
+  const words = query.trim().split(/\s+/).filter(Boolean).slice(0, 4);
   const players = await prisma.player.findMany({
     where: {
-      OR: [
-        {
-          first_name: {
-            contains: query,
-            mode: "insensitive",
-          },
-        },
-        {
-          username: {
-            contains: query,
-            mode: "insensitive",
-          },
-        },
-      ],
+      AND: words.map((word) => ({
+        OR: [
+          {username: {contains: word, mode: "insensitive" as const}},
+          {first_name: {contains: word, mode: "insensitive" as const}},
+          {last_name: {contains: word, mode: "insensitive" as const}},
+        ],
+      })),
     },
+    orderBy: {username: "asc"},
+    // the search lists show a few at a time with "Load more"
+    take: 100,
     select: {
       id: true,
       first_name: true,

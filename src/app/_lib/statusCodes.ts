@@ -7,6 +7,7 @@ export class STATUS {
   static Forbidden: number = 403;
   static NotFound: number = 404;
   static NotAllowed: number = 405;
+  static Conflict: number = 409;
   static TooManyRequests: number = 429;
   static ServerError: number = 500;
   static NotImplemented: number = 501;

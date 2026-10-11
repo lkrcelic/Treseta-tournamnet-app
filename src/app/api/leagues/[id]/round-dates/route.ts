@@ -1,12 +1,16 @@
+import {requireUser} from "@/app/_lib/service/auth/requireUser";
 import { NextRequest, NextResponse } from "next/server";
 import {STATUS} from "@/app/_lib/statusCodes";
-import leagueService from "@/app/_lib/service/league";
+import { getRoundDatesByLeagueId } from "@/app/_lib/service/league/getRoundDatesById";
 
 export async function GET(request: NextRequest, {params}: { params: { id: string } }) {
+    // nights and round tables need a login; only the season table (/standings) is public
+    const auth = await requireUser(request);
+    if (auth.response) return auth.response;
     const {id} = params;
     
     try {
-        const dates = await leagueService.getRoundDatesByLeagueId(Number(id));
+        const dates = await getRoundDatesByLeagueId(Number(id));
 
         return NextResponse.json(dates, {status: STATUS.OK});
       } catch (error) {

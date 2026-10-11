@@ -1,119 +1,127 @@
 "use client";
 
-import {Box, Stack, TextField, Typography, Button, Collapse} from "@mui/material";
-import Dropdown, {DropdownOption} from "@/app/createRound/ui/Dropdown";
-import {useState} from "react";
-import SelectTable, {TableEntry} from "@/app/createRound/ui/SelectTable";
-import {Team} from "@prisma/client";
-import {useRouter} from "next/navigation";
-import {createMultipleRoundsAPI} from "@/app/_fetchers/round/createMultipleRounds";
+import useIsDesktop from "@/app/_hooks/useIsDesktop";
+import useLeagues, {useSelectedLeagueId} from "@/app/_hooks/useLeagues";
+import {color, shadow} from "@/app/_styles/tokens";
+import {InactiveBadge, useCreateRound} from "@/app/_ui/round/CreateRound";
+import {buttonBase, ErrorNote, IconCircleButton, IconTile, Screen, ScreenTitle, ScrollCard, SearchInput, SwitchRow} from "@/app/_ui/sp";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import EmojiEventsRoundedIcon from "@mui/icons-material/EmojiEventsRounded";
+import {Box} from "@mui/material";
+import {useTransitionRouter} from "@/app/_lib/viewTransitions";
+import {useEffect, useState} from "react";
 
-interface LeagueTeam {
-  league_id: number;
-  team: Team;
-}
-
-interface League {
-  league_id: number;
-  league_name: string;
-}
-
+// Create Round on the phone: pick the league, then the options and the teams present tonight. On the desktop it is
+// the "Create round" view of Manage League, so this page sends the admin there.
 export default function CreateRound() {
-  const router = useRouter();
-  const [selectedLeagueId, setSelectedLeagueId] = useState<number | null>(null);
-  const [numberOfRounds, setNumberOfRounds] = useState<number>(4);
-  const [windowSize, setWindowSize] = useState<number>(8);
-  const [showOptions, setShowOptions] = useState<boolean>(false);
+  const router = useTransitionRouter();
+  const isDesktop = useIsDesktop();
+  const leagues = useLeagues();
+  const selectedLeague = useSelectedLeagueId();
+  const [leagueId, setLeagueId] = useState<number | null>(null);
+  const defaultRounds = leagues.find((l) => l.id === leagueId)?.roundsPerNight;
+  const {visible, inactive, isOn, toggle, toggleAll, allOn, query, setQuery, createError, steppers, createButton, repeatsDialog, teamState} = useCreateRound(
+    isDesktop ? null : leagueId,
+    defaultRounds
+  );
 
-  const handleSelect = (leagueId: number) => {
-    setSelectedLeagueId(leagueId);
-  };
+  useEffect(() => {
+    if (isDesktop && selectedLeague != null) router.router.replace(`/league/${selectedLeague}/manage?view=create`);
+  }, [isDesktop, selectedLeague, router]);
 
-  const fetchLeagues = async () => {
-    try {
-      const response = await fetch("/api/leagues");
-      const data = await response.json();
-      return data.map((league: League) => ({id: league.league_id, name: league.league_name})) as DropdownOption[];
-    } catch (error) {
-      console.error("Error fetching leagues:", error);
-      return [] as DropdownOption[];
-    }
-  };
+  if (isDesktop) return null;
 
-  const fetchTeams = async () => {
-    if (selectedLeagueId === null) return [] as TableEntry[];
+  // phone, step 1: pick the league
+  if (leagueId == null) {
+    return (
+      <Screen>
+        <Box>
+          <IconCircleButton label="Nazad" onClick={() => router.push("/", "back")}>
+            <ArrowBackRoundedIcon />
+          </IconCircleButton>
+        </Box>
+        <ScreenTitle eyebrow="Admin · Create Round" title="Select league" sx={{pt: "4px", pb: "8px"}} />
+        <Box role="list" sx={{display: "flex", flexDirection: "column", gap: "10px"}}>
+          {leagues.map((l) => (
+            <Box
+              key={l.id}
+              role="listitem"
+              component="button"
+              type="button"
+              onClick={() => setLeagueId(l.id)}
+              sx={{
+                ...buttonBase,
+                minHeight: 76,
+                borderRadius: "22px",
+                background: color.card,
+                display: "flex",
+                alignItems: "center",
+                gap: "14px",
+                px: "16px",
+                textAlign: "left",
+                boxShadow: shadow.card,
+                "&:active": {transform: "scale(.98)"},
+              }}
+            >
+              <IconTile>
+                <EmojiEventsRoundedIcon />
+              </IconTile>
+              <Box component="span" sx={{flex: 1, display: "flex", flexDirection: "column", gap: "2px", minWidth: 0}}>
+                <Box component="span" sx={{fontSize: 17, fontWeight: 600, color: color.ink}}>
+                  {l.name}
+                </Box>
+                {l.meta && (
+                  <Box component="span" sx={{fontSize: 14, color: color.muted}}>
+                    {l.meta}
+                  </Box>
+                )}
+              </Box>
+              <ChevronRightRoundedIcon sx={{fontSize: 24, color: color.muted}} />
+            </Box>
+          ))}
+        </Box>
+      </Screen>
+    );
+  }
 
-    try {
-      const response = await fetch("/api/leagueTeams/" + selectedLeagueId.toString());
-      const data = await response.json();
-      return data.map(
-        (leagueTeam: LeagueTeam) => ({id: leagueTeam.team.team_id, name: leagueTeam.team.team_name} as TableEntry)
-      );
-    } catch (error) {
-      console.error("Error fetching teams: ", error);
-      return [] as TableEntry[];
-    }
-  };
-
-  const createRound = async (teamIds: number[]) => {
-    if (selectedLeagueId === null) {
-      return;
-    }
-
-    const createdRoundNumber = await createMultipleRoundsAPI(selectedLeagueId, teamIds, numberOfRounds, windowSize);
-    router.push(`/round/pairings/${createdRoundNumber}`);
-  };
-
+  // phone, step 2: options and the teams present tonight
+  const leagueName = leagues.find((l) => l.id === leagueId)?.name ?? "";
   return (
-    <>
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 2,
-          width: "100%",
-          padding: 2,
-          boxSizing: "border-box",
-          textAlign: "center",
-          overflowY: 'auto'
-        }}
-      >
-        {selectedLeagueId === null ? (
-          <Dropdown onSelect={handleSelect} getOptions={fetchLeagues} />
-        ) : (
+    <Screen fill gap={12}>
+      <Box sx={{display: "flex", alignItems: "flex-start", gap: "12px"}}>
+        <IconCircleButton label="Promijeni ligu" onClick={() => setLeagueId(null)}>
+          <ArrowBackRoundedIcon />
+        </IconCircleButton>
+        <ScreenTitle eyebrow={`Admin · ${leagueName}`} title="Create Round" sx={{minWidth: 0, "& > div:first-of-type": {overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}} />
+      </Box>
+      {steppers}
+      <SearchInput placeholder="Search" aria-label="Traži ekipu" value={query} onChange={(e) => setQuery(e.target.value)} />
+      <ScrollCard aria-label="Prisutne ekipe">
+        {teamState ?? (
           <>
-            <Stack direction="row" spacing={1} sx={{justifyContent: "center", alignItems: "center", mb: 1}}>
-              <Button variant="text" size="small" onClick={() => setShowOptions((s) => !s)}>
-                Options
-              </Button>
-              <Typography variant="caption" color="text.secondary">
-                Rounds: {numberOfRounds}, Window: {windowSize}
-              </Typography>
-            </Stack>
-            <Collapse in={showOptions} timeout="auto" unmountOnExit>
-              <Stack direction="row" spacing={2} sx={{justifyContent: "center", alignItems: "center", mb: 1}}>
-                <TextField
-                  label="Number of rounds"
-                  type="number"
-                  inputProps={{min: 1, max: 5}}
-                  value={numberOfRounds}
-                  onChange={(e) => setNumberOfRounds(Math.max(1, Math.min(5, Number(e.target.value))))}
-                  size="small"
-                />
-                <TextField
-                  label="Window size"
-                  type="number"
-                  inputProps={{min: 2, max: 200}}
-                  value={windowSize}
-                  onChange={(e) => setWindowSize(Math.max(2, Math.min(200, Number(e.target.value))))}
-                  size="small"
-                />
-              </Stack>
-            </Collapse>
-            <SelectTable onLoad={fetchTeams} onCreate={createRound} />
+            <SwitchRow
+              checked={allOn}
+              onChange={toggleAll}
+              disabled={visible.length === 0}
+              sx={{background: color.paperSoft, fontWeight: 700, color: color.ink, borderBottom: `1px solid rgba(60,74,103,.12)`}}
+            >
+              {query ? "Select all filtered" : "Select all"}
+            </SwitchRow>
+            {visible.map((t) => (
+              <SwitchRow key={t.id} checked={isOn(t)} onChange={() => toggle(t.id)}>
+                <Box component="span" sx={{overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
+                  {t.name}
+                </Box>
+                {inactive.has(t.id) && <InactiveBadge />}
+              </SwitchRow>
+            ))}
           </>
         )}
-      </Box>
-    </>
+      </ScrollCard>
+      {createError && <ErrorNote>{createError}</ErrorNote>}
+      {createButton}
+      {repeatsDialog}
+    </Screen>
   );
 }

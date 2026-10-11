@@ -1,4 +1,4 @@
-import {RoundExtendedResponse} from "@/app/_interfaces/round";
+import {RoundExtendedResponse, RoundExtendedResponseValidation} from "@/app/_interfaces/round";
 import {prisma} from "@/app/_lib/prisma";
 
 export async function getRoundById(id: number): Promise<RoundExtendedResponse> {
@@ -46,5 +46,5 @@ export async function getRoundById(id: number): Promise<RoundExtendedResponse> {
         throw new Error("Round not found.");
     }
 
-    return dbRound;
+    return RoundExtendedResponseValidation.parse(dbRound);
 }

@@ -11,9 +11,11 @@ export type RoundMatchup = {
   table_number: number;
 };
 
-export async function getRoundMatchups(roundNumber: number): Promise<RoundMatchup[] | null> {
+// Round numbers count up per league, so the league is part of the key
+export async function getRoundMatchups(roundNumber: number, leagueId: number): Promise<RoundMatchup[] | null> {
   const rounds = await prisma.round.findMany({
-    where: {round_number: roundNumber},
+    where: {round_number: roundNumber, leagueRounds: {some: {league_id: leagueId}}},
+    orderBy: [{table_number: "asc"}, {id: "asc"}],
     include: {
       team1: {
         select: {
@@ -33,12 +35,13 @@ export async function getRoundMatchups(roundNumber: number): Promise<RoundMatchu
   return rounds as RoundMatchup[];
 }
 
-export async function getCurrentRoundMatchups(): Promise<RoundMatchup[] | null> {
+export async function getCurrentRoundMatchups(leagueId: number): Promise<RoundMatchup[] | null> {
   const currentRound = await prisma.round.aggregate({
     _max: {round_number: true},
+    where: {leagueRounds: {some: {league_id: leagueId}}},
   });
 
   if (!currentRound._max.round_number) return null;
 
-  return await getRoundMatchups(currentRound._max.round_number);
+  return await getRoundMatchups(currentRound._max.round_number, leagueId);
 }

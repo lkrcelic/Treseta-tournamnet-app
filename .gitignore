@@ -37,3 +37,14 @@ next-env.d.ts
 node_modules
 tsconfig.tsbuildinfo
 .idea
+
+# local leftovers, not part of the app
+*.zip
+tmp-file.ts
+**/.idea/
+
+# local env file (production values are in Vercel; see .env.example)
+.env
+
+# production dumps and the production connection string (users' password hashes, credentials)
+/backups/

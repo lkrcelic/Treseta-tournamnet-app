@@ -1,47 +1,52 @@
-import { ResultResponseValidation } from "@/app/_interfaces/result";
-import { z } from "zod";
+import {z} from "zod";
+import {PartialResultResponseValidation} from "@/app/_interfaces/result";
 
 const parseDate = z.preprocess((arg) => {
-  if (typeof arg === "string" || arg instanceof Date) {
-    return new Date(arg);
-  }
-  return arg;
+    if (typeof arg === 'string' || arg instanceof Date) {
+        return new Date(arg);
+    }
+    return arg;
 }, z.date());
 
-export const MatchRequestValidation = z.object({
-  round_id: z.number().int().nullable().optional(),
-  team1_score: z.number().int().optional(),
-  team2_score: z.number().int().optional(),
-  score_threshold: z.number().int().optional().nullable(), //TODO nema nullable
-  start_time: parseDate.nullable().optional(),
-  end_time: parseDate.nullable().optional(),
-  match_date: parseDate.optional(),
-  active: z.boolean().optional().default(true),
-});
+export const MatchRequestValidation = z.number();
 
-export const MatchResponseValidation = z.object({
-    id: z.number().int(),
-    round_id: z.number().int(),
-    team1_score: z.number().int(),
-    team2_score: z.number().int(),
-    score_threshold: z.number().int(),
-    start_time: parseDate,
+export const OngoingMatchRequestValidation = z.object({
+    round_id: z.number().int().nullable().optional(),
+    player_pair1_score: z.number().int().optional(),
+    player_pair2_score: z.number().int().optional(),
+    score_threshold: z.number().int().optional().nullable(), //TODO nema nullable
+    start_time: parseDate.nullable().optional(),
     end_time: parseDate.nullable().optional(),
-    match_date: parseDate,
-    active: z.boolean(),
+    match_date: parseDate.optional(),
 });
 
-export const MatchExtendedResponseValidation = MatchResponseValidation.extend({
-  results: z.array(ResultResponseValidation).optional(),
+export const OngoingMatchResponseValidation = z.object({
+    id: z.number().int(),
+    round_id: z.number().int().nullable(),
+    player_pair1_score: z.number().int(),
+    player_pair2_score: z.number().int(),
+    score_threshold: z.number().int(),
+    start_time: parseDate.nullable(),
+    end_time: parseDate.nullable().optional(),
+    match_date: parseDate.optional(),
 });
 
-export const MatchCreateRequestValidation = z.object({
-  score_threshold: z.number().int(),
-  round_id: z.number().int(),
-  active: z.boolean().optional().default(true),
+export const MatchResponseValidation = OngoingMatchRequestValidation.extend({
+    results: z.array(PartialResultResponseValidation).optional(),
 });
 
-export type MatchCreateRequest = z.infer<typeof MatchCreateRequestValidation>;
+export const OngoingMatchExtendedResponseValidation = OngoingMatchResponseValidation.extend({
+    results: z.array(PartialResultResponseValidation).optional(),
+});
+
+export const CreateOngoingMatchRequestValidation = z.object({
+    score_threshold: z.number().int(),
+    round_id: z.number().int(),
+});
+
+export type CreateOngoingMatchRequest = z.infer<typeof CreateOngoingMatchRequestValidation>;
 export type MatchResponse = z.infer<typeof MatchResponseValidation>;
-export type MatchExtendedResponse = z.infer<typeof MatchExtendedResponseValidation>;
-export type MatchRequest = z.infer<typeof MatchRequestValidation>;
+export type OngoingMatchResponse = z.infer<typeof OngoingMatchResponseValidation>;
+export type OngoingMatchExtendedResponse = z.infer<typeof OngoingMatchExtendedResponseValidation>;
+export type OngoingMatchRequest = z.infer<typeof OngoingMatchRequestValidation>;
+export type MatchRequest = z.infer<typeof MatchRequestValidation>
