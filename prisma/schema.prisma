@@ -27,6 +27,11 @@ model Player {
   birth_date      DateTime? @db.Date // null until a Google sign-up gives it
   // optional; Burza igrača fills it into new ads, and "Dostupan sam" from the profile shows it
   phone           String?   @db.VarChar(30)
+  // "Pušiš li?": asked at sign-up after the birth date, changed on the profile. Create Round seats teams with smokers
+  // at the smoking tables.
+  smoker          Boolean   @default(false)
+  // the player has answered it (at sign-up, on the profile, or when the app asks the players who signed up before)
+  smoker_answered Boolean   @default(false)
   created_at      DateTime  @default(now())
   last_updated_at DateTime? @updatedAt
 
@@ -109,6 +114,8 @@ model League {
   rounds_per_night Int       @default(3)
   // the admins' notes, shown next to Create Round (never in the public league list)
   notes            String    @default("")
+  // the smoking tables of the league's last Create Round, offered again the next time (empty: no smoking tables)
+  smoking_tables   Int[]     @default([])
   created_at       DateTime  @default(now())
 
   // Relationships
@@ -255,16 +262,21 @@ model LeagueTeam {
 }
 
 model Round {
-  id           Int       @id @default(autoincrement())
-  round_number Int?
-  round_date   DateTime? @default(now()) @db.Date
-  team1_id     Int
-  team2_id     Int
-  team1_wins   Int       @default(0)
-  team2_wins   Int       @default(0)
-  open         Boolean   @default(true)
-  active       Boolean   @default(false)
-  table_number Int?
+  id            Int       @id @default(autoincrement())
+  round_number  Int?
+  round_date    DateTime? @default(now()) @db.Date
+  team1_id      Int
+  team2_id      Int
+  team1_wins    Int       @default(0)
+  team2_wins    Int       @default(0)
+  open          Boolean   @default(true)
+  active        Boolean   @default(false)
+  table_number  Int?
+  // smoking is allowed at this table (picked in Create Round); it stays with the table when an admin re-pairs it
+  smoking_table Boolean   @default(false)
+  // smokers on each team's roster when it was seated here; the smoking rotation counts from these
+  team1_smokers Int       @default(0)
+  team2_smokers Int       @default(0)
 
   team1          Team           @relation("RoundTeam1", fields: [team1_id], references: [team_id], onDelete: Cascade)
   team2          Team           @relation("RoundTeam2", fields: [team2_id], references: [team_id], onDelete: Cascade)

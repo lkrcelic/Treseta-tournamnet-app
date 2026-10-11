@@ -4,6 +4,7 @@ import {isByeTeam} from "@/app/_lib/bye";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {createByeMatches} from "@/app/_lib/service/round/insertPairRounds";
 import {isRatedRound, recalcTeamScores, replayRatings} from "./recalc";
+import {teamSmokers} from "@/app/_lib/service/team/smokers";
 
 // Admin edits of a night's tables (a "round number" of a league on a date is a set of tables, one Round row each).
 // A table whose teams change loses what was played at it; standings and, when a counted result changed, ratings
@@ -50,15 +51,19 @@ async function assertLeagueTeams(tx: Tx, leagueId: number, teamIds: number[]) {
 }
 
 // Drops what was played at a table and seats the given teams. A table with the bye is settled right away (2:0).
+// A smoking table stays one; the smokers it counts are the new teams'.
 async function reseat(tx: Tx, roundId: number, team1Id: number, team2Id: number) {
   await tx.ongoingMatch.deleteMany({where: {round_id: roundId}});
   await tx.match.deleteMany({where: {round_id: roundId}});
   const bye = isByeTeam(team1Id) || isByeTeam(team2Id);
+  const smokers = await teamSmokers([team1Id, team2Id], tx);
   await tx.round.update({
     where: {id: roundId},
     data: {
       team1_id: team1Id,
       team2_id: team2Id,
+      team1_smokers: smokers.get(team1Id) ?? 0,
+      team2_smokers: smokers.get(team2Id) ?? 0,
       team1_wins: bye && !isByeTeam(team1Id) ? 2 : 0,
       team2_wins: bye && !isByeTeam(team2Id) ? 2 : 0,
       open: !bye,
@@ -154,6 +159,7 @@ export async function addTable(leagueId: number, roundDate: Date, roundNumber: n
     if (seated.has(team1Id) || seated.has(team2Id)) throw new InvalidResultError("A team already plays in this round.");
 
     const tableNumber = Math.max(0, ...tables.map((t) => t.table_number ?? 0)) + 1;
+    const smokers = await teamSmokers([team1Id, team2Id], tx);
     const round = await tx.round.create({
       data: {
         round_number: roundNumber,
@@ -161,6 +167,8 @@ export async function addTable(leagueId: number, roundDate: Date, roundNumber: n
         team1_id: team1Id,
         team2_id: team2Id,
         table_number: tableNumber,
+        team1_smokers: smokers.get(team1Id) ?? 0,
+        team2_smokers: smokers.get(team2Id) ?? 0,
         leagueRounds: {create: {league_id: leagueId}},
       },
     });

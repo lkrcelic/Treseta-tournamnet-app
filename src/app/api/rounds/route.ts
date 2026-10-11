@@ -7,6 +7,8 @@ import {insertRoundBatch} from "@/app/_lib/service/round/insertPairRounds";
 import {errorResponse} from "@/app/_lib/apiErrors";
 import {prisma} from "@/app/_lib/prisma";
 import {requireAdmin, requireUser} from "@/app/_lib/service/auth/requireUser";
+import {seatRounds} from "@/app/_lib/matching/smokingTables";
+import {teamSmokers} from "@/app/_lib/service/team/smokers";
 
 export async function GET(request: NextRequest) {
   const auth = await requireUser(request);
@@ -117,7 +119,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({error: (error as Error).message}, {status: STATUS.BadRequest});
     }
 
-    const {firstRoundNumber, alreadyCreated} = await insertRoundBatch([matches], league_id);
+    // one round, in the pairing's order (smoking tables come with Create Round's generate-multiple)
+    const smokers = await teamSmokers(filteredTeams.map((t) => t.id));
+    const {firstRoundNumber, alreadyCreated} = await insertRoundBatch(seatRounds([matches]), league_id, {smokers});
 
     return NextResponse.json(
       {round_number: firstRoundNumber, already_created: alreadyCreated},

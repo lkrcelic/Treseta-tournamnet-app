@@ -19,6 +19,8 @@ export async function GET(req: NextRequest) {
         username: session.user.username,
         // Google sign-ups don't give a birth date; the app asks for it
         needs_birth_date: session.user.birth_date == null,
+        // "Pušiš li?" wasn't answered (a Google sign-up, or a player from before the question); asked after the birth date
+        needs_smoker: !session.user.smoker_answered,
       },
     });
     await extendSession(session, res);

@@ -9,6 +9,8 @@ export type RoundMatchup = {
   team1_wins: number;
   team2_wins: number;
   table_number: number;
+  // smoking is allowed at the table
+  smoking_table: boolean;
 };
 
 // Round numbers count up per league, so the league is part of the key

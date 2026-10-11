@@ -1,6 +1,6 @@
 import {Prisma} from "@prisma/client";
 import {prisma} from "@/app/_lib/prisma";
-import {TeamPair} from "@/app/_lib/matching/multipleRoundMatching";
+import {SeatedPair} from "@/app/_lib/matching/smokingTables";
 import {BYE_TEAM_ID, isByeTeam} from "@/app/_lib/bye";
 import {leagueDate} from "@/app/_lib/dates";
 import {MATCHES_PER_ROUND} from "@/app/_lib/service/round/finish";
@@ -13,10 +13,18 @@ export type CreatedRounds = {
   alreadyCreated: boolean;
 };
 
-// Creates the rounds for one or more round numbers of a league in a single transaction.
+export type BatchSmoking = {
+  // smokers on each team's roster, kept with every table for the smoking rotation
+  smokers?: ReadonlyMap<number, number>;
+  // the smoking tables Create Round was sent, remembered for the league's next round creation; undefined leaves the
+  // remembered ones as they are
+  tables?: number[];
+};
+
+// Creates the rounds for one or more round numbers of a league in a single transaction, every pair at its table.
 // If the admin submits the same teams again (back button, double click) while the previous batch hasn't been
 // started yet, the existing rounds are returned instead of creating duplicates.
-export async function insertRoundBatch(roundsPairs: TeamPair[][], leagueId: number): Promise<CreatedRounds> {
+export async function insertRoundBatch(roundsPairs: SeatedPair[][], leagueId: number, smoking: BatchSmoking = {}): Promise<CreatedRounds> {
   return prisma.$transaction(async (tx) => {
     // One round creation per league at a time
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(${leagueId})`;
@@ -35,17 +43,24 @@ export async function insertRoundBatch(roundsPairs: TeamPair[][], leagueId: numb
 
     const roundDate = leagueDate();
     for (let i = 0; i < roundsPairs.length; i++) {
-      await insertRounds(tx, roundsPairs[i], leagueId, firstRoundNumber + i, roundDate);
+      await insertRounds(tx, roundsPairs[i], leagueId, firstRoundNumber + i, roundDate, smoking.smokers ?? new Map());
     }
     await ensureLeagueNight(tx, leagueId, roundDate);
+    if (smoking.tables) await tx.league.update({where: {league_id: leagueId}, data: {smoking_tables: smoking.tables}});
 
     return {firstRoundNumber, alreadyCreated: false};
   }, {timeout: 30000});
 }
 
-async function insertRounds(tx: Prisma.TransactionClient, pairs: TeamPair[], leagueId: number, roundNumber: number, roundDate: Date) {
-  for (let index = 0; index < pairs.length; index++) {
-    const pair = pairs[index];
+async function insertRounds(
+  tx: Prisma.TransactionClient,
+  pairs: SeatedPair[],
+  leagueId: number,
+  roundNumber: number,
+  roundDate: Date,
+  smokers: ReadonlyMap<number, number>
+) {
+  for (const pair of pairs) {
     const isByeRound = isByeTeam(pair.teamOne.id) || isByeTeam(pair.teamTwo.id);
 
     const round = await tx.round.create({
@@ -54,7 +69,10 @@ async function insertRounds(tx: Prisma.TransactionClient, pairs: TeamPair[], lea
         round_date: roundDate,
         team1_id: pair.teamOne.id,
         team2_id: pair.teamTwo.id,
-        table_number: index + 1,
+        table_number: pair.table,
+        smoking_table: pair.smoking,
+        team1_smokers: smokers.get(pair.teamOne.id) ?? 0,
+        team2_smokers: smokers.get(pair.teamTwo.id) ?? 0,
         // A bye round counts as won 2:0 by the real team and is closed right away
         ...(isByeRound && {
           team1_wins: isByeTeam(pair.teamOne.id) ? 0 : 2,
