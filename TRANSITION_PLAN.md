@@ -66,7 +66,9 @@ Bela app in reworked form. Pairing is different there (D5).
 
 ## Where the two apps will differ
 
-After the transplant, these files differ from Bela's. Everything else under `src/` is a copy.
+After the transplant, these files differ from Bela's. Everything else under `src/` is a copy. This is the list as
+planned; the current one, kept up to date by the nightly sync, is the Differences section of
+[BELA_SYNC.md](BELA_SYNC.md).
 
 **The game layer** (Treseta's own versions):
 
@@ -313,6 +315,10 @@ restore from `pre-scorepad`, fix the migration, and retry.
 
 - [x] `git remote add bela ../Bela-Treseta-Tournamnet-app`. A Bela commit that touches only shared files then comes
       over with `git cherry-pick`. Record the Bela commit each sync reaches.
+- [x] A nightly sync: the scheduled task `bela-nightly-sync` cherry-picks Bela's new commits onto the branch
+      `bela-sync` at 04:00, keeps the differences, and records the Bela commit it reached. See
+      [BELA_SYNC.md](BELA_SYNC.md). After the cutover it works on top of `master` once `feat/scorepad` is merged
+      there (or the local branch is deleted).
 - [ ] Optional, in the Bela repo (D9): the same neutral names as here (`_lib/game/scoring.ts` with the constants,
       `_interfaces/side.ts`, `_store/game/`), with `1001`, `301` and `RATINGS_FROM` taken from the game module. Then
       only the game layer and the branding differ between the two apps.

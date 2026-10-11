@@ -48,3 +48,6 @@ tmp-file.ts
 
 # production dumps and the production connection string (users' password hashes, credentials)
 /backups/
+
+# the nightly Bela sync's worktree (BELA_SYNC.md)
+.claude/worktrees/
