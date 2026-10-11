@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-export type AuthUser = { id: number; username: string } | null;
+// needs_birth_date: a Google sign-up that hasn't given a birth date yet (the app asks)
+export type AuthUser = { id: number; username: string; needs_birth_date?: boolean } | null;
 
 type AuthState = {
   user: AuthUser;
@@ -9,7 +10,6 @@ type AuthState = {
   reset: () => void;
 };
 
-// authStore.ts
 const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({

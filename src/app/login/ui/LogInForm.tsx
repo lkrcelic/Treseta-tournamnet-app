@@ -1,159 +1,79 @@
 "use client";
 
-import {useState} from "react";
-import {PlayerCreate} from "@/app/_interfaces/player";
-import {LoginUser, LoginUserInterface} from "@/app/_interfaces/login";
+import {refreshUser} from "@/app/_bootstrap/refreshUser";
 import {loginUser} from "@/app/_fetchers/authentication/login";
-import {Box, TextField, Button, InputAdornment, IconButton} from "@mui/material";
-import {Visibility, VisibilityOff} from "@mui/icons-material";
+import {ErrorNote, PasswordField, PrimaryButton, TextField} from "@/app/_ui/sp";
+import {Box} from "@mui/material";
+import React, {useState} from "react";
 
-type FormField = keyof typeof LoginUser.shape;
-type ErrorState = Partial<Record<FormField, string>>;
+type Errors = {username?: string; password?: string; form?: string};
 
-interface LogInFormProperties {
-  onFormSubmit?: (success: boolean) => void;
-}
+export default function LogInForm({onSuccess, soft = false}: {onSuccess: () => void; soft?: boolean}) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState<Errors>({});
+  const [submitting, setSubmitting] = useState(false);
 
-export default function LogInForm({onFormSubmit}: LogInFormProperties) {
-  const initialState = {
-    username: "",
-    password: "",
-  } as LoginUserInterface;
-  const [formData, setFormData] = useState(initialState);
-  const [errors, setErrors] = useState<ErrorState>({});
-  const [showPassword, setShowPassword] = useState(false);
-
-  const handleClickShowPassword = () => {
-    setShowPassword(!showPassword);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const {name, value} = e.target;
-    setFormData({...formData, [name]: value});
-
-    const fieldName = name as FormField;
-    try {
-      PlayerCreate.pick({[fieldName]: true} as Record<FormField, true>).parse({[name]: value});
-      setErrors((prevErrors) => ({...prevErrors, [fieldName]: undefined}));
-    } catch (error) {
-      if (error.errors && error.errors[0]) {
-        setErrors((prevErrors) => ({
-          ...prevErrors,
-          [fieldName]: error.errors[0].message,
-        }));
-      }
-    }
-  };
-
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
+    const next: Errors = {};
+    if (!username.trim()) next.username = "Upiši korisničko ime ili email.";
+    if (!password) next.password = "Upiši lozinku.";
+    setErrors(next);
+    if (next.username || next.password) return;
+
+    setSubmitting(true);
     try {
-      const isAllFieldsFilled = Object.values(formData).every((value) => (value as string).trim() !== "");
-      if (!isAllFieldsFilled) throw new Error("Required properties are empty.");
-    } catch (error) {
-      const keys = Object.keys(formData) as FormField[];
-      keys.forEach((key) => {
-        if ((formData[key] as string).trim() === "") {
-          errors[key] = key + " je obavezno polje!";
-        }
+      const outcome = await loginUser({username: username.trim(), password});
+      if (outcome === "ok") {
+        // the app keeps the logged-in player in a store; fill it before leaving the page
+        await refreshUser();
+        onSuccess();
+        return;
+      }
+      setErrors({
+        form:
+          outcome === "wrong"
+            ? "Korisničko ime ili lozinka su netočni."
+            : outcome === "locked"
+              ? "Previše neuspjelih pokušaja. Pokušaj ponovo za nekoliko minuta."
+              : "Prijava trenutno nije moguća. Pokušaj ponovo.",
       });
-      setErrors((prevErrors) => ({
-        ...prevErrors,
-      }));
-      return;
+    } catch {
+      setErrors({form: "Prijava trenutno nije moguća. Pokušaj ponovo."});
     }
-    try {
-      const parsedData = LoginUser.parse(formData);
-      const success = await loginUser(parsedData);
-      if (onFormSubmit) onFormSubmit(success);
-      if (success) setFormData({...initialState});
-    } catch (error) {
-      console.error(error);
-    }
-  }
+    setSubmitting(false);
+  };
 
   return (
-    <Box component="form" onSubmit={handleSubmit} noValidate>
+    <Box component="form" onSubmit={handleSubmit} noValidate sx={{display: "flex", flexDirection: "column", gap: "16px"}}>
       <TextField
-        required
-        fullWidth
-        id="username"
         label="Korisničko ime ili Email"
         name="username"
         autoComplete="username"
-        autoFocus
-        value={formData.username}
-        onChange={handleChange}
-        error={!!errors.username}
-        helperText={errors.username}
-        variant="outlined"
-        size="medium"
-        sx={{ 
-          mb: 2.5,
-          '& .MuiOutlinedInput-root': {
-            borderRadius: 1.5,
-            '&.Mui-focused fieldset': {
-              borderWidth: 2
-            }
-          }
-        }}
+        autoCapitalize="none"
+        spellCheck={false}
+        placeholder="npr. marko"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        error={errors.username}
+        soft={soft}
       />
-      
-      <TextField
-        required
-        fullWidth
-        name="password"
+      <PasswordField
         label="Lozinka"
-        type={showPassword ? 'text' : 'password'}
-        id="password"
+        name="password"
         autoComplete="current-password"
-        value={formData.password}
-        onChange={handleChange}
-        error={!!errors.password}
-        helperText={errors.password}
-        variant="outlined"
-        size="medium"
-        InputProps={{
-          endAdornment: (
-            <InputAdornment position="end">
-              <IconButton
-                aria-label="toggle password visibility"
-                onClick={handleClickShowPassword}
-                edge="end"
-              >
-                {showPassword ? <VisibilityOff /> : <Visibility />}
-              </IconButton>
-            </InputAdornment>
-          ),
-        }}
-        sx={{ 
-          mb: 3,
-          '& .MuiOutlinedInput-root': {
-            borderRadius: 1.5,
-            '&.Mui-focused fieldset': {
-              borderWidth: 2
-            }
-          }
-        }}
+        placeholder="••••••••"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        error={errors.password}
+        soft={soft}
       />
-      
-      <Button
-        type="submit"
-        fullWidth
-        variant="contained"
-        color="primary"
-        size="large"
-        sx={{ 
-          py: 1.5,
-          borderRadius: 1.5,
-          textTransform: 'none',
-          fontSize: '1rem',
-          fontWeight: 'bold',
-          boxShadow: 2
-        }}
-      >
+      {errors.form && <ErrorNote>{errors.form}</ErrorNote>}
+      <PrimaryButton type="submit" loading={submitting} sx={{mt: "4px"}}>
         Prijavi se
-      </Button>
+      </PrimaryButton>
     </Box>
   );
 }

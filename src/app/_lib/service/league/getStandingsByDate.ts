@@ -4,6 +4,7 @@ export async function getLeagueStandingsByDate(
   league_id: number,
   round_date: string
 ): Promise<unknown> {
+  // round_date is YYYY-MM-DD; parsed as UTC midnight, so toISOString keeps the same day
   const roundDateFormatted = new Date(round_date).toISOString().split('T')[0];
 
   return prisma.$queryRaw`

@@ -1,337 +1,392 @@
 "use client";
 
-import {getRoundDatesByLeagueIdAPI} from "@/app/_fetchers/league/getRoundDates";
-import {getLeagueStandingsByDateAPI} from "@/app/_fetchers/league/getStandingsByDate";
-import {getAllRoundsByQueryAPI} from "@/app/_fetchers/round/getAllByQuery";
-import {RoundExtendedResponse} from "@/app/_interfaces/round";
-import SingleActionButton from "@/app/_ui/SingleActionButton";
-import {LeagueStandingsItem} from "@/app/_ui/StandingsTable";
-import {Home} from "@mui/icons-material";
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import {Box, IconButton, Paper, Tab, Tabs, useMediaQuery, useTheme} from "@mui/material";
-import {Grid} from "@mui/system";
-import {useParams, useRouter, useSearchParams} from "next/navigation";
-import React, {useEffect, useState} from "react";
-import {a11yProps, PageHeader, RoundResultsPanel, StandingsTabContent, TabPanel} from "./ui";
-
-// Group rounds by round number
-type GroupedRounds = {
-  [key: number]: RoundExtendedResponse[];
-};
+import useIsAdmin from "@/app/_hooks/useIsAdmin";
+import useElementHeight from "@/app/_hooks/useElementHeight";
+import useIsDesktop from "@/app/_hooks/useIsDesktop";
+import useLeagueTeams from "@/app/_hooks/useLeagueTeams";
+import {addTableAPI, removeTableAPI, setTablePairAPI} from "@/app/_fetchers/admin/daily";
+import useLeagues from "@/app/_hooks/useLeagues";
+import useMyTeams from "@/app/_hooks/useMyTeams";
+import useConferences from "@/app/_hooks/useConferences";
+import useConferenceFilter from "@/app/_hooks/useConferenceFilter";
+import {useDailyData, useRoundDates} from "@/app/_hooks/useStandings";
+import {leagueDateString} from "@/app/_lib/dates";
+import {inConference, splitPodium, toStandingsRows} from "@/app/_lib/ui/standings";
+import {filterTables, liveCount, splitColumns, TableFilter, tableColumns, toTableRows} from "@/app/_lib/ui/tables";
+import {ConferenceFilter} from "@/app/_ui/league/ConferenceFilter";
+import {displayDate, plural} from "@/app/_lib/ui/text";
+import {color, font} from "@/app/_styles/tokens";
+import {
+  Card,
+  DesktopShell,
+  Display,
+  EmptyState,
+  ErrorNote,
+  IconCircleButton,
+  LeagueEyebrowButton,
+  LeagueMenuButton,
+  LoadingRows,
+  PillTabs,
+  Podium,
+  PrimaryButton,
+  Screen,
+  ScrollArea,
+  ScrollCard,
+  SearchInput,
+  Segmented,
+  StandingsGrid,
+  StandingsRows,
+  tabPanelProps,
+} from "@/app/_ui/sp";
+import {DesktopTableRow, PhoneRoundTables, TABLE_ROW_HEIGHT} from "@/app/league/[leagueId]/daily-standings/ui/RoundTables";
+import {ConfirmRemove, EditToggle, NewTableButton, PairDialog, PairTarget, RowActions} from "@/app/league/[leagueId]/daily-standings/ui/RoundEditing";
+import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
+import {Box} from "@mui/material";
+import {useParams, useSearchParams} from "next/navigation";
+import {useTransitionRouter} from "@/app/_lib/viewTransitions";
+import {useEffect, useMemo, useState} from "react";
 
 export default function DailyStandings() {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const [tabValue, setTabValue] = useState(0);
-  const [leagueStandings, setLeagueStandings] = useState<LeagueStandingsItem[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [roundsByNumber, setRoundsByNumber] = useState<GroupedRounds>({});
-  const [roundNumbers, setRoundNumbers] = useState<number[]>([]);
-  const [selectedDate, setSelectedDate] = useState<string>("");
-  const [availableDates, setAvailableDates] = useState<string[]>([]);
-
   const params = useParams<{leagueId: string}>();
-  const router = useRouter();
+  const leagueId = Number(params.leagueId);
+  const router = useTransitionRouter();
   const searchParams = useSearchParams();
+  const isDesktop = useIsDesktop();
+  const isAdmin = useIsAdmin();
+  const leagues = useLeagues(leagueId);
+  const {teams} = useMyTeams();
+  const myTeamNames = useMemo(() => teams.map((t) => t.team_name), [teams]);
+
+  // the night shown: ?date= when it is one the league played, otherwise the latest one
+  const {dates, error: datesError, reload: reloadDates} = useRoundDates(leagueId);
   const dateParam = searchParams.get("date");
+  const date = dates == null ? null : dateParam && dates.includes(dateParam) ? dateParam : dates[dates.length - 1] ?? "";
+  const index = date && dates ? dates.indexOf(date) : -1;
+  const prevDate = index > 0 ? dates[index - 1] : null;
+  const nextDate = dates && index >= 0 && index < dates.length - 1 ? dates[index + 1] : null;
+  const goDate = (d: string | null) => d && router.router.replace(`/league/${leagueId}/daily-standings?date=${d}`);
 
-  // Format date for API query
-  const formatDate = (date: Date): string => {
-    return date.toISOString().split("T")[0]; // Format as YYYY-MM-DD
-  };
+  const daily = useDailyData(leagueId, date || null);
+  const today = leagueDateString();
+  const isToday = date === today;
 
-  // Load all available dates first, decide initial selected date
+  // the league's conferences: the dots, and the conference picked for the night's table (null: every team). The round
+  // tabs always show every table.
+  const conferences = useConferences(leagueId);
+  const [conf, setConf] = useConferenceFilter(leagueId, conferences.conferences);
+  const confName = conferences.conferences.find((c) => c.id === conf)?.name;
+  const allStandings = useMemo(() => toStandingsRows(daily.data?.standings, myTeamNames, conferences.of), [daily.data, myTeamNames, conferences]);
+  const standings = useMemo(() => inConference(allStandings, conf), [allStandings, conf]);
+  const roundNumbers = daily.data?.roundNumbers ?? [];
+  const roundsLive = (n: number) => (daily.data?.rounds ?? []).some((r) => r.round_number === n && r.active);
+
+  // tab 0 is the night's table, then one tab per round; the desktop opens on the round being played,
+  // or on ?round= (coming back from a table's scorepad)
+  const roundParam = Number(searchParams.get("round")) || 0;
+  const [tab, setTab] = useState(roundParam);
+  const [tabTouched, setTabTouched] = useState(roundParam > 0);
   useEffect(() => {
-    const loadDates = async () => {
-      try {
-        const leagueId = parseInt(params.leagueId);
-        const dates = await getRoundDatesByLeagueIdAPI(leagueId);
-        setAvailableDates(dates);
+    setTab(roundParam);
+    setTabTouched(roundParam > 0);
+  }, [date, leagueId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!isDesktop || tabTouched || !daily.data) return;
+    const live = [...roundNumbers].reverse().find((n) => roundsLive(n));
+    if (live) setTab(live);
+  }, [isDesktop, tabTouched, daily.data]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pickTab = (k: number) => {
+    setTab(k);
+    setTabTouched(true);
+  };
+  const tabs = [{key: 0, label: "Tablica okupljanja"}, ...roundNumbers.map((n) => ({key: n, label: `Round ${n}`, live: roundsLive(n)}))];
+  const roundRows = useMemo(
+    () => toTableRows((daily.data?.rounds ?? []).filter((r) => r.round_number === tab), myTeamNames, conferences.of),
+    [daily.data, tab, myTeamNames, conferences]
+  );
 
-        const mostRecent = dates[dates.length - 1];
-        const initial = dateParam && dates.includes(dateParam) ? dateParam : mostRecent || formatDate(new Date());
-        setSelectedDate(initial);
+  const changeLeague = (id: number) => router.router.push(`/league/${id}/daily-standings`);
+  const noNights = dates != null && dates.length === 0;
+  // before the league's first night there is no date to show
+  const dateTitle = date ? displayDate(date) : noNights ? "Dnevni poredak" : "—";
+  const loadError = datesError ?? daily.error;
 
-        // Keep URL in sync without stacking history if it differs
-        const urlParam = dateParam || "";
-        if (initial && initial !== urlParam) {
-          router.replace(`/league/${params.leagueId}/daily-standings?date=${initial}`);
+  const arrows = (
+    <Box sx={{display: "flex", gap: "8px", flex: "none"}}>
+      <IconCircleButton label="Prethodni datum" onClick={() => goDate(prevDate)} disabled={!prevDate}>
+        <ChevronLeftRoundedIcon />
+      </IconCircleButton>
+      <IconCircleButton label="Sljedeći datum" onClick={() => goDate(nextDate)} disabled={!nextDate}>
+        <ChevronRightRoundedIcon />
+      </IconCircleButton>
+    </Box>
+  );
+
+  if (isDesktop) {
+    return (
+      <DesktopShell
+        active="daily"
+        eyebrow={isToday ? "Okupljanje · večeras" : "Okupljanje"}
+        title={dateTitle}
+        right={
+          <>
+            <LeagueMenuButton leagues={leagues} value={leagueId} onChange={changeLeague} />
+            {/* a long night (many rounds) scrolls sideways instead of squeezing the date */}
+            {tabs.length > 1 && (
+              <Segmented
+                items={tabs}
+                value={tab}
+                onChange={pickTab}
+                label="Prikaz"
+                idPrefix="daily"
+                sx={{flex: "0 1 auto", minWidth: 0, overflowX: "auto", scrollbarWidth: "none"}}
+              />
+            )}
+            {arrows}
+          </>
         }
-      } catch (e) {
-        console.error("Failed to load available dates", e);
-      }
-    };
-    loadDates();
-  }, [params.leagueId]);
+      >
+        <Box {...tabPanelProps("daily", tab)} sx={{flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: "20px"}}>
+          {tab === 0 && !loadError && !noNights && <ConferenceFilter conferences={conferences.conferences} value={conf} onChange={setConf} sx={{flex: "none"}} />}
+          {loadError ? (
+            <ErrorNote onRetry={datesError ? reloadDates : daily.reload}>{loadError}</ErrorNote>
+          ) : noNights ? (
+            <Card>
+              <EmptyState>Ova liga još nema odigranih okupljanja.</EmptyState>
+            </Card>
+          ) : (daily.loading && !daily.data) || !conferences.ready ? (
+            <Card sx={{flex: 1, overflow: "hidden"}}>
+              <LoadingRows rows={10} height={56} />
+            </Card>
+          ) : tab === 0 ? (
+            <DesktopNightTable rows={standings} date={confName ? `${dateTitle} · ${confName}` : dateTitle} />
+          ) : (
+            <DesktopRound
+              title={`Round ${tab}`}
+              rows={roundRows}
+              admin={isAdmin ? {leagueId, date: date || "", roundNumber: tab, onChanged: daily.refresh} : null}
+            />
+          )}
+        </Box>
+      </DesktopShell>
+    );
+  }
 
-  // Shared fetcher that can optionally toggle loading state
-  const fetchDataForDate = async (dateStr: string, withLoading = true) => {
-    try {
-      if (withLoading) setLoading(true);
-
-      const leagueId = parseInt(params.leagueId);
-
-      // Fetch standings
-      const standingsData = await getLeagueStandingsByDateAPI(leagueId, dateStr);
-      setLeagueStandings(standingsData);
-
-      // Fetch rounds for the selected date and league_id
-      const roundsData = await getAllRoundsByQueryAPI({
-        round_date: dateStr,
-        league_id: leagueId,
-      });
-
-      // Group rounds by round_number
-      const grouped: GroupedRounds = {};
-      roundsData.forEach((round) => {
-        const roundNumber = round.round_number;
-        if (!grouped[roundNumber]) {
-          grouped[roundNumber] = [];
-        }
-        grouped[roundNumber].push(round);
-      });
-
-      setRoundsByNumber(grouped);
-
-      // Extract and sort round numbers for tabs
-      const numbers = Object.keys(grouped)
-        .map(Number)
-        .sort((a, b) => a - b);
-      setRoundNumbers(numbers);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    } finally {
-      if (withLoading) setLoading(false);
-    }
-  };
-
-  // Fetch data when selectedDate changes
-  useEffect(() => {
-    if (!selectedDate) return;
-    fetchDataForDate(selectedDate, true);
-  }, [params.leagueId, selectedDate]);
-
-  // Auto-refresh every 30 seconds without toggling loading or changing UI layout
-  useEffect(() => {
-    if (!selectedDate) return;
-    const intervalId = setInterval(() => {
-      fetchDataForDate(selectedDate, false);
-    }, 30000);
-    return () => clearInterval(intervalId);
-  }, [selectedDate, params.leagueId]);
-
-  // Keep selectedDate in sync if URL date param changes and is valid
-  useEffect(() => {
-    if (!availableDates.length) return;
-    if (dateParam && availableDates.includes(dateParam) && dateParam !== selectedDate) {
-      setSelectedDate(dateParam);
-    }
-  }, [dateParam, availableDates]);
-
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-  };
-
-  // Convert round data to match result format
-  const mapRoundsToRoundResults = (rounds: RoundExtendedResponse[]) => {
-    return rounds.map((round) => ({
-      team1Name: round.team1?.team_name || `Team ${round.team1_id}`,
-      team2Name: round.team2?.team_name || `Team ${round.team2_id}`,
-      team1Wins: round.team1_wins,
-      team2Wins: round.team2_wins,
-      active: round.active || false,
-      tableNumber: round.table_number || 0,
-      matches: round.matches || [],
-    }));
-  };  
-
-  // Format date for display (e.g., "17.02.2025")
-  const formatDisplayDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("hr-HR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  };
-
-  // Navigation helpers
-  const goToDate = (dateStr: string) => {
-    setSelectedDate(dateStr);
-    router.push(`/league/${params.leagueId}/daily-standings?date=${dateStr}`);
-  };
-
-  const findPrevDate = (dateStr: string): string | null => {
-    if (!availableDates.length) return null;
-    const idx = availableDates.indexOf(dateStr);
-    if (idx > 0) return availableDates[idx - 1];
-    const earlier = availableDates.filter((d) => d < dateStr);
-    return earlier.length ? earlier[earlier.length - 1] : null;
-  };
-
-  const findNextDate = (dateStr: string): string | null => {
-    if (!availableDates.length) return null;
-    const idx = availableDates.indexOf(dateStr);
-    if (idx >= 0 && idx < availableDates.length - 1) return availableDates[idx + 1];
-    const later = availableDates.find((d) => d > dateStr);
-    return later ?? null;
-  };
-
-  const goPrevDay = () => {
-    if (!selectedDate) return;
-    const prev = findPrevDate(selectedDate);
-    if (prev) goToDate(prev);
-  };
-
-  const goNextDay = () => {
-    if (!selectedDate) return;
-    const next = findNextDate(selectedDate);
-    if (next) goToDate(next);
-  };
-
-  const hasPrev = !!(selectedDate && findPrevDate(selectedDate));
-  const hasNext = !!(selectedDate && findNextDate(selectedDate));
+  // the medals go up once the night is over: an earlier night, or tonight once every table is closed
+  const {podium, rest} = splitPodium(standings);
+  const tables = daily.data?.rounds ?? [];
+  const nightDone = !isToday || (tables.length > 0 && tables.every((r) => r.open === false));
+  const showPodium = nightDone && podium.length > 0;
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        minHeight: "calc(100vh - 120px)",
-        width: "100%",
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      <PageHeader
-        title={`Okupljanje ${selectedDate ? formatDisplayDate(selectedDate) : ""}`}
-        leftAction={
-          <IconButton
-            aria-label="Sljedeći datum s rundama"
-            color="primary"
-            size="large"
-            onClick={goNextDay}
-            disabled={!hasNext}
-          >
-            <ChevronLeftIcon />
-          </IconButton>
-        }
-        rightAction={
-          <IconButton
-            aria-label="Prethodni datum s rundama"
-            color="primary"
-            size="large"
-            onClick={goPrevDay}
-            disabled={!hasPrev}
-          >
-            <ChevronRightIcon />
-          </IconButton>
-        }
-      />
+    <Screen fill>
+      <Box component="header" sx={{display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "12px", px: "4px"}}>
+        <Box sx={{display: "flex", flexDirection: "column", gap: "6px", minWidth: 0}}>
+          <LeagueEyebrowButton leagues={leagues} value={leagueId} onChange={changeLeague} />
+          <Display size={36} sx={{lineHeight: 1, fontVariantNumeric: "tabular-nums"}}>
+            {dateTitle}
+          </Display>
+        </Box>
+        {arrows}
+      </Box>
+      {tabs.length > 1 && <PillTabs items={tabs} value={tab} onChange={pickTab} label="Prikaz" idPrefix="daily" />}
+      {tab === 0 && !loadError && !noNights && <ConferenceFilter conferences={conferences.conferences} value={conf} onChange={setConf} sx={{flex: "none"}} />}
 
-      {/* Main Content - Body Grid Area */}
-      <Box
-        sx={{
-          gridArea: "body",
-          width: "100%",
-          height: "100%",
-          flexDirection: "column",
-          overflow: "hidden",
-        }}
-      >
-        <Paper
-          elevation={2}
-          sx={{
-            borderRadius: 2,
-            overflow: "hidden",
-            display: "flex",
-            flexDirection: "column",
-            height: "100%",
-            width: "100%",
-          }}
-        >
-          <Box sx={{borderBottom: 1, borderColor: "divider"}}>
-            <Tabs
-              value={tabValue}
-              onChange={handleTabChange}
-              variant="scrollable"
-              scrollButtons="auto"
-              allowScrollButtonsMobile
-              sx={{
-                backgroundColor: theme.palette.primary.main,
-                overflowX: "auto",
-                width: "100%",
-                color: "white",
-                "& .MuiTab-root": {
-                  color: "rgba(255,255,255,0.7)",
-                  fontWeight: "medium",
-                  fontSize: {xs: "0.85rem", sm: "0.95rem"},
-                  py: 2,
-                },
-                "& .Mui-selected": {
-                  color: "inherit !important",
-                  fontWeight: "bold",
-                },
-                "& .MuiTabs-indicator": {
-                  backgroundColor: theme.palette.secondary.main,
-                  height: 3,
-                },
-              }}
-            >
-              <Tab label="Tablica okupljanja" {...a11yProps(0)} />
-              {roundNumbers.map((roundNumber, index) => (
-                <Tab key={roundNumber} label={`Round ${roundNumber}`} {...a11yProps(index + 1)} />
-              ))}
-            </Tabs>
-          </Box>
-
-          <Box
-            sx={{
-              borderRadius: 2,
-              backgroundColor: "background.paper",
-              display: "flex",
-              flexDirection: "column",
-              height: "100%",
-              pt: 0.5,
-              pb: 8,
-            }}
-          >
-            <TabPanel value={tabValue} index={0}>
-              <StandingsTabContent loading={loading} leagueStandings={leagueStandings} />
-            </TabPanel>
-
-            {roundNumbers.map((roundNumber, index) => (
-              <TabPanel key={roundNumber} value={tabValue} index={index + 1}>
-                <RoundResultsPanel
-                  roundNumber={roundNumber}
-                  rounds={mapRoundsToRoundResults(roundsByNumber[roundNumber] || [])}
-                  activeRounds={roundsByNumber[roundNumber]?.filter((round) => round.active).length || 0}
-                />
-              </TabPanel>
-            ))}
-          </Box>
-        </Paper>
+      <Box {...tabPanelProps("daily", tab)} sx={{flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: "14px"}}>
+        {loadError ? (
+          <ErrorNote onRetry={datesError ? reloadDates : daily.reload}>{loadError}</ErrorNote>
+        ) : noNights ? (
+          <Card>
+            <EmptyState>Ova liga još nema odigranih okupljanja.</EmptyState>
+          </Card>
+        ) : (daily.loading && !daily.data) || !conferences.ready ? (
+          <ScrollCard>
+            <LoadingRows rows={8} />
+          </ScrollCard>
+        ) : tab === 0 ? (
+          <ScrollCard aria-label={`Poredak okupljanja ${dateTitle}${confName ? ` · ${confName}` : ""}`}>
+            {standings.length === 0 ? (
+              <EmptyState>Nema rezultata za ovaj datum.</EmptyState>
+            ) : (
+              <StandingsRows rows={showPodium ? rest : standings} podium={showPodium ? podium : undefined} />
+            )}
+          </ScrollCard>
+        ) : (
+          <ScrollArea bleed sx={{gap: "10px"}}>
+            <PhoneRoundTables title={`Round ${tab}`} rows={roundRows} />
+          </ScrollArea>
+        )}
       </Box>
 
-      <Grid
-        item
-        size={{xs: 12}}
-        sx={{
-          gridArea: "actions",
-          width: "100%",
-          display: "flex",
-          justifyContent: "center",
-          mt: 2,
-        }}
-      >
-        <SingleActionButton
-          label={"Početni zaslon"}
-          icon={<Home />}
-          fullWidth={isMobile}
-          onClick={() => router.push(`/`)}
-        />
-      </Grid>
+      <PrimaryButton icon={<HomeRoundedIcon />} onClick={() => router.push("/", "back")}>
+        Početni zaslon
+      </PrimaryButton>
+    </Screen>
+  );
+}
+
+// Desktop "Tablica okupljanja": podium and the full table with real columns
+function DesktopNightTable({rows, date}: {rows: ReturnType<typeof toStandingsRows>; date: string}) {
+  const {podium, rest} = splitPodium(rows);
+  if (rows.length === 0) {
+    return (
+      <Card>
+        <EmptyState>Nema rezultata za ovaj datum.</EmptyState>
+      </Card>
+    );
+  }
+  return (
+    <>
+      <Podium rows={podium} />
+      <Card sx={{flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable", borderRadius: "22px", alignSelf: "stretch"}}>
+        <StandingsGrid rows={podium.length ? rest : rows} caption={`Poredak okupljanja ${date}`} sx={{"& tr[role=row]": {px: "18px"}}} />
+      </Card>
+    </>
+  );
+}
+
+// Desktop round view: every table at once, in 1–3 columns, with status filters and a search. One column while every
+// table fits the height on screen, so a short round reads straight down.
+type RoundAdmin = {leagueId: number; date: string; roundNumber: number; onChanged: () => void};
+
+// admin: edit mode (re-pair, remove and add tables), and every table opens its scorepad
+function DesktopRound({title, rows, admin}: {title: string; rows: ReturnType<typeof toTableRows>; admin: RoundAdmin | null}) {
+  const [filter, setFilter] = useState<TableFilter>("all");
+  const [query, setQuery] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [confirmId, setConfirmId] = useState<number | null>(null);
+  const [removing, setRemoving] = useState(false);
+  const [pair, setPair] = useState<PairTarget | null>(null);
+  // the number of the table added last, highlighted until editing ends
+  const [freshTable, setFreshTable] = useState<number | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const {teams: leagueTeams} = useLeagueTeams(admin && editing ? admin.leagueId : null);
+  const visible = filterTables(rows, filter, query);
+  const [areaRef, areaHeight] = useElementHeight<HTMLDivElement>();
+  const cols = tableColumns(rows.length, areaHeight == null ? undefined : Math.floor(areaHeight / TABLE_ROW_HEIGHT));
+  const columns = splitColumns(visible, cols);
+  const live = liveCount(rows);
+  const filters = [
+    {key: "all" as TableFilter, label: "Svi", count: rows.length},
+    {key: "live" as TableFilter, label: "Uživo", count: live, alert: true},
+    {key: "done" as TableFilter, label: "Gotovo", count: rows.filter((r) => r.done).length},
+  ];
+
+  const toggleEdit = () => {
+    setEditing((e) => !e);
+    setConfirmId(null);
+    setFreshTable(null);
+    setActionError(null);
+  };
+  const remove = async (id: number) => {
+    if (!admin) return;
+    setRemoving(true);
+    setActionError(null);
+    try {
+      await removeTableAPI(id);
+      setConfirmId(null);
+      admin.onChanged();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Stol nije uklonjen.");
+    }
+    setRemoving(false);
+  };
+  const savePair = async (team1Id: number, team2Id: number) => {
+    if (!admin || !pair) return;
+    if (pair.kind === "edit") await setTablePairAPI(pair.row.id, team1Id, team2Id);
+    else {
+      await addTableAPI(admin.leagueId, admin.date, admin.roundNumber, team1Id, team2Id);
+      setFreshTable(pair.tableNumber);
+    }
+    setPair(null);
+    admin.onChanged();
+  };
+  const nextTable = rows.reduce((m, r) => Math.max(m, r.table), 0) + 1;
+
+  return (
+    <Box sx={{flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: "12px"}}>
+      <Box sx={{flex: "none", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px"}}>
+        <Box sx={{display: "flex", alignItems: "baseline", gap: "14px", minWidth: 0}}>
+          <Box component="h2" sx={{m: 0, fontFamily: font.display, fontSize: 26, fontWeight: 800, whiteSpace: "nowrap"}}>
+            {title}
+          </Box>
+          <Box sx={{fontSize: 16, color: color.inkSoft, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap"}}>
+            {rows.length} {plural(rows.length, "stol", "stola", "stolova")} · {live} uživo
+          </Box>
+        </Box>
+        <Box sx={{display: "flex", alignItems: "center", gap: "10px"}}>
+          {admin && editing && <NewTableButton onClick={() => setPair({kind: "new", tableNumber: nextTable})} />}
+          {admin && <EditToggle editing={editing} onClick={toggleEdit} />}
+          <SearchInput
+            soft
+            height={44}
+            placeholder="Ekipa ili broj stola"
+            aria-label="Traži ekipu ili broj stola"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            sx={{width: admin ? 220 : 260}}
+          />
+          <Segmented<TableFilter>
+            items={filters}
+            value={filter}
+            onChange={setFilter}
+            label="Filtriraj stolove"
+            variant="panel"
+            size={38}
+            asTabs={false}
+          />
+        </Box>
+      </Box>
+      {actionError && <ErrorNote>{actionError}</ErrorNote>}
+      <Box ref={areaRef} sx={{flex: 1, minHeight: 0, display: "flex", flexDirection: "column"}}>
+        {visible.length === 0 ? (
+          <Card>
+            <EmptyState>Nema stolova za ovaj filter.</EmptyState>
+          </Card>
+        ) : (
+          <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))`, gap: "16px", alignItems: "start"}}>
+            {columns.map((col, i) =>
+              col.length ? (
+                <Card key={i} component="ul" sx={{listStyle: "none", m: 0, p: 0, maxHeight: "100%", overflowY: "auto", scrollbarGutter: "stable"}}>
+                  {col.map((t) => (
+                    <DesktopTableRow
+                      key={t.id}
+                      t={t}
+                      dense={cols >= 3}
+                      href={admin && !editing && !t.bye ? `/league/${admin.leagueId}/daily-standings/table/${t.id}` : undefined}
+                      actions={
+                        admin && editing ? (
+                          <RowActions
+                            t={t}
+                            onEdit={() => setPair({kind: "edit", row: t})}
+                            onRemove={() => {
+                              setConfirmId(t.id);
+                              setActionError(null);
+                            }}
+                          />
+                        ) : undefined
+                      }
+                      onOpen={admin && editing ? () => setPair({kind: "edit", row: t}) : undefined}
+                      fresh={editing && t.table === freshTable}
+                      confirm={
+                        admin && editing && confirmId === t.id ? (
+                          <ConfirmRemove t={t} busy={removing} onCancel={() => setConfirmId(null)} onConfirm={() => remove(t.id)} />
+                        ) : undefined
+                      }
+                    />
+                  ))}
+                </Card>
+              ) : (
+                <Box key={i} />
+              )
+            )}
+          </Box>
+        )}
+      </Box>
+      {pair && admin && (
+        <PairDialog target={pair} rows={rows} teams={leagueTeams ?? []} roundLabel={title} onClose={() => setPair(null)} onSave={savePair} />
+      )}
     </Box>
   );
 }

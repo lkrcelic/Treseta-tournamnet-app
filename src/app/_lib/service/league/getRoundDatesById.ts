@@ -4,7 +4,7 @@ export async function getRoundDatesByLeagueId(league_id: number): Promise<string
   const rounds = await prisma.round.findMany({
     where: {
       leagueRounds: {
-        every: {
+        some: {
           league_id: league_id,
         },
       },

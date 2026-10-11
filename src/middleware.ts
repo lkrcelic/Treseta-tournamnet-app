@@ -1,20 +1,24 @@
+import {isApiLimited} from "@/app/_lib/rateLimiting/requestLimiting";
+import {verifyCookie} from "@/app/_lib/service/auth/signCookie";
+import {STATUS} from "@/app/_lib/statusCodes";
+import {Cookie} from "lucia";
 import type {NextRequest} from "next/server";
 import {NextResponse} from "next/server";
-import {verifyCookie} from "@/app/_lib/signCookie";
-import {handleLogin} from "@/app/_lib/rateLimiting/loginLimiting";
-import {Cookie} from "lucia";
-import {STATUS} from "@/app/_lib/statusCodes";
-import {isApiLimited} from "@/app/_lib/rateLimiting/requestLimiting";
+export {auth} from "@/app/_lib/googleAuth";
 
 export async function middleware(req: NextRequest) {
   if (
     !(
+      req.nextUrl.pathname.startsWith("/api/auth") ||
       req.nextUrl.pathname.startsWith("/api") ||
       req.nextUrl.pathname.startsWith("/login") ||
       req.nextUrl.pathname.startsWith("/signup") ||
-      req.nextUrl.pathname.startsWith("/league/1/standings") ||
-      req.nextUrl.pathname.startsWith('/_next/') ||
-      req.nextUrl.pathname.startsWith('/static/') ||
+      // the season table of any league is public; everything else needs a login
+      /^\/league\/(\d+|current)\/standings\/?$/.test(req.nextUrl.pathname) ||
+      req.nextUrl.pathname.startsWith("/_next/") ||
+      // the app manifest and icons, read by the browser before anyone logs in
+      req.nextUrl.pathname === "/manifest.webmanifest" ||
+      req.nextUrl.pathname.startsWith("/static/") ||
       req.nextUrl.pathname.match(/\.(png|jpg|jpeg|gif|svg)$/)
     )
   ) {
@@ -22,11 +26,7 @@ export async function middleware(req: NextRequest) {
     if (!authorized) return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  if (req.nextUrl.pathname.startsWith("/api/login")) {
-    if (await handleLogin(req)) {
-      return NextResponse.json({error: "Too many login attempts. Try again later."}, {status: STATUS.TooManyRequests});
-    }
-  }
+  // failed logins are limited in /api/login itself, which knows whether the password was right
 
   if (req.nextUrl.pathname.startsWith("/api")) {
     if (await isApiLimited(req)) {
@@ -37,6 +37,9 @@ export async function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
+// An optimistic check only: the middleware runs on the edge runtime without the database, so it can't tell whether
+// the session behind a signed cookie still exists. The real check is in every API route (requireUser), and
+// /api/auth/me removes dead cookies and sends the browser to /login.
 async function authenticationMiddleware(req: NextRequest) {
   const reqCookie = req.cookies.get(process.env.AUTH_COOKIE);
   if (reqCookie) {
@@ -45,9 +48,11 @@ async function authenticationMiddleware(req: NextRequest) {
   }
 
   const nextAuthCookie = req.cookies.get(process.env.GOOGLE_AUTH_COOKIE);
-  if (nextAuthCookie) return true;
+  if (nextAuthCookie) {
+    return true;
+  }
 
-  return false
+  return false;
 }
 
 // TODO: Implement rate limiting per IP address.

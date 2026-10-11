@@ -1,8 +1,8 @@
-import {lucia} from "@/app/_lib/auth";
+import {lucia} from "@/app/_lib/luciaAuth";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {NextRequest, NextResponse} from "next/server";
 import {prisma} from "@/app/_lib/prisma";
-import {extractCookieWithoutSignature} from "@/app/_lib/signCookie";
+import {extractCookieWithoutSignature} from "@/app/_lib/service/auth/signCookie";
 
 export async function POST(req: NextRequest) {
   try {

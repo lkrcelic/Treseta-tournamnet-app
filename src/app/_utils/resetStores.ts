@@ -1,12 +1,12 @@
 import useAuthStore from "@/app/_store/authStore";
-import useMatchStore from "@/app/_store/matchStore";
-import useRoundStore from "@/app/_store/roundStore";
-import useResultStore from "@/app/_store/resultStore";
+import useOngoingMatchStore from "@/app/_store/ongoingMatchStore";
+import useResultStore from "@/app/_store/game/resultStore";
+import useRoundStore from "@/app/_store/RoundStore";
 
 export function resetAllStores() {
   useAuthStore.getState().reset();
 
-  useMatchStore.getState().resetMatchStore();
+  useOngoingMatchStore.getState().resetOngoingMatch();
 
   useResultStore.getState().resetResult();
 

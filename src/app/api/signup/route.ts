@@ -1,5 +1,5 @@
 import {NextRequest, NextResponse} from "next/server";
-import {PlayerCreateValidation, PlayerResponse} from "@/app/_interfaces/player";
+import {PlayerCreateValidation, PlayerResponseValidation} from "@/app/_interfaces/player";
 import {prisma} from "@/app/_lib/prisma";
 import {z} from "zod";
 import argon2 from "argon2";
@@ -22,7 +22,8 @@ export async function POST(request: NextRequest) {
     playerVal.password_hash = await argon2.hash(playerVal.password_hash);
 
     const createdPlayer = await prisma.player.create({data: playerVal});
-    const player = createdPlayer as PlayerResponse;
+    // never send the password hash back
+    const player = PlayerResponseValidation.parse(createdPlayer);
 
     return NextResponse.json(player, {status: STATUS.OK});
   } catch (error) {
@@ -33,6 +34,6 @@ export async function POST(request: NextRequest) {
     if (error instanceof ValidationError) {
       return NextResponse.json(error.errors, {status: STATUS.BadRequest});
     }
-    return NextResponse.json({error: error}, {status: STATUS.ServerError});
+    return NextResponse.json({error: "Sign up failed."}, {status: STATUS.ServerError});
   }
 }

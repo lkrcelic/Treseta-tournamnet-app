@@ -1,4 +1,4 @@
-import { TeamsResponseValidation } from "@/app/_interfaces/team";
+import { TeamExtendedResponseValidation } from "@/app/_interfaces/team";
 
 export async function searchTeamsAPI(query: string) {
   const url = new URL(`/api/teams`, window.location.origin);
@@ -9,5 +9,5 @@ export async function searchTeamsAPI(query: string) {
     throw new Error(`Failed to search teams: ${res.statusText}`);
   }
   const json = await res.json();
-  return TeamsResponseValidation.parse(json);
+  return TeamExtendedResponseValidation.array().parse(json);
 }
