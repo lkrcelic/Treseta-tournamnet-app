@@ -6,7 +6,7 @@ and the admin screens to run a league night. Next.js 14 (App Router), Prisma on 
 ## Running it locally
 
 ```bash
-cp .env.example .env    # then point DATABASE_URL at a local Postgres
+cp .env.example .env    # then point DATABASE_URL and DATABASE_URL_UNPOOLED at a local Postgres
 npm install
 npm run dev:reset       # migrates, seeds the users admin / player (password: sifra) and a league, starts the app
 ```
