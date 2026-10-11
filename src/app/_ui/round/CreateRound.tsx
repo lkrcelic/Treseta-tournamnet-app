@@ -2,6 +2,7 @@
 
 import {createMultipleRoundsAPI, RepeatMatchupsError} from "@/app/_fetchers/round/createMultipleRounds";
 import useLeagueTeams, {LeagueTeam} from "@/app/_hooks/useLeagueTeams";
+import {updateCachedLeague} from "@/app/_hooks/useLeagues";
 import {matchesQuery, plural} from "@/app/_lib/ui/text";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, font, shadow} from "@/app/_styles/tokens";
@@ -11,13 +12,17 @@ import WarningRoundedIcon from "@mui/icons-material/WarningRounded";
 import {Box, Dialog} from "@mui/material";
 import React, {useEffect, useId, useMemo, useState} from "react";
 import LeagueNotes from "./LeagueNotes";
+import {SmokingPlanOverlay, smokingSummary, SmokingTablesCard} from "./SmokingTables";
 
 const MAX_ROUNDS = 5;
 const MAX_WINDOW = 200;
+// the smoking tables picked when the switch goes on and the league remembers none (the design's default)
+const FIRST_SMOKING_TABLES = [1, 2];
 
-// Create Round for one league: the options, the teams present tonight and the create action. The phone page and
-// Manage League's "Create round" view lay these pieces out differently.
-export function useCreateRound(leagueId: number | null, defaultRounds?: number) {
+// Create Round for one league: the options, the smoking tables, the teams present tonight and the create action. The
+// phone page and Manage League's "Create round" view lay these pieces out differently. defaultSmokingTables: the ones
+// of the league's last round creation (the switch starts on with them).
+export function useCreateRound(leagueId: number | null, defaultRounds?: number, defaultSmokingTables?: number[]) {
   const router = useTransitionRouter();
   const [rounds, setRounds] = useState(4);
   const [windowSize, setWindowSize] = useState(8);
@@ -30,6 +35,10 @@ export function useCreateRound(leagueId: number | null, defaultRounds?: number) 
   const [repeats, setRepeats] = useState<[string, string][] | null>(null);
   // pair every conference on its own, so teams only meet teams of their conference; off until the admin turns it on
   const [withinConferences, setWithinConferences] = useState(false);
+  const [smokingOn, setSmokingOn] = useState(false);
+  const [smokingPicked, setSmokingPicked] = useState<number[]>(FIRST_SMOKING_TABLES);
+  const [planOpen, setPlanOpen] = useState(false);
+  const rememberedTables = (defaultSmokingTables ?? []).join(",");
 
   const {teams, error: teamsError, loading, reload} = useLeagueTeams(leagueId);
   const inactive = useMemo(() => new Set((teams ?? []).filter((t) => !t.active).map((t) => t.id)), [teams]);
@@ -46,6 +55,14 @@ export function useCreateRound(leagueId: number | null, defaultRounds?: number) 
     if (defaultRounds) setRounds(Math.min(MAX_ROUNDS, defaultRounds));
   }, [leagueId, defaultRounds]);
 
+  // the smoking tables start as the league's last round creation left them
+  useEffect(() => {
+    const remembered = rememberedTables ? rememberedTables.split(",").map(Number) : [];
+    setSmokingOn(remembered.length > 0);
+    setSmokingPicked(remembered.length ? remembered : FIRST_SMOKING_TABLES);
+    setPlanOpen(false);
+  }, [leagueId, rememberedTables]);
+
   // an inactive team (one that stopped coming) can still be switched on for tonight
   const onByDefault = (id: number) => !inactive.has(id);
   const isOn = (t: LeagueTeam) => onByDefault(t.id) !== flipped.has(t.id);
@@ -53,6 +70,11 @@ export function useCreateRound(leagueId: number | null, defaultRounds?: number) 
   const allOn = visible.length > 0 && visible.every(isOn);
   const selected = (teams ?? []).filter(isOn);
   const count = selected.length;
+  // a table per two teams; picks above tonight's number of tables wait for a bigger night
+  const tableCount = Math.floor(count / 2);
+  const smokingTables = smokingPicked.filter((t) => t <= tableCount).sort((a, b) => a - b);
+  const smokers = selected.reduce((sum, t) => sum + (t.smokers ?? 0), 0);
+  const smokingTeams = selected.filter((t) => (t.smokers ?? 0) > 0).length;
 
   const toggle = (id: number) =>
     setFlipped((prev) => {
@@ -74,7 +96,10 @@ export function useCreateRound(leagueId: number | null, defaultRounds?: number) 
     setCreateError(null);
     setRepeats(null);
     try {
-      const roundNumber = await createMultipleRoundsAPI(leagueId, selected.map((t) => t.id), rounds, window, allowRepeats, hasConferences && withinConferences);
+      const tables = smokingOn ? smokingTables : [];
+      const roundNumber = await createMultipleRoundsAPI(leagueId, selected.map((t) => t.id), rounds, window, allowRepeats, tables, hasConferences && withinConferences);
+      // the next Create Round in this session starts with them too
+      updateCachedLeague(leagueId, {smokingTables: tables});
       // replace, so the back button doesn't lead to this form again
       router.replace(`/round/pairings/${roundNumber}?league=${leagueId}`);
     } catch (e) {
@@ -139,6 +164,22 @@ export function useCreateRound(leagueId: number | null, defaultRounds?: number) 
     </Box>
   );
 
+  const toggleSmokingTable = (n: number) => setSmokingPicked((prev) => (prev.includes(n) ? prev.filter((t) => t !== n) : [...prev, n]));
+  const smokingCard = (
+    <SmokingTablesCard
+      on={smokingOn}
+      onToggle={() => {
+        setSmokingOn((on) => !on);
+        setPlanOpen(false);
+      }}
+      tables={smokingTables}
+      tableCount={tableCount}
+      onToggleTable={toggleSmokingTable}
+      summary={smokingSummary(smokingOn, smokingTables, smokers, smokingTeams)}
+      onOpenPlan={() => setPlanOpen(true)}
+    />
+  );
+
   const createButton = (
     <PrimaryButton onClick={() => create()} disabled={count < 2} loading={creating}>
       {creating ? "Stvaram kolo…" : `Create round · ${count} ${plural(count, "team", "teams", "teams")}`}
@@ -155,7 +196,26 @@ export function useCreateRound(leagueId: number | null, defaultRounds?: number) 
     <EmptyState>{teams?.length ? "Nijedna ekipa ne odgovara pretrazi." : "Ova liga još nema ekipa."}</EmptyState>
   ) : null;
 
-  return {teams, visible, inactive, isOn, toggle, toggleAll, allOn, query, setQuery, createError, steppers, createButton, repeatsDialog, teamState, conferenceOf: conferences.of};
+  return {
+    teams,
+    visible,
+    inactive,
+    isOn,
+    toggle,
+    toggleAll,
+    allOn,
+    query,
+    setQuery,
+    createError,
+    steppers,
+    smokingCard,
+    planOpen: smokingOn && planOpen,
+    closePlan: () => setPlanOpen(false),
+    createButton,
+    repeatsDialog,
+    teamState,
+    conferenceOf: conferences.of,
+  };
 }
 
 export function InactiveBadge() {
@@ -169,17 +229,19 @@ export function InactiveBadge() {
   );
 }
 
-// Manage League (desktop) · Create round: options, the league's notes and the create action on the left; who sits
-// out and every team's switch on the right
-export function CreateRoundView({leagueId, defaultRounds}: {leagueId: number; defaultRounds?: number}) {
-  const cr = useCreateRound(leagueId, defaultRounds);
+// Manage League (desktop) · Create round: options, the smoking tables, the league's notes and the create action on the
+// left; who sits out and every team's switch on the right. The smoking plan opens over both.
+export function CreateRoundView({leagueId, defaultRounds, defaultSmokingTables}: {leagueId: number; defaultRounds?: number; defaultSmokingTables?: number[]}) {
+  const cr = useCreateRound(leagueId, defaultRounds, defaultSmokingTables);
   return (
-    <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "360px minmax(0,1fr)", gap: "20px"}}>
-      <Box sx={{minHeight: 0, display: "flex", flexDirection: "column", gap: "16px"}}>
+    <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "360px minmax(0,1fr)", gap: "20px", position: "relative"}}>
+      {cr.planOpen && <SmokingPlanOverlay leagueId={leagueId} onClose={cr.closePlan} />}
+      <Box sx={{minHeight: 0, display: "flex", flexDirection: "column", gap: "16px", overflowY: "auto"}}>
         <Box component="section" aria-labelledby="cr-options" sx={{display: "flex", flexDirection: "column", gap: "8px"}}>
           <SectionLabel id="cr-options">Options</SectionLabel>
           {cr.steppers}
         </Box>
+        {cr.smokingCard}
         <LeagueNotes key={leagueId} leagueId={leagueId} />
         <Box sx={{flex: "none", display: "flex", flexDirection: "column", gap: "10px"}}>
           {cr.createError && <ErrorNote>{cr.createError}</ErrorNote>}

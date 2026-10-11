@@ -80,7 +80,7 @@ export default function LeagueNotes({leagueId}: {leagueId: number}) {
   }[status];
 
   return (
-    <Box component="section" aria-labelledby={labelId} sx={{flex: 1, minHeight: 200, display: "flex", flexDirection: "column", gap: "8px"}}>
+    <Box component="section" aria-labelledby={labelId} sx={{flex: 1, minHeight: 150, display: "flex", flexDirection: "column", gap: "8px"}}>
       <Box sx={{px: "6px", display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "8px"}}>
         <SectionLabel id={labelId} sx={{px: 0}}>
           Notes

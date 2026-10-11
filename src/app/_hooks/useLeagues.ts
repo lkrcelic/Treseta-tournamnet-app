@@ -11,6 +11,8 @@ export type LeagueOption = {
   name: string;
   meta?: string;
   roundsPerNight: number;
+  // the smoking tables of its last Create Round (empty: none)
+  smokingTables?: number[];
   active: boolean;
   season?: string | null;
   startDate?: string | null; // YYYY-MM-DD
@@ -40,6 +42,7 @@ function toOption(l: LeagueSummary): LeagueOption {
     id: l.league_id,
     name: l.league_name,
     roundsPerNight: l.rounds_per_night,
+    smokingTables: l.smoking_tables ?? [],
     active: l.active,
     season: l.season,
     startDate: l.start_date,

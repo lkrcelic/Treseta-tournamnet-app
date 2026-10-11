@@ -11,6 +11,7 @@ import {color, font, shadow} from "@/app/_styles/tokens";
 import {Brand} from "@/app/_ui/auth/AuthFrame";
 import {BurzaHomeCard, HomeTile, NextNightCard, NextNightPlaceholder, nextNight} from "@/app/_ui/home/HomeCards";
 import InstallSheet from "@/app/_ui/install/InstallSheet";
+import {SmokingMark} from "@/app/_ui/smoking/SmokingParts";
 import {buttonBase, Card, ellipsis, ErrorNote, IconCircleButton, Screen, SectionLabel, Spinner, TeamDot, TextButton} from "@/app/_ui/sp";
 import AccountCircleRoundedIcon from "@mui/icons-material/AccountCircleRounded";
 import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
@@ -145,6 +146,7 @@ function StartCard({table, starting, onStart, errorId}: {table: OpenTable | null
               <Box component="span" sx={{height: 28, display: "flex", alignItems: "center", px: "10px", borderRadius: "9px", background: color.cream, color: color.navy, fontSize: 13, fontWeight: 800, letterSpacing: ".08em"}}>
                 STOL {table.table ?? "–"}
               </Box>
+              {table.smoking && <SmokingMark variant="onNavy" />}
               {live && (
                 <Box component="span" sx={{fontSize: 13, fontWeight: 700, color: color.cream, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums"}}>
                   {table.score![0]} : {table.score![1]}

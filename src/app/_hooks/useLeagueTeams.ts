@@ -3,9 +3,10 @@
 import {getLeagueTeamsAPI} from "@/app/_fetchers/league/leagues";
 import {useCallback, useEffect, useState} from "react";
 
-export type LeagueTeam = {id: number; name: string; players: string[]; active: boolean; conferenceId: number | null};
+// smokers: how many of its players smoke (unknown for a team just added on Manage League)
+export type LeagueTeam = {id: number; name: string; players: string[]; active: boolean; conferenceId: number | null; smokers?: number};
 
-// Teams of a league with their players' usernames, the active flag and the conference (admin only)
+// Teams of a league with their players' usernames, the active flag, the conference and how many of them smoke (admin only)
 export default function useLeagueTeams(leagueId: number | null) {
   const [teams, setTeams] = useState<LeagueTeam[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +20,14 @@ export default function useLeagueTeams(leagueId: number | null) {
       .then((rows) => {
         if (cancelled) return;
         setTeams(
-          rows.map((t) => ({id: t.team_id, name: t.team_name, players: t.players.map((p) => p.username), active: t.active, conferenceId: t.conference_id}))
+          rows.map((t) => ({
+            id: t.team_id,
+            name: t.team_name,
+            players: t.players.map((p) => p.username),
+            active: t.active,
+            conferenceId: t.conference_id,
+            smokers: t.smokers ?? 0,
+          }))
         );
       })
       .catch((e) => {

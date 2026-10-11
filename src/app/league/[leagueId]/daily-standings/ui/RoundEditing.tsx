@@ -4,6 +4,7 @@ import {LeagueTeam} from "@/app/_hooks/useLeagueTeams";
 import {TableRow} from "@/app/_lib/ui/tables";
 import {color, font, shadow} from "@/app/_styles/tokens";
 import {buttonBase, ellipsis, ErrorNote, OutlineButton, SolidButton} from "@/app/_ui/sp";
+import {SmokingMark} from "@/app/_ui/smoking/SmokingParts";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
@@ -234,8 +235,10 @@ export function PairDialog({
     >
       <Box sx={{display: "flex", flexDirection: "column", gap: "4px"}}>
         <Box sx={{fontSize: 13, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: color.muted}}>{roundLabel}</Box>
-        <Box component="h2" id={titleId} sx={{m: 0, fontFamily: font.display, fontSize: 28, fontWeight: 800, letterSpacing: "-.01em"}}>
+        <Box component="h2" id={titleId} sx={{m: 0, display: "flex", alignItems: "center", gap: "10px", fontFamily: font.display, fontSize: 28, fontWeight: 800, letterSpacing: "-.01em"}}>
           {isNew ? `Novi stol ${target.tableNumber}` : `Stol ${row!.table} · uredi par`}
+          {/* the table stays a smoking table whoever sits at it */}
+          {!isNew && row!.smoking && <SmokingMark />}
         </Box>
       </Box>
       <Box sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) 36px minmax(0,1fr)", gap: "8px", alignItems: "end"}}>

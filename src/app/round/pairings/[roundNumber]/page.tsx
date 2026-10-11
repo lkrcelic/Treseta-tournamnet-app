@@ -7,6 +7,7 @@ import {plural} from "@/app/_lib/ui/text";
 import {color, font} from "@/app/_styles/tokens";
 import {Card, DesktopShell, ellipsis, EmptyState, ErrorNote, LoadingRows, PrimaryButton, Screen, ScreenTitle, ScrollArea, TeamDot} from "@/app/_ui/sp";
 import useConferences from "@/app/_hooks/useConferences";
+import {SmokingMark} from "@/app/_ui/smoking/SmokingParts";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import {Box} from "@mui/material";
 import {useParams, useSearchParams} from "next/navigation";
@@ -14,7 +15,7 @@ import {useActiveLeagueId} from "@/app/_hooks/useLeagues";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {useCallback, useEffect, useState} from "react";
 
-type Pairing = {id: number; table: number; a: string; b: string; aId: number; bId: number};
+type Pairing = {id: number; table: number; smoking: boolean; a: string; b: string; aId: number; bId: number};
 
 // Who sits where in a new round, shown right after the admin creates it. The dots are the teams' conferences, or
 // green and red in a league without conferences.
@@ -39,6 +40,7 @@ export default function RoundPairings() {
           .map((r: RoundMatchup, i: number) => ({
             id: r.id,
             table: r.table_number || i + 1,
+            smoking: !!r.smoking_table,
             a: r.team1?.team_name ?? "",
             b: r.team2?.team_name ?? "",
             aId: r.team1?.team_id ?? -1,
@@ -82,6 +84,7 @@ export default function RoundPairings() {
             <Box component="span" sx={{fontFamily: font.display, fontSize: 34, fontWeight: 800, lineHeight: 0.95}}>
               {p.table}
             </Box>
+            {p.smoking && <SmokingMark sx={{mt: "6px", background: color.card}} />}
           </Box>
           <Box sx={{display: "flex", flexDirection: "column", justifyContent: "center", px: "14px"}}>
             {(

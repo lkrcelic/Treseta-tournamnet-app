@@ -1,6 +1,7 @@
 "use client";
 
 import BirthDatePrompt from "@/app/_bootstrap/BirthDatePrompt";
+import SmokerPrompt from "@/app/_bootstrap/SmokerPrompt";
 import UserBootstrapper from "@/app/_bootstrap/UserBootstrapper";
 // catches Chrome's install offer as early as possible, for the install sheet
 import "@/app/_lib/installPrompt";
@@ -45,6 +46,8 @@ export default function RootLayout({children}: Readonly<{children: React.ReactNo
           <RouteTransitions />
           {mounted ? children : null}
           {mounted && <BirthDatePrompt />}
+          {/* "Pušiš li?" for players who haven't answered it, after the birth date */}
+          {mounted && <SmokerPrompt />}
         </ThemeProvider>
       </body>
     </html>

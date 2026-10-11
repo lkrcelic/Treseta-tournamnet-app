@@ -3,6 +3,7 @@
 import {TableRow} from "@/app/_lib/ui/tables";
 import {color, font, shadow} from "@/app/_styles/tokens";
 import {Card, Eyebrow, LiveDot, LiveLabel, LivePill, tabular, TeamLabel} from "@/app/_ui/sp";
+import {SmokingMark} from "@/app/_ui/smoking/SmokingParts";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {Box} from "@mui/material";
 import React from "react";
@@ -21,14 +22,15 @@ export function PhoneRoundTables({title, rows}: {title: string; rows: TableRow[]
           <Card
             component="li"
             key={t.id}
-            aria-label={`Stol ${t.table}: ${t.teamA} ${t.winsA}, ${t.teamB} ${t.winsB}${t.live ? ", uživo" : ""}`}
+            aria-label={`Stol ${t.table}${t.smoking ? ", pušački" : ""}: ${t.teamA} ${t.winsA}, ${t.teamB} ${t.winsB}${t.live ? ", uživo" : ""}`}
             aria-current={t.mine ? "true" : undefined}
             // the player's own table: cream with a navy ring
             sx={{p: "12px 16px 6px", display: "flex", flexDirection: "column", background: t.mine ? color.creamSoft : color.card, ...(t.mine && {boxShadow: `${shadow.card}, ${shadow.mineRing}`})}}
           >
             <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", height: 24}}>
-              <Box component="span" sx={{fontSize: 13, fontWeight: 600, color: color.muted}}>
+              <Box component="span" sx={{display: "flex", alignItems: "center", gap: "6px", fontSize: 13, fontWeight: 600, color: color.muted}}>
                 Table {t.table}
+                {t.smoking && <SmokingMark />}
               </Box>
               {t.live && <LiveLabel />}
             </Box>
@@ -91,7 +93,7 @@ export function DesktopTableRow({
   confirm?: React.ReactNode;
 }) {
   const font1 = dense ? 15 : 17;
-  const label = `Stol ${t.table}: ${t.teamA} ${t.winsA} : ${t.winsB} ${t.teamB}${t.live ? `, uživo ${t.pointsA ?? 0} – ${t.pointsB ?? 0}` : ""}`;
+  const label = `Stol ${t.table}${t.smoking ? ", pušački" : ""}: ${t.teamA} ${t.winsA} : ${t.winsB} ${t.teamB}${t.live ? `, uživo ${t.pointsA ?? 0} – ${t.pointsB ?? 0}` : ""}`;
   if (confirm) {
     return (
       <Box
@@ -124,9 +126,11 @@ export function DesktopTableRow({
       <Box
         component="span"
         aria-hidden
-        sx={{height: 28, borderRadius: "8px", background: fresh ? color.navy : color.paper, color: fresh ? "#FFFFFF" : color.navy, fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center"}}
+        sx={{position: "relative", height: 28, borderRadius: "8px", background: fresh ? color.navy : color.paper, color: fresh ? "#FFFFFF" : color.navy, fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center"}}
       >
         {t.table}
+        {/* a smoking table: the cream mark on the number's corner */}
+        {t.smoking && <SmokingMark variant="badge" sx={{position: "absolute", top: -6, right: -7}} />}
       </Box>
       {/* the dots sit next to the score, so they line up down the column */}
       <TeamLabel name={t.teamA} conference={t.conferenceA} end hidden sx={{fontSize: font1, fontWeight: !t.live && t.winsA > t.winsB ? 700 : 500}} />

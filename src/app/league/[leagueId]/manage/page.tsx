@@ -353,7 +353,11 @@ export default function ManageLeague() {
       >
         <ViewSwitch view={view} onChange={setView} teams={rows.length} rounds={leagueRounds.rounds?.length ?? null} nights={leagueNights.nights?.length ?? null} />
         {view === "create" ? (
-          <CreateRoundView leagueId={leagueId} defaultRounds={leagues.find((l) => l.id === leagueId)?.roundsPerNight} />
+          <CreateRoundView
+            leagueId={leagueId}
+            defaultRounds={leagues.find((l) => l.id === leagueId)?.roundsPerNight}
+            defaultSmokingTables={leagues.find((l) => l.id === leagueId)?.smokingTables}
+          />
         ) : view === "details" ? (
           <LeagueDetailsView key={leagueId} leagueId={leagueId} leagues={leagues} aside={conferencesCard} />
         ) : view === "rounds" ? (

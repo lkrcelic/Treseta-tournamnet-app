@@ -1,8 +1,12 @@
 import { PlayerResponseValidation } from "@/app/_interfaces/player";
 import { z } from "zod";
 
-// birth_date (YYYY-MM-DD) and phone are only sent to the player themselves and to admins
-const PlayerByIdValidation = PlayerResponseValidation.extend({ birth_date: z.string().nullable().optional(), phone: z.string().nullable().optional() });
+// birth_date (YYYY-MM-DD), phone and smoker are only sent to the player themselves and to admins
+const PlayerByIdValidation = PlayerResponseValidation.extend({
+  birth_date: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  smoker: z.boolean().optional(),
+});
 export type PlayerById = z.infer<typeof PlayerByIdValidation>;
 
 export async function getPlayerByIdAPI(id: number): Promise<PlayerById> {

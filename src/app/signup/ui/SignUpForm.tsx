@@ -3,6 +3,7 @@
 import {signUp} from "@/app/_fetchers/authentication/signup";
 import {SignupErrors, SignupValues, validateSignup, validateSignupField} from "@/app/_lib/ui/signupValidation";
 import {ErrorNote, PasswordField, PrimaryButton, TextField} from "@/app/_ui/sp";
+import {SmokerChoice} from "@/app/_ui/smoking/SmokingParts";
 import {Box} from "@mui/material";
 import React, {useState} from "react";
 
@@ -13,6 +14,8 @@ const SERVER_FIELDS: (keyof SignupValues)[] = ["username", "password", "email", 
 
 export default function SignUpForm({onSuccess, twoColumn = false}: {onSuccess: () => void; twoColumn?: boolean}) {
   const [values, setValues] = useState<SignupValues>(EMPTY);
+  // "Pušiš li?", Ne until the player picks Da
+  const [smoker, setSmoker] = useState(false);
   const [errors, setErrors] = useState<SignupErrors>({});
   const [touched, setTouched] = useState<Partial<Record<keyof SignupValues, boolean>>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -53,6 +56,7 @@ export default function SignUpForm({onSuccess, twoColumn = false}: {onSuccess: (
         first_name: values.first_name.trim(),
         last_name: values.last_name.trim(),
         birth_date: values.birth_date,
+        smoker,
       });
       if (res.success) {
         onSuccess();
@@ -94,6 +98,7 @@ export default function SignUpForm({onSuccess, twoColumn = false}: {onSuccess: (
         <TextField label="Prezime" placeholder="Marković" autoComplete="family-name" {...field("last_name")} />
       </Box>
       <TextField label="Datum rođenja" type="date" autoComplete="bday" {...field("birth_date")} />
+      <SmokerChoice value={smoker} onChange={setSmoker} size={twoColumn ? 46 : 44} />
       {formError && <ErrorNote>{formError}</ErrorNote>}
       <PrimaryButton type="submit" loading={submitting} sx={{mt: "4px"}}>
         Registriraj se

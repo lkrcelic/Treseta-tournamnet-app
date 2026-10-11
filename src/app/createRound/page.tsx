@@ -4,6 +4,7 @@ import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useLeagues, {useSelectedLeagueId} from "@/app/_hooks/useLeagues";
 import {color, shadow} from "@/app/_styles/tokens";
 import {InactiveBadge, useCreateRound} from "@/app/_ui/round/CreateRound";
+import {SmokingPlanSheet} from "@/app/_ui/round/SmokingTables";
 import {buttonBase, ErrorNote, IconCircleButton, IconTile, Screen, ScreenTitle, ScrollCard, SearchInput, SwitchRow, TeamLabel} from "@/app/_ui/sp";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
@@ -20,9 +21,9 @@ export default function CreateRound() {
   const leagues = useLeagues();
   const selectedLeague = useSelectedLeagueId();
   const [leagueId, setLeagueId] = useState<number | null>(null);
-  const defaultRounds = leagues.find((l) => l.id === leagueId)?.roundsPerNight;
-  const {visible, inactive, isOn, toggle, toggleAll, allOn, query, setQuery, createError, steppers, createButton, repeatsDialog, teamState, conferenceOf} =
-    useCreateRound(isDesktop ? null : leagueId, defaultRounds);
+  const league = leagues.find((l) => l.id === leagueId);
+  const {visible, inactive, isOn, toggle, toggleAll, allOn, query, setQuery, createError, steppers, smokingCard, planOpen, closePlan, createButton, repeatsDialog, teamState, conferenceOf} =
+    useCreateRound(isDesktop ? null : leagueId, league?.roundsPerNight, league?.smokingTables);
 
   useEffect(() => {
     if (isDesktop && selectedLeague != null) router.router.replace(`/league/${selectedLeague}/manage?view=create`);
@@ -94,6 +95,7 @@ export default function CreateRound() {
         <ScreenTitle eyebrow={`Admin · ${leagueName}`} title="Create Round" sx={{minWidth: 0, "& > div:first-of-type": {overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}} />
       </Box>
       {steppers}
+      {smokingCard}
       <SearchInput placeholder="Search" aria-label="Traži ekipu" value={query} onChange={(e) => setQuery(e.target.value)} />
       <ScrollCard aria-label="Prisutne ekipe">
         {teamState ?? (
@@ -118,6 +120,7 @@ export default function CreateRound() {
       {createError && <ErrorNote>{createError}</ErrorNote>}
       {createButton}
       {repeatsDialog}
+      <SmokingPlanSheet leagueId={leagueId} open={planOpen} onClose={closePlan} />
     </Screen>
   );
 }

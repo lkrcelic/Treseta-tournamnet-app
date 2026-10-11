@@ -1,8 +1,9 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-// needs_birth_date: a Google sign-up that hasn't given a birth date yet (the app asks)
-export type AuthUser = { id: number; username: string; needs_birth_date?: boolean } | null;
+// needs_birth_date: a Google sign-up that hasn't given a birth date yet (the app asks); needs_smoker: hasn't answered
+// "Pušiš li?" yet (asked after the birth date)
+export type AuthUser = { id: number; username: string; needs_birth_date?: boolean; needs_smoker?: boolean } | null;
 
 type AuthState = {
   user: AuthUser;

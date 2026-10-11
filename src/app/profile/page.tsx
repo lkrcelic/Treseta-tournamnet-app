@@ -2,6 +2,7 @@
 
 import {getPlayerByIdAPI, PlayerById} from "@/app/_fetchers/player/getById";
 import {updateBirthDateAPI} from "@/app/_fetchers/player/updateBirthDate";
+import {updateSmokerAPI} from "@/app/_fetchers/player/updateSmoker";
 import {updateUsernameAPI} from "@/app/_fetchers/player/updateUsername";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useMyTeams from "@/app/_hooks/useMyTeams";
@@ -14,6 +15,7 @@ import {normalizeUsername, USERNAME_MAX, usernameError} from "@/app/_lib/validat
 import useAuthStore from "@/app/_store/authStore";
 import {color, font} from "@/app/_styles/tokens";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import SmokingRoomsRoundedIcon from "@mui/icons-material/SmokingRoomsRounded";
 import {
   buttonBase,
   Card,
@@ -29,6 +31,7 @@ import {
   Screen,
   ScrollArea,
   SectionLabel,
+  SwitchTrack,
   tabular,
 } from "@/app/_ui/sp";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
@@ -159,6 +162,18 @@ export default function ProfilePage() {
             }}
           />
         )}
+        {player && (
+          <SmokerRow
+            value={!!player.smoker}
+            desktop={desktop}
+            onSave={async (smoker) => {
+              await updateSmokerAPI(player.id, smoker);
+              setPlayer((p) => (p ? {...p, smoker} : p));
+              // answered here, so the app doesn't ask
+              if (user?.needs_smoker) setUser({...user, needs_smoker: false});
+            }}
+          />
+        )}
       </Card>
     </Box>
   );
@@ -225,7 +240,61 @@ export default function ProfilePage() {
   );
 }
 
-// The last Details row: the birth date with an edit button, opening a date field with Cancel and Save in place
+// The last Details row: Smoker with its switch, saved when it is flipped (Create Round seats smokers at the smoking
+// tables)
+function SmokerRow({value, desktop, onSave}: {value: boolean; desktop: boolean; onSave: (smoker: boolean) => Promise<void>}) {
+  // the switch moves at once; a failed save puts it back
+  const [shown, setShown] = useState(value);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => setShown(value), [value]);
+
+  const flip = async () => {
+    if (saving) return;
+    const next = !shown;
+    setShown(next);
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave(next);
+    } catch (err) {
+      setShown(!next);
+      setError(err instanceof Error ? err.message : "Odgovor nije spremljen.");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <Box sx={{borderBottom: `1px solid ${color.line}`}}>
+      <Box sx={{height: desktop ? 56 : 52, display: "flex", alignItems: "center", gap: "10px", pl: desktop ? "18px" : "16px", pr: "14px"}}>
+        <Box component="dt" sx={{flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: "8px", fontSize: 15, color: color.muted, "& svg": {fontSize: 20, color: color.navy}}}>
+          <SmokingRoomsRoundedIcon aria-hidden />
+          Smoker
+        </Box>
+        <Box component="dd" sx={{m: 0, display: "flex", alignItems: "center", gap: "10px"}}>
+          <Box component="span" aria-hidden sx={{fontSize: 15, fontWeight: 600, color: color.ink}}>
+            {shown ? "Yes" : "No"}
+          </Box>
+          <Box
+            component="button"
+            type="button"
+            role="switch"
+            aria-checked={shown}
+            aria-label="Smoker"
+            aria-busy={saving || undefined}
+            onClick={flip}
+            sx={{...buttonBase, display: "flex", borderRadius: "16px"}}
+          >
+            <SwitchTrack on={shown} />
+          </Box>
+        </Box>
+      </Box>
+      {error && <ErrorNote sx={{m: `0 ${desktop ? "18px" : "16px"} 12px`}}>{error}</ErrorNote>}
+    </Box>
+  );
+}
+
+// The birth date Details row, with an edit button opening a date field with Cancel and Save in place
 function BirthDateRow({value, desktop, onSave}: {value: string | null; desktop: boolean; onSave: (birthDate: string) => Promise<void>}) {
   const [draft, setDraft] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
