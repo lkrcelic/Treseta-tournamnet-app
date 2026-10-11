@@ -6,7 +6,7 @@ import {LeagueOption} from "@/app/_hooks/useLeagues";
 import {BurzaCreateRequest, BurzaKind, BurzaPost, MyLeague} from "@/app/_interfaces/burza";
 import {leagueDateString} from "@/app/_lib/dates";
 import {nextNightIndex, nightLabel} from "@/app/_lib/nights";
-import {isValidPhone} from "@/app/_lib/phone";
+import {isValidPhone, savesToProfile} from "@/app/_lib/phone";
 import {color, font} from "@/app/_styles/tokens";
 import {buttonBase, Card, cardSx, EmptyState, ErrorNote, InitialsAvatar, PrimaryButton} from "@/app/_ui/sp";
 import CallRoundedIcon from "@mui/icons-material/CallRounded";
@@ -51,8 +51,8 @@ function Phone({phone, setPhone}: Pick<FormProps, "phone" | "setPhone">) {
   );
 }
 
-// the profile is offered the number only when it's a valid new one
-const savePhone = (p: PhoneState) => p.save && isValidPhone(p.value) && p.value !== p.profile;
+// a valid new number goes on the profile too (replacing the profile's one only while the checkbox is on)
+const savePhone = (p: PhoneState) => savesToProfile(p.value, p.profile, p.save);
 
 function PublishButton({disabled, submitting, onClick}: {disabled: boolean; submitting: boolean; onClick: () => void}) {
   return (

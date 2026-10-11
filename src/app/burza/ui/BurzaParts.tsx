@@ -2,7 +2,7 @@
 
 import {BurzaKind, BurzaPost} from "@/app/_interfaces/burza";
 import {nightLabel} from "@/app/_lib/nights";
-import {isValidPhone, phoneInput, PHONE_ERROR, PHONE_HINT} from "@/app/_lib/phone";
+import {isValidPhone, normalizePhone, phoneInput, PHONE_ERROR, PHONE_HINT} from "@/app/_lib/phone";
 import {busyLine, KIND_TAG, postBody, postSub, postTitle, timeAgo} from "@/app/_lib/ui/burza";
 import {initials} from "@/app/_lib/ui/text";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
@@ -279,11 +279,13 @@ export function PublicNote() {
   return <Callout icon={<PublicRoundedIcon aria-hidden />}>Oglas vide svi, i bez prijave, zajedno s brojem mobitela.</Callout>;
 }
 
-// The phone field: required on an ad, "S profila" when it came from the profile, and (when it's a new number)
-// a pill that also saves it on the profile
+// The phone field: required on an ad, "S profila" when it came from the profile. On an ad (onSave), a new number
+// goes on the profile too: by itself when the profile has none, and with a checkbox when it would replace the
+// profile's. (A pill that started on read as a "save" button, and tapping it turned saving off.)
 export function PhoneField({
   value,
   onChange,
+  onBlur,
   profilePhone,
   save,
   onSave,
@@ -292,6 +294,7 @@ export function PhoneField({
 }: {
   value: string;
   onChange: (v: string) => void;
+  onBlur?: () => void;
   profilePhone: string | null;
   save?: boolean;
   onSave?: (v: boolean) => void;
@@ -301,8 +304,8 @@ export function PhoneField({
   const id = useId();
   const valid = isValidPhone(value);
   const bad = value.trim() !== "" && !valid;
-  const fromProfile = !!profilePhone && value === profilePhone;
-  const offerSave = onSave != null && valid && value !== profilePhone;
+  const fromProfile = !!profilePhone && normalizePhone(value) === profilePhone;
+  const newNumber = onSave != null && valid && !fromProfile;
   return (
     <Box sx={{display: "flex", flexDirection: "column", gap: "8px"}}>
       <FieldLabel
@@ -345,22 +348,59 @@ export function PhoneField({
           placeholder="091 234 5678"
           value={value}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(phoneInput(e.target.value))}
+          onBlur={onBlur}
           sx={{flex: 1, minWidth: 0, height: "100%", p: 0, border: "none", outline: "none", background: "transparent", font: "inherit", fontSize: 17, fontWeight: 600, color: color.ink, ...tabular, "&::placeholder": {color: color.placeholder, fontWeight: 600}}}
         />
       </Box>
       <Box id={`${id}-hint`} aria-live="polite" sx={{px: "6px", fontSize: 13, lineHeight: 1.4, color: bad ? color.red : color.muted}}>
         {bad ? PHONE_ERROR : required ? PHONE_HINT : "Upisuje se sam kad objavljuješ oglas, da ga ne tipkaš svaki put."}
       </Box>
-      {offerSave && (
-        <Box sx={{display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "6px"}}>
-          <TogglePill on={!!save} onClick={() => onSave(!save)} height={44}>
-            {profilePhone ? "Zamijeni broj na profilu" : "Spremi broj na profil"}
-          </TogglePill>
-          <Box component="span" sx={{px: "6px", fontSize: 12.5, color: color.muted}}>
-            {profilePhone ? `Sada je na profilu ${profilePhone}.` : "Idući put ga nećeš morati upisivati."}
+      {newNumber &&
+        (profilePhone ? (
+          <CheckRow checked={!!save} onChange={onSave} hint={`Na profilu je ${profilePhone}.`}>
+            Zamijeni i broj na profilu
+          </CheckRow>
+        ) : (
+          <Box sx={{display: "flex", alignItems: "flex-start", gap: "8px", px: "6px", fontSize: 13, lineHeight: 1.4, color: color.muted, "& svg": {fontSize: 18, flex: "none", color: color.navy}}}>
+            <CheckRoundedIcon aria-hidden />
+            <span>Sprema se i na tvoj profil, pa ga idući put ne upisuješ.</span>
           </Box>
+        ))}
+    </Box>
+  );
+}
+
+// A checkbox with its label; the whole row is the target
+function CheckRow({checked, onChange, hint, children}: {checked: boolean; onChange: (v: boolean) => void; hint?: string; children: React.ReactNode}) {
+  const id = useId();
+  return (
+    <Box
+      component="button"
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      aria-labelledby={`${id}-label`}
+      aria-describedby={hint ? `${id}-hint` : undefined}
+      onClick={() => onChange(!checked)}
+      sx={{...buttonBase, minHeight: 44, display: "flex", alignItems: "center", gap: "10px", px: "6px", textAlign: "left"}}
+    >
+      <Box
+        component="span"
+        aria-hidden
+        sx={{width: 24, height: 24, flex: "none", boxSizing: "border-box", borderRadius: "7px", border: `2px solid ${color.navy}`, background: checked ? color.navy : color.card, color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 18}}}
+      >
+        {checked && <CheckRoundedIcon />}
+      </Box>
+      <Box component="span" sx={{display: "flex", flexDirection: "column", gap: "2px"}}>
+        <Box component="span" id={`${id}-label`} sx={{fontSize: 15, fontWeight: 600, color: color.ink}}>
+          {children}
         </Box>
-      )}
+        {hint && (
+          <Box component="span" id={`${id}-hint`} sx={{fontSize: 12.5, color: color.muted}}>
+            {hint}
+          </Box>
+        )}
+      </Box>
     </Box>
   );
 }

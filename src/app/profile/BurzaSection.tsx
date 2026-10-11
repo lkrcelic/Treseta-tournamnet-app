@@ -11,12 +11,17 @@ import {buttonBase, Card, CenteredSpinner, ErrorNote, SectionLabel, SwitchTrack}
 import BackHandRoundedIcon from "@mui/icons-material/BackHandRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import {Box} from "@mui/material";
-import React, {useCallback, useEffect, useState} from "react";
+import React, {useCallback, useEffect, useRef, useState} from "react";
+
+type Available = BurzaAvailability["available"];
 
 // Profil · Burza igrača (Claude Design "Burza igrača · spojeno"): "Dostupan sam" with as what, and the optional
 // phone number that new ads start with. Being available is the same ad as Burza's "Dostupan sam".
 export default function BurzaSection({playerId}: {playerId: number}) {
-  const [data, setData] = useState<BurzaAvailability | null>(null);
+  // the open availability ad (undefined until loaded) and the profile's number, saved apart so neither overwrites
+  // the other
+  const [available, setAvailable] = useState<Available | undefined>(undefined);
+  const [profilePhone, setProfilePhone] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // as what the player is available while the switch is on (kept when it's switched off and on again)
   const [asSub, setAsSub] = useState(true);
@@ -24,12 +29,15 @@ export default function BurzaSection({playerId}: {playerId: number}) {
   const [phone, setPhone] = useState("");
   const [savingPhone, setSavingPhone] = useState(false);
   const [phoneSaved, setPhoneSaved] = useState(false);
+  // leaving the field and pressing the button both save; this keeps it to one request
+  const phoneRequest = useRef(false);
 
   const load = useCallback(() => {
     setError(null);
     getAvailabilityAPI()
       .then((a) => {
-        setData(a);
+        setAvailable(a.available);
+        setProfilePhone(a.phone);
         setPhone(a.phone ?? "");
         if (a.available) {
           setAsSub(a.available.as_substitute);
@@ -43,44 +51,48 @@ export default function BurzaSection({playerId}: {playerId: number}) {
   }, [load]);
 
   // the switch and the pills are saved at once; the screen goes back if the server refuses
-  const save = async (available: boolean, sub: boolean, partner: boolean) => {
-    const before = {data, asSub, asPartner};
+  const save = async (on: boolean, sub: boolean, partner: boolean) => {
+    const before = {available, asSub, asPartner};
     setAsSub(sub);
     setAsPartner(partner);
-    if (available && !sub && !partner) return; // "Odaberi barem jedno." until one is picked
-    setData((d) => d && {...d, available: available ? {id: d.available?.id ?? 0, note: d.available?.note ?? "", phone: d.available?.phone ?? null, as_substitute: sub, as_partner: partner} : null});
+    if (on && !sub && !partner) return; // "Odaberi barem jedno." until one is picked
+    setAvailable(on ? {id: available?.id ?? 0, note: available?.note ?? "", phone: available?.phone ?? null, as_substitute: sub, as_partner: partner} : null);
     setError(null);
     try {
-      setData(await setAvailabilityAPI({available, as_substitute: sub, as_partner: partner}));
+      setAvailable((await setAvailabilityAPI({available: on, as_substitute: sub, as_partner: partner})).available);
       invalidateBurza();
     } catch (e) {
-      setData(before.data);
+      setAvailable(before.available);
       setAsSub(before.asSub);
       setAsPartner(before.asPartner);
       setError(e instanceof Error ? e.message : "Dostupnost nije spremljena.");
     }
   };
 
+  // saves the typed number (an empty field removes it); nothing when it's the profile's already
   const savePhone = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!data || savingPhone) return;
+    if (available === undefined || phoneRequest.current) return;
     const value = phone.trim() ? normalizePhone(phone) : null;
-    if (phone.trim() && !value) return;
+    if ((phone.trim() && !value) || value === profilePhone) return;
+    phoneRequest.current = true;
     setSavingPhone(true);
     setError(null);
     try {
       const saved = await updatePhoneAPI(playerId, value);
-      setData({...data, phone: saved});
-      setPhone(saved ?? "");
+      setProfilePhone(saved);
+      // shown as stored ("+385 91 234 5678"), unless the field was changed again meanwhile
+      setPhone((typed) => ((typed.trim() ? normalizePhone(typed) : null) === saved ? saved ?? "" : typed));
       setPhoneSaved(true);
       invalidateBurza();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Broj nije spremljen.");
     }
+    phoneRequest.current = false;
     setSavingPhone(false);
   };
 
-  if (!data) {
+  if (available === undefined) {
     return (
       <Box component="section" aria-labelledby="burza" sx={{display: "flex", flexDirection: "column", gap: "8px"}}>
         <SectionLabel id="burza">Burza igrača</SectionLabel>
@@ -89,11 +101,11 @@ export default function BurzaSection({playerId}: {playerId: number}) {
     );
   }
 
-  const on = data.available != null;
+  const on = available != null;
   const noneChosen = on && !asSub && !asPartner;
   // the ad shows its own number, or the profile's
-  const listed = !on || !!(data.available?.phone ?? data.phone);
-  const changed = (phone.trim() ? normalizePhone(phone) : null) !== data.phone && (phone.trim() === "" || isValidPhone(phone));
+  const listed = !on || !!(available?.phone ?? profilePhone);
+  const changed = (phone.trim() ? normalizePhone(phone) : null) !== profilePhone && (phone.trim() === "" || isValidPhone(phone));
 
   return (
     <Box component="section" aria-labelledby="burza" sx={{display: "flex", flexDirection: "column", gap: "8px"}}>
@@ -150,17 +162,23 @@ export default function BurzaSection({playerId}: {playerId: number}) {
             setPhone(v);
             setPhoneSaved(false);
           }}
+          // a new number is saved on leaving the field; removing one is left to the button
+          onBlur={() => {
+            if (isValidPhone(phone)) savePhone();
+          }}
           profilePhone={null}
         />
-        {(changed || phoneSaved) && (
-          <Box sx={{display: "flex", alignItems: "center", gap: "12px", px: "6px"}}>
-            {changed ? (
+        {(savingPhone || changed || phoneSaved) && (
+          <Box sx={{display: "flex", alignItems: "center", gap: "12px", px: "6px", minHeight: 44}}>
+            {savingPhone ? (
+              <Box component="span" role="status" sx={{fontSize: 13, fontWeight: 600, color: color.muted}}>
+                Sprema se…
+              </Box>
+            ) : changed ? (
               <Box
                 component="button"
                 type="submit"
-                disabled={savingPhone}
-                aria-busy={savingPhone || undefined}
-                sx={{...buttonBase, height: 44, px: "18px", borderRadius: "14px", background: color.navy, color: "#FFFFFF", fontSize: 15, fontWeight: 600, "&:disabled": {opacity: 0.5}}}
+                sx={{...buttonBase, height: 44, px: "18px", borderRadius: "14px", background: color.navy, color: "#FFFFFF", fontSize: 15, fontWeight: 600}}
               >
                 {phone.trim() ? "Spremi broj" : "Ukloni broj"}
               </Box>

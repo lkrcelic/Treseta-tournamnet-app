@@ -3,7 +3,7 @@ import {test} from "node:test";
 import type {BurzaPost} from "../../_interfaces/burza";
 import {BurzaCreateRequestValidation} from "../../_interfaces/burza";
 import {generateNights, MAX_NIGHTS, nextNightIndex, nightLabel, nightLabelLong, nightsCountLabel, nightsLeftLabel, nightStatus, sortNights} from "../nights";
-import {isValidPhone, normalizePhone, phoneInput, telHref, whatsappHref} from "../phone";
+import {isValidPhone, normalizePhone, phoneInput, savesToProfile, telHref, whatsappHref} from "../phone";
 import {
   adCount,
   availableAs,
@@ -84,6 +84,15 @@ test("a phone number needs at least 9 digits", () => {
   assert.ok(!isValidPhone("+1 234 567 890 123 456"));
   assert.equal(normalizePhone("091 23"), null);
   assert.equal(phoneInput("091-234 (5678) a"), "091234 5678 ");
+});
+
+test("an ad's number goes on an empty profile, and replaces the profile's only when asked", () => {
+  assert.ok(savesToProfile("091 234 5678", null, false));
+  assert.ok(savesToProfile("098 765 4321", "+385 91 234 5678", true));
+  assert.ok(!savesToProfile("098 765 4321", "+385 91 234 5678", false));
+  // the profile's own number, typed another way
+  assert.ok(!savesToProfile("0912345678", "+385 91 234 5678", true));
+  assert.ok(!savesToProfile("091 23", null, true));
 });
 
 test("call and WhatsApp links use the international number", () => {

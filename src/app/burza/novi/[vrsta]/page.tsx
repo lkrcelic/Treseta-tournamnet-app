@@ -7,6 +7,7 @@ import useLeagues from "@/app/_hooks/useLeagues";
 import useMySchedule from "@/app/_hooks/useMySchedule";
 import {useMyRating} from "@/app/_hooks/useRatings";
 import {BurzaAvailability, BurzaCreateRequest, BurzaKind, BurzaPost} from "@/app/_interfaces/burza";
+import {normalizePhone} from "@/app/_lib/phone";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import useAuthStore from "@/app/_store/authStore";
 import {Card, CenteredSpinner, DesktopShell, EmptyState, ErrorNote, Screen, TopBar} from "@/app/_ui/sp";
@@ -67,7 +68,7 @@ export default function NewBurzaPost() {
       const post = await publishBurzaPostAPI(req);
       invalidateBurza();
       setPublished({post, savedPhone: !!req.save_phone});
-      if (req.save_phone && phone) setPhone({...phone, profile: phone.value});
+      if (req.save_phone && phone) setPhone({...phone, profile: normalizePhone(phone.value)});
     } catch (e) {
       setError(e instanceof Error ? e.message : "Oglas nije objavljen.");
     }

@@ -48,6 +48,13 @@ export function normalizePhone(value: string | null | undefined): string | null 
   return `+${typed}`;
 }
 
+// Whether an ad's number also goes on the player's profile: a valid new number always does when the profile has
+// none; one that would replace the profile's only while "Zamijeni i broj na profilu" stays checked
+export function savesToProfile(value: string, profile: string | null, replace: boolean): boolean {
+  const phone = normalizePhone(value);
+  return phone != null && phone !== profile && (profile == null || replace);
+}
+
 export function telHref(phone: string): string {
   return `tel:+${internationalDigits(phone) ?? phone.replace(/\D/g, "")}`;
 }
