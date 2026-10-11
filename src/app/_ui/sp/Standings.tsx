@@ -6,8 +6,19 @@ import {mergeSx, tabular} from "./base";
 import {RankBadge} from "./Live";
 import {TeamLabel} from "./TeamDot";
 
-// Three medal cards. "compact" is the phone version (three narrow columns), otherwise the desktop one.
-export function Podium({rows, compact = false, sx}: {rows: StandingsRow[]; compact?: boolean; sx?: SxProps<Theme>}) {
+// Three medal cards. "compact" is the phone version (three narrow columns), otherwise the desktop one. showLive
+// turns a medal red and pulsing, and its points red, while that team is playing (as in the rows below the podium).
+export function Podium({
+  rows,
+  compact = false,
+  showLive = false,
+  sx,
+}: {
+  rows: StandingsRow[];
+  compact?: boolean;
+  showLive?: boolean;
+  sx?: SxProps<Theme>;
+}) {
   if (rows.length < 3) return null;
   return (
     <Box
@@ -18,73 +29,84 @@ export function Podium({rows, compact = false, sx}: {rows: StandingsRow[]; compa
         sx
       )}
     >
-      {rows.slice(0, 3).map((r, i) => (
-        <Box
-          component="li"
-          key={r.key}
-          aria-current={r.mine ? "true" : undefined}
-          sx={{
-            background: color.medalBg[i],
-            color: color.ink,
-            borderRadius: compact ? "20px" : "24px",
-            p: compact ? "12px 12px 14px" : "20px 22px",
-            display: "flex",
-            minWidth: 0,
-            boxShadow: [compact ? shadow.card : null, r.mine ? shadow.mineRing : null].filter(Boolean).join(", ") || "none",
-            ...(compact
-              ? {flexDirection: "column", gap: "10px"}
-              : {alignItems: "flex-end", justifyContent: "space-between", gap: "12px"}),
-          }}
-        >
-          {compact ? (
-            <>
-              <Medal rank={r.rank} index={i} size={28} />
-              <Box sx={{display: "flex", flexDirection: "column", gap: "2px", minWidth: 0}}>
-                <Box sx={{display: "flex", alignItems: "baseline", gap: "8px"}}>
-                  <Box component="span" sx={{fontFamily: font.display, fontSize: 30, fontWeight: 800, lineHeight: 1, ...tabular}}>
+      {rows.slice(0, 3).map((r, i) => {
+        const live = showLive && r.live;
+        return (
+          <Box
+            component="li"
+            key={r.key}
+            aria-current={r.mine ? "true" : undefined}
+            sx={{
+              background: color.medalBg[i],
+              color: color.ink,
+              borderRadius: compact ? "20px" : "24px",
+              p: compact ? "12px 12px 14px" : "20px 22px",
+              display: "flex",
+              minWidth: 0,
+              boxShadow: [compact ? shadow.card : null, r.mine ? shadow.mineRing : null].filter(Boolean).join(", ") || "none",
+              ...(compact
+                ? {flexDirection: "column", gap: "10px"}
+                : {alignItems: "flex-end", justifyContent: "space-between", gap: "12px"}),
+            }}
+          >
+            {compact ? (
+              <>
+                <Medal rank={r.rank} index={i} size={28} live={live} />
+                <Box sx={{display: "flex", flexDirection: "column", gap: "2px", minWidth: 0}}>
+                  <Box sx={{display: "flex", alignItems: "baseline", gap: "8px"}}>
+                    <Box
+                      component="span"
+                      sx={{fontFamily: font.display, fontSize: 30, fontWeight: 800, lineHeight: 1, color: live ? color.live : undefined, ...tabular}}
+                    >
+                      {r.points}
+                      <VisuallyHidden> bodova</VisuallyHidden>
+                    </Box>
+                    <Box component="span" sx={{fontSize: 14, fontWeight: 700, color: color.navy, ...tabular}}>
+                      {r.diff}
+                    </Box>
+                  </Box>
+                  <TeamLabel name={r.name} conference={r.conference} sx={{fontSize: 14, fontWeight: 600}} />
+                </Box>
+              </>
+            ) : (
+              <>
+                <Box sx={{display: "flex", flexDirection: "column", gap: "14px", minWidth: 0}}>
+                  <Medal rank={r.rank} index={i} size={34} live={live} />
+                  <TeamLabel name={r.name} conference={r.conference} dotSize={10} sx={{gap: "10px", fontFamily: font.display, fontSize: 26, fontWeight: 700}} />
+                </Box>
+                <Box sx={{display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px"}}>
+                  <Box component="span" sx={{fontSize: 16, fontWeight: 700, color: color.navy, ...tabular}}>
+                    {r.diff}
+                  </Box>
+                  <Box
+                    component="span"
+                    sx={{fontFamily: font.display, fontSize: 56, fontWeight: 800, lineHeight: 0.85, color: live ? color.live : undefined, ...tabular}}
+                  >
                     {r.points}
                     <VisuallyHidden> bodova</VisuallyHidden>
                   </Box>
-                  <Box component="span" sx={{fontSize: 14, fontWeight: 700, color: color.navy, ...tabular}}>
-                    {r.diff}
-                  </Box>
                 </Box>
-                <TeamLabel name={r.name} conference={r.conference} sx={{fontSize: 14, fontWeight: 600}} />
-              </Box>
-            </>
-          ) : (
-            <>
-              <Box sx={{display: "flex", flexDirection: "column", gap: "14px", minWidth: 0}}>
-                <Medal rank={r.rank} index={i} size={34} />
-                <TeamLabel name={r.name} conference={r.conference} dotSize={10} sx={{gap: "10px", fontFamily: font.display, fontSize: 26, fontWeight: 700}} />
-              </Box>
-              <Box sx={{display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px"}}>
-                <Box component="span" sx={{fontSize: 16, fontWeight: 700, color: color.navy, ...tabular}}>
-                  {r.diff}
-                </Box>
-                <Box component="span" sx={{fontFamily: font.display, fontSize: 56, fontWeight: 800, lineHeight: 0.85, ...tabular}}>
-                  {r.points}
-                  <VisuallyHidden> bodova</VisuallyHidden>
-                </Box>
-              </Box>
-            </>
-          )}
-        </Box>
-      ))}
+              </>
+            )}
+          </Box>
+        );
+      })}
     </Box>
   );
 }
 
-function Medal({rank, index, size}: {rank: number; index: number; size: number}) {
+// Medal circle; red and pulsing like RankBadge while the team is playing
+function Medal({rank, index, size, live = false}: {rank: number; index: number; size: number; live?: boolean}) {
   return (
     <Box
       component="span"
-      aria-label={`${rank}. mjesto`}
+      aria-label={live ? `${rank}. mjesto, igra uživo` : `${rank}. mjesto`}
       sx={{
         width: size,
         height: size,
         borderRadius: "50%",
-        background: color.medal[index],
+        background: live ? color.live : color.medal[index],
+        animation: live ? "spLive 1.5s infinite" : "none",
         color: "#FFFFFF",
         fontSize: size >= 34 ? 16 : 14,
         fontWeight: 700,

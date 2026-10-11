@@ -226,7 +226,8 @@ export default function DailyStandings() {
   );
 }
 
-// Desktop "Tablica okupljanja": podium and the full table with real columns
+// Desktop "Tablica okupljanja": podium and the full table with real columns. Teams still playing are marked red on
+// the podium too, so a live night reads the same from 1st place down.
 function DesktopNightTable({rows, date}: {rows: ReturnType<typeof toStandingsRows>; date: string}) {
   const {podium, rest} = splitPodium(rows);
   if (rows.length === 0) {
@@ -238,7 +239,7 @@ function DesktopNightTable({rows, date}: {rows: ReturnType<typeof toStandingsRow
   }
   return (
     <>
-      <Podium rows={podium} />
+      <Podium rows={podium} showLive />
       <Card sx={{flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable", borderRadius: "22px", alignSelf: "stretch"}}>
         <StandingsGrid rows={podium.length ? rest : rows} caption={`Poredak okupljanja ${date}`} sx={{"& tr[role=row]": {px: "18px"}}} />
       </Card>
