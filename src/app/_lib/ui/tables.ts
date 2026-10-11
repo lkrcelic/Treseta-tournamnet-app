@@ -1,4 +1,5 @@
 import {isByeTeam} from "@/app/_lib/bye";
+import {Conference, ConferenceOf} from "@/app/_lib/conferences";
 import {matchesQuery} from "./text";
 
 // One table (round) of a round number on a given night, flattened for display
@@ -22,6 +23,9 @@ export type TableRow = {
   started: boolean;
   // one side is the bye: settled 2:0 when created, nothing to play
   bye: boolean;
+  // the teams' conferences (their dots): undefined when the league has none, null when a team has none (the bye)
+  conferenceA?: Conference | null;
+  conferenceB?: Conference | null;
 };
 
 export type TableFilter = "all" | "live" | "done";
@@ -41,7 +45,8 @@ type RoundLike = {
   ongoingMatches?: {player_pair1_score?: number; player_pair2_score?: number}[] | null;
 };
 
-export function toTableRows(rounds: RoundLike[], myTeamNames: string[] = []): TableRow[] {
+// conferenceOf: the league's conferences, for the dots (left out: no dots)
+export function toTableRows(rounds: RoundLike[], myTeamNames: string[] = [], conferenceOf?: ConferenceOf): TableRow[] {
   const mine = new Set(myTeamNames);
   return rounds
     .map((r, i) => {
@@ -65,6 +70,8 @@ export function toTableRows(rounds: RoundLike[], myTeamNames: string[] = []): Ta
         mine: mine.has(teamA) || mine.has(teamB),
         started: live || r.open === false || (r.team1_wins ?? 0) + (r.team2_wins ?? 0) > 0 || !!om,
         bye: isByeTeam(r.team1_id ?? -1) || isByeTeam(r.team2_id ?? -1),
+        conferenceA: conferenceOf ? conferenceOf(r.team1_id ?? -1) : undefined,
+        conferenceB: conferenceOf ? conferenceOf(r.team2_id ?? -1) : undefined,
       };
     })
     .sort((a, b) => a.table - b.table);

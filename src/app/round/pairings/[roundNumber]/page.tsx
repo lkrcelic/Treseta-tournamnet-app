@@ -5,7 +5,8 @@ import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import type {RoundMatchup} from "@/app/_lib/service/round/getRoundMatchups";
 import {plural} from "@/app/_lib/ui/text";
 import {color, font} from "@/app/_styles/tokens";
-import {Card, DesktopShell, ellipsis, EmptyState, ErrorNote, LoadingRows, PrimaryButton, Screen, ScreenTitle, ScrollArea} from "@/app/_ui/sp";
+import {Card, DesktopShell, ellipsis, EmptyState, ErrorNote, LoadingRows, PrimaryButton, Screen, ScreenTitle, ScrollArea, TeamDot} from "@/app/_ui/sp";
+import useConferences from "@/app/_hooks/useConferences";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import {Box} from "@mui/material";
 import {useParams, useSearchParams} from "next/navigation";
@@ -13,9 +14,10 @@ import {useActiveLeagueId} from "@/app/_hooks/useLeagues";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {useCallback, useEffect, useState} from "react";
 
-type Pairing = {id: number; table: number; a: string; b: string};
+type Pairing = {id: number; table: number; a: string; b: string; aId: number; bId: number};
 
-// Who sits where in a new round, shown right after the admin creates it
+// Who sits where in a new round, shown right after the admin creates it. The dots are the teams' conferences, or
+// green and red in a league without conferences.
 export default function RoundPairings() {
   const {roundNumber} = useParams<{roundNumber: string}>();
   const fromUrl = Number(useSearchParams().get("league")) || null;
@@ -25,6 +27,7 @@ export default function RoundPairings() {
   const isDesktop = useIsDesktop();
   const [pairs, setPairs] = useState<Pairing[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const conferences = useConferences(leagueId);
 
   const load = useCallback(async () => {
     if (leagueId === undefined) return; // still finding the league being played now
@@ -33,7 +36,14 @@ export default function RoundPairings() {
       const data = leagueId == null ? [] : await getRoundsByRoundNumber(Number(roundNumber), leagueId);
       setPairs(
         (data ?? [])
-          .map((r: RoundMatchup, i: number) => ({id: r.id, table: r.table_number || i + 1, a: r.team1?.team_name ?? "", b: r.team2?.team_name ?? ""}))
+          .map((r: RoundMatchup, i: number) => ({
+            id: r.id,
+            table: r.table_number || i + 1,
+            a: r.team1?.team_name ?? "",
+            b: r.team2?.team_name ?? "",
+            aId: r.team1?.team_id ?? -1,
+            bId: r.team2?.team_id ?? -1,
+          }))
           .sort((x, y) => x.table - y.table)
       );
     } catch {
@@ -49,7 +59,7 @@ export default function RoundPairings() {
 
   const list = error ? (
     <ErrorNote onRetry={load}>{error}</ErrorNote>
-  ) : !pairs ? (
+  ) : !pairs || !conferences.ready ? (
     <Card>
       <LoadingRows rows={6} height={56} />
     </Card>
@@ -74,14 +84,26 @@ export default function RoundPairings() {
             </Box>
           </Box>
           <Box sx={{display: "flex", flexDirection: "column", justifyContent: "center", px: "14px"}}>
-            {[p.a, p.b].map((name, k) => (
-              <Box key={k} sx={{height: 48, display: "flex", alignItems: "center", gap: "10px", borderTop: k ? `1px solid ${color.line}` : "none"}}>
-                <Box component="span" aria-hidden sx={{width: 8, height: 8, flex: "none", borderRadius: "50%", background: k ? color.red : color.green}} />
-                <Box component="span" sx={{fontSize: 16, fontWeight: 600, ...ellipsis}}>
-                  {name}
+            {(
+              [
+                [p.a, p.aId],
+                [p.b, p.bId],
+              ] as const
+            ).map(([name, teamId], k) => {
+              const conference = conferences.of(teamId);
+              return (
+                <Box key={k} sx={{height: 48, display: "flex", alignItems: "center", gap: "10px", borderTop: k ? `1px solid ${color.line}` : "none"}}>
+                  {conference === undefined ? (
+                    <TeamDot color={k ? color.red : color.green} />
+                  ) : (
+                    <TeamDot color={conference?.color ?? null} label={conference?.name} />
+                  )}
+                  <Box component="span" sx={{fontSize: 16, fontWeight: 600, ...ellipsis}}>
+                    {name}
+                  </Box>
                 </Box>
-              </Box>
-            ))}
+              );
+            })}
           </Box>
         </Card>
       ))}

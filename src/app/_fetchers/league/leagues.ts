@@ -42,6 +42,16 @@ export async function setLeagueTeamActiveAPI(leagueId: number, teamId: number, a
   if (!response.ok) throw new Error(await responseErrorMessage(response, "Failed to update the team"));
 }
 
+// conferenceId null: the team leaves its conference
+export async function setLeagueTeamConferenceAPI(leagueId: number, teamId: number, conferenceId: number | null): Promise<void> {
+  const response = await fetch(`/api/leagues/${leagueId}/teams/${teamId}`, {
+    method: "PATCH",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({conference_id: conferenceId}),
+  });
+  if (!response.ok) throw new Error(await responseErrorMessage(response, "Konferencija ekipe nije spremljena"));
+}
+
 export async function updateLeagueAPI(leagueId: number, league: LeagueUpdateRequest): Promise<void> {
   const response = await fetch(`/api/leagues/${leagueId}`, {
     method: "PATCH",

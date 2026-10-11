@@ -2,7 +2,7 @@
 
 import {TableRow} from "@/app/_lib/ui/tables";
 import {color, font, shadow} from "@/app/_styles/tokens";
-import {Card, ellipsis, Eyebrow, LiveDot, LiveLabel, LivePill, tabular} from "@/app/_ui/sp";
+import {Card, Eyebrow, LiveDot, LiveLabel, LivePill, tabular, TeamLabel} from "@/app/_ui/sp";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {Box} from "@mui/material";
 import React from "react";
@@ -34,10 +34,10 @@ export function PhoneRoundTables({title, rows}: {title: string; rows: TableRow[]
             </Box>
             {(
               [
-                [t.teamA, t.winsA, t.pointsA, t.winsA > t.winsB],
-                [t.teamB, t.winsB, t.pointsB, t.winsB > t.winsA],
+                [t.teamA, t.winsA, t.pointsA, t.winsA > t.winsB, t.conferenceA],
+                [t.teamB, t.winsB, t.pointsB, t.winsB > t.winsA, t.conferenceB],
               ] as const
-            ).map(([name, wins, pts, ahead], k) => (
+            ).map(([name, wins, pts, ahead, conference], k) => (
               <Box
                 key={k}
                 aria-hidden
@@ -50,9 +50,7 @@ export function PhoneRoundTables({title, rows}: {title: string; rows: TableRow[]
                   borderTop: k ? `1px solid ${color.line}` : "none",
                 }}
               >
-                <Box component="span" sx={{fontSize: 16, fontWeight: !t.live && ahead ? 700 : 500, ...ellipsis}}>
-                  {name}
-                </Box>
+                <TeamLabel name={name} conference={conference} sx={{fontSize: 16, fontWeight: !t.live && ahead ? 700 : 500}} />
                 <Box component="span" sx={{fontSize: 14, fontWeight: 600, color: color.muted, ...tabular}}>
                   {t.live && pts != null ? `(${pts})` : ""}
                 </Box>
@@ -130,9 +128,8 @@ export function DesktopTableRow({
       >
         {t.table}
       </Box>
-      <Box component="span" aria-hidden sx={{textAlign: "right", fontSize: font1, fontWeight: !t.live && t.winsA > t.winsB ? 700 : 500, ...ellipsis}}>
-        {t.teamA}
-      </Box>
+      {/* the dots sit next to the score, so they line up down the column */}
+      <TeamLabel name={t.teamA} conference={t.conferenceA} end hidden sx={{fontSize: font1, fontWeight: !t.live && t.winsA > t.winsB ? 700 : 500}} />
       <Box component="span" aria-hidden sx={{display: "flex", flexDirection: "column", alignItems: "center", lineHeight: 1.05}}>
         <Box component="span" sx={{fontFamily: font.display, fontSize: 22, fontWeight: 800}}>
           {t.winsA} : {t.winsB}
@@ -143,9 +140,7 @@ export function DesktopTableRow({
           </Box>
         )}
       </Box>
-      <Box component="span" aria-hidden sx={{fontSize: font1, fontWeight: !t.live && t.winsB > t.winsA ? 700 : 500, ...ellipsis}}>
-        {t.teamB}
-      </Box>
+      <TeamLabel name={t.teamB} conference={t.conferenceB} hidden sx={{fontSize: font1, fontWeight: !t.live && t.winsB > t.winsA ? 700 : 500}} />
     </>
   );
   const status = (

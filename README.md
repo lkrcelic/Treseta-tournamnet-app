@@ -27,6 +27,10 @@ What differs from the Bela app:
 - **Hands:** the `Result` / `OngoingResult` tables, their services, routes and stores, and the one-step hand entry
   (`ongoing-match/…`). See the game-layer table in [TRANSITION_PLAN.md](TRANSITION_PLAN.md).
 - **Branding:** `src/app/_lib/brand.ts`, `public/manifest.webmanifest`, `public/icons/`.
+- **Conferences** (Treseta only for now): a league's groups of teams, each with a color. The `Conference` table,
+  `_lib/conferences.ts`, `useConferences`, `_ui/league/`, and the dots and conference views on the shared screens:
+  standings, Daily, pairings, Start Game, Manage League, Create League and Create Round. A Bela fix to one of those
+  screens may need a manual merge. See [CONFERENCES_PLAN.md](CONFERENCES_PLAN.md).
 - **Data:** this app's own migrations in `prisma/migrations`.
 
 Everything else is meant to stay identical to the Bela app. To bring over a Bela fix that touches only shared files:

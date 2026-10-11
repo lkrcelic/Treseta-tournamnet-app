@@ -1,3 +1,4 @@
+import {Conference, ConferenceOf} from "@/app/_lib/conferences";
 import {signed} from "./text";
 
 // One team's line in the league or daily standings, as returned by the standings APIs
@@ -26,9 +27,12 @@ export type StandingsRow = {
   points: number;
   live: boolean;
   mine: boolean;
+  // the team's conference (its dot): undefined when the league has none, null when the team has none
+  conference?: Conference | null;
 };
 
-export function toStandingsRows(items: StandingsItem[] | null | undefined, myTeamNames: string[] = []): StandingsRow[] {
+// conferenceOf: the league's conferences, for the dots (left out: no dots)
+export function toStandingsRows(items: StandingsItem[] | null | undefined, myTeamNames: string[] = [], conferenceOf?: ConferenceOf): StandingsRow[] {
   const mine = new Set(myTeamNames);
   return (items ?? []).map((s, i) => ({
     key: String(s.team_id ?? s.id ?? s.team?.team_name ?? i),
@@ -42,7 +46,15 @@ export function toStandingsRows(items: StandingsItem[] | null | undefined, myTea
     points: Number(s.score ?? 0),
     live: Number(s.active_round_count ?? 0) > 0,
     mine: mine.has(s.team?.team_name),
+    conference: conferenceOf && s.team_id != null ? conferenceOf(Number(s.team_id)) : undefined,
   }));
+}
+
+// One conference's view of a table: its teams in the same order, ranked from 1 (so splitPodium gives its podium).
+// conferenceId null: the whole table.
+export function inConference(rows: StandingsRow[], conferenceId: number | null): StandingsRow[] {
+  if (conferenceId == null) return rows;
+  return rows.filter((r) => r.conference?.id === conferenceId).map((r, i) => ({...r, rank: i + 1}));
 }
 
 // The second line of a phone standings row: "24 OK · 19 POB · 3 NER · 2 IZG" (OK only in the league table)

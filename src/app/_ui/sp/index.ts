@@ -11,4 +11,5 @@ export * from "./Sheet";
 export * from "./Standings";
 export * from "./States";
 export * from "./Surface";
+export * from "./TeamDot";
 export * from "./Text";

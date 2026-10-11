@@ -9,7 +9,7 @@ import {currentLeagueHref} from "@/app/_lib/league";
 import {color, font, shadow} from "@/app/_styles/tokens";
 import {Brand} from "@/app/_ui/auth/AuthFrame";
 import InstallSheet from "@/app/_ui/install/InstallSheet";
-import {buttonBase, Card, ellipsis, ErrorNote, IconCircleButton, Screen, SectionLabel, Spinner, TextButton} from "@/app/_ui/sp";
+import {buttonBase, Card, ellipsis, ErrorNote, IconCircleButton, Screen, SectionLabel, Spinner, TeamDot, TextButton} from "@/app/_ui/sp";
 import AccountCircleRoundedIcon from "@mui/icons-material/AccountCircleRounded";
 import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
@@ -214,8 +214,9 @@ function StartCard({table, starting, onStart, errorId}: {table: OpenTable | null
               )}
             </Box>
             <Box sx={{display: "flex", flexDirection: "column", gap: "2px", minWidth: 0, fontSize: 17, fontWeight: 600, lineHeight: 1.2}}>
-              <TeamName name={table.myTeam} dot={TEAM_DOT[0]} />
-              <TeamName name={table.opponent} dot={TEAM_DOT[1]} />
+              {[table.myTeam, table.opponent].map((name, k) => (
+                <TeamName key={k} name={name} side={k} conferences={table.conferences} />
+              ))}
             </Box>
           </Box>
         ) : (
@@ -239,10 +240,17 @@ function StartCard({table, starting, onStart, errorId}: {table: OpenTable | null
 // the team dots on the navy card: the board's green and red, lightened to stand out on navy
 const TEAM_DOT = ["#6FA67A", "#E07A7C"] as const;
 
-function TeamName({name, dot}: {name: string; dot: string}) {
+// side 0 is the player's own team. In a league with conferences the dot is the team's conference (with a white ring,
+// as those colors are dark), otherwise the side's color.
+function TeamName({name, side, conferences}: {name: string; side: number; conferences: OpenTable["conferences"]}) {
+  const conference = conferences?.[side];
   return (
     <Box component="span" sx={{display: "flex", alignItems: "center", gap: "8px", minWidth: 0}}>
-      <Box component="span" aria-hidden sx={{width: 8, height: 8, flex: "none", borderRadius: "50%", background: dot}} />
+      {conferences ? (
+        <TeamDot color={conference?.color ?? null} ring onNavy label={conference?.name} />
+      ) : (
+        <TeamDot color={TEAM_DOT[side]} />
+      )}
       <Box component="span" sx={ellipsis}>
         {name}
       </Box>

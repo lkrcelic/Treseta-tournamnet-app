@@ -7,10 +7,13 @@ import useLeagueTeams from "@/app/_hooks/useLeagueTeams";
 import {addTableAPI, removeTableAPI, setTablePairAPI} from "@/app/_fetchers/admin/daily";
 import useLeagues from "@/app/_hooks/useLeagues";
 import useMyTeams from "@/app/_hooks/useMyTeams";
+import useConferences from "@/app/_hooks/useConferences";
+import useConferenceFilter from "@/app/_hooks/useConferenceFilter";
 import {useDailyData, useRoundDates} from "@/app/_hooks/useStandings";
 import {leagueDateString} from "@/app/_lib/dates";
-import {splitPodium, toStandingsRows} from "@/app/_lib/ui/standings";
+import {inConference, splitPodium, toStandingsRows} from "@/app/_lib/ui/standings";
 import {filterTables, liveCount, splitColumns, TableFilter, tableColumns, toTableRows} from "@/app/_lib/ui/tables";
+import {ConferenceFilter} from "@/app/_ui/league/ConferenceFilter";
 import {displayDate, plural} from "@/app/_lib/ui/text";
 import {color, font} from "@/app/_styles/tokens";
 import {
@@ -69,7 +72,13 @@ export default function DailyStandings() {
   const today = leagueDateString();
   const isToday = date === today;
 
-  const standings = useMemo(() => toStandingsRows(daily.data?.standings, myTeamNames), [daily.data, myTeamNames]);
+  // the league's conferences: the dots, and the conference picked for the night's table (null: every team). The round
+  // tabs always show every table.
+  const conferences = useConferences(leagueId);
+  const [conf, setConf] = useConferenceFilter(leagueId, conferences.conferences);
+  const confName = conferences.conferences.find((c) => c.id === conf)?.name;
+  const allStandings = useMemo(() => toStandingsRows(daily.data?.standings, myTeamNames, conferences.of), [daily.data, myTeamNames, conferences]);
+  const standings = useMemo(() => inConference(allStandings, conf), [allStandings, conf]);
   const roundNumbers = daily.data?.roundNumbers ?? [];
   const roundsLive = (n: number) => (daily.data?.rounds ?? []).some((r) => r.round_number === n && r.active);
 
@@ -93,8 +102,8 @@ export default function DailyStandings() {
   };
   const tabs = [{key: 0, label: "Tablica okupljanja"}, ...roundNumbers.map((n) => ({key: n, label: `Round ${n}`, live: roundsLive(n)}))];
   const roundRows = useMemo(
-    () => toTableRows((daily.data?.rounds ?? []).filter((r) => r.round_number === tab), myTeamNames),
-    [daily.data, tab, myTeamNames]
+    () => toTableRows((daily.data?.rounds ?? []).filter((r) => r.round_number === tab), myTeamNames, conferences.of),
+    [daily.data, tab, myTeamNames, conferences]
   );
 
   const changeLeague = (id: number) => router.router.push(`/league/${id}/daily-standings`);
@@ -139,18 +148,19 @@ export default function DailyStandings() {
         }
       >
         <Box {...tabPanelProps("daily", tab)} sx={{flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: "20px"}}>
+          {tab === 0 && !loadError && !noNights && <ConferenceFilter conferences={conferences.conferences} value={conf} onChange={setConf} sx={{flex: "none"}} />}
           {loadError ? (
             <ErrorNote onRetry={datesError ? reloadDates : daily.reload}>{loadError}</ErrorNote>
           ) : noNights ? (
             <Card>
               <EmptyState>Ova liga još nema odigranih okupljanja.</EmptyState>
             </Card>
-          ) : daily.loading && !daily.data ? (
+          ) : (daily.loading && !daily.data) || !conferences.ready ? (
             <Card sx={{flex: 1, overflow: "hidden"}}>
               <LoadingRows rows={10} height={56} />
             </Card>
           ) : tab === 0 ? (
-            <DesktopNightTable rows={standings} date={dateTitle} />
+            <DesktopNightTable rows={standings} date={confName ? `${dateTitle} · ${confName}` : dateTitle} />
           ) : (
             <DesktopRound
               title={`Round ${tab}`}
@@ -181,6 +191,7 @@ export default function DailyStandings() {
         {arrows}
       </Box>
       {tabs.length > 1 && <PillTabs items={tabs} value={tab} onChange={pickTab} label="Prikaz" idPrefix="daily" />}
+      {tab === 0 && !loadError && !noNights && <ConferenceFilter conferences={conferences.conferences} value={conf} onChange={setConf} sx={{flex: "none"}} />}
 
       <Box {...tabPanelProps("daily", tab)} sx={{flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: "14px"}}>
         {loadError ? (
@@ -189,12 +200,12 @@ export default function DailyStandings() {
           <Card>
             <EmptyState>Ova liga još nema odigranih okupljanja.</EmptyState>
           </Card>
-        ) : daily.loading && !daily.data ? (
+        ) : (daily.loading && !daily.data) || !conferences.ready ? (
           <ScrollCard>
             <LoadingRows rows={8} />
           </ScrollCard>
         ) : tab === 0 ? (
-          <ScrollCard aria-label={`Poredak okupljanja ${dateTitle}`}>
+          <ScrollCard aria-label={`Poredak okupljanja ${dateTitle}${confName ? ` · ${confName}` : ""}`}>
             {standings.length === 0 ? (
               <EmptyState>Nema rezultata za ovaj datum.</EmptyState>
             ) : (

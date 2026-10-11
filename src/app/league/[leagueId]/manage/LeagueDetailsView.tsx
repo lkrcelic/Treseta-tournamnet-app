@@ -9,7 +9,7 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ErrorRoundedIcon from "@mui/icons-material/ErrorRounded";
 import RemoveRoundedIcon from "@mui/icons-material/RemoveRounded";
 import {Box} from "@mui/material";
-import {useState} from "react";
+import React, {useState} from "react";
 
 const DAYS = ["Pon", "Uto", "Sri", "Čet", "Pet", "Sub", "Ned"];
 const DAY_NAMES = ["ponedjeljak", "utorak", "srijeda", "četvrtak", "petak", "subota", "nedjelja"];
@@ -26,8 +26,9 @@ const fromLeague = (l: LeagueOption | undefined): Details => ({
 });
 
 // Manage League (desktop) · Details: the league's name, season, dates, play day and default rounds per night.
-// Save stays off until something changes; the name can't be empty or another league's (any case).
-export default function LeagueDetailsView({leagueId, leagues}: {leagueId: number; leagues: LeagueOption[]}) {
+// Save stays off until something changes; the name can't be empty or another league's (any case). aside: the second
+// column (the league's conferences).
+export default function LeagueDetailsView({leagueId, leagues, aside}: {leagueId: number; leagues: LeagueOption[]; aside?: React.ReactNode}) {
   const base = fromLeague(leagues.find((l) => l.id === leagueId));
   const [draft, setDraft] = useState<Partial<Details>>({});
   const [saving, setSaving] = useState(false);
@@ -176,6 +177,7 @@ export default function LeagueDetailsView({leagueId, leagues}: {leagueId: number
           </Box>
         </Box>
       </Card>
+      {aside}
     </Box>
   );
 }

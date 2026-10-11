@@ -3,9 +3,9 @@
 import {getLeagueTeamsAPI} from "@/app/_fetchers/league/leagues";
 import {useCallback, useEffect, useState} from "react";
 
-export type LeagueTeam = {id: number; name: string; players: string[]; active: boolean};
+export type LeagueTeam = {id: number; name: string; players: string[]; active: boolean; conferenceId: number | null};
 
-// Teams of a league with their players' usernames and the active flag (admin only)
+// Teams of a league with their players' usernames, the active flag and the conference (admin only)
 export default function useLeagueTeams(leagueId: number | null) {
   const [teams, setTeams] = useState<LeagueTeam[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +18,9 @@ export default function useLeagueTeams(leagueId: number | null) {
     getLeagueTeamsAPI(leagueId)
       .then((rows) => {
         if (cancelled) return;
-        setTeams(rows.map((t) => ({id: t.team_id, name: t.team_name, players: t.players.map((p) => p.username), active: t.active})));
+        setTeams(
+          rows.map((t) => ({id: t.team_id, name: t.team_name, players: t.players.map((p) => p.username), active: t.active, conferenceId: t.conference_id}))
+        );
       })
       .catch((e) => {
         if (!cancelled) setError(e instanceof Error ? e.message : "Ekipe nije moguće učitati.");

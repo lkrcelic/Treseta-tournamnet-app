@@ -3,6 +3,7 @@
 import {getPlayerByIdAPI} from "@/app/_fetchers/player/getById";
 import useLeagues, {useSelectedLeagueId} from "@/app/_hooks/useLeagues";
 import useMyTeams from "@/app/_hooks/useMyTeams";
+import useConferences from "@/app/_hooks/useConferences";
 import {useDailyData, useLeagueStandings, useRoundDates} from "@/app/_hooks/useStandings";
 import {leagueDateString} from "@/app/_lib/dates";
 import {currentLeagueHref} from "@/app/_lib/league";
@@ -39,12 +40,14 @@ export default function DesktopHome() {
   const {dates} = useRoundDates(leagueId);
   const lastDate = noLeague ? "" : dates == null ? null : dates.length ? dates[dates.length - 1] : "";
   const daily = useDailyData(leagueId, lastDate || null);
-  const dailyRows = useMemo(() => toStandingsRows(daily.data?.standings, myTeamNames), [daily.data, myTeamNames]);
+  // the dots of a league with conferences (the full tables; the conference views are on Daily and League Standings)
+  const conferences = useConferences(leagueId);
+  const dailyRows = useMemo(() => toStandingsRows(daily.data?.standings, myTeamNames, conferences.of), [daily.data, myTeamNames, conferences]);
   const liveRounds = (daily.data?.rounds ?? []).filter((r) => r.active).map((r) => r.round_number);
   const liveRound = liveRounds.length ? Math.max(...liveRounds) : null;
 
   const league = useLeagueStandings(leagueId);
-  const leagueRows = useMemo(() => toStandingsRows(league.standings, myTeamNames), [league.standings, myTeamNames]);
+  const leagueRows = useMemo(() => toStandingsRows(league.standings, myTeamNames, conferences.of), [league.standings, myTeamNames, conferences]);
   const {podium, rest} = splitPodium(leagueRows);
 
   const today = leagueDateString();
@@ -75,7 +78,7 @@ export default function DesktopHome() {
             </ErrorNote>
           ) : lastDate === "" ? (
             <EmptyState>Liga još nije odigrala nijedno okupljanje.</EmptyState>
-          ) : daily.loading && !daily.data ? (
+          ) : (daily.loading && !daily.data) || !conferences.ready ? (
             <LoadingRows rows={8} height={46} />
           ) : (
             <Box sx={{flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable", borderTop: `1px solid ${color.line}`}}>
@@ -89,7 +92,7 @@ export default function DesktopHome() {
             <ErrorNote onRetry={league.reload} sx={{m: "0 20px"}}>
               {league.error}
             </ErrorNote>
-          ) : league.loading && !noLeague ? (
+          ) : (league.loading || !conferences.ready) && !noLeague ? (
             <LoadingRows rows={8} height={46} />
           ) : leagueRows.length === 0 ? (
             <EmptyState>Još nema rezultata u ovoj ligi.</EmptyState>

@@ -2,10 +2,12 @@ import {NextRequest, NextResponse} from "next/server";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {generateMultipleRoundPairings, RoundsPlan} from "@/app/_lib/matching/multipleRoundMatching";
 import {getLeagueTeamsWithScores} from "@/app/_lib/helpers/query/leagueScores";
-import {REPEAT_MATCHUPS, RoundCreateRequestValidation} from "@/app/_interfaces/round";
+import {PAIRING_NOTICE, RoundCreateRequestValidation, SameConferencePair} from "@/app/_interfaces/round";
 import {requireAdmin} from "@/app/_lib/service/auth/requireUser";
 import {insertRoundBatch, pairsPlayedToday} from "@/app/_lib/service/round/insertPairRounds";
 import {errorResponse} from "@/app/_lib/apiErrors";
+import {conferenceLookup, sameConferencePairs} from "@/app/_lib/conferences";
+import {getLeagueConferences} from "@/app/_lib/service/league/conferences";
 
 // the pairing stops searching after a few seconds; this leaves room for the database around it
 export const maxDuration = 30;
@@ -33,13 +35,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({error: (error as Error).message}, {status: STATUS.BadRequest});
     }
 
-    // the admin decides: create them anyway, or try again with a bigger window
-    if (plan.repeats.length > 0 && !parsed.allowRepeats) {
+    // the admin decides: create them anyway, or (for repeats) try again with a bigger window
+    const repeats = parsed.allowRepeats ? [] : plan.repeats;
+    const sameConference = parsed.allowSameConference
+      ? []
+      : sameConferencePairs(plan.rounds, conferenceLookup(await getLeagueConferences(league_id)).of);
+    if (repeats.length > 0 || sameConference.length > 0) {
       return NextResponse.json(
         {
-          error: "Some teams will play twice today",
-          code: REPEAT_MATCHUPS,
-          repeats: plan.repeats.map((p) => [p.teamOne.name, p.teamTwo.name]),
+          error: repeats.length > 0 ? "Some teams will play twice today" : "Some tables have two teams of the same conference",
+          code: PAIRING_NOTICE,
+          repeats: repeats.map((p) => [p.teamOne.name, p.teamTwo.name]),
+          same_conference: sameConference.map(
+            (p): SameConferencePair => ({teams: [p.teamOne.name, p.teamTwo.name], conference: {name: p.conference.name, color: p.conference.color}})
+          ),
         },
         {status: STATUS.Conflict}
       );

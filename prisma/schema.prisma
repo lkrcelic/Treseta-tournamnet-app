@@ -111,6 +111,24 @@ model League {
   leagueTeams  LeagueTeam[]
   leagueRounds LeagueRound[]
   teamScore    TeamScore[]
+  conferences  Conference[]
+}
+
+// A group of a league's teams (e.g. "Sjever" and "Jug"): a colored dot before the team's name and its own standings.
+// A league has none or 2–6; names and colors are unique within the league (checked when the list is saved).
+model Conference {
+  conference_id Int    @id @default(autoincrement())
+  league_id     Int
+  name          String @db.VarChar(40)
+  // #RRGGBB, from the palette in _lib/conferences.ts; CHECK constraint added in the migration script
+  color         String @db.VarChar(7)
+  // the order in the editor, the filters and the pickers
+  position      Int    @default(0)
+
+  league      League       @relation(fields: [league_id], references: [league_id], onDelete: Cascade)
+  leagueTeams LeagueTeam[]
+
+  @@index([league_id])
 }
 
 model Team {
@@ -163,15 +181,19 @@ model TeamPlayer {
 }
 
 model LeagueTeam {
-  league_id Int
-  team_id   Int
+  league_id     Int
+  team_id       Int
   // inactive teams stay in the league and its standings but are not signed in by default when a round is created
-  active    Boolean @default(true)
+  active        Boolean @default(true)
+  // one of this league's conferences (the service checks the league), or null: none, or the league has none
+  conference_id Int?
 
-  league League @relation(fields: [league_id], references: [league_id], onDelete: Cascade)
-  team   Team   @relation(fields: [team_id], references: [team_id], onDelete: Cascade)
+  league     League      @relation(fields: [league_id], references: [league_id], onDelete: Cascade)
+  team       Team        @relation(fields: [team_id], references: [team_id], onDelete: Cascade)
+  conference Conference? @relation(fields: [conference_id], references: [conference_id], onDelete: SetNull)
 
   @@id([league_id, team_id])
+  @@index([conference_id])
 }
 
 model Round {

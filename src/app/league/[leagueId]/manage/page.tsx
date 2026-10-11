@@ -5,7 +5,12 @@ import useLeagues from "@/app/_hooks/useLeagues";
 import useLeagueTeams from "@/app/_hooks/useLeagueTeams";
 import {useLeagueStandings} from "@/app/_hooks/useStandings";
 import {matchesQuery} from "@/app/_lib/ui/text";
-import {addTeamToLeagueAPI, removeTeamFromLeagueAPI, setLeagueTeamActiveAPI} from "@/app/_fetchers/league/leagues";
+import {addTeamToLeagueAPI, removeTeamFromLeagueAPI, setLeagueTeamActiveAPI, setLeagueTeamConferenceAPI} from "@/app/_fetchers/league/leagues";
+import {setTeamConferencesAPI} from "@/app/_fetchers/league/conferences";
+import useConferences, {setCachedConferences, setCachedTeamConference} from "@/app/_hooks/useConferences";
+import {LeagueConferences} from "@/app/_interfaces/league";
+import ConferencesCard from "./ConferencesCard";
+import {ConferencePicker, DistributeCard} from "./ConferenceParts";
 import {color, font} from "@/app/_styles/tokens";
 import {
   buttonBase,
@@ -52,7 +57,10 @@ import {ReactNode, useCallback, useEffect, useMemo, useRef, useState} from "reac
 type Filter = "all" | "active" | "inactive";
 type View = "create" | "teams" | "rounds" | "details";
 const VIEWS: View[] = ["create", "teams", "rounds", "details"];
-type Row = {id: number; name: string; players: string[]; played: number | null; active: boolean};
+type Row = {id: number; name: string; players: string[]; played: number | null; active: boolean; conferenceId: number | null};
+// the conference filter of the team list: every team, one conference's (its id), or the teams without one
+const ALL_CONFERENCES = 0;
+const NO_CONFERENCE = -1;
 type Team = NonNullable<ReturnType<typeof useLeagueTeams>["teams"]>[number];
 // a team taken out of the league waits this long for Undo before the delete is sent
 type PendingRemoval = {team: Team; index: number; timer: number};
@@ -95,15 +103,73 @@ export default function ManageLeague() {
     return justAdded == null ? list : [...list.filter((t) => t.id === justAdded), ...list.filter((t) => t.id !== justAdded)];
   }, [teams, played, justAdded]);
 
+  // conferences: a picker on every team, a filter, and the teams per conference with "Distribute evenly"
+  const conferences = useConferences(leagueId);
+  const confList = conferences.conferences;
+  const hasConferences = confList.length > 0;
+  const inConference = (r: Row) => confList.some((c) => c.id === r.conferenceId);
+  const [confFilterPicked, setConfFilter] = useState(ALL_CONFERENCES);
+  // a conference deleted since (or another league's) counts as every team
+  const confFilter = confFilterPicked === NO_CONFERENCE || confList.some((c) => c.id === confFilterPicked) ? confFilterPicked : ALL_CONFERENCES;
+  const unassigned = rows.filter((r) => !inConference(r)).length;
+  const teamCounts = useMemo(() => {
+    const counts = new Map<number, number>();
+    (teams ?? []).forEach((t) => t.conferenceId != null && counts.set(t.conferenceId, (counts.get(t.conferenceId) ?? 0) + 1));
+    return counts;
+  }, [teams]);
+  // the teams in league-table order (the ones without a row yet by name), for "Distribute evenly"
+  const tableOrder = useMemo(() => {
+    const pos = new Map((standings ?? []).map((s, i) => [Number(s.team_id), i]));
+    return [...rows]
+      .sort((a, b) => (pos.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (pos.get(b.id) ?? Number.MAX_SAFE_INTEGER) || a.name.localeCompare(b.name, "hr"))
+      .map((r) => r.id);
+  }, [rows, standings]);
+
   const visible = rows.filter(
-    (r) => (filter === "all" || (filter === "active") === r.active) && matchesQuery(`${r.name} ${r.players.join(" ")}`, query)
+    (r) =>
+      (filter === "all" || (filter === "active") === r.active) &&
+      (!hasConferences || confFilter === ALL_CONFERENCES || (confFilter === NO_CONFERENCE ? !inConference(r) : r.conferenceId === confFilter)) &&
+      matchesQuery(`${r.name} ${r.players.join(" ")}`, query)
   );
   const filters = [
     {key: "all" as Filter, label: "All", count: rows.length},
     {key: "active" as Filter, label: "Active", count: rows.filter((r) => r.active).length},
     {key: "inactive" as Filter, label: "Inactive", count: rows.filter((r) => !r.active).length},
   ];
+  const confFilters = [
+    {key: ALL_CONFERENCES, label: "All", count: rows.length},
+    ...confList.map((c) => ({key: c.id, label: c.name, dot: c.color, count: rows.filter((r) => r.conferenceId === c.id).length})),
+    // shown while some team has no conference (or while picked)
+    ...(unassigned > 0 || confFilter === NO_CONFERENCE ? [{key: NO_CONFERENCE, label: "None", dot: null, count: unassigned, alert: unassigned > 0}] : []),
+  ];
   const leagueName = leagues.find((l) => l.id === leagueId)?.name ?? "";
+
+  // optimistic, like the Active switch
+  const setConference = async (r: Row, conferenceId: number | null) => {
+    setActionError(null);
+    const before = r.conferenceId;
+    setTeams((prev) => prev?.map((t) => (t.id === r.id ? {...t, conferenceId} : t)) ?? prev);
+    try {
+      await setLeagueTeamConferenceAPI(leagueId, r.id, conferenceId);
+      setCachedTeamConference(leagueId, r.id, conferenceId);
+    } catch (e) {
+      setTeams((prev) => prev?.map((t) => (t.id === r.id ? {...t, conferenceId: before} : t)) ?? prev);
+      setActionError(e instanceof Error ? e.message : "Konferencija ekipe nije spremljena.");
+    }
+  };
+
+  const distribute = async (assignments: {team_id: number; conference_id: number}[]) => {
+    const data = await setTeamConferencesAPI(leagueId, assignments);
+    setCachedConferences(leagueId, data);
+    const byTeam = new Map(assignments.map((a) => [a.team_id, a.conference_id]));
+    setTeams((prev) => prev?.map((t) => (byTeam.has(t.id) ? {...t, conferenceId: byTeam.get(t.id)!} : t)) ?? prev);
+  };
+
+  // conferences saved in the editor: the teams of a deleted one have none now
+  const conferencesSaved = (data: LeagueConferences) => {
+    const kept = new Set(data.conferences.map((c) => c.conference_id));
+    setTeams((prev) => prev?.map((t) => (t.conferenceId != null && !kept.has(t.conferenceId) ? {...t, conferenceId: null} : t)) ?? prev);
+  };
 
   // optimistic: the switch moves at once and goes back if the server refuses
   const setActive = async (r: Row, active: boolean) => {
@@ -121,7 +187,7 @@ export default function ManageLeague() {
     setActionError(null);
     try {
       await addTeamToLeagueAPI(leagueId, t.id);
-      setTeams((prev) => [...(prev ?? []), {id: t.id, name: t.title, players: t.players, active: true}]);
+      setTeams((prev) => [...(prev ?? []), {id: t.id, name: t.title, players: t.players, active: true, conferenceId: null}]);
       setJustAdded(t.id);
       if (filter === "inactive") setFilter("all");
     } catch (e) {
@@ -204,6 +270,17 @@ export default function ManageLeague() {
   const toolbar = (
     <Box sx={{flex: "none", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "12px", p: "14px", borderBottom: `1px solid rgba(60,74,103,.1)`}}>
       <Segmented<Filter> items={filters} value={filter} onChange={setFilter} label="Status ekipa" variant="soft" asTabs={false} />
+      {hasConferences && (
+        <Segmented<number>
+          items={confFilters}
+          value={confFilter}
+          onChange={setConfFilter}
+          label="Konferencija ekipa"
+          variant="soft"
+          asTabs={false}
+          sx={{maxWidth: "100%", overflowX: "auto", scrollbarWidth: "none"}}
+        />
+      )}
       <SearchInput
         soft
         height={46}
@@ -245,10 +322,15 @@ export default function ManageLeague() {
     </Box>
   );
 
-  // the desktop renames the league in the Details view
+  // keyed by league (so switching league starts from the saved list), apart from the league name card next to it
+  const conferencesCard = <ConferencesCard key={`conferences-${leagueId}`} leagueId={leagueId} teamCounts={teamCounts} onSaved={conferencesSaved} />;
+
+  // the desktop renames the league and edits its conferences in the Details view
   const sidePanel = (
     <Box sx={{minHeight: 0, overflowY: isDesktop ? "auto" : undefined, display: "flex", flexDirection: "column", gap: "16px"}}>
       {!isDesktop && <LeagueNameCard key={leagueId} leagueId={leagueId} leagues={leagues} />}
+      {!isDesktop && conferencesCard}
+      {hasConferences && teams && <DistributeCard conferences={confList} teams={rows} order={tableOrder} onDistribute={distribute} />}
       <AddTeamCard exclude={rows.map((r) => r.id)} onAdd={onAdd} onCreate={() => router.push(`/teams/new?league=${leagueId}`)} />
       <InfoNote icon={<InfoRoundedIcon />}>
         Inactive teams stay in the league and its standings, but are not signed in automatically when you create a round.
@@ -268,7 +350,7 @@ export default function ManageLeague() {
         {view === "create" ? (
           <CreateRoundView leagueId={leagueId} defaultRounds={leagues.find((l) => l.id === leagueId)?.roundsPerNight} />
         ) : view === "details" ? (
-          <LeagueDetailsView key={leagueId} leagueId={leagueId} leagues={leagues} />
+          <LeagueDetailsView key={leagueId} leagueId={leagueId} leagues={leagues} aside={conferencesCard} />
         ) : view === "rounds" ? (
           <RoundsView leagueId={leagueId} data={leagueRounds} />
         ) : (
@@ -309,8 +391,11 @@ export default function ManageLeague() {
                         animation: r.id === justAdded ? "spRowIn 420ms cubic-bezier(.2,.8,.2,1) both" : "none",
                       }}
                     >
-                      <Box component="span" sx={{fontSize: 16, fontWeight: 600, color: r.active ? color.ink : color.faint, ...ellipsis}}>
-                        {r.name}
+                      <Box sx={{display: "flex", flexDirection: "column", gap: "4px", minWidth: 0, py: hasConferences ? "8px" : 0}}>
+                        <Box component="span" sx={{fontSize: 16, fontWeight: 600, color: r.active ? color.ink : color.faint, ...ellipsis}}>
+                          {r.name}
+                        </Box>
+                        {hasConferences && <ConferencePicker teamName={r.name} value={r.conferenceId} conferences={confList} onPick={(id) => setConference(r, id)} />}
                       </Box>
                       <Box component="span" sx={{display: "flex", gap: "6px", minWidth: 0, overflow: "hidden", opacity: r.active ? 1 : 0.55}}>
                         {r.players.map((p) => (
@@ -461,6 +546,7 @@ export default function ManageLeague() {
                     {r.players.join(" · ") || "—"}
                     {r.played != null && ` · ${r.played} OK`}
                   </Box>
+                  {hasConferences && <ConferencePicker teamName={r.name} value={r.conferenceId} conferences={confList} onPick={(id) => setConference(r, id)} />}
                 </Box>
                 {statusToggle(r)}
               </Box>

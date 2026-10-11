@@ -2,8 +2,9 @@ import {color, font, shadow} from "@/app/_styles/tokens";
 import {statsLine, StandingsRow} from "@/app/_lib/ui/standings";
 import {Box, SxProps, Theme} from "@mui/material";
 import React from "react";
-import {ellipsis, mergeSx, tabular} from "./base";
+import {mergeSx, tabular} from "./base";
 import {RankBadge} from "./Live";
+import {TeamLabel} from "./TeamDot";
 
 // Three medal cards. "compact" is the phone version (three narrow columns), otherwise the desktop one.
 export function Podium({rows, compact = false, sx}: {rows: StandingsRow[]; compact?: boolean; sx?: SxProps<Theme>}) {
@@ -48,16 +49,14 @@ export function Podium({rows, compact = false, sx}: {rows: StandingsRow[]; compa
                     {r.diff}
                   </Box>
                 </Box>
-                <Box sx={{fontSize: 14, fontWeight: 600, ...ellipsis}}>{r.name}</Box>
+                <TeamLabel name={r.name} conference={r.conference} sx={{fontSize: 14, fontWeight: 600}} />
               </Box>
             </>
           ) : (
             <>
               <Box sx={{display: "flex", flexDirection: "column", gap: "14px", minWidth: 0}}>
                 <Medal rank={r.rank} index={i} size={34} />
-                <Box component="span" sx={{fontFamily: font.display, fontSize: 26, fontWeight: 700, ...ellipsis}}>
-                  {r.name}
-                </Box>
+                <TeamLabel name={r.name} conference={r.conference} dotSize={10} sx={{gap: "10px", fontFamily: font.display, fontSize: 26, fontWeight: 700}} />
               </Box>
               <Box sx={{display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px"}}>
                 <Box component="span" sx={{fontSize: 16, fontWeight: 700, color: color.navy, ...tabular}}>
@@ -157,7 +156,7 @@ function StandingsLine({r, withPlayed, medal}: {r: StandingsRow; withPlayed: boo
     >
       {onPodium ? <Medal rank={r.rank} index={medal} size={28} /> : <RankBadge rank={r.rank} live={r.live} />}
       <Box sx={{display: "flex", flexDirection: "column", gap: "2px", minWidth: 0}}>
-        <Box sx={{fontSize: 16, fontWeight: onPodium || r.mine ? 700 : 600, ...ellipsis}}>{r.name}</Box>
+        <TeamLabel name={r.name} conference={r.conference} sx={{fontSize: 16, fontWeight: onPodium || r.mine ? 700 : 600}} />
         <Box sx={{fontSize: 12.5, color: onPodium ? color.inkSoft : color.muted, whiteSpace: "nowrap", ...tabular}}>{statsLine(r, withPlayed)}</Box>
       </Box>
       <Box sx={{display: "flex", alignItems: "baseline", gap: "12px"}}>
@@ -272,8 +271,8 @@ export function StandingsGrid({
               <Box component="td" role="cell">
                 <RankBadge rank={r.rank} live={live} size={dense ? 26 : 30} />
               </Box>
-              <Box component="td" role="cell" sx={{fontSize: dense ? 16 : 17, fontWeight: r.mine ? 700 : 600, ...ellipsis}}>
-                {r.name}
+              <Box component="td" role="cell" sx={{fontSize: dense ? 16 : 17, fontWeight: r.mine ? 700 : 600, minWidth: 0}}>
+                <TeamLabel name={r.name} conference={r.conference} />
               </Box>
               {columns.map((c) => (
                 <Box component="td" role="cell" key={c} sx={{textAlign: "center", fontSize: dense ? 14 : 15, color: color.inkSoft}}>

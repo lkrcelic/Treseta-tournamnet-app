@@ -1,11 +1,29 @@
 "use client";
 
-import {createMultipleRoundsAPI, RepeatMatchupsError} from "@/app/_fetchers/round/createMultipleRounds";
+import {createMultipleRoundsAPI, PairingNoticeError} from "@/app/_fetchers/round/createMultipleRounds";
 import useLeagueTeams, {LeagueTeam} from "@/app/_hooks/useLeagueTeams";
+import {SameConferencePair} from "@/app/_interfaces/round";
 import {matchesQuery, plural} from "@/app/_lib/ui/text";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, font} from "@/app/_styles/tokens";
-import {buttonBase, Card, EmptyState, ErrorNote, LoadingRows, OutlineButton, PrimaryButton, SearchInput, SectionLabel, SolidButton, Stepper, SwitchRow, SwitchTrack} from "@/app/_ui/sp";
+import {
+  buttonBase,
+  Card,
+  EmptyState,
+  ErrorNote,
+  LoadingRows,
+  OutlineButton,
+  PrimaryButton,
+  SearchInput,
+  SectionLabel,
+  SolidButton,
+  Stepper,
+  SwitchRow,
+  SwitchTrack,
+  TeamDot,
+  TeamLabel,
+} from "@/app/_ui/sp";
+import useConferences from "@/app/_hooks/useConferences";
 import WarningRoundedIcon from "@mui/icons-material/WarningRounded";
 import {Box, Dialog} from "@mui/material";
 import React, {useEffect, useId, useMemo, useState} from "react";
@@ -25,11 +43,14 @@ export function useCreateRound(leagueId: number | null, defaultRounds?: number) 
   const [flipped, setFlipped] = useState<Set<number>>(new Set());
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  // the pairs that would meet twice today, while the admin decides whether to create the rounds anyway
-  const [repeats, setRepeats] = useState<[string, string][] | null>(null);
+  // the pairs that would meet twice today and the tables with two teams of one conference, while the admin decides
+  // whether to create the rounds anyway
+  const [notice, setNotice] = useState<{repeats: [string, string][]; sameConference: SameConferencePair[]} | null>(null);
 
   const {teams, error: teamsError, loading, reload} = useLeagueTeams(leagueId);
   const inactive = useMemo(() => new Set((teams ?? []).filter((t) => !t.active).map((t) => t.id)), [teams]);
+  // the teams' conference dots in the list
+  const conferences = useConferences(leagueId);
 
   // every active team starts as present, and Rounds starts at the league's rounds per night; switching league starts over
   useEffect(() => {
@@ -61,17 +82,18 @@ export function useCreateRound(leagueId: number | null, defaultRounds?: number) 
       return next;
     });
 
-  const create = async ({window = windowSize, allowRepeats = false}: {window?: number; allowRepeats?: boolean} = {}) => {
+  // allowAll: the admin saw the notice and creates the rounds anyway
+  const create = async ({window = windowSize, allowAll = false}: {window?: number; allowAll?: boolean} = {}) => {
     if (leagueId == null || count < 2 || creating) return;
     setCreating(true);
     setCreateError(null);
-    setRepeats(null);
+    setNotice(null);
     try {
-      const roundNumber = await createMultipleRoundsAPI(leagueId, selected.map((t) => t.id), rounds, window, allowRepeats);
+      const roundNumber = await createMultipleRoundsAPI(leagueId, selected.map((t) => t.id), rounds, window, allowAll, allowAll);
       // replace, so the back button doesn't lead to this form again
       router.replace(`/round/pairings/${roundNumber}?league=${leagueId}`);
     } catch (e) {
-      if (e instanceof RepeatMatchupsError) setRepeats(e.repeats);
+      if (e instanceof PairingNoticeError) setNotice({repeats: e.repeats, sameConference: e.sameConference});
       else setCreateError(e instanceof Error ? e.message : "Kolo nije moguće napraviti.");
       setCreating(false);
     }
@@ -83,14 +105,15 @@ export function useCreateRound(leagueId: number | null, defaultRounds?: number) 
     setWindowSize(expandedWindow);
     create({window: expandedWindow});
   };
-  const repeatsDialog = repeats && (
-    <RepeatsDialog
-      repeats={repeats}
+  const repeatsDialog = notice && (
+    <PairingNoticeDialog
+      repeats={notice.repeats}
+      sameConference={notice.sameConference}
       windowSize={windowSize}
       expandedWindow={canExpand ? expandedWindow : null}
-      onContinue={() => create({allowRepeats: true})}
+      onContinue={() => create({allowAll: true})}
       onExpand={expandWindow}
-      onClose={() => setRepeats(null)}
+      onClose={() => setNotice(null)}
     />
   );
 
@@ -132,7 +155,7 @@ export function useCreateRound(leagueId: number | null, defaultRounds?: number) 
     <EmptyState>{teams?.length ? "Nijedna ekipa ne odgovara pretrazi." : "Ova liga još nema ekipa."}</EmptyState>
   ) : null;
 
-  return {teams, visible, inactive, isOn, toggle, toggleAll, allOn, query, setQuery, createError, steppers, createButton, repeatsDialog, teamState};
+  return {teams, visible, inactive, isOn, toggle, toggleAll, allOn, query, setQuery, createError, steppers, createButton, repeatsDialog, teamState, conferenceOf: conferences.of};
 }
 
 export function InactiveBadge() {
@@ -185,9 +208,7 @@ export function CreateRoundView({leagueId, defaultRounds}: {leagueId: number; de
           <Box sx={{flex: 1, minHeight: 0, overflowY: "auto", display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gridAutoRows: "56px", columnGap: "24px", p: "4px 14px"}}>
             {cr.visible.map((t) => (
               <SwitchRow key={t.id} checked={cr.isOn(t)} onChange={() => cr.toggle(t.id)} sx={{px: "4px", minHeight: 56}}>
-                <Box component="span" sx={{overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
-                  {t.name}
-                </Box>
+                <TeamLabel name={t.name} conference={cr.conferenceOf(t.id)} />
                 {cr.inactive.has(t.id) && <InactiveBadge />}
               </SwitchRow>
             ))}
@@ -198,10 +219,13 @@ export function CreateRoundView({leagueId, defaultRounds}: {leagueId: number; de
   );
 }
 
-// The rounds can't be made without some teams meeting twice today (with each other earlier today, or in two of the
-// new rounds). The admin creates them anyway or tries again with a bigger window, which gives everyone more opponents.
-function RepeatsDialog({
+// The new pairs need the admin's go-ahead: some teams would meet twice today (with each other earlier today, or in two
+// of the new rounds), and/or some tables would have two teams of the same conference. The admin creates the rounds
+// anyway, or for repeats tries again with a bigger window, which gives everyone more opponents. The pairing doesn't
+// look at conferences, so for those there is only going back.
+function PairingNoticeDialog({
   repeats,
+  sameConference,
   windowSize,
   expandedWindow,
   onContinue,
@@ -209,6 +233,7 @@ function RepeatsDialog({
   onClose,
 }: {
   repeats: [string, string][];
+  sameConference: SameConferencePair[];
   windowSize: number;
   // null when the window already holds every team
   expandedWindow: number | null;
@@ -217,6 +242,7 @@ function RepeatsDialog({
   onClose: () => void;
 }) {
   const titleId = useId();
+  const both = repeats.length > 0 && sameConference.length > 0;
   return (
     <Dialog
       open
@@ -230,40 +256,72 @@ function RepeatsDialog({
           <WarningRoundedIcon />
         </Box>
         <Box component="h2" id={titleId} sx={{m: 0, fontFamily: font.display, fontSize: 24, fontWeight: 800, lineHeight: 1.1}}>
-          Some teams will play twice today
+          {repeats.length > 0 ? "Some teams will play twice today" : "Some tables have two teams of one conference"}
         </Box>
       </Box>
-      <Box component="ul" aria-label="Ekipe koje se danas sastaju dvaput" sx={{listStyle: "none", m: 0, p: "4px 14px", borderRadius: "16px", background: color.paper, maxHeight: 220, overflowY: "auto"}}>
-        {repeats.map(([a, b], i) => (
-          <Box
-            component="li"
-            key={`${a}-${b}-${i}`}
-            sx={{minHeight: 40, display: "grid", gridTemplateColumns: "minmax(0,1fr) auto minmax(0,1fr)", alignItems: "center", gap: "8px", fontSize: 15, fontWeight: 600, borderBottom: i < repeats.length - 1 ? "1px solid rgba(60,74,103,.1)" : "none", "& > span:not([aria-hidden])": {overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}}
-          >
-            <span>{a}</span>
-            <Box component="span" aria-hidden sx={{fontSize: 13, color: color.placeholder}}>
-              vs
-            </Box>
-            <Box component="span" sx={{textAlign: "right"}}>
-              {b}
-            </Box>
-          </Box>
-        ))}
-      </Box>
+      {repeats.length > 0 && (
+        <PairList label="Ekipe koje se danas sastaju dvaput" title={both ? "Twice today" : undefined} pairs={repeats.map((teams) => ({teams}))} />
+      )}
+      {sameConference.length > 0 && (
+        <PairList label="Ekipe iz iste konferencije" title={both ? "Same conference" : undefined} pairs={sameConference} />
+      )}
       <Box sx={{fontSize: 14, lineHeight: 1.4, color: color.inkSoft}}>
-        {expandedWindow
-          ? `A bigger window gives every team more opponents to choose from (window ${windowSize} → ${expandedWindow}).`
-          : "The window already holds every team, so it can't be expanded."}
+        {repeats.length === 0
+          ? "The pairing doesn't look at conferences. Continue to create the rounds as they are."
+          : expandedWindow
+            ? `A bigger window gives every team more opponents to choose from (window ${windowSize} → ${expandedWindow}).`
+            : "The window already holds every team, so it can't be expanded."}
       </Box>
       <Box sx={{display: "flex", gap: "10px", flexWrap: "wrap"}}>
-        <OutlineButton height={52} onClick={onExpand} disabled={!expandedWindow} sx={{flex: "1 1 160px", fontSize: 16, border: `1.5px solid rgba(60,74,103,.25)`, "&:disabled": {opacity: 0.4}}}>
-          Expand the window
-        </OutlineButton>
+        {repeats.length > 0 ? (
+          <OutlineButton height={52} onClick={onExpand} disabled={!expandedWindow} sx={{flex: "1 1 160px", fontSize: 16, border: `1.5px solid rgba(60,74,103,.25)`, "&:disabled": {opacity: 0.4}}}>
+            Expand the window
+          </OutlineButton>
+        ) : (
+          <OutlineButton height={52} onClick={onClose} sx={{flex: "1 1 160px", fontSize: 16, border: `1.5px solid rgba(60,74,103,.25)`}}>
+            Back
+          </OutlineButton>
+        )}
         <SolidButton height={52} onClick={onContinue} sx={{flex: "1 1 160px", fontSize: 16}}>
           Continue
         </SolidButton>
       </Box>
     </Dialog>
+  );
+}
+
+// "A vs B" rows of the notice; a same-conference pair has its conference's dot on both sides
+function PairList({label, title, pairs}: {label: string; title?: string; pairs: {teams: [string, string]; conference?: {name: string; color: string}}[]}) {
+  return (
+    <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
+      {title && <SectionLabel sx={{px: "4px"}}>{title}</SectionLabel>}
+      <Box component="ul" aria-label={label} sx={{listStyle: "none", m: 0, p: "4px 14px", borderRadius: "16px", background: color.paper, maxHeight: 220, overflowY: "auto"}}>
+        {pairs.map(({teams: [a, b], conference}, i) => (
+          <Box
+            component="li"
+            key={`${a}-${b}-${i}`}
+            aria-label={conference ? `${a} vs ${b}, ${conference.name}` : undefined}
+            sx={{minHeight: 40, display: "grid", gridTemplateColumns: "minmax(0,1fr) auto minmax(0,1fr)", alignItems: "center", gap: "8px", fontSize: 15, fontWeight: 600, borderBottom: i < pairs.length - 1 ? "1px solid rgba(60,74,103,.1)" : "none"}}
+          >
+            <Box component="span" sx={{display: "flex", alignItems: "center", gap: "8px", minWidth: 0}}>
+              {conference && <TeamDot color={conference.color} />}
+              <Box component="span" sx={{overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
+                {a}
+              </Box>
+            </Box>
+            <Box component="span" aria-hidden sx={{fontSize: 13, color: color.placeholder}}>
+              vs
+            </Box>
+            <Box component="span" sx={{display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px", minWidth: 0}}>
+              <Box component="span" sx={{overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
+                {b}
+              </Box>
+              {conference && <TeamDot color={conference.color} />}
+            </Box>
+          </Box>
+        ))}
+      </Box>
+    </Box>
   );
 }
 

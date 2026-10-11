@@ -7,7 +7,9 @@ import {matchesQuery, plural} from "@/app/_lib/ui/text";
 import {createLeagueAPI} from "@/app/_fetchers/league/leagues";
 import {END_DATE_ERROR, endsAfterStart} from "@/app/_interfaces/league";
 import {invalidateLeagues} from "@/app/_hooks/useLeagues";
+import {conferencesError} from "@/app/_lib/conferences";
 import {color, font} from "@/app/_styles/tokens";
+import {ConferenceDraft, ConferenceEditor, startingDrafts} from "@/app/_ui/league/ConferenceEditor";
 import {
   buttonBase,
   Card,
@@ -22,11 +24,13 @@ import {
   ScreenTitle,
   SearchInput,
   SuccessNote,
+  SwitchTrack,
   TextField,
 } from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
+import ErrorRoundedIcon from "@mui/icons-material/ErrorRounded";
 import RemoveRoundedIcon from "@mui/icons-material/RemoveRounded";
 import {Box} from "@mui/material";
 import Link from "next/link";
@@ -53,9 +57,13 @@ export default function CreateLeague() {
   const [teams, setTeams] = useState<TeamItem[] | null>(null);
   const [teamsError, setTeamsError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | undefined>();
-  const [created, setCreated] = useState<{id: number; text: string} | null>(null);
+  const [created, setCreated] = useState<{id: number; text: string; conferences: boolean} | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // conferences are named and colored here; the teams are put in them in Manage League
+  const [withConferences, setWithConferences] = useState(false);
+  const [conferenceDrafts, setConferenceDrafts] = useState<ConferenceDraft[]>(startingDrafts);
+  const conferencesInvalid = withConferences ? conferencesError(conferenceDrafts) : null;
 
   useEffect(() => {
     fetch("/api/teams")
@@ -89,9 +97,10 @@ export default function CreateLeague() {
       setNameError("Upiši ime lige.");
       return;
     }
-    if (!endsAfterStart(startDate, endDate)) return;
+    if (!endsAfterStart(startDate, endDate) || conferencesInvalid) return;
     setSubmitting(true);
     setSubmitError(null);
+    const conferences = withConferences ? conferenceDrafts.map((c) => ({name: c.name.trim(), color: c.color})) : [];
     try {
       const league = await createLeagueAPI({
         league_name: name.trim(),
@@ -101,14 +110,19 @@ export default function CreateLeague() {
         play_day: playDay,
         rounds_per_night: roundsPerNight,
         team_ids: Array.from(selected),
+        conferences,
       });
       invalidateLeagues();
+      const confText = conferences.length ? `, ${conferences.length} ${plural(conferences.length, "konferencija", "konferencije", "konferencija")}` : "";
       setCreated({
         id: league.league_id,
-        text: `„${league.league_name}" je napravljena (${league.team_count} ${plural(league.team_count, "ekipa", "ekipe", "ekipa")}, ${DAY_NAMES[playDay]}).`,
+        text: `„${league.league_name}" je napravljena (${league.team_count} ${plural(league.team_count, "ekipa", "ekipe", "ekipa")}${confText}, ${DAY_NAMES[playDay]}).`,
+        conferences: conferences.length > 0,
       });
       setName("");
       setSelected(new Set());
+      setWithConferences(false);
+      setConferenceDrafts(startingDrafts());
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Ligu nije moguće napraviti.");
     }
@@ -200,11 +214,49 @@ export default function CreateLeague() {
           </IconCircleButton>
         </Box>
       </Box>
+      <Box role="group" aria-labelledby="conf-title" sx={{display: "flex", flexDirection: "column", gap: "12px", p: "12px 14px", borderRadius: "16px", background: color.tableHead}}>
+        <Box
+          component="button"
+          type="button"
+          role="switch"
+          aria-checked={withConferences}
+          aria-labelledby="conf-title"
+          aria-describedby="conf-hint"
+          onClick={() => {
+            setWithConferences((on) => !on);
+            setCreated(null);
+          }}
+          sx={{...buttonBase, display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", textAlign: "left", borderRadius: "10px"}}
+        >
+          <Box component="span" sx={{display: "flex", flexDirection: "column"}}>
+            <Box id="conf-title" component="span" sx={{fontSize: 15, fontWeight: 600}}>
+              Conferences
+            </Box>
+            <Box id="conf-hint" component="span" sx={{fontSize: 13, color: color.muted}}>
+              Groups of teams, each with a color and its own table
+            </Box>
+          </Box>
+          <SwitchTrack on={withConferences} />
+        </Box>
+        {withConferences && (
+          <>
+            <ConferenceEditor value={conferenceDrafts} onChange={setConferenceDrafts} />
+            <Box sx={{fontSize: 13, color: color.muted, px: "2px"}}>You put the teams in conferences in Manage League.</Box>
+            {/* shown once a name is typed, so switching on doesn't open with an error */}
+            {conferencesInvalid && conferenceDrafts.some((c) => c.name.trim()) && (
+              <Box role="alert" sx={{fontSize: 14, fontWeight: 600, color: color.red, display: "flex", alignItems: "center", gap: "6px", "& svg": {fontSize: 18}}}>
+                <ErrorRoundedIcon />
+                {conferencesInvalid}
+              </Box>
+            )}
+          </>
+        )}
+      </Box>
       {submitError && <ErrorNote>{submitError}</ErrorNote>}
       {created && (
         <SuccessNote sx={{display: "flex", alignItems: "center", gap: "12px", justifyContent: "space-between", flexWrap: "wrap"}}>
           <span>{created.text}</span>
-          <Box component={Link} href={`/league/${created.id}/manage`} sx={{color: color.navy, fontWeight: 700}}>
+          <Box component={Link} href={`/league/${created.id}/manage${created.conferences ? "?view=teams" : ""}`} sx={{color: color.navy, fontWeight: 700}}>
             Manage League →
           </Box>
         </SuccessNote>
@@ -215,7 +267,7 @@ export default function CreateLeague() {
 
   function submitButton() {
     return (
-      <PrimaryButton type="submit" form="create-league" disabled={!name.trim() || !endsAfterStart(startDate, endDate)} loading={submitting} sx={{mt: "auto"}}>
+      <PrimaryButton type="submit" form="create-league" disabled={!name.trim() || !endsAfterStart(startDate, endDate) || !!conferencesInvalid} loading={submitting} sx={{mt: "auto"}}>
         {`Create league${count ? ` · ${count} teams` : ""}`}
       </PrimaryButton>
     );

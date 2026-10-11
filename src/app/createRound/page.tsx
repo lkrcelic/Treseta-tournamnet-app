@@ -4,7 +4,7 @@ import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useLeagues, {useSelectedLeagueId} from "@/app/_hooks/useLeagues";
 import {color, shadow} from "@/app/_styles/tokens";
 import {InactiveBadge, useCreateRound} from "@/app/_ui/round/CreateRound";
-import {buttonBase, ErrorNote, IconCircleButton, IconTile, Screen, ScreenTitle, ScrollCard, SearchInput, SwitchRow} from "@/app/_ui/sp";
+import {buttonBase, ErrorNote, IconCircleButton, IconTile, Screen, ScreenTitle, ScrollCard, SearchInput, SwitchRow, TeamLabel} from "@/app/_ui/sp";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import EmojiEventsRoundedIcon from "@mui/icons-material/EmojiEventsRounded";
@@ -21,10 +21,8 @@ export default function CreateRound() {
   const selectedLeague = useSelectedLeagueId();
   const [leagueId, setLeagueId] = useState<number | null>(null);
   const defaultRounds = leagues.find((l) => l.id === leagueId)?.roundsPerNight;
-  const {visible, inactive, isOn, toggle, toggleAll, allOn, query, setQuery, createError, steppers, createButton, repeatsDialog, teamState} = useCreateRound(
-    isDesktop ? null : leagueId,
-    defaultRounds
-  );
+  const {visible, inactive, isOn, toggle, toggleAll, allOn, query, setQuery, createError, steppers, createButton, repeatsDialog, teamState, conferenceOf} =
+    useCreateRound(isDesktop ? null : leagueId, defaultRounds);
 
   useEffect(() => {
     if (isDesktop && selectedLeague != null) router.router.replace(`/league/${selectedLeague}/manage?view=create`);
@@ -110,9 +108,7 @@ export default function CreateRound() {
             </SwitchRow>
             {visible.map((t) => (
               <SwitchRow key={t.id} checked={isOn(t)} onChange={() => toggle(t.id)}>
-                <Box component="span" sx={{overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
-                  {t.name}
-                </Box>
+                <TeamLabel name={t.name} conference={conferenceOf(t.id)} />
                 {inactive.has(t.id) && <InactiveBadge />}
               </SwitchRow>
             ))}

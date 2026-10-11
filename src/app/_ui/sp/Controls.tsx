@@ -5,6 +5,7 @@ import {Box, SxProps, Theme} from "@mui/material";
 import React, {useRef} from "react";
 import {buttonBase, mergeSx, tabular} from "./base";
 import {LiveDot} from "./Live";
+import {TeamDot} from "./TeamDot";
 
 // Visual 52×32 switch track. Use inside an element that has role="switch" + aria-checked.
 export function SwitchTrack({on, onColor = color.navy}: {on: boolean; onColor?: string}) {
@@ -166,7 +167,8 @@ export function Stepper({
   );
 }
 
-export type TabItem<K extends string | number> = {key: K; label: React.ReactNode; live?: boolean; count?: number; alert?: boolean};
+// dot: a conference color before the label (null: a hollow ring)
+export type TabItem<K extends string | number> = {key: K; label: React.ReactNode; live?: boolean; count?: number; alert?: boolean; dot?: string | null};
 
 // Arrow-key navigation shared by the tab strips (WAI-ARIA tabs pattern, automatic activation)
 function useRovingKeys<K extends string | number>(items: TabItem<K>[], value: K, onChange: (k: K) => void) {
@@ -248,6 +250,7 @@ export function PillTabs<K extends string | number>({
               transition: "background 200ms ease, color 200ms ease",
             }}
           >
+            {t.dot !== undefined && <TeamDot color={t.dot} ring={on} onNavy={on} />}
             {t.label}
             {t.live && <LiveDot pulse={false} label="uživo" />}
           </Box>
@@ -338,6 +341,7 @@ export function Segmented<K extends string | number>({
               transition: "background 160ms ease, color 160ms ease",
             }}
           >
+            {t.dot !== undefined && <TeamDot color={t.dot} ring={on && navyOn} onNavy={on && navyOn} />}
             {t.label}
             {t.live && <LiveDot pulse={false} label="uživo" />}
             {t.count != null && (

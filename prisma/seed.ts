@@ -1,6 +1,6 @@
 // prisma/seed.ts
 // Local data for `npm run dev:reset`: the users `admin` and `player` (password `sifra`), the bye team, and one league
-// with 8 teams of two.
+// with 8 teams of two in two conferences.
 
 import {PrismaClient} from "@prisma/client";
 
@@ -96,7 +96,25 @@ async function main() {
       play_day: 3,
       rounds_per_night: 3,
       leagueTeams: {create: teams.map((t) => ({team_id: t.team_id}))},
+      conferences: {
+        create: [
+          {name: "Sjever", color: "#2E6DB4", position: 0},
+          {name: "Jug", color: "#C2410C", position: 1},
+        ],
+      },
     },
+    include: {conferences: {orderBy: {position: "asc"}}},
+  });
+
+  // the first four teams in Sjever, the other four in Jug
+  const [north, south] = league.conferences;
+  await prisma.leagueTeam.updateMany({
+    where: {league_id: league.league_id, team_id: {in: teams.slice(0, 4).map((t) => t.team_id)}},
+    data: {conference_id: north.conference_id},
+  });
+  await prisma.leagueTeam.updateMany({
+    where: {league_id: league.league_id, team_id: {in: teams.slice(4).map((t) => t.team_id)}},
+    data: {conference_id: south.conference_id},
   });
 
   for (const team of teams) {

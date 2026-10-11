@@ -1,5 +1,6 @@
 import {END_DATE_ERROR, endsAfterStart, LeagueCreateRequest, LeagueSummary, LeagueTeamDetails, LeagueUpdateRequest} from "@/app/_interfaces/league";
 import {BYE_TEAM_ID} from "@/app/_lib/bye";
+import {conferencesError} from "@/app/_lib/conferences";
 import {pickActiveLeague} from "@/app/_lib/league";
 import {prisma} from "@/app/_lib/prisma";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
@@ -45,13 +46,16 @@ export async function activeLeagueId(): Promise<number | null> {
   return (await listLeagues()).find((l) => l.active)?.league_id ?? null;
 }
 
-// Creates a league and, optionally, adds existing teams to it
+// Creates a league and, optionally, adds existing teams to it and gives it conferences (the teams are put in them in
+// Manage League)
 export async function createLeague(req: LeagueCreateRequest): Promise<LeagueSummary> {
   const teamIds = Array.from(new Set(req.team_ids.filter((id) => id !== BYE_TEAM_ID)));
   if (teamIds.length) {
     const found = await prisma.team.count({where: {team_id: {in: teamIds}}});
     if (found !== teamIds.length) throw new InvalidResultError("Some of the teams don't exist.");
   }
+  const conferencesInvalid = conferencesError(req.conferences);
+  if (conferencesInvalid) throw new InvalidResultError(conferencesInvalid);
 
   const league = await prisma.league.create({
     data: {
@@ -62,6 +66,7 @@ export async function createLeague(req: LeagueCreateRequest): Promise<LeagueSumm
       play_day: req.play_day ?? null,
       rounds_per_night: req.rounds_per_night,
       leagueTeams: {create: teamIds.map((team_id) => ({team_id}))},
+      conferences: {create: req.conferences.map((c, position) => ({name: c.name.trim(), color: c.color.toUpperCase(), position}))},
     },
   });
 
@@ -94,6 +99,7 @@ export async function listLeagueTeams(leagueId: number): Promise<LeagueTeamDetai
       team_id: r.team_id,
       team_name: r.team.team_name,
       active: r.active,
+      conference_id: r.conference_id,
       players: r.team.teamPlayers.map((tp) => tp.player),
     }))
     .sort((a, b) => a.team_name.localeCompare(b.team_name, "hr"));
