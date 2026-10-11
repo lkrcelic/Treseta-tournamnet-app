@@ -18,26 +18,8 @@ npm run dev:reset       # migrates, seeds the users admin / player (password: si
 ## Shared code with the Bela app
 
 Most of the code is the Bela app's (`../Bela-Treseta-Tournamnet-app`, "Piatnik Bela Liga"), with Treseta's game rules:
-11 points a hand (or a custom hand), matches to 41, two matches a round. **Synced from the Bela app at `4bf68ad`
-(8 Oct 2026).**
+11 points a hand (or a custom hand), matches to 41, two matches a round.
 
-What differs from the Bela app:
-
-- **Game rules:** `src/app/_lib/game/scoring.ts`, used by the keypad and by the API.
-- **Hands:** the `Result` / `OngoingResult` tables, their services, routes and stores, and the one-step hand entry
-  (`ongoing-match/…`). See the game-layer table in [TRANSITION_PLAN.md](TRANSITION_PLAN.md).
-- **Branding:** `src/app/_lib/brand.ts`, `public/manifest.webmanifest`, `public/icons/`.
-- **Conferences** (Treseta only for now): a league's groups of teams, each with a color. The `Conference` table,
-  `_lib/conferences.ts`, `useConferences`, `_ui/league/`, and the dots and conference views on the shared screens:
-  standings, Daily, pairings, Start Game, Manage League, Create League and Create Round. A Bela fix to one of those
-  screens may need a manual merge. See [CONFERENCES_PLAN.md](CONFERENCES_PLAN.md).
-- **Data:** this app's own migrations in `prisma/migrations`.
-
-Everything else is meant to stay identical to the Bela app. To bring over a Bela fix that touches only shared files:
-
-```bash
-git remote add bela ../Bela-Treseta-Tournamnet-app   # once
-git fetch bela && git cherry-pick <commit>
-```
-
-Then update the commit above.
+The Bela app is primary. A scheduled Claude Code task brings its new commits here every night at 04:00, onto the branch
+`bela-sync`, and keeps what Treseta does differently. [BELA_SYNC.md](BELA_SYNC.md) has the Bela commit it has
+reached, how to take a night's sync, and the full list of differences. A new difference goes there too.
