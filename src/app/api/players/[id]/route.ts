@@ -31,8 +31,8 @@ export async function GET(request: NextRequest, {params}: { params: { id: string
   }
 }
 
-// A player changes their own birth date (asked after a Google sign-up) and/or username. Admins may change anyone's.
-// A taken username (ignoring case) is a 409 with {error, errors: {username}}.
+// A player changes their own birth date (asked after a Google sign-up), username and/or phone number. Admins may
+// change anyone's. A taken username (ignoring case) is a 409 with {error, errors: {username}}.
 export async function PATCH(request: NextRequest, {params}: { params: { id: string } }) {
   const auth = await requireUser(request);
   if (auth.response) return auth.response;
@@ -42,7 +42,7 @@ export async function PATCH(request: NextRequest, {params}: { params: { id: stri
   }
 
   try {
-    const {birth_date, username} = PlayerProfileUpdate.parse(await request.json());
+    const {birth_date, username, phone} = PlayerProfileUpdate.parse(await request.json());
     if (username !== undefined) {
       const taken = await prisma.player.findFirst({
         where: {username: {equals: username, mode: "insensitive"}, id: {not: id}},
@@ -56,12 +56,13 @@ export async function PATCH(request: NextRequest, {params}: { params: { id: stri
       data: {
         ...(birth_date !== undefined && {birth_date: new Date(birth_date)}),
         ...(username !== undefined && {username}),
+        ...(phone !== undefined && {phone}),
       },
     });
     if (count === 0) {
       return NextResponse.json({error: "Player not found."}, {status: STATUS.NotFound});
     }
-    return NextResponse.json({birth_date, username}, {status: STATUS.OK});
+    return NextResponse.json({birth_date, username, phone}, {status: STATUS.OK});
   } catch (error) {
     // two players taking the same username at once: the unique index catches the second
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return usernameTakenResponse();

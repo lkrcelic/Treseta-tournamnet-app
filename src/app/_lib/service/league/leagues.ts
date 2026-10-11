@@ -2,6 +2,8 @@ import {END_DATE_ERROR, endsAfterStart, LeagueCreateRequest, LeagueSummary, Leag
 import {BYE_TEAM_ID} from "@/app/_lib/bye";
 import {conferencesError} from "@/app/_lib/conferences";
 import {pickActiveLeague} from "@/app/_lib/league";
+import {generateNights, sortNights} from "@/app/_lib/nights";
+import {nightValue} from "@/app/_lib/service/league/nights";
 import {prisma} from "@/app/_lib/prisma";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {Prisma} from "@prisma/client";
@@ -46,8 +48,9 @@ export async function activeLeagueId(): Promise<number | null> {
   return (await listLeagues()).find((l) => l.active)?.league_id ?? null;
 }
 
-// Creates a league and, optionally, adds existing teams to it and gives it conferences (the teams are put in them in
-// Manage League)
+// Creates a league with its nights and, optionally, adds existing teams to it and gives it conferences (the teams are
+// put in them in Manage League). The nights the admin left in Create League are kept; without a list they are every
+// play day from the start to the end date.
 export async function createLeague(req: LeagueCreateRequest): Promise<LeagueSummary> {
   const teamIds = Array.from(new Set(req.team_ids.filter((id) => id !== BYE_TEAM_ID)));
   if (teamIds.length) {
@@ -56,6 +59,7 @@ export async function createLeague(req: LeagueCreateRequest): Promise<LeagueSumm
   }
   const conferencesInvalid = conferencesError(req.conferences);
   if (conferencesInvalid) throw new InvalidResultError(conferencesInvalid);
+  const nights = sortNights(req.nights ?? generateNights(req.start_date, req.end_date, req.play_day));
 
   const league = await prisma.league.create({
     data: {
@@ -67,6 +71,7 @@ export async function createLeague(req: LeagueCreateRequest): Promise<LeagueSumm
       rounds_per_night: req.rounds_per_night,
       leagueTeams: {create: teamIds.map((team_id) => ({team_id}))},
       conferences: {create: req.conferences.map((c, position) => ({name: c.name.trim(), color: c.color.toUpperCase(), position}))},
+      nights: {create: nights.map((night) => ({night: nightValue(night)}))},
     },
   });
 

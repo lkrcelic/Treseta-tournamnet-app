@@ -1,5 +1,6 @@
 import {RoleEnum} from "@prisma/client";
 import {z} from "zod";
+import {isValidPhone, normalizePhone, PHONE_ERROR} from "@/app/_lib/phone";
 import {normalizeUsername, usernameError} from "@/app/_lib/validation/username";
 
 const DATE_FORMAT = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/;
@@ -15,8 +16,9 @@ export const PlayerCreate = z.object({
   last_updated_at: z.date().optional(),
 });
 
-// A player changing their own profile: the birth date (Google sign-ups give it later) and/or a new username,
-// stored lowercase (rules in validation/username.ts)
+// A player changing their own profile: the birth date (Google sign-ups give it later), a new username, stored
+// lowercase (rules in validation/username.ts), and/or the optional phone number ("" or null removes it), stored as
+// "+385 91 234 5678"
 export const PlayerProfileUpdate = z
   .object({
     birth_date: z
@@ -32,8 +34,15 @@ export const PlayerProfileUpdate = z
         if (message) ctx.addIssue({code: z.ZodIssueCode.custom, message});
       })
       .optional(),
+    phone: z
+      .string()
+      .trim()
+      .nullable()
+      .refine((p) => !p || isValidPhone(p), PHONE_ERROR)
+      .transform((p) => (p ? normalizePhone(p) : null))
+      .optional(),
   })
-  .refine((o) => o.birth_date !== undefined || o.username !== undefined, "Nothing to update.");
+  .refine((o) => o.birth_date !== undefined || o.username !== undefined || o.phone !== undefined, "Nothing to update.");
 
 export type PlayerCreateInterface = z.infer<typeof PlayerCreate>;
 
@@ -63,12 +72,14 @@ export const PlayerResponseValidation = PlayerPartialResponseValidation.extend({
 });
 
 // One player as the player themselves (or an admin) sees them, with the birth date as YYYY-MM-DD (null when not given)
+// and the phone number (null when not given)
 export const PlayerSelfResponseValidation = PlayerResponseValidation.extend({
   birth_date: z
     .date()
     .nullable()
     .optional()
     .transform((d) => (d ? d.toISOString().slice(0, 10) : null)),
+  phone: z.string().nullable().optional(),
 });
 export type PlayerSelfResponse = z.infer<typeof PlayerSelfResponseValidation>;
 

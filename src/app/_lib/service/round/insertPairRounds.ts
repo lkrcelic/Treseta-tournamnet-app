@@ -5,6 +5,7 @@ import {BYE_TEAM_ID, isByeTeam} from "@/app/_lib/bye";
 import {leagueDate} from "@/app/_lib/dates";
 import {MATCHES_PER_ROUND} from "@/app/_lib/service/round/finish";
 import {BYE_MATCH_POINTS, MATCH_THRESHOLD} from "@/app/_lib/game/scoring";
+import {ensureLeagueNight} from "@/app/_lib/service/league/nights";
 
 export type CreatedRounds = {
   firstRoundNumber: number;
@@ -32,17 +33,17 @@ export async function insertRoundBatch(roundsPairs: TeamPair[][], leagueId: numb
     });
     const firstRoundNumber = (maxRound._max.round_number ?? 0) + 1;
 
+    const roundDate = leagueDate();
     for (let i = 0; i < roundsPairs.length; i++) {
-      await insertRounds(tx, roundsPairs[i], leagueId, firstRoundNumber + i);
+      await insertRounds(tx, roundsPairs[i], leagueId, firstRoundNumber + i, roundDate);
     }
+    await ensureLeagueNight(tx, leagueId, roundDate);
 
     return {firstRoundNumber, alreadyCreated: false};
   }, {timeout: 30000});
 }
 
-async function insertRounds(tx: Prisma.TransactionClient, pairs: TeamPair[], leagueId: number, roundNumber: number) {
-  const roundDate = leagueDate();
-
+async function insertRounds(tx: Prisma.TransactionClient, pairs: TeamPair[], leagueId: number, roundNumber: number, roundDate: Date) {
   for (let index = 0; index < pairs.length; index++) {
     const pair = pairs[index];
     const isByeRound = isByeTeam(pair.teamOne.id) || isByeTeam(pair.teamTwo.id);

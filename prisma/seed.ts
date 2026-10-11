@@ -88,12 +88,19 @@ async function main() {
     );
   }
 
+  // It plays on Thursdays, from five weeks before the last Thursday to ten weeks after it (Raspored, Burza igrača)
+  const DAY = 24 * 60 * 60 * 1000;
+  const today = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
+  const lastThursday = today.getTime() - ((today.getUTCDay() + 3) % 7) * DAY;
+  const nights = Array.from({length: 16}, (_, i) => new Date(lastThursday + (i - 5) * 7 * DAY));
   const league = await prisma.league.create({
     data: {
       league_name: "Trešeta liga 2026",
       season: "2026",
-      start_date: new Date("2026-01-08T00:00:00.000Z"),
+      start_date: nights[0],
+      end_date: nights[nights.length - 1],
       play_day: 3,
+      nights: {create: nights.map((night) => ({night}))},
       rounds_per_night: 3,
       leagueTeams: {create: teams.map((t) => ({team_id: t.team_id}))},
       conferences: {

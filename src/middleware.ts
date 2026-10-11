@@ -1,3 +1,4 @@
+import {isPublicBurzaPath} from "@/app/_lib/publicPaths";
 import {isApiLimited} from "@/app/_lib/rateLimiting/requestLimiting";
 import {verifyCookie} from "@/app/_lib/service/auth/signCookie";
 import {STATUS} from "@/app/_lib/statusCodes";
@@ -13,8 +14,9 @@ export async function middleware(req: NextRequest) {
       req.nextUrl.pathname.startsWith("/api") ||
       req.nextUrl.pathname.startsWith("/login") ||
       req.nextUrl.pathname.startsWith("/signup") ||
-      // the season table of any league is public; everything else needs a login
+      // the season table of any league and the ads of Burza igrača are public; everything else needs a login
       /^\/league\/(\d+|current)\/standings\/?$/.test(req.nextUrl.pathname) ||
+      isPublicBurzaPath(req.nextUrl.pathname) ||
       req.nextUrl.pathname.startsWith("/_next/") ||
       // the app manifest and icons, read by the browser before anyone logs in
       req.nextUrl.pathname === "/manifest.webmanifest" ||
@@ -23,7 +25,7 @@ export async function middleware(req: NextRequest) {
     )
   ) {
     const authorized = await authenticationMiddleware(req);
-    if (!authorized) return NextResponse.redirect(new URL("/login", req.url));
+    if (!authorized) return NextResponse.redirect(loginUrl(req));
   }
 
   // failed logins are limited in /api/login itself, which knows whether the password was right
@@ -35,6 +37,13 @@ export async function middleware(req: NextRequest) {
   }
 
   return NextResponse.next();
+}
+
+// The login page; someone opening a Burza form comes back to it after logging in
+function loginUrl(req: NextRequest): URL {
+  const url = new URL("/login", req.url);
+  if (req.nextUrl.pathname.startsWith("/burza")) url.searchParams.set("next", req.nextUrl.pathname + req.nextUrl.search);
+  return url;
 }
 
 // An optimistic check only: the middleware runs on the edge runtime without the database, so it can't tell whether

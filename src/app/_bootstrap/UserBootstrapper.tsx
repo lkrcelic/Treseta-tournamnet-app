@@ -1,5 +1,6 @@
 "use client";
 
+import {isPublicBurzaPath} from "@/app/_lib/publicPaths";
 import {useEffect} from "react";
 import {refreshUser} from "./refreshUser";
 
@@ -10,7 +11,7 @@ const RECHECK_AFTER_MS = 15 * 60 * 1000;
 
 // pages that work without logging in
 function isPublicPath(path: string): boolean {
-  return path.startsWith("/login") || path.startsWith("/signup") || /^\/league\/\d+\/standings\/?$/.test(path);
+  return path.startsWith("/login") || path.startsWith("/signup") || /^\/league\/\d+\/standings\/?$/.test(path) || isPublicBurzaPath(path);
 }
 
 export default function UserBootstrapper() {

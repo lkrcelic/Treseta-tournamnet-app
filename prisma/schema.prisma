@@ -25,6 +25,8 @@ model Player {
   first_name      String    @db.VarChar(100)
   last_name       String    @db.VarChar(100)
   birth_date      DateTime? @db.Date // null until a Google sign-up gives it
+  // optional; Burza igrača fills it into new ads, and "Dostupan sam" from the profile shows it
+  phone           String?   @db.VarChar(30)
   created_at      DateTime  @default(now())
   last_updated_at DateTime? @updatedAt
 
@@ -45,6 +47,8 @@ model Player {
   teamPlayers                    TeamPlayer[]
   roundPlayers                   RoundPlayer[]
   ratingHistory                  PlayerRatingHistory[]
+  marketPosts                    MarketPost[]                    @relation("MarketPostAuthor")
+  marketPostsOut                 MarketPost[]                    @relation("MarketPostOut")
   sessions                       Session[]
   luciaSessions                  LuciaSession[]
   accounts                       Account[]
@@ -112,6 +116,8 @@ model League {
   leagueRounds LeagueRound[]
   teamScore    TeamScore[]
   conferences  Conference[]
+  nights       LeagueNight[]
+  marketPosts  MarketPost[]
 }
 
 // A group of a league's teams (e.g. "Sjever" and "Jug"): a colored dot before the team's name and its own standings.
@@ -129,6 +135,57 @@ model Conference {
   leagueTeams LeagueTeam[]
 
   @@index([league_id])
+}
+
+// A night the league plays (Manage League · Dates). Filled in from the start date, end date and play day when the
+// league is created; admins add or remove single nights, and a round created on another date adds its night.
+// Players see them in Raspored, and Burza igrača offers only these nights to a team that needs a substitute.
+model LeagueNight {
+  league_id Int
+  night     DateTime @db.Date
+
+  league League @relation(fields: [league_id], references: [league_id], onDelete: Cascade)
+
+  @@id([league_id, night])
+}
+
+enum MarketPostKind {
+  SUBSTITUTE // "Treba zamjena": a team needs a player for one league night
+  PARTNER // "Traži partnera": a player looks for a partner for a league
+  AVAILABLE // "Dostupan": a player is available as a substitute and/or a new partner
+}
+
+// An ad in Burza igrača. Everyone sees the open ones, also without logging in, with the phone number to call.
+// A substitute ad closes by itself when its night has passed, a partner ad when its league has ended; the
+// author (or an admin) closes any ad. A player has at most one open AVAILABLE ad (the profile's "Dostupan sam").
+// What each kind needs is checked in the migration script.
+model MarketPost {
+  id            Int            @id @default(autoincrement())
+  kind          MarketPostKind
+  // who published it
+  player_id     Int
+  // SUBSTITUTE and PARTNER
+  league_id     Int?
+  // SUBSTITUTE: the team that needs a player, the night and who can't play
+  team_id       Int?
+  night         DateTime?      @db.Date
+  out_player_id Int?
+  // AVAILABLE: as what
+  as_substitute Boolean        @default(false)
+  as_partner    Boolean        @default(false)
+  // the note, or the partner ad's text
+  note          String         @default("")
+  // null on an AVAILABLE ad means the profile's phone number
+  phone         String?        @db.VarChar(30)
+  created_at    DateTime       @default(now())
+  closed_at     DateTime?
+
+  player    Player  @relation("MarketPostAuthor", fields: [player_id], references: [id], onDelete: Cascade)
+  outPlayer Player? @relation("MarketPostOut", fields: [out_player_id], references: [id], onDelete: SetNull)
+  league    League? @relation(fields: [league_id], references: [league_id], onDelete: Cascade)
+  team      Team?   @relation(fields: [team_id], references: [team_id], onDelete: Cascade)
+
+  @@index([closed_at, kind])
 }
 
 model Team {
@@ -150,6 +207,7 @@ model Team {
   roundsAsTeam2   Round[]          @relation("RoundTeam2")
   teamScore       TeamScore[]
   roundPlayers    RoundPlayer[]
+  marketPosts     MarketPost[]
 }
 
 model TeamScore {

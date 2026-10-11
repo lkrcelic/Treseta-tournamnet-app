@@ -9,11 +9,15 @@ import GoogleLoginButton from "@/app/login/ui/GoogleLoginButton";
 import LogInForm from "@/app/login/ui/LogInForm";
 import {Box} from "@mui/material";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
+import {safeNextPath} from "@/app/_lib/publicPaths";
+import {useSearchParams} from "next/navigation";
 
 export default function LogIn() {
   const router = useTransitionRouter();
   const isDesktop = useIsDesktop();
-  const onSuccess = () => router.replace("/");
+  // ?next=: the page that sent the player here (a Burza form), opened again after logging in
+  const next = safeNextPath(useSearchParams().get("next")) ?? "/";
+  const onSuccess = () => router.replace(next);
 
   const signupLink = (
     <TextButton onClick={() => router.push("/signup")} sx={{alignSelf: "center", fontWeight: 500, color: color.inkSoft}}>
@@ -29,7 +33,7 @@ export default function LogIn() {
       <AuthFrame>
         <Box sx={{width: 420, display: "flex", flexDirection: "column", gap: "18px"}}>
           <Display size={44}>Prijava</Display>
-          <GoogleLoginButton pill />
+          <GoogleLoginButton pill callbackUrl={next} />
           <OrDivider />
           <LogInForm onSuccess={onSuccess} />
           {signupLink}
@@ -42,7 +46,7 @@ export default function LogIn() {
     <AuthFrame>
       <Card sx={{p: "22px 18px", display: "flex", flexDirection: "column", gap: "16px", borderRadius: "24px"}}>
         <Display size={28}>Prijava</Display>
-        <GoogleLoginButton />
+        <GoogleLoginButton callbackUrl={next} />
         <OrDivider />
         <LogInForm onSuccess={onSuccess} soft />
       </Card>

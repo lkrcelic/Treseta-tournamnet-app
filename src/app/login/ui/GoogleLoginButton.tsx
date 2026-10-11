@@ -18,13 +18,13 @@ function GoogleMark() {
   );
 }
 
-export default function GoogleLoginButton({pill = false}: {pill?: boolean}) {
+export default function GoogleLoginButton({pill = false, callbackUrl = "/"}: {pill?: boolean; callbackUrl?: string}) {
   const [redirecting, setRedirecting] = useState(false);
 
   const handleGoogleLogin = () => {
     setRedirecting(true);
-    // NextAuth redirects to Google and back to the home page
-    signIn("google", {callbackUrl: "/"}).catch(() => setRedirecting(false));
+    // NextAuth redirects to Google and back to the home page (or the page that sent the player to log in)
+    signIn("google", {callbackUrl}).catch(() => setRedirecting(false));
   };
 
   return (
