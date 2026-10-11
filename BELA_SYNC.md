@@ -122,13 +122,44 @@ A hand is 11 points, or a custom hand typed freely; a match goes to 41; a round 
 
 New Bela text with the app's name or the sponsor uses `BRAND` here, and its file joins this table.
 
+### Conferences
+
+A league can split its teams into conferences, each with a name and a color. The color is a dot before the team's
+name, and Daily's night table and League standings get a view per conference. Create Round warns about a table with two
+teams of one conference. Bela doesn't have conferences for now. The plan and decisions are in
+[CONFERENCES_PLAN.md](CONFERENCES_PLAN.md).
+
+New files (Treseta only):
+
+| Treseta | What it holds |
+|---|---|
+| `_lib/conferences.ts` | The palette, the rules for a league's list (none or 2–6, names and colors unique), the lookup the screens use, the same-conference pairs for Create Round, and "Distribute evenly". Pure, unit tested in `_lib/__tests__/conferences.test.ts` |
+| `_lib/service/league/conferences.ts`, `api/leagues/[id]/conferences/route.ts`, `api/leagues/[id]/conferences/teams/route.ts`, `_fetchers/league/conferences.ts` | Reading a league's conferences (public) and saving them and the teams' conferences (admin) |
+| `_hooks/useConferences.ts`, `_hooks/useConferenceFilter.ts` | A league's conferences for the screens, and the conference picked on Daily and League standings |
+| `_ui/sp/TeamDot.tsx` | The dot before a team's name, taken from the Start Game card |
+| `_ui/league/ConferenceEditor.tsx`, `_ui/league/ConferenceFilter.tsx`, `league/[leagueId]/manage/ConferencesCard.tsx`, `league/[leagueId]/manage/ConferenceParts.tsx` | The editor, the filter chips, and Manage League's conference cards and team picker |
+
+Shared files with Treseta's conference code. A Bela change to one of them is merged around that code, as for a small
+edit:
+
+| File | Treseta's edit |
+|---|---|
+| `_interfaces/league.ts`, `_lib/service/league/leagues.ts`, `_fetchers/league/leagues.ts`, `_hooks/useLeagueTeams.ts`, `api/leagues/[id]/teams/[teamId]/route.ts` | Create League takes conferences; a league's team list has each team's `conference_id`, and the team PATCH sets it |
+| `_interfaces/round.ts`, `api/rounds/generate-multiple/route.ts`, `_fetchers/round/createMultipleRounds.ts`, `_ui/round/CreateRound.tsx`, `createRound/page.tsx` | Create Round: the same-conference tables come back in the same 409 as the repeats (`PAIRING_NOTICE`, `allowSameConference`), the notice lists both, and the team list has the dots |
+| `api/rounds/open/route.ts`, `_fetchers/round/getOpenByPlayerId.ts`, `_hooks/useOpenTable.ts`, `_ui/home/PhoneHome.tsx` | The Start Game card shows the two teams' conference colors (green and red in a league without conferences) |
+| `_lib/ui/standings.ts`, `_lib/ui/tables.ts`, `_ui/sp/Standings.tsx`, `_ui/sp/Controls.tsx`, `_ui/sp/index.ts` | Standings and table rows carry each team's conference, the standings draw its dot, a tab item can have a dot, and the kit exports `TeamDot` |
+| `league/[leagueId]/daily-standings/page.tsx`, `league/[leagueId]/daily-standings/ui/RoundTables.tsx`, `league/[leagueId]/standings/page.tsx`, `_ui/home/DesktopHome.tsx`, `round/pairings/[roundNumber]/page.tsx` | The dots, and the conference filter on Daily's night table and League standings |
+| `league/new/page.tsx`, `league/[leagueId]/manage/page.tsx`, `league/[leagueId]/manage/LeagueDetailsView.tsx` | Create League's Conferences switch; Manage League's team picker, filter and cards (Details shows the conferences card in its second column) |
+
+The database part (the `Conference` table and `LeagueTeam.conference_id`) is under Database.
+
 ### Database
 
 | Path (root) | Kind | Treseta's |
 |---|---|---|
-| `prisma/schema.prisma` | Own version | Bela's schema with Treseta's hand tables (`Result`, `OngoingResult`: `team1_game_points`, `team2_game_points`, `custom`) and without Bela's tournament and announcement tables. Bela's changes to the other models are merged in. The datasource also has `directUrl = env("DATABASE_URL_UNPOOLED")`, so migrations use Neon's direct connection (Bela has only `url`) |
+| `prisma/schema.prisma` | Own version | Bela's schema with Treseta's hand tables (`Result`, `OngoingResult`: `team1_game_points`, `team2_game_points`, `custom`) and without Bela's tournament and announcement tables. Bela's changes to the other models are merged in. The datasource also has `directUrl = env("DATABASE_URL_UNPOOLED")`, so migrations use Neon's direct connection (Bela has only `url`). Treseta also has the `Conference` table and `LeagueTeam.conference_id` (see Conferences) |
 | `prisma/migrations/**` | Treseta only | This database's history. Bela's migrations are never copied: a Bela schema change gets a Treseta migration with Bela's SQL adapted to this schema, named with a timestamp after the newest migration here. Bela's names can collide with Treseta's (its work in progress uses `20261011120000`, which Treseta already has) |
-| `prisma/seed.ts` | Own version | The Treseta seed (users `admin` and `player`, a league of 8 teams). Seed data for new Bela tables is added here |
+| `prisma/seed.ts` | Own version | The Treseta seed (users `admin` and `player`, a league of 8 teams in two conferences). Seed data for new Bela tables is added here |
 | `prisma/usefulQueries/**` | Own version | Treseta's queries, with `transition_checks.sql`. Bela's aren't copied |
 
 ### Repository files
@@ -136,7 +167,7 @@ New Bela text with the app's name or the sponsor uses `BRAND` here, and its file
 | Path (root) | Kind |
 |---|---|
 | `README.md`, `ProcessFlow.md`, `Task.md`, `.windsurfrules` | Own version |
-| `BELA_SYNC.md`, `TRANSITION_PLAN.md`, `.env.example` | Treseta only |
+| `BELA_SYNC.md`, `TRANSITION_PLAN.md`, `CONFERENCES_PLAN.md`, `.env.example` | Treseta only |
 | `vercel.json` | Treseta only for now: the same file as Bela's `9ecdaae`, which is on Bela's GitHub `master` but not yet on `development`. Shared once it reaches `development` |
 | `public/card.png` | Treseta only, left from the old app and unused |
 

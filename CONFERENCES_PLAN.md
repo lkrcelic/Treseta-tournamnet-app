@@ -7,7 +7,8 @@ conference.
 - **Branch:** `feat/conferences`, from `feat/scorepad` at `f7e57a4`, because every screen involved exists only there.
   It's checked out in its own worktree (`.claude/worktrees/conferences`), since other sessions work in the main
   checkout.
-- **Status (11 Oct 2026):** built and verified locally (see [Steps](#steps)). Not committed yet.
+- **Status (12 Oct 2026):** built and verified locally (see [Steps](#steps)), committed on `feat/conferences` and
+  pushed, with `feat/scorepad` (the nightly Bela sync) merged in.
 
 ## What it does
 
@@ -59,9 +60,9 @@ team" bar. The database stores the hex, so the palette can change later.
 none). The scoreboard, the lineup step and the admin table scorepad keep green and red, since there the colors mean
 the two sides of the board.
 
-**D6. The Bela app.** *Decided:* Bela doesn't get conferences for now. The change is listed under "What differs from
-the Bela app" in the README. It touches about 17 files that are otherwise shared with Bela, so a later Bela fix to
-those screens may need a manual merge.
+**D6. The Bela app.** *Decided:* Bela doesn't get conferences for now. They are listed under Differences from Bela in
+[BELA_SYNC.md](BELA_SYNC.md): the new files as Treseta only, and the 27 shared files with conference code, around
+which the nightly sync merges a Bela change.
 
 **D7. Branch.** *Decided:* a new branch from `feat/scorepad`. It merges after the cutover (Phase 6 of
 [TRANSITION_PLAN.md](TRANSITION_PLAN.md)), as a merge of its own, so the cutover goes out exactly as tested. The
@@ -205,7 +206,7 @@ Optional, for admins: dots in Create Round's team list and in the re-pair dialog
 6. [x] Per-conference views.
 7. [x] Create Round's same-conference notice.
 8. [x] Seed: the seed league gets "Sjever" and "Jug", 4 teams each, so `npm run dev:reset` shows the feature.
-9. [x] Verify (below). README updated for D6.
+9. [x] Verify (below). Recorded in BELA_SYNC.md for D6.
 
 **Verified (11 Oct 2026):** `npm test` (115 tests, 7 new), ESLint, `next build`, and `tsc --noEmit` with only the two
 errors that were there before (`googleAuth.ts`, `players/getAll.ts`). The migration applied to a copy of production (1
