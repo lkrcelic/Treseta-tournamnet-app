@@ -261,7 +261,8 @@ export function PillTabs<K extends string | number>({
 }
 
 // Segmented control: white track with a navy (variant "solid") or white-raised (variant "soft") selected segment;
-// "panel" is a compact white box with a navy selected segment (Daily's table filter). An item's `alert` count is red
+// "panel" is a compact white box with a navy selected segment (Daily's table filter); "track" splits a beige track
+// into equal parts with a white selected one (Burza's filters, Raspored's leagues). An item's `alert` count is red
 // while it isn't selected.
 export function Segmented<K extends string | number>({
   items,
@@ -278,7 +279,7 @@ export function Segmented<K extends string | number>({
   value: K;
   onChange: (k: K) => void;
   label: string;
-  variant?: "solid" | "soft" | "panel";
+  variant?: "solid" | "soft" | "panel" | "track";
   size?: number;
   sx?: SxProps<Theme>;
   asTabs?: boolean;
@@ -287,6 +288,7 @@ export function Segmented<K extends string | number>({
   const {refs, onKeyDown} = useRovingKeys(items, value, onChange);
   const solid = variant === "solid";
   const panel = variant === "panel";
+  const track = variant === "track";
   const navyOn = solid || panel;
   return (
     <Box
@@ -294,15 +296,17 @@ export function Segmented<K extends string | number>({
       aria-label={label}
       onKeyDown={onKeyDown}
       sx={mergeSx(
-        {
-          display: "flex",
-          flex: "none",
-          gap: solid ? "6px" : "4px",
-          p: solid ? "4px" : "3px",
-          borderRadius: solid ? "24px" : "14px",
-          background: navyOn ? color.card : color.paper,
-          boxShadow: navyOn ? shadow.card : "none",
-        },
+        track
+          ? {display: "grid", gridTemplateColumns: `repeat(${items.length}, minmax(0,1fr))`, flex: "none", gap: "4px", p: "4px", borderRadius: "16px", background: color.track}
+          : {
+              display: "flex",
+              flex: "none",
+              gap: solid ? "6px" : "4px",
+              p: solid ? "4px" : "3px",
+              borderRadius: solid ? "24px" : "14px",
+              background: navyOn ? color.card : color.paper,
+              boxShadow: navyOn ? shadow.card : "none",
+            },
         sx
       )}
     >
@@ -326,17 +330,19 @@ export function Segmented<K extends string | number>({
             sx={{
               ...buttonBase,
               flex: "none",
+              minWidth: 0,
               whiteSpace: "nowrap",
               height: size,
-              px: solid ? "16px" : panel ? "14px" : "12px",
-              borderRadius: solid ? `${size / 2}px` : "11px",
+              px: solid ? "16px" : panel ? "14px" : track ? "4px" : "12px",
+              borderRadius: solid ? `${size / 2}px` : track ? "12px" : "11px",
               background: on ? (navyOn ? color.navy : color.card) : "transparent",
               color: on ? (navyOn ? "#FFFFFF" : color.ink) : solid ? color.ink : color.inkSoft,
-              boxShadow: on && !navyOn ? "0 1px 3px rgba(31,36,51,.12)" : "none",
+              boxShadow: on && !navyOn ? (track ? "0 1px 3px rgba(31,36,51,.1)" : "0 1px 3px rgba(31,36,51,.12)") : "none",
               fontSize: solid ? 15 : 14,
-              fontWeight: 600,
+              fontWeight: track && on ? 700 : 600,
               display: "flex",
               alignItems: "center",
+              justifyContent: track ? "center" : undefined,
               gap: "6px",
               transition: "background 160ms ease, color 160ms ease",
             }}

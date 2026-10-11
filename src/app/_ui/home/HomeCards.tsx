@@ -1,0 +1,227 @@
+"use client";
+
+import {BurzaPost, MyLeague, MySchedule} from "@/app/_interfaces/burza";
+import {nextNightIndex, nightLabel} from "@/app/_lib/nights";
+import {adCount, namesAndMore, teamsLooking} from "@/app/_lib/ui/burza";
+import {initials} from "@/app/_lib/ui/text";
+import {TransitionLink} from "@/app/_lib/viewTransitions";
+import {color, font, shadow} from "@/app/_styles/tokens";
+import {buttonBase, ellipsis} from "@/app/_ui/sp";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import EventRoundedIcon from "@mui/icons-material/EventRounded";
+import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
+import PersonSearchRoundedIcon from "@mui/icons-material/PersonSearchRounded";
+import {Box, Skeleton} from "@mui/material";
+import React from "react";
+
+// Početna's Burza igrača cards (Claude Design "Burza igrača · spojeno", Početna)
+
+// The player's next league night: the soonest one of a league where their team is active
+export function nextNight(schedule: MySchedule | null): {league: MyLeague; night: string} | null {
+  for (const league of schedule?.leagues ?? []) {
+    if (!league.active) continue;
+    const i = nextNightIndex(league.nights, schedule!.today);
+    if (i >= 0) return {league, night: league.nights[i]};
+  }
+  return null;
+}
+
+// Sljedeća večer: the team, its players and the night (opening Raspored); Nađi zamjenu opens the substitute form
+export function NextNightCard({league, night, today}: {league: MyLeague; night: string; today: string}) {
+  const tonight = night === today;
+  return (
+    <Box
+      component="section"
+      aria-label={tonight ? "Večeras" : "Sljedeća večer"}
+      sx={{flex: "none", borderRadius: "24px", background: color.navy, color: "#FFFFFF", p: "18px", display: "flex", flexDirection: "column", gap: "14px", boxShadow: shadow.hero}}
+    >
+      <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px"}}>
+        <Box component="h2" sx={{m: 0, fontSize: 12.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.cream, whiteSpace: "nowrap"}}>
+          {tonight ? "Večeras" : "Sljedeća večer"}
+        </Box>
+        <Box
+          component={TransitionLink}
+          href={`/raspored?league=${league.league_id}`}
+          aria-label={`Raspored, ${nightLabel(night)}`}
+          sx={{...buttonBase, height: 32, display: "flex", alignItems: "center", gap: "6px", px: "10px", borderRadius: "10px", background: color.cream, color: color.navy, fontSize: 13, fontWeight: 800, textDecoration: "none", whiteSpace: "nowrap", "& svg": {fontSize: 18}}}
+        >
+          <EventRoundedIcon aria-hidden />
+          {nightLabel(night)}
+        </Box>
+      </Box>
+      <Box sx={{fontFamily: font.display, fontSize: 30, fontWeight: 800, lineHeight: 1, overflowWrap: "anywhere"}}>{league.team_name}</Box>
+      <Box component="ul" aria-label="Igrači" sx={{listStyle: "none", m: 0, p: 0, display: "flex", flexDirection: "column", gap: "8px"}}>
+        {league.players.map((p) => (
+          <Box component="li" key={p.id} sx={{display: "flex", alignItems: "center", gap: "10px", fontSize: 15, minWidth: 0}}>
+            <Box component="span" aria-hidden sx={{width: 32, height: 32, flex: "none", borderRadius: "50%", background: color.cream, color: color.navy, fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center"}}>
+              {initials(p.name)}
+            </Box>
+            <Box component="span" sx={ellipsis}>
+              {p.name}
+            </Box>
+            {p.me && (
+              <Box component="span" sx={{color: color.cream, flex: "none"}}>
+                (ti)
+              </Box>
+            )}
+          </Box>
+        ))}
+      </Box>
+      <Box
+        component={TransitionLink}
+        href={`/burza/novi/zamjena?from=home&league=${league.league_id}&night=${night}`}
+        sx={{
+          ...buttonBase,
+          height: 52,
+          borderRadius: "14px",
+          background: "rgba(237,224,191,.16)",
+          color: "#FFFFFF",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "8px",
+          px: "14px",
+          fontSize: 15,
+          fontWeight: 600,
+          textDecoration: "none",
+          transition: "background 160ms ease",
+          "&:hover": {background: "rgba(237,224,191,.24)"},
+          "& svg": {fontSize: 22, color: color.cream},
+        }}
+      >
+        <PersonSearchRoundedIcon aria-hidden />
+        Nađi zamjenu
+      </Box>
+    </Box>
+  );
+}
+
+// While the player's leagues load: the card's frame, so Početna doesn't jump
+export function NextNightPlaceholder() {
+  const bar = {bgcolor: "rgba(237,224,191,.16)"};
+  return (
+    <Box role="status" aria-label="Učitavanje" sx={{flex: "none", minHeight: 200, boxSizing: "border-box", borderRadius: "24px", background: color.navy, p: "18px", display: "flex", flexDirection: "column", gap: "14px", boxShadow: shadow.hero}}>
+      <Skeleton variant="text" width={140} height={20} sx={bar} />
+      <Skeleton variant="text" width={190} height={40} sx={bar} />
+      <Skeleton variant="text" width={220} height={24} sx={bar} />
+      <Skeleton variant="rounded" height={52} sx={{...bar, borderRadius: "14px", mt: "auto"}} />
+    </Box>
+  );
+}
+
+// Burza igrača: how many teams need a player (opening Burza on Zamjene), and how many ads there are in all
+export function BurzaHomeCard({posts}: {posts: BurzaPost[] | null}) {
+  // other teams' requests, one per team
+  const teams = Array.from(new Set((posts ?? []).filter((p) => p.kind === "SUBSTITUTE" && !p.mine && p.team).map((p) => p.team!.name)));
+  const asking = teams.length > 0;
+  const shown = teams.slice(0, 2);
+  const more = teams.length - shown.length;
+  return (
+    <Box
+      component={TransitionLink}
+      href={asking ? "/burza?tab=zamjene" : "/burza"}
+      sx={{
+        ...buttonBase,
+        flex: "none",
+        width: "100%",
+        boxSizing: "border-box",
+        borderRadius: "22px",
+        background: color.card,
+        color: color.ink,
+        p: "16px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "12px",
+        textAlign: "left",
+        textDecoration: "none",
+        boxShadow: shadow.card,
+        transition: "transform 120ms ease",
+        "&:active": {transform: "scale(.98)"},
+      }}
+    >
+      <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px"}}>
+        <Box component="span" sx={{display: "flex", alignItems: "center", gap: "6px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.navy, whiteSpace: "nowrap", "& svg": {fontSize: 20}}}>
+          <GroupsRoundedIcon aria-hidden />
+          Burza igrača
+        </Box>
+        {posts && (
+          <Box component="span" sx={{fontSize: 13, fontWeight: 600, color: color.navy}}>
+            {adCount(posts.length)}
+          </Box>
+        )}
+      </Box>
+      <Box sx={{display: "flex", alignItems: "center", gap: "12px"}}>
+        {asking && (
+          <Box aria-hidden sx={{display: "flex", flex: "none"}}>
+            {shown.map((name, i) => (
+              <Bubble key={name} bg={i === 0 ? color.cream : "#E3DCCB"} ring={i > 0}>
+                {initials(name)}
+              </Bubble>
+            ))}
+            {more > 0 && (
+              <Bubble bg={color.paper} ring>
+                +{more}
+              </Bubble>
+            )}
+          </Box>
+        )}
+        <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
+          <Box component="span" sx={{fontFamily: font.display, fontSize: 19, fontWeight: 800, lineHeight: 1.15, color: color.ink}}>
+            {posts == null ? <Skeleton width={180} /> : asking ? teamsLooking(teams.length) : "Nitko ne traži zamjenu"}
+          </Box>
+          <Box component="span" sx={{fontSize: 13, color: color.muted, ...ellipsis}}>
+            {posts == null ? <Skeleton width={140} /> : asking ? namesAndMore(teams) : "Pogledaj partnere i dostupne igrače"}
+          </Box>
+        </Box>
+        <ChevronRightRoundedIcon aria-hidden sx={{fontSize: 26, color: color.navy}} />
+      </Box>
+      <Box component="span" sx={{fontSize: 15, lineHeight: 1.4, color: color.ink2}}>
+        {asking || posts == null ? "Možeš li uskočiti ili znaš nekoga tko može?" : "Objavi oglas kad tebi zatreba igrač ili partner."}
+      </Box>
+    </Box>
+  );
+}
+
+function Bubble({bg, ring, children}: {bg: string; ring: boolean; children: React.ReactNode}) {
+  return (
+    <Box component="span" sx={{ml: ring ? "-9px" : 0, display: "flex", borderRadius: "50%", boxShadow: ring ? "0 0 0 2.5px #FFFFFF" : "none"}}>
+      <Box component="span" sx={{width: 34, height: 34, flex: "none", borderRadius: "50%", background: bg, color: color.navy, fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center"}}>
+        {children}
+      </Box>
+    </Box>
+  );
+}
+
+// One of the 2×2 tiles under the cards (Raspored, Dnevni poredak, Ukupni poredak, Rejting)
+export function HomeTile({href, icon, label}: {href: string; icon: React.ReactNode; label: string}) {
+  return (
+    <Box
+      component={TransitionLink}
+      href={href}
+      sx={{
+        ...buttonBase,
+        height: 64,
+        boxSizing: "border-box",
+        borderRadius: "18px",
+        background: color.card,
+        color: color.ink,
+        display: "flex",
+        alignItems: "center",
+        gap: "10px",
+        px: "14px",
+        fontSize: 15,
+        fontWeight: 600,
+        lineHeight: 1.2,
+        textAlign: "left",
+        textDecoration: "none",
+        boxShadow: shadow.card,
+        transition: "transform 120ms ease",
+        "&:active": {transform: "scale(.98)"},
+        "& > svg": {fontSize: 24, color: color.navy, flex: "none"},
+      }}
+    >
+      {icon}
+      {label}
+    </Box>
+  );
+}

@@ -15,6 +15,8 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import EmojiEventsRoundedIcon from "@mui/icons-material/EmojiEventsRounded";
+import EventRoundedIcon from "@mui/icons-material/EventRounded";
+import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import LeaderboardRoundedIcon from "@mui/icons-material/LeaderboardRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
@@ -42,6 +44,8 @@ export type NavKey =
   | "daily"
   | "league"
   | "ratings"
+  | "raspored"
+  | "burza"
   | "manageLeague"
   | "createLeague"
   | "manageTeam"
@@ -155,6 +159,8 @@ const NAV: NavItem[] = [
   {key: "daily", label: "Daily Standings", icon: <CalendarMonthRoundedIcon />, leaguePage: "daily-standings"},
   {key: "league", label: "League Standings", icon: <EmojiEventsRoundedIcon />, leaguePage: "standings"},
   {key: "ratings", label: "Rejting", icon: <LeaderboardRoundedIcon />, href: "/ratings"},
+  {key: "raspored", label: "Raspored", icon: <EventRoundedIcon />, href: "/raspored"},
+  {key: "burza", label: "Burza igrača", icon: <GroupsRoundedIcon />, href: "/burza"},
   {key: "manageLeague", label: "Manage League", icon: <TuneRoundedIcon />, leaguePage: "manage", head: "Admin", adminOnly: true},
   {key: "createLeague", label: "Create League", icon: <LibraryAddRoundedIcon />, href: "/league/new", adminOnly: true},
   {key: "manageTeam", label: "Manage Team", icon: <EditRoundedIcon />, href: "/teams", adminOnly: true},
@@ -186,8 +192,8 @@ export function NavDrawer({open, onClose, active}: {open: boolean; onClose: () =
     };
   }, [open, signedIn, leagueId]);
 
-  // signed out, only the public season table is available
-  const items = NAV.filter((n) => (signedIn ? isAdmin || !n.adminOnly : n.key === "league")).map((n) =>
+  // signed out, only the public season table and Burza igrača are available
+  const items = NAV.filter((n) => (signedIn ? isAdmin || !n.adminOnly : n.key === "league" || n.key === "burza")).map((n) =>
     n.leaguePage ? {...n, href: currentLeagueHref(n.leaguePage, leagueId)} : n
   );
   const itemSx = (on: boolean) => ({

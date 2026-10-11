@@ -18,6 +18,8 @@ export const color = {
   creamSoft: "#FBF6E8", // my table's card in a round
   mine: "#F7F0DC", // my team's row in the standings
   pressed: "#F3EEE1",
+  track: "#EAE5D9", // the tab track of Burza and Raspored
+  ink2: "#2A3043", // body text of an ad
   green: "#386641",
   red: "#BC4749",
   live: "#BC4749",

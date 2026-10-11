@@ -1,19 +1,22 @@
 "use client";
 
+import useBurza from "@/app/_hooks/useBurza";
 import {useSelectedLeagueId} from "@/app/_hooks/useLeagues";
-import {useMyRating} from "@/app/_hooks/useRatings";
+import useMySchedule from "@/app/_hooks/useMySchedule";
 import useLogout from "@/app/_hooks/useLogout";
 import {OpenTable} from "@/app/_hooks/useOpenTable";
 import useStartGame from "@/app/_hooks/useStartGame";
 import {currentLeagueHref} from "@/app/_lib/league";
 import {color, font, shadow} from "@/app/_styles/tokens";
 import {Brand} from "@/app/_ui/auth/AuthFrame";
+import {BurzaHomeCard, HomeTile, NextNightCard, NextNightPlaceholder, nextNight} from "@/app/_ui/home/HomeCards";
 import InstallSheet from "@/app/_ui/install/InstallSheet";
 import {buttonBase, Card, ellipsis, ErrorNote, IconCircleButton, Screen, SectionLabel, Spinner, TeamDot, TextButton} from "@/app/_ui/sp";
 import AccountCircleRoundedIcon from "@mui/icons-material/AccountCircleRounded";
 import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import EventRoundedIcon from "@mui/icons-material/EventRounded";
 import EmojiEventsRoundedIcon from "@mui/icons-material/EmojiEventsRounded";
 import GroupAddRoundedIcon from "@mui/icons-material/GroupAddRounded";
 import LeaderboardRoundedIcon from "@mui/icons-material/LeaderboardRounded";
@@ -40,6 +43,9 @@ export default function PhoneHome({
   const leagueId = useSelectedLeagueId();
   const {logout, loggingOut} = useLogout();
   const {start, starting, error} = useStartGame();
+  const {schedule, error: scheduleError} = useMySchedule();
+  const next = nextNight(schedule);
+  const {posts} = useBurza();
 
   return (
     <Screen>
@@ -52,10 +58,15 @@ export default function PhoneHome({
         </IconCircleButton>
       </Box>
 
+      {/* the table to play tonight; the rest of the week, the team's next night */}
       {openTable || openTableLoading ? (
         <StartCard table={openTable} starting={starting} onStart={start} errorId={error ? "start-error" : undefined} />
-      ) : (
+      ) : next ? (
+        <NextNightCard league={next.league} night={next.night} today={schedule!.today} />
+      ) : schedule || scheduleError ? (
         <NoRoundCard />
+      ) : (
+        <NextNightPlaceholder />
       )}
       {error && (
         <Box id="start-error">
@@ -63,11 +74,14 @@ export default function PhoneHome({
         </Box>
       )}
 
-      <Box component="nav" aria-label="Poredak" sx={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px"}}>
-        <Tile href={currentLeagueHref("daily-standings", leagueId)} icon={<CalendarMonthRoundedIcon />} label="Daily Standings" />
-        <Tile href={currentLeagueHref("standings", leagueId)} icon={<EmojiEventsRoundedIcon />} label="League Standings" />
+      <BurzaHomeCard posts={posts} />
+
+      <Box component="nav" aria-label="Izbornik" sx={{display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: "8px"}}>
+        <HomeTile href={next ? `/raspored?league=${next.league.league_id}` : "/raspored"} icon={<EventRoundedIcon />} label="Raspored" />
+        <HomeTile href={currentLeagueHref("daily-standings", leagueId)} icon={<CalendarMonthRoundedIcon />} label="Dnevni poredak" />
+        <HomeTile href={currentLeagueHref("standings", leagueId)} icon={<EmojiEventsRoundedIcon />} label="Ukupni poredak" />
+        <HomeTile href="/ratings" icon={<LeaderboardRoundedIcon />} label="Rejting" />
       </Box>
-      <RatingTile />
 
       {isAdmin && (
         <Box component="section" aria-labelledby="admin-controls" sx={{display: "flex", flexDirection: "column", gap: "8px", mt: "6px"}}>
@@ -87,82 +101,6 @@ export default function PhoneHome({
       </TextButton>
       <InstallSheet />
     </Screen>
-  );
-}
-
-function Tile({href, icon, label}: {href: string; icon: React.ReactNode; label: string}) {
-  return (
-    <Box
-      component={TransitionLink}
-      href={href}
-      sx={{
-        ...buttonBase,
-        height: 112,
-        borderRadius: "22px",
-        background: color.card,
-        color: color.ink,
-        p: "16px",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        alignItems: "flex-start",
-        textDecoration: "none",
-        textAlign: "left",
-        boxShadow: shadow.card,
-        transition: "transform 120ms ease",
-        "&:active": {transform: "scale(.98)"},
-        "& svg": {fontSize: 28, color: color.navy},
-      }}
-    >
-      {icon}
-      <Box component="span" sx={{fontSize: 17, fontWeight: 600, lineHeight: 1.15}}>
-        {label}
-      </Box>
-    </Box>
-  );
-}
-
-// Rejting: the player's own rating and place, opening the ratings list
-function RatingTile() {
-  const {me, total} = useMyRating();
-  return (
-    <Box
-      component={TransitionLink}
-      href="/ratings"
-      sx={{
-        ...buttonBase,
-        height: 76,
-        flex: "none",
-        borderRadius: "22px",
-        background: color.card,
-        color: color.ink,
-        px: "16px",
-        display: "flex",
-        alignItems: "center",
-        gap: "14px",
-        textDecoration: "none",
-        boxShadow: shadow.card,
-        transition: "transform 120ms ease",
-        "&:active": {transform: "scale(.98)"},
-        "& > svg:first-of-type": {fontSize: 28, color: color.navy},
-      }}
-    >
-      <LeaderboardRoundedIcon />
-      <Box component="span" sx={{flex: 1, fontSize: 17, fontWeight: 600}}>
-        Rejting
-      </Box>
-      {me && (
-        <Box component="span" sx={{display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px"}}>
-          <Box component="span" sx={{fontFamily: font.display, fontSize: 24, fontWeight: 800, lineHeight: 1, fontVariantNumeric: "tabular-nums"}}>
-            {me.rating}
-          </Box>
-          <Box component="span" sx={{fontSize: 12.5, color: color.muted}}>
-            #{me.rank} od {total}
-          </Box>
-        </Box>
-      )}
-      <ChevronRightRoundedIcon sx={{fontSize: 22, color: color.navy}} />
-    </Box>
   );
 }
 
