@@ -16,20 +16,18 @@ import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {
   buttonBase,
   Card,
+  DesktopOnlyNote,
   DesktopShell,
   ellipsis,
   EmptyState,
   ErrorNote,
   IconCircleButton,
   InfoNote,
-  LeagueEyebrowButton,
   LeagueMenuButton,
   LoadMoreButton,
   LoadingRows,
   OutlineButton,
   PlayerChip,
-  Screen,
-  ScreenTitle,
   SearchInput,
   Segmented,
   Spinner,
@@ -37,7 +35,6 @@ import {
 } from "@/app/_ui/sp";
 import {searchTeams, TeamOption} from "@/app/_ui/teams/teamSearch";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import GroupAddRoundedIcon from "@mui/icons-material/GroupAddRounded";
 import InfoRoundedIcon from "@mui/icons-material/InfoRounded";
@@ -45,7 +42,6 @@ import WarningRoundedIcon from "@mui/icons-material/WarningRounded";
 import {Box} from "@mui/material";
 import {useParams, useSearchParams} from "next/navigation";
 import LeagueDetailsView from "./LeagueDetailsView";
-import LeagueNameCard from "./LeagueNameCard";
 import DatesView from "./DatesView";
 import RoundsView, {useLeagueRounds} from "./RoundsView";
 import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
@@ -79,11 +75,16 @@ function removalNote(played: number | null): string {
   return `Uklanja ekipu i ${plural(played, "njezino", "njezina", "njezinih")} ${count(played, NOUN.odigranoKolo)} iz poretka ove lige. ${stay}`;
 }
 
+// Upravljanje ligom is edited on the desktop only (handoff §2: no admin editing on mobile); the phone says so
 export default function ManageLeague() {
+  const isDesktop = useIsDesktop();
+  return isDesktop ? <ManageLeagueDesktop /> : <DesktopOnlyNote />;
+}
+
+function ManageLeagueDesktop() {
   const params = useParams<{leagueId: string}>();
   const leagueId = Number(params.leagueId);
   const router = useTransitionRouter();
-  const isDesktop = useIsDesktop();
   const leagues = useLeagues(leagueId);
   const {teams, setTeams, error, loading, reload} = useLeagueTeams(leagueId);
   const {standings} = useLeagueStandings(leagueId);
@@ -91,12 +92,12 @@ export default function ManageLeague() {
   const [query, setQuery] = useState("");
   const [justAdded, setJustAdded] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  // desktop: create a round (the first view), the league's teams, its rounds (delete a round), its nights or its details;
+  // create a round (the first view), the league's teams, its rounds (delete a round), its nights or its details;
   // ?view= opens another
   const viewParam = useSearchParams().get("view") as View | null;
   const [view, setView] = useState<View>(viewParam && VIEWS.includes(viewParam) ? viewParam : "create");
   const leagueRounds = useLeagueRounds(leagueId);
-  const leagueNights = useLeagueNights(isDesktop ? leagueId : null);
+  const leagueNights = useLeagueNights(leagueId);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [pending, setPending] = useState<PendingRemoval | null>(null);
   const pendingRef = useRef<PendingRemoval | null>(null);
@@ -329,14 +330,11 @@ export default function ManageLeague() {
     </Box>
   );
 
-  // keyed by league (so switching league starts from the saved list), apart from the league name card next to it
+  // keyed by league (so switching league starts from the saved list); the Podaci view shows it next to the details
   const conferencesCard = <ConferencesCard key={`conferences-${leagueId}`} leagueId={leagueId} teamCounts={teamCounts} onSaved={conferencesSaved} />;
 
-  // the desktop renames the league and edits its conferences in the Podaci view
   const sidePanel = (
-    <Box sx={{minHeight: 0, overflowY: isDesktop ? "auto" : undefined, display: "flex", flexDirection: "column", gap: "16px"}}>
-      {!isDesktop && <LeagueNameCard key={leagueId} leagueId={leagueId} leagues={leagues} />}
-      {!isDesktop && conferencesCard}
+    <Box sx={{minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: "16px"}}>
       {hasConferences && teams && <DistributeCard conferences={confList} teams={rows} order={tableOrder} onDistribute={distribute} />}
       <AddTeamCard exclude={rows.map((r) => r.id)} onAdd={onAdd} onCreate={() => router.push(`/teams/new?league=${leagueId}`)} />
       <InfoNote icon={<InfoRoundedIcon />}>
@@ -345,230 +343,186 @@ export default function ManageLeague() {
     </Box>
   );
 
-  if (isDesktop) {
-    return (
-      <DesktopShell
-        active="manageLeague"
-        eyebrow="Admin"
-        title="Upravljanje ligom"
-        right={<LeagueMenuButton leagues={leagues} value={leagueId} onChange={(id) => router.router.push(`/league/${id}/manage?view=${view}`)} />}
-      >
-        <ViewSwitch view={view} onChange={setView} teams={rows.length} rounds={leagueRounds.rounds?.length ?? null} nights={leagueNights.nights?.length ?? null} />
-        {view === "create" ? (
-          <CreateRoundView
-            leagueId={leagueId}
-            defaultRounds={leagues.find((l) => l.id === leagueId)?.roundsPerNight}
-            defaultSmokingTables={leagues.find((l) => l.id === leagueId)?.smokingTables}
-          />
-        ) : view === "details" ? (
-          <LeagueDetailsView key={leagueId} leagueId={leagueId} leagues={leagues} aside={conferencesCard} />
-        ) : view === "rounds" ? (
-          <RoundsView leagueId={leagueId} data={leagueRounds} />
-        ) : view === "dates" ? (
-          <DatesView leagueId={leagueId} data={leagueNights} />
-        ) : (
-          <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) 380px", gap: "20px"}}>
-            <Card component="section" aria-label={`Ekipe lige ${leagueName}`} sx={{minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderRadius: "24px"}}>
-              {toolbar}
-              {actionError && <ErrorNote sx={{m: "12px 14px 0"}}>{actionError}</ErrorNote>}
-              <Box
-                aria-hidden
-                sx={{flex: "none", height: 40, display: "grid", gridTemplateColumns: TEAM_GRID, gap: "12px", alignItems: "center", px: "20px", background: color.paper2, borderBottom: `1px solid ${tint.navy[10]}`, fontSize: 12, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: color.muted}}
-              >
-                <span>Ekipa</span>
-                <span>Igrači</span>
-                <Box component="span" sx={{textAlign: "center"}}>
-                  Odigrano
-                </Box>
-                <Box component="span" sx={{textAlign: "right"}}>
-                  Status
-                </Box>
-                <span />
+  return (
+    <DesktopShell
+      active="manageLeague"
+      eyebrow="Admin"
+      title="Upravljanje ligom"
+      right={<LeagueMenuButton leagues={leagues} value={leagueId} onChange={(id) => router.router.push(`/league/${id}/manage?view=${view}`)} />}
+    >
+      <ViewSwitch view={view} onChange={setView} teams={rows.length} rounds={leagueRounds.rounds?.length ?? null} nights={leagueNights.nights?.length ?? null} />
+      {view === "create" ? (
+        <CreateRoundView
+          leagueId={leagueId}
+          defaultRounds={leagues.find((l) => l.id === leagueId)?.roundsPerNight}
+          defaultSmokingTables={leagues.find((l) => l.id === leagueId)?.smokingTables}
+        />
+      ) : view === "details" ? (
+        <LeagueDetailsView key={leagueId} leagueId={leagueId} leagues={leagues} aside={conferencesCard} />
+      ) : view === "rounds" ? (
+        <RoundsView leagueId={leagueId} data={leagueRounds} />
+      ) : view === "dates" ? (
+        <DatesView leagueId={leagueId} data={leagueNights} />
+      ) : (
+        <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) 380px", gap: "20px"}}>
+          <Card component="section" aria-label={`Ekipe lige ${leagueName}`} sx={{minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderRadius: "24px"}}>
+            {toolbar}
+            {actionError && <ErrorNote sx={{m: "12px 14px 0"}}>{actionError}</ErrorNote>}
+            <Box
+              aria-hidden
+              sx={{flex: "none", height: 40, display: "grid", gridTemplateColumns: TEAM_GRID, gap: "12px", alignItems: "center", px: "20px", background: color.paper2, borderBottom: `1px solid ${tint.navy[10]}`, fontSize: 12, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: color.muted}}
+            >
+              <span>Ekipa</span>
+              <span>Igrači</span>
+              <Box component="span" sx={{textAlign: "center"}}>
+                Odigrano
               </Box>
-              {listState ?? (
-                <Box sx={{flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable"}}>
-                <Box component="ul" sx={{listStyle: "none", m: 0, p: 0}}>
-                  {visible.map((r) => (
-                    <Box
-                      component="li"
-                      key={r.id}
-                      sx={{
-                        minHeight: 60,
-                        display: "grid",
-                        gridTemplateColumns: TEAM_GRID,
-                        gap: "0 12px",
-                        alignItems: "center",
-                        px: "20px",
-                        borderBottom: `1px solid ${color.divider}`,
-                        background: confirmDelete === r.id ? tint.red[6] : r.id === justAdded ? color.cream2 : "transparent",
-                        animation: r.id === justAdded ? "spRowIn 420ms cubic-bezier(.2,.8,.2,1) both" : "none",
-                      }}
-                    >
-                      <Box sx={{display: "flex", flexDirection: "column", gap: "4px", minWidth: 0, py: hasConferences ? "8px" : 0}}>
-                        <Box component="span" sx={{fontSize: 16, fontWeight: 600, color: r.active ? color.ink : color.muted, ...ellipsis}}>
-                          {r.name}
-                        </Box>
-                        {hasConferences && <ConferencePicker teamName={r.name} value={r.conferenceId} conferences={confList} onPick={(id) => setConference(r, id)} />}
+              <Box component="span" sx={{textAlign: "right"}}>
+                Status
+              </Box>
+              <span />
+            </Box>
+            {listState ?? (
+              <Box sx={{flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable"}}>
+              <Box component="ul" sx={{listStyle: "none", m: 0, p: 0}}>
+                {visible.map((r) => (
+                  <Box
+                    component="li"
+                    key={r.id}
+                    sx={{
+                      minHeight: 60,
+                      display: "grid",
+                      gridTemplateColumns: TEAM_GRID,
+                      gap: "0 12px",
+                      alignItems: "center",
+                      px: "20px",
+                      borderBottom: `1px solid ${color.divider}`,
+                      background: confirmDelete === r.id ? tint.red[6] : r.id === justAdded ? color.cream2 : "transparent",
+                      animation: r.id === justAdded ? "spRowIn 420ms cubic-bezier(.2,.8,.2,1) both" : "none",
+                    }}
+                  >
+                    <Box sx={{display: "flex", flexDirection: "column", gap: "4px", minWidth: 0, py: hasConferences ? "8px" : 0}}>
+                      <Box component="span" sx={{fontSize: 16, fontWeight: 600, color: r.active ? color.ink : color.muted, ...ellipsis}}>
+                        {r.name}
                       </Box>
-                      <Box component="span" sx={{display: "flex", gap: "6px", minWidth: 0, overflow: "hidden", opacity: r.active ? 1 : 0.55}}>
-                        {r.players.map((p) => (
-                          <PlayerChip key={p} name={p} size="sm" />
-                        ))}
-                      </Box>
-                      <Box component="span" sx={{textAlign: "center", fontSize: 15, color: color.ink2, fontVariantNumeric: "tabular-nums"}}>
-                        {r.played ?? "—"}
-                      </Box>
-                      {statusToggle(r)}
-                      <Box
-                        component="button"
-                        type="button"
-                        onClick={() => setConfirmDelete(confirmDelete === r.id ? null : r.id)}
-                        aria-label={`Ukloni ${r.name} iz lige`}
-                        aria-expanded={confirmDelete === r.id}
-                        title="Ukloni iz lige"
-                        sx={{
-                          ...buttonBase,
-                          width: 44,
-                          height: 44,
-                          borderRadius: "12px",
-                          color: confirmDelete === r.id ? color.red : color.faint,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          "& svg": {fontSize: 22},
-                          "&:hover": {background: tint.red[10], color: color.red},
-                        }}
-                      >
-                        <DeleteRoundedIcon />
-                      </Box>
-                      {confirmDelete === r.id && (
-                        <Box
-                          role="alert"
-                          sx={{
-                            gridColumn: "1 / -1",
-                            mx: "-20px",
-                            p: "14px 20px",
-                            background: tint.red[8],
-                            borderTop: `1px solid ${tint.red[20]}`,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "14px",
-                            "& > svg": {fontSize: 24, color: color.red, flex: "none"},
-                          }}
-                        >
-                          <WarningRoundedIcon />
-                          <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
-                            <Box component="span" sx={{fontSize: 15, fontWeight: 700, color: color.ink}}>
-                              Ukloniti {r.name} iz ove lige?
-                            </Box>
-                            <Box component="span" sx={{fontSize: 13, color: color.ink2}}>
-                              {removalNote(r.played)}
-                            </Box>
-                          </Box>
-                          <Box
-                            component="button"
-                            type="button"
-                            onClick={() => setConfirmDelete(null)}
-                            sx={{...buttonBase, flex: "none", height: 42, px: "16px", border: `1.5px solid ${color.borderControl}`, borderRadius: "12px", background: color.white, color: color.navy, fontSize: 14, fontWeight: 600}}
-                          >
-                            Odustani
-                          </Box>
-                          <Box
-                            component="button"
-                            type="button"
-                            onClick={() => removeTeam(r)}
-                            sx={{...buttonBase, flex: "none", height: 42, px: "16px", borderRadius: "12px", background: color.red, color: color.white, display: "flex", alignItems: "center", gap: "6px", fontSize: 14, fontWeight: 600, "& svg": {fontSize: 18}}}
-                          >
-                            <DeleteRoundedIcon />
-                            Obriši ekipu
-                          </Box>
-                        </Box>
-                      )}
+                      {hasConferences && <ConferencePicker teamName={r.name} value={r.conferenceId} conferences={confList} onPick={(id) => setConference(r, id)} />}
                     </Box>
-                  ))}
-                </Box>
-                <Box role="status" sx={{display: "contents"}}>
-                  {pending && (
+                    <Box component="span" sx={{display: "flex", gap: "6px", minWidth: 0, overflow: "hidden", opacity: r.active ? 1 : 0.55}}>
+                      {r.players.map((p) => (
+                        <PlayerChip key={p} name={p} size="sm" />
+                      ))}
+                    </Box>
+                    <Box component="span" sx={{textAlign: "center", fontSize: 15, color: color.ink2, fontVariantNumeric: "tabular-nums"}}>
+                      {r.played ?? "—"}
+                    </Box>
+                    {statusToggle(r)}
                     <Box
+                      component="button"
+                      type="button"
+                      onClick={() => setConfirmDelete(confirmDelete === r.id ? null : r.id)}
+                      aria-label={`Ukloni ${r.name} iz lige`}
+                      aria-expanded={confirmDelete === r.id}
+                      title="Ukloni iz lige"
                       sx={{
-                        position: "sticky",
-                        bottom: "12px",
-                        m: "12px auto",
-                        width: "max-content",
-                        maxWidth: "90%",
+                        ...buttonBase,
+                        width: 44,
+                        height: 44,
+                        borderRadius: "12px",
+                        color: confirmDelete === r.id ? color.red : color.faint,
                         display: "flex",
                         alignItems: "center",
-                        gap: "14px",
-                        p: "8px 8px 8px 16px",
-                        borderRadius: "14px",
-                        background: color.ink,
-                        color: color.white,
-                        fontSize: 14,
-                        boxShadow: shadow.tooltip,
+                        justifyContent: "center",
+                        "& svg": {fontSize: 22},
+                        "&:hover": {background: tint.red[10], color: color.red},
                       }}
                     >
-                      <span>{pending.team.name} uklonjena iz lige</span>
-                      <Box
-                        component="button"
-                        type="button"
-                        onClick={undoRemoval}
-                        sx={{...buttonBase, height: 36, px: "12px", borderRadius: "10px", background: tint.white[14], color: color.white, fontSize: 14, fontWeight: 600}}
-                      >
-                        Poništi
-                      </Box>
+                      <DeleteRoundedIcon />
                     </Box>
-                  )}
-                </Box>
-                </Box>
-              )}
-            </Card>
-            {sidePanel}
-          </Box>
-        )}
-      </DesktopShell>
-    );
-  }
-
-  return (
-    <Screen>
-      <Box sx={{display: "flex", alignItems: "flex-start", gap: "12px"}}>
-        <IconCircleButton label="Nazad" onClick={() => router.push("/", "back")}>
-          <ArrowBackRoundedIcon />
-        </IconCircleButton>
-        <Box sx={{display: "flex", flexDirection: "column", gap: "6px", minWidth: 0, pt: "2px"}}>
-          <LeagueEyebrowButton leagues={leagues} value={leagueId} onChange={(id) => router.router.push(`/league/${id}/manage`)} />
-          <ScreenTitle title="Upravljanje ligom" sx={{px: 0}} />
-        </Box>
-      </Box>
-      <Card sx={{overflow: "hidden"}}>
-        {toolbar}
-        {actionError && <ErrorNote sx={{m: "12px 14px 0"}}>{actionError}</ErrorNote>}
-        {listState ?? (
-          <Box component="ul" sx={{listStyle: "none", m: 0, p: 0}}>
-            {visible.map((r) => (
-              <Box
-                component="li"
-                key={r.id}
-                sx={{display: "flex", alignItems: "center", gap: "10px", p: "12px 10px 12px 16px", borderBottom: `1px solid ${color.line}`, background: r.id === justAdded ? color.cream2 : "transparent"}}
-              >
-                <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "6px"}}>
-                  <Box component="span" sx={{fontSize: 16, fontWeight: 600, color: r.active ? color.ink : color.muted, ...ellipsis}}>
-                    {r.name}
+                    {confirmDelete === r.id && (
+                      <Box
+                        role="alert"
+                        sx={{
+                          gridColumn: "1 / -1",
+                          mx: "-20px",
+                          p: "14px 20px",
+                          background: tint.red[8],
+                          borderTop: `1px solid ${tint.red[20]}`,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "14px",
+                          "& > svg": {fontSize: 24, color: color.red, flex: "none"},
+                        }}
+                      >
+                        <WarningRoundedIcon />
+                        <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
+                          <Box component="span" sx={{fontSize: 15, fontWeight: 700, color: color.ink}}>
+                            Ukloniti {r.name} iz ove lige?
+                          </Box>
+                          <Box component="span" sx={{fontSize: 13, color: color.ink2}}>
+                            {removalNote(r.played)}
+                          </Box>
+                        </Box>
+                        <Box
+                          component="button"
+                          type="button"
+                          onClick={() => setConfirmDelete(null)}
+                          sx={{...buttonBase, flex: "none", height: 42, px: "16px", border: `1.5px solid ${color.borderControl}`, borderRadius: "12px", background: color.white, color: color.navy, fontSize: 14, fontWeight: 600}}
+                        >
+                          Odustani
+                        </Box>
+                        <Box
+                          component="button"
+                          type="button"
+                          onClick={() => removeTeam(r)}
+                          sx={{...buttonBase, flex: "none", height: 42, px: "16px", borderRadius: "12px", background: color.red, color: color.white, display: "flex", alignItems: "center", gap: "6px", fontSize: 14, fontWeight: 600, "& svg": {fontSize: 18}}}
+                        >
+                          <DeleteRoundedIcon />
+                          Obriši ekipu
+                        </Box>
+                      </Box>
+                    )}
                   </Box>
-                  <Box component="span" sx={{fontSize: 13, color: color.muted, ...ellipsis}}>
-                    {r.players.join(" · ") || "—"}
-                    {r.played != null && ` · ${r.played} OK`}
-                  </Box>
-                  {hasConferences && <ConferencePicker teamName={r.name} value={r.conferenceId} conferences={confList} onPick={(id) => setConference(r, id)} />}
-                </Box>
-                {statusToggle(r)}
+                ))}
               </Box>
-            ))}
-          </Box>
-        )}
-      </Card>
-      {sidePanel}
-    </Screen>
+              <Box role="status" sx={{display: "contents"}}>
+                {pending && (
+                  <Box
+                    sx={{
+                      position: "sticky",
+                      bottom: "12px",
+                      m: "12px auto",
+                      width: "max-content",
+                      maxWidth: "90%",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "14px",
+                      p: "8px 8px 8px 16px",
+                      borderRadius: "14px",
+                      background: color.ink,
+                      color: color.white,
+                      fontSize: 14,
+                      boxShadow: shadow.tooltip,
+                    }}
+                  >
+                    <span>{pending.team.name} uklonjena iz lige</span>
+                    <Box
+                      component="button"
+                      type="button"
+                      onClick={undoRemoval}
+                      sx={{...buttonBase, height: 36, px: "12px", borderRadius: "10px", background: tint.white[14], color: color.white, fontSize: 14, fontWeight: 600}}
+                    >
+                      Poništi
+                    </Box>
+                  </Box>
+                )}
+              </Box>
+              </Box>
+            )}
+          </Card>
+          {sidePanel}
+        </Box>
+      )}
+    </DesktopShell>
   );
 }
 

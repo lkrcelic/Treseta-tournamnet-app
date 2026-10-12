@@ -4,9 +4,7 @@ import {createTeamAPI} from "@/app/_fetchers/team/create";
 import {addTeamPlayerAPI, getTeamsAPI, removeTeamPlayerAPI, renameTeamAPI} from "@/app/_fetchers/team/manage";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import {filterTeams, MTPlayer, MTTeam, nameActions, teamNameError, toMTTeam} from "@/app/_lib/ui/manageTeam";
-import {useTransitionRouter} from "@/app/_lib/viewTransitions";
-import {DesktopShell, IconCircleButton, Screen, ScreenTitle} from "@/app/_ui/sp";
-import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import {DesktopOnlyNote, DesktopShell} from "@/app/_ui/sp";
 import {Box} from "@mui/material";
 import React, {useCallback, useEffect, useMemo, useState} from "react";
 import {NameCard, TeamList, TeammatesCard} from "./ManageTeamParts";
@@ -16,19 +14,20 @@ const errorText = (e: unknown, fallback: string) => (e instanceof Error ? e.mess
 // Manage Teams (admin): pick a team to rename it and change its players, or start a new team.
 // An existing team's players change at once; its name is saved with "Save name". A new team collects its name and
 // players first and is created with "Create team" (the first two players become its founders).
-// leagueId: the league a new team joins (Manage League's "Create team"); without it the current league
+// leagueId: the league a new team joins (Manage League's "Create team"); without it the current league.
+// Desktop only (handoff §2: no admin editing on mobile); the phone says so.
 export default function ManageTeam({startNew = false, leagueId}: {startNew?: boolean; leagueId?: number}) {
   const isDesktop = useIsDesktop();
-  const router = useTransitionRouter();
+  return isDesktop ? <ManageTeamDesktop startNew={startNew} leagueId={leagueId} /> : <DesktopOnlyNote />;
+}
 
+function ManageTeamDesktop({startNew, leagueId}: {startNew: boolean; leagueId?: number}) {
   const [teams, setTeams] = useState<MTTeam[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [nonce, setNonce] = useState(0);
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isNew, setIsNew] = useState(startNew);
-  // the phone shows the list or one team; the desktop shows both
-  const [phoneView, setPhoneView] = useState<"list" | "team">(startNew ? "team" : "list");
   const [draft, setDraft] = useState<string | null>(null);
   const [newPlayers, setNewPlayers] = useState<MTPlayer[]>([]);
   const [highlight, setHighlight] = useState<number | null>(null);
@@ -52,13 +51,8 @@ export default function ManageTeam({startNew = false, leagueId}: {startNew?: boo
     };
   }, [nonce]);
 
-  // the phone swaps the list for a team (and back): start each at the top
-  useEffect(() => {
-    if (!isDesktop) window.scrollTo(0, 0);
-  }, [phoneView, isDesktop]);
-
   const visible = useMemo(() => (teams == null ? null : filterTeams(teams, query)), [teams, query]);
-  // without a pick the first team is shown (desktop)
+  // without a pick the first team is shown
   const team = isNew ? null : teams?.find((t) => t.id === selectedId) ?? teams?.[0] ?? null;
   const players = isNew ? newPlayers : team?.players ?? [];
 
@@ -76,19 +70,14 @@ export default function ManageTeam({startNew = false, leagueId}: {startNew?: boo
     setSelectedId(id);
     setIsNew(false);
     resetEditor();
-    setPhoneView("team");
   };
   const startNewTeam = () => {
     setIsNew(true);
     setNewPlayers([]);
     resetEditor();
-    setPhoneView("team");
   };
   const cancel = () => {
-    if (isNew) {
-      setIsNew(false);
-      if (!isDesktop) setPhoneView("list");
-    }
+    if (isNew) setIsNew(false);
     resetEditor();
   };
 
@@ -168,12 +157,10 @@ export default function ManageTeam({startNew = false, leagueId}: {startNew?: boo
       onRetry={() => setNonce((n) => n + 1)}
       query={query}
       onQuery={setQuery}
-      // the phone list marks only a team that was opened; the desktop always shows one
-      selectedId={isDesktop ? team?.id ?? null : selectedId}
+      selectedId={team?.id ?? null}
       isNew={isNew}
       onSelect={select}
       onNew={startNewTeam}
-      sx={isDesktop ? undefined : {minHeight: 320}}
     />
   );
 
@@ -210,42 +197,14 @@ export default function ManageTeam({startNew = false, leagueId}: {startNew?: boo
       </>
     ) : null;
 
-  if (isDesktop) {
-    return (
-      <DesktopShell active="manageTeam" eyebrow="Admin" title="Manage Team">
-        <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "340px minmax(0,1fr)", gap: "20px"}}>
-          {list}
-          <Box sx={{minHeight: 0, overflowY: "auto", display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "20px", alignContent: "start"}}>
-            {editor}
-          </Box>
-        </Box>
-      </DesktopShell>
-    );
-  }
-
-  if (phoneView === "list") {
-    return (
-      <Screen>
-        <Box>
-          <IconCircleButton label="Nazad" onClick={() => router.push("/", "back")}>
-            <ArrowBackRoundedIcon />
-          </IconCircleButton>
-        </Box>
-        <ScreenTitle eyebrow="Admin" title="Manage Team" sx={{pt: "4px", pb: "8px"}} />
-        {list}
-      </Screen>
-    );
-  }
-
   return (
-    <Screen>
-      <Box>
-        <IconCircleButton label="Sve ekipe" onClick={() => (isNew ? cancel() : setPhoneView("list"))}>
-          <ArrowBackRoundedIcon />
-        </IconCircleButton>
+    <DesktopShell active="manageTeam" eyebrow="Admin" title="Manage Team">
+      <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "340px minmax(0,1fr)", gap: "20px"}}>
+        {list}
+        <Box sx={{minHeight: 0, overflowY: "auto", display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "20px", alignContent: "start"}}>
+          {editor}
+        </Box>
       </Box>
-      <ScreenTitle eyebrow="Manage Teams" title={isNew ? "New team" : team?.name ?? ""} sx={{pt: "4px", pb: "8px", "& > div:last-of-type": {overflowWrap: "anywhere"}}} />
-      {editor}
-    </Screen>
+    </DesktopShell>
   );
 }

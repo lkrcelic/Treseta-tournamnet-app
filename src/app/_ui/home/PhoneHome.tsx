@@ -3,8 +3,7 @@
 import useBurza from "@/app/_hooks/useBurza";
 import {useSelectedLeagueId} from "@/app/_hooks/useLeagues";
 import useMySchedule from "@/app/_hooks/useMySchedule";
-import useLogout from "@/app/_hooks/useLogout";
-import {OpenTable} from "@/app/_hooks/useOpenTable";
+import useOpenTable, {OpenTable} from "@/app/_hooks/useOpenTable";
 import useStartGame from "@/app/_hooks/useStartGame";
 import {currentLeagueHref} from "@/app/_lib/league";
 import {color, font, shadow, teamOnNavy, tint} from "@/app/_styles/tokens";
@@ -12,56 +11,48 @@ import {Brand} from "@/app/_ui/auth/AuthFrame";
 import {BurzaHomeCard, HomeTile, NextNightCard, NextNightPlaceholder, nextNight} from "@/app/_ui/home/HomeCards";
 import InstallSheet from "@/app/_ui/install/InstallSheet";
 import {SmokingMark} from "@/app/_ui/smoking/SmokingParts";
-import {buttonBase, Card, ellipsis, ErrorNote, IconCircleButton, Screen, SectionLabel, Spinner, TeamDot, TextButton} from "@/app/_ui/sp";
+import {buttonBase, ellipsis, ErrorNote, IconCircleButton, Screen, Spinner, TeamDot} from "@/app/_ui/sp";
 import AccountCircleRoundedIcon from "@mui/icons-material/AccountCircleRounded";
-import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
-import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import EventRoundedIcon from "@mui/icons-material/EventRounded";
 import EmojiEventsRoundedIcon from "@mui/icons-material/EmojiEventsRounded";
-import GroupAddRoundedIcon from "@mui/icons-material/GroupAddRounded";
 import LeaderboardRoundedIcon from "@mui/icons-material/LeaderboardRounded";
-import LibraryAddRoundedIcon from "@mui/icons-material/LibraryAddRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
-import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
-import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import {Box} from "@mui/material";
-import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
-import React from "react";
 
-export default function PhoneHome({
-  isAdmin,
-  openTable,
-  openTableLoading = false,
-}: {
-  isAdmin: boolean;
-  openTable: OpenTable | null;
-  openTableLoading?: boolean;
-}) {
+// Početna on the phone, the only Home (handoff §2; Claude Design "Burza v2" screen "home"): the top card, the Burza
+// igrača card and the 2×2 tiles. Nothing is edited here; admins manage leagues, rounds and teams on the desktop.
+export default function PhoneHome() {
   const router = useTransitionRouter();
   const leagueId = useSelectedLeagueId();
-  const {logout, loggingOut} = useLogout();
+  const {table: openTable, loading: openTableLoading} = useOpenTable();
   const {start, starting, error} = useStartGame();
   const {schedule, error: scheduleError} = useMySchedule();
   const next = nextNight(schedule);
   const {posts} = useBurza();
 
   return (
-    <Screen>
-      <Box component="header" sx={{display: "flex", alignItems: "flex-start", justifyContent: "space-between", px: "4px", pb: "16px"}}>
+    <Screen gap={12}>
+      {/* 4 px more under the header than between the cards, as designed */}
+      <Box component="header" sx={{display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "12px", px: "4px", pb: "4px"}}>
         <Box component="h1" sx={{m: 0, fontWeight: "inherit"}}>
-          <Brand size={44} />
+          <Brand variant="home" />
         </Box>
         <IconCircleButton label="Moj profil" onClick={() => router.push("/profile")}>
           <AccountCircleRoundedIcon />
         </IconCircleButton>
       </Box>
 
-      {/* the table to play tonight; the rest of the week, the team's next night */}
-      {openTable || openTableLoading ? (
+      {/* the table to play tonight; the rest of the week, the team's next night. While the open round loads, the
+          neutral frame (named like the Start card, so the scoreboard still shrinks into it on the way back) */}
+      {openTable ? (
         <StartCard table={openTable} starting={starting} onStart={start} errorId={error ? "start-error" : undefined} />
+      ) : openTableLoading ? (
+        <Box sx={{flex: "none", borderRadius: "24px", viewTransitionName: "table"}}>
+          <NextNightPlaceholder />
+        </Box>
       ) : next ? (
         <NextNightCard league={next.league} night={next.night} today={schedule!.today} />
       ) : schedule || scheduleError ? (
@@ -84,31 +75,15 @@ export default function PhoneHome({
         <HomeTile href="/ratings" icon={<LeaderboardRoundedIcon />} label="Rejting" />
       </Box>
 
-      {isAdmin && (
-        <Box component="section" aria-labelledby="admin-controls" sx={{display: "flex", flexDirection: "column", gap: "8px", mt: "6px"}}>
-          <SectionLabel id="admin-controls">Admin Controls</SectionLabel>
-          <Card component="ul" sx={{listStyle: "none", m: 0, p: 0, display: "flex", flexDirection: "column", overflow: "hidden"}}>
-            <AdminRow href="/createRound" icon={<AddCircleRoundedIcon />} label="Create Round" divider />
-            <AdminRow href={currentLeagueHref("manage", leagueId)} icon={<TuneRoundedIcon />} label="Manage League" divider />
-            <AdminRow href="/league/new" icon={<LibraryAddRoundedIcon />} label="Create League" divider />
-            <AdminRow href="/teams" icon={<GroupAddRoundedIcon />} label="Manage Team" />
-          </Card>
-        </Box>
-      )}
-
-      <TextButton onClick={() => logout()} disabled={loggingOut} sx={{mt: "auto", alignSelf: "center"}}>
-        <LogoutRoundedIcon />
-        Log Out
-      </TextButton>
       <InstallSheet />
     </Screen>
   );
 }
 
-// Start Game: the player's table of the open round (table number, both teams, and the score once a match is
-// running, when it reads Continue Game). While the round is still loading it shows just the title.
-function StartCard({table, starting, onStart, errorId}: {table: OpenTable | null; starting: boolean; onStart: () => void; errorId?: string}) {
-  const live = table?.score != null;
+// Započni igru: the player's table of the open round (table number, the smoking mark, both teams, and the score once
+// a match is running, when it reads Nastavi igru)
+function StartCard({table, starting, onStart, errorId}: {table: OpenTable; starting: boolean; onStart: () => void; errorId?: string}) {
+  const live = table.score != null;
   return (
     <Box
       component="button"
@@ -133,35 +108,31 @@ function StartCard({table, starting, onStart, errorId}: {table: OpenTable | null
         gap: "14px",
         textAlign: "left",
         boxShadow: shadow.hero,
-        // grows into the scoreboard on Start Game (the board's root has the same name)
+        // grows into the scoreboard on Započni igru (the board's root has the same name)
         viewTransitionName: "table",
         transition: "transform 120ms ease",
         "&:active:not(:disabled)": {transform: "scale(.98)"},
       }}
     >
       <Box sx={{display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px"}}>
-        {table ? (
-          <Box sx={{display: "flex", flexDirection: "column", gap: "8px", minWidth: 0}}>
-            <Box sx={{display: "flex", alignItems: "center", gap: "8px"}}>
-              <Box component="span" sx={{height: 28, display: "flex", alignItems: "center", px: "10px", borderRadius: "9px", background: color.cream, color: color.navy, fontSize: 13, fontWeight: 800, letterSpacing: ".08em"}}>
-                STOL {table.table ?? "–"}
+        <Box sx={{display: "flex", flexDirection: "column", gap: "8px", minWidth: 0}}>
+          <Box sx={{display: "flex", alignItems: "center", gap: "8px"}}>
+            <Box component="span" sx={{height: 28, display: "flex", alignItems: "center", px: "10px", borderRadius: "9px", background: color.cream, color: color.navy, fontSize: 13, fontWeight: 800, letterSpacing: ".08em"}}>
+              STOL {table.table ?? "–"}
+            </Box>
+            {table.smoking && <SmokingMark variant="onNavy" />}
+            {live && (
+              <Box component="span" sx={{fontSize: 13, fontWeight: 700, color: color.cream, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums"}}>
+                {table.score![0]} : {table.score![1]}
               </Box>
-              {table.smoking && <SmokingMark variant="onNavy" />}
-              {live && (
-                <Box component="span" sx={{fontSize: 13, fontWeight: 700, color: color.cream, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums"}}>
-                  {table.score![0]} : {table.score![1]}
-                </Box>
-              )}
-            </Box>
-            <Box sx={{display: "flex", flexDirection: "column", gap: "2px", minWidth: 0, fontSize: 17, fontWeight: 600, lineHeight: 1.2}}>
-              {[table.myTeam, table.opponent].map((name, k) => (
-                <TeamName key={k} name={name} side={k} conferences={table.conferences} />
-              ))}
-            </Box>
+            )}
           </Box>
-        ) : (
-          <span />
-        )}
+          <Box sx={{display: "flex", flexDirection: "column", gap: "2px", minWidth: 0, fontSize: 17, fontWeight: 600, lineHeight: 1.2}}>
+            {[table.myTeam, table.opponent].map((name, k) => (
+              <TeamName key={k} name={name} side={k} conferences={table.conferences} />
+            ))}
+          </Box>
+        </Box>
         <Box
           component="span"
           aria-hidden
@@ -171,7 +142,7 @@ function StartCard({table, starting, onStart, errorId}: {table: OpenTable | null
         </Box>
       </Box>
       <Box component="span" sx={{fontFamily: font.display, fontSize: 42, fontWeight: 800, letterSpacing: "-.02em", lineHeight: 1, whiteSpace: "nowrap"}}>
-        {live ? "Continue Game" : "Start Game"}
+        {live ? "Nastavi igru" : "Započni igru"}
       </Box>
     </Box>
   );
@@ -212,12 +183,13 @@ function NoRoundCard() {
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
+        cursor: "not-allowed",
       }}
     >
       <Box sx={{display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px"}}>
         <Box sx={{display: "flex", flexDirection: "column", gap: "6px", minWidth: 0}}>
           <Box sx={{fontSize: 13, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: color.muted}}>Nema otvorene runde</Box>
-          <Box sx={{fontSize: 14, lineHeight: 1.4, color: color.muted}}>Igra se otvara kad admin pokrene rundu.</Box>
+          <Box sx={{fontSize: 14, lineHeight: 1.4, color: color.muted, textWrap: "pretty"}}>Igra se otvara kad admin pokrene rundu.</Box>
         </Box>
         <Box
           component="span"
@@ -228,40 +200,7 @@ function NoRoundCard() {
         </Box>
       </Box>
       <Box component="span" sx={{fontFamily: font.display, fontSize: 42, fontWeight: 800, letterSpacing: "-.02em", lineHeight: 1}}>
-        Start Game
-      </Box>
-    </Box>
-  );
-}
-
-function AdminRow({href, icon, label, divider = false}: {href: string; icon: React.ReactNode; label: string; divider?: boolean}) {
-  return (
-    <Box component="li">
-      <Box
-        component={TransitionLink}
-        href={href}
-        sx={{
-          ...buttonBase,
-          height: 56,
-          display: "flex",
-          alignItems: "center",
-          gap: "14px",
-          px: "16px",
-          fontSize: 16,
-          fontWeight: 500,
-          color: color.ink,
-          textDecoration: "none",
-          textAlign: "left",
-          borderBottom: divider ? `1px solid ${color.line}` : "none",
-          "&:active": {background: color.lineFill},
-          "& > svg:first-of-type": {fontSize: 24, color: color.navy},
-        }}
-      >
-        {icon}
-        <Box component="span" sx={{flex: 1}}>
-          {label}
-        </Box>
-        <ChevronRightRoundedIcon sx={{fontSize: 22, color: color.muted}} />
+        Započni igru
       </Box>
     </Box>
   );

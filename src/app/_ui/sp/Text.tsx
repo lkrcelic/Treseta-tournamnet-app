@@ -14,7 +14,7 @@ export function Eyebrow({children, sx, id}: TextProps) {
   );
 }
 
-// Section heading inside a screen ("Details", "My Teams", "Admin Controls")
+// Section heading inside a screen ("Podaci", "Moje ekipe")
 export function SectionLabel({children, sx, id}: TextProps) {
   return (
     <Box component="h2" id={id} sx={mergeSx(eyebrowSx, {m: 0, px: "6px"}, sx)}>

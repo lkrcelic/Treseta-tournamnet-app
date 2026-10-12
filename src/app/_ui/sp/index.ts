@@ -2,6 +2,7 @@
 export * from "./base";
 export * from "./Buttons";
 export * from "./Controls";
+export * from "./DesktopOnly";
 export * from "./DesktopShell";
 export * from "./Form";
 export * from "./LeaguePicker";

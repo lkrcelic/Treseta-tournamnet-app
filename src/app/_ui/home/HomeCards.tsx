@@ -119,7 +119,7 @@ export function BurzaHomeCard({posts}: {posts: BurzaPost[] | null}) {
   return (
     <Box
       component={TransitionLink}
-      href={asking ? "/burza?tab=zamjene" : "/burza"}
+      href="/burza?tab=zamjene"
       sx={{
         ...buttonBase,
         flex: "none",
@@ -169,9 +169,12 @@ export function BurzaHomeCard({posts}: {posts: BurzaPost[] | null}) {
           <Box component="span" sx={{fontFamily: font.display, fontSize: 19, fontWeight: 800, lineHeight: 1.15, color: color.ink}}>
             {posts == null ? <Skeleton width={180} /> : asking ? teamsLooking(teams.length) : "Nitko ne traži zamjenu"}
           </Box>
-          <Box component="span" sx={{fontSize: 13, color: color.muted, ...ellipsis}}>
-            {posts == null ? <Skeleton width={140} /> : asking ? namesAndMore(teams) : "Pogledaj partnere i dostupne igrače"}
-          </Box>
+          {/* who is asking; with nobody asking there is nothing to list (the card opens the empty Zamjene tab) */}
+          {(posts == null || asking) && (
+            <Box component="span" sx={{fontSize: 13, color: color.muted, ...ellipsis}}>
+              {posts == null ? <Skeleton width={140} /> : namesAndMore(teams)}
+            </Box>
+          )}
         </Box>
         <ChevronRightRoundedIcon aria-hidden sx={{fontSize: 26, color: color.navy}} />
       </Box>

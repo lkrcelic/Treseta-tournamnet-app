@@ -165,7 +165,3 @@ export function updateCachedLeague(id: number, change: Partial<Omit<LeagueOption
   });
   listeners.forEach((notify) => notify(cache!));
 }
-
-export function renameCachedLeague(id: number, name: string) {
-  updateCachedLeague(id, {name});
-}

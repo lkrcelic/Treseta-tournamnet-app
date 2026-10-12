@@ -19,10 +19,10 @@ const MAX_WINDOW = 200;
 // the smoking tables picked when the switch goes on and the league remembers none (the design's default)
 const FIRST_SMOKING_TABLES = [1, 2];
 
-// Create Round for one league: the options, the smoking tables, the teams present tonight and the create action. The
-// phone page and Manage League's "Create round" view lay these pieces out differently. defaultSmokingTables: the ones
-// of the league's last round creation (the switch starts on with them).
-export function useCreateRound(leagueId: number | null, defaultRounds?: number, defaultSmokingTables?: number[]) {
+// Create Round for one league: the options, the smoking tables, the teams present tonight and the create action, laid
+// out by Manage League's "Novo kolo" view (desktop only). defaultSmokingTables: the ones of the league's last round
+// creation (the switch starts on with them).
+function useCreateRound(leagueId: number, defaultRounds?: number, defaultSmokingTables?: number[]) {
   const router = useTransitionRouter();
   const [rounds, setRounds] = useState(4);
   const [windowSize, setWindowSize] = useState(8);
@@ -218,7 +218,7 @@ export function useCreateRound(leagueId: number | null, defaultRounds?: number, 
   };
 }
 
-export function InactiveBadge() {
+function InactiveBadge() {
   return (
     <Box
       component="span"

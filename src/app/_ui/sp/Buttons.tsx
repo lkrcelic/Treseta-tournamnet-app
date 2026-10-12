@@ -263,7 +263,7 @@ export function ChipButton({children, sx, type = "button", ...rest}: NativeButto
   );
 }
 
-// Low-emphasis text action ("Nemaš profil? Registriraj se", "Log Out")
+// Low-emphasis text action ("Nemaš profil? Registriraj se", "Odjava" on Moj profil)
 export function TextButton({children, sx, type = "button", ...rest}: NativeButtonProps & {sx?: SxProps<Theme>}) {
   return (
     <Box

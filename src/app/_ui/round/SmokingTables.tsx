@@ -3,7 +3,7 @@
 import {getSmokingPlanAPI} from "@/app/_fetchers/league/smoking";
 import {SmokingPlan, SmokingPlanSide, SmokingPlanTeam} from "@/app/_interfaces/smoking";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
-import {BottomSheet, buttonBase, ellipsis, ErrorNote, IconTile, LoadingRows, SwitchTrack, tabular} from "@/app/_ui/sp";
+import {buttonBase, ellipsis, ErrorNote, IconTile, LoadingRows, SwitchTrack, tabular} from "@/app/_ui/sp";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import SmokingRoomsRoundedIcon from "@mui/icons-material/SmokingRoomsRounded";
@@ -133,13 +133,12 @@ export function SmokingTablesCard({
   );
 }
 
-// The plan, fetched each time it opens (the rounds may have been created in between)
-function useSmokingPlan(leagueId: number, open: boolean) {
+// The plan, fetched each time the overlay opens (the rounds may have been created in between)
+function useSmokingPlan(leagueId: number) {
   const [plan, setPlan] = useState<SmokingPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [nonce, setNonce] = useState(0);
   useEffect(() => {
-    if (!open) return;
     let cancelled = false;
     setError(null);
     getSmokingPlanAPI(leagueId)
@@ -152,7 +151,7 @@ function useSmokingPlan(leagueId: number, open: boolean) {
     return () => {
       cancelled = true;
     };
-  }, [leagueId, open, nonce]);
+  }, [leagueId, nonce]);
   return {plan, error, reload: () => setNonce((n) => n + 1)};
 }
 
@@ -339,7 +338,7 @@ function RotationHeading() {
 
 // Desktop: over the Create round view (the design's "Smoking plan · tonight")
 export function SmokingPlanOverlay({leagueId, onClose}: {leagueId: number; onClose: () => void}) {
-  const {plan, error, reload} = useSmokingPlan(leagueId, true);
+  const {plan, error, reload} = useSmokingPlan(leagueId);
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -399,55 +398,5 @@ export function SmokingPlanOverlay({leagueId, onClose}: {leagueId: number; onClo
         </Box>
       )}
     </Box>
-  );
-}
-
-// Phone: the same plan in a sheet, one section under the other
-export function SmokingPlanSheet({leagueId, open, onClose}: {leagueId: number; open: boolean; onClose: () => void}) {
-  const {plan, error, reload} = useSmokingPlan(leagueId, open);
-  return (
-    <BottomSheet open={open} onClose={onClose} title="Smoking plan · tonight" paper>
-      {error ? (
-        <ErrorNote onRetry={reload}>{error}</ErrorNote>
-      ) : !plan ? (
-        <LoadingRows rows={6} height={46} />
-      ) : (
-        <Box sx={{display: "flex", flexDirection: "column", gap: "16px", pb: "4px"}}>
-          <Box sx={{fontSize: 14, color: color.muted, mt: "-6px"}}>{planHeading(plan)}</Box>
-          <PlanRounds plan={plan} />
-          <Box sx={{display: "flex", flexDirection: "column", gap: "8px"}}>
-            <RotationHeading />
-            <Box component="ul" aria-label="Rotation · smoking teams" sx={{listStyle: "none", m: 0, p: 0, borderRadius: "18px", background: color.white, overflow: "hidden"}}>
-              {plan.teams.length === 0 && <Box component="li" sx={{p: "18px 16px", fontSize: 14, color: color.muted}}>No team in this league has a smoker yet.</Box>}
-              {plan.teams.map((t, i) => (
-                <Box key={t.id} component="li" sx={{p: "10px 16px", display: "flex", flexDirection: "column", gap: "6px", borderTop: i ? `1px solid ${color.line}` : "none"}}>
-                  <Box sx={{display: "flex", alignItems: "center", gap: "8px"}}>
-                    <Box component="span" sx={{flex: 1, minWidth: 0, fontSize: 15, fontWeight: 600, ...ellipsis}}>
-                      {t.name}
-                    </Box>
-                    <Box component="span" aria-label={smokersLabel(t.smokers)} sx={{display: "flex", alignItems: "center", gap: "2px", color: color.navy, "& svg": {fontSize: 16}}}>
-                      <SmokingRoomsRoundedIcon aria-hidden />
-                      <Box component="span" aria-hidden sx={{fontSize: 14, fontWeight: 700}}>
-                        {t.smokers}
-                      </Box>
-                    </Box>
-                  </Box>
-                  <Box sx={{display: "flex", alignItems: "center", gap: "12px", fontSize: 13, color: color.ink2, ...tabular}}>
-                    <TonightDots team={t} roundNumbers={plan.roundNumbers} />
-                    <Box component="span" title={shareTitle(t)} sx={{ml: "auto"}}>
-                      Share {t.smokingRounds} / {t.rounds}
-                    </Box>
-                    <Box component="span" sx={{fontWeight: 700, color: t.missedNights ? color.red : color.muted}}>
-                      Missed {t.missedNights}
-                    </Box>
-                  </Box>
-                </Box>
-              ))}
-            </Box>
-          </Box>
-          <HowChosen />
-        </Box>
-      )}
-    </BottomSheet>
   );
 }

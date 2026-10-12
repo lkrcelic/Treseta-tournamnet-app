@@ -26,7 +26,7 @@ import GroupAddRoundedIcon from "@mui/icons-material/GroupAddRounded";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import PersonRemoveRoundedIcon from "@mui/icons-material/PersonRemoveRounded";
 import PersonSearchRoundedIcon from "@mui/icons-material/PersonSearchRounded";
-import {Box, SxProps, Theme} from "@mui/material";
+import {Box} from "@mui/material";
 import React, {useEffect, useId, useRef, useState} from "react";
 
 const cardSx = {borderRadius: "24px", p: {xs: "20px", lg: "24px"}, display: "flex", flexDirection: "column", gap: "14px"} as const;
@@ -43,7 +43,6 @@ export function TeamList({
   isNew,
   onSelect,
   onNew,
-  sx,
 }: {
   teams: MTTeam[] | null;
   error: string | null;
@@ -54,7 +53,6 @@ export function TeamList({
   isNew: boolean;
   onSelect: (id: number) => void;
   onNew: () => void;
-  sx?: SxProps<Theme>;
 }) {
   // 12 teams at a time; a new search starts from the first 12, and the selected team is always in view
   const [pages, setPages] = useState(1);
@@ -64,7 +62,7 @@ export function TeamList({
   const left = (teams?.length ?? 0) - shown.length;
 
   return (
-    <Card component="section" aria-label="Ekipe" sx={{minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderRadius: "24px", ...sx}}>
+    <Card component="section" aria-label="Ekipe" sx={{minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderRadius: "24px"}}>
       <Box sx={{flex: "none", p: "14px", borderBottom: `1px solid ${tint.navy[10]}`, display: "flex", flexDirection: "column", gap: "10px"}}>
         <SearchInput soft height={46} placeholder="Search teams or players" aria-label="Traži ekipe ili igrače" value={query} onChange={(e) => onQuery(e.target.value)} />
         <Box

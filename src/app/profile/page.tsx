@@ -5,6 +5,7 @@ import {updateBirthDateAPI} from "@/app/_fetchers/player/updateBirthDate";
 import {updateSmokerAPI} from "@/app/_fetchers/player/updateSmoker";
 import {updateUsernameAPI} from "@/app/_fetchers/player/updateUsername";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
+import useLogout from "@/app/_hooks/useLogout";
 import useMyTeams from "@/app/_hooks/useMyTeams";
 import {useMyRating} from "@/app/_hooks/useRatings";
 import {formatChange} from "@/app/_lib/ui/ratings";
@@ -33,9 +34,11 @@ import {
   SectionLabel,
   SwitchTrack,
   tabular,
+  TextButton,
 } from "@/app/_ui/sp";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
+import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import {Box, Skeleton} from "@mui/material";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {useCallback, useEffect, useState} from "react";
@@ -47,6 +50,7 @@ export default function ProfilePage() {
   const setUser = useAuthStore((s) => s.setUser);
   const {teams, loading: teamsLoading} = useMyTeams();
   const {me: myRating, total: ratedPlayers} = useMyRating();
+  const {logout, loggingOut} = useLogout();
   const [player, setPlayer] = useState<PlayerById | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -237,6 +241,12 @@ export default function ProfilePage() {
       <PrimaryButton icon={<HomeRoundedIcon />} onClick={() => router.push("/", "back")}>
         Početni zaslon
       </PrimaryButton>
+      {/* the phone's only way out (the desktop has it in the menu's user card); kept clear of Početni zaslon, so a low
+          tap on it doesn't log out */}
+      <TextButton onClick={() => logout()} disabled={loggingOut} sx={{alignSelf: "center", mt: "6px", mb: "-8px"}}>
+        <LogoutRoundedIcon />
+        Odjava
+      </TextButton>
     </Screen>
   );
 }

@@ -61,10 +61,6 @@ export async function updateLeagueAPI(leagueId: number, league: LeagueUpdateRequ
   if (!response.ok) throw new Error(await responseErrorMessage(response, "Promjene lige nisu spremljene."));
 }
 
-export async function renameLeagueAPI(leagueId: number, leagueName: string): Promise<void> {
-  return updateLeagueAPI(leagueId, {league_name: leagueName});
-}
-
 export async function getLeagueNotesAPI(leagueId: number): Promise<string> {
   const response = await apiFetch(`/api/leagues/${leagueId}/notes`);
   if (!response.ok) throw new Error(await responseErrorMessage(response, "Bilješke se nisu učitale."));

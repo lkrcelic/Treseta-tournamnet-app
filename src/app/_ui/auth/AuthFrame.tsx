@@ -6,18 +6,30 @@ import {color, font, tint} from "@/app/_styles/tokens";
 import {Box} from "@mui/material";
 import React from "react";
 
-// Brand block: the eyebrow (if any) over the big wordmark
-export function Brand({size = 56, light = false}: {size?: number; light?: boolean}) {
+// Brand block: the eyebrow (if any) over the big wordmark. "auth" (login, sign-up): a muted eyebrow over a
+// size-px wordmark. "home" (Početna, the desktop-only note): the navy 12.5 px eyebrow over a 34 px wordmark.
+export function Brand({size = 56, light = false, variant = "auth"}: {size?: number; light?: boolean; variant?: "auth" | "home"}) {
+  const home = variant === "home";
   return (
-    <Box sx={{display: "flex", flexDirection: "column", gap: size > 60 ? "6px" : "4px"}}>
+    <Box sx={{display: "flex", flexDirection: "column", gap: !home && size > 60 ? "6px" : "4px"}}>
       {BRAND.eyebrow && (
         <Box
-          sx={{fontSize: size > 60 ? 14 : 13, fontWeight: 600, letterSpacing: ".14em", textTransform: "uppercase", color: light ? color.cream : color.muted}}
+          sx={{
+            fontSize: home ? 12.5 : size > 60 ? 14 : 13,
+            fontWeight: home ? 700 : 600,
+            letterSpacing: ".14em",
+            textTransform: "uppercase",
+            color: home ? color.navy : light ? color.cream : color.muted,
+          }}
         >
           {BRAND.eyebrow}
         </Box>
       )}
-      <Box sx={{fontFamily: font.display, fontSize: size, fontWeight: 800, lineHeight: 0.92, letterSpacing: "-.03em"}}>{BRAND.name}</Box>
+      <Box
+        sx={{fontFamily: font.display, fontSize: home ? 34 : size, fontWeight: 800, lineHeight: home ? 1 : 0.92, letterSpacing: home ? "-.02em" : "-.03em", whiteSpace: home ? "nowrap" : undefined}}
+      >
+        {BRAND.name}
+      </Box>
     </Box>
   );
 }

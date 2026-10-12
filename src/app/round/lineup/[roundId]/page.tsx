@@ -8,7 +8,7 @@ import type {Lineup, LineupMember, LineupTeam} from "@/app/_lib/service/round/li
 import {initials} from "@/app/_lib/ui/text";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, font, teamColor, tint} from "@/app/_styles/tokens";
-import {buttonBase, Card, CenteredSpinner, DesktopShell, ErrorNote, IconCircleButton, PrimaryButton, Screen, ScrollArea} from "@/app/_ui/sp";
+import {buttonBase, Card, CenteredSpinner, DesktopOnlyNote, DesktopShell, ErrorNote, IconCircleButton, PrimaryButton, Screen, ScrollArea} from "@/app/_ui/sp";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
@@ -23,7 +23,7 @@ import React, {useCallback, useEffect, useState} from "react";
 // scoreboard of the round's first match: two players per team, suggested from the team's last round in the league
 // (or its founders in the league's first round). A slot opens to swap in a teammate who isn't playing.
 // With ?league=, an admin is opening the table's scorepad from Dnevni poredak: confirming goes on to that scorepad, where
-// the admin's first hand starts the match.
+// the admin's first hand starts the match. That is admin editing, so on a phone it only gets the desktop-only note.
 
 const TITLE = "Tko igra ovu rundu?";
 // the slot's background while it is open, per side (viewer's team green, opponent red)
@@ -117,6 +117,7 @@ export default function LineupPage() {
     </Box>
   );
 
+  if (padLeague && !isDesktop) return <DesktopOnlyNote />;
   if (isDesktop) {
     return (
       <DesktopShell
