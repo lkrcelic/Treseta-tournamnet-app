@@ -268,8 +268,8 @@ function SmokerRow({value, desktop, onSave}: {value: boolean; desktop: boolean; 
     <Box sx={{borderBottom: `1px solid ${color.line}`}}>
       <Box sx={{height: desktop ? 56 : 52, display: "flex", alignItems: "center", gap: "10px", pl: desktop ? "18px" : "16px", pr: "14px"}}>
         <Box component="dt" sx={{flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: "8px", fontSize: 15, color: color.muted, "& svg": {fontSize: 20, color: color.navy}}}>
-          <SmokingRoomsRoundedIcon aria-hidden />
           Smoker
+          <SmokingRoomsRoundedIcon aria-hidden />
         </Box>
         <Box component="dd" sx={{m: 0, display: "flex", alignItems: "center", gap: "10px"}}>
           <Box component="span" aria-hidden sx={{fontSize: 15, fontWeight: 600, color: color.ink}}>
