@@ -31,19 +31,28 @@ export function ScrollCard({children, sx, ...rest}: CardProps) {
   );
 }
 
-// Initials circle (cream on navy for the profile, navy on cream in lists)
+const AVATAR = {
+  cream: {background: color.cream, color: color.navy},
+  navy: {background: color.navy, color: color.cream},
+  // rows of the Team and Player pages and the directories (13f, 13h)
+  paper: {background: color.paper, color: color.navy},
+} as const;
+
+// Initials circle: cream on navy for the profile heroes, navy on cream in chips and lists, navy on paper in the rows
+// of the Team and Player pages. letters replaces the initials of name (a team's one letter, teamInitial).
 export function InitialsAvatar({
   name,
+  letters,
   size = 36,
   variant = "cream",
   sx,
 }: {
   name: string;
+  letters?: string;
   size?: number;
-  variant?: "cream" | "navy";
+  variant?: keyof typeof AVATAR;
   sx?: SxProps<Theme>;
 }) {
-  const navy = variant === "navy";
   return (
     <Box
       component="span"
@@ -54,10 +63,9 @@ export function InitialsAvatar({
           height: size,
           flex: "none",
           borderRadius: "50%",
-          background: navy ? color.navy : color.cream,
-          color: navy ? color.cream : color.navy,
+          ...AVATAR[variant],
           fontFamily: size >= 56 ? font.display : undefined,
-          fontSize: size >= 56 ? Math.round(size * 0.4) : size >= 36 ? 13 : 12,
+          fontSize: size >= 56 ? Math.round(size * 0.4) : size >= 38 ? 14 : size >= 36 ? 13 : 12,
           fontWeight: size >= 56 ? 800 : 700,
           display: "flex",
           alignItems: "center",
@@ -66,7 +74,7 @@ export function InitialsAvatar({
         sx
       )}
     >
-      {initials(name)}
+      {letters ?? initials(name)}
     </Box>
   );
 }

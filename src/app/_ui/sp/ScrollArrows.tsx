@@ -21,14 +21,29 @@ function scrollableAt(target: EventTarget | null, root: HTMLElement): HTMLElemen
   return null;
 }
 
-function placeOf(el: HTMLElement): Place {
+// A link or button in the list that the pointer is on (a pill or a button, not a whole row): an arrow over it gives way,
+// so "Stranica ekipe ›" at the top right of a card can still be clicked
+function controlAt(target: EventTarget | null, list: HTMLElement): DOMRect | null {
+  const el = target instanceof Element ? target.closest("a[href], button, input, select, textarea, [role='button']") : null;
+  if (!el || el === list || !list.contains(el)) return null;
   const r = el.getBoundingClientRect();
+  return r.width < list.clientWidth / 2 ? r : null;
+}
+
+const covers = (r: DOMRect | null, x: number, y: number) => r != null && r.left < x + ARROW && r.right > x && r.top < y + ARROW && r.bottom > y;
+
+function placeOf(el: HTMLElement, hovered: EventTarget | null): Place {
+  const r = el.getBoundingClientRect();
+  const x = Math.round(r.right - 52);
+  const upY = Math.round(r.top + 10);
+  const downY = Math.round(r.bottom - 50);
+  const control = controlAt(hovered, el);
   return {
-    x: Math.round(r.right - 52),
-    upY: Math.round(r.top + 10),
-    downY: Math.round(r.bottom - 50),
-    upOn: el.scrollTop > 1,
-    downOn: el.scrollTop + el.clientHeight < el.scrollHeight - 1,
+    x,
+    upY,
+    downY,
+    upOn: el.scrollTop > 1 && !covers(control, x, upY),
+    downOn: el.scrollTop + el.clientHeight < el.scrollHeight - 1 && !covers(control, x, downY),
   };
 }
 
@@ -37,10 +52,13 @@ const same = (a: Place | null, b: Place | null) =>
 
 // Desktop: hovering any list that scrolls shows round up/down arrows at its right edge (only the directions it can
 // still go). A click scrolls 60% of the list; holding the button keeps scrolling until it is released. Handy on a
-// projector laptop without a scroll wheel. Mouse only; touch screens scroll as usual.
+// projector laptop without a scroll wheel. Mouse only; touch screens scroll as usual. An arrow steps aside while the
+// pointer is on a link or button it would cover.
 export function useScrollArrows(rootRef: React.RefObject<HTMLElement>) {
   const [place, setPlace] = useState<Place | null>(null);
   const target = useRef<HTMLElement | null>(null);
+  // what the pointer was last on (an arrow gives way to a link under it)
+  const hovered = useRef<EventTarget | null>(null);
   const hold = useRef<{timer?: number; interval?: number}>({});
   const canHover = useRef(false);
 
@@ -50,7 +68,7 @@ export function useScrollArrows(rootRef: React.RefObject<HTMLElement>) {
 
   const update = useCallback((el: HTMLElement | null) => {
     target.current = el;
-    const next = el ? placeOf(el) : null;
+    const next = el ? placeOf(el, hovered.current) : null;
     setPlace((prev) => (same(prev, next) ? prev : next));
   }, []);
 
@@ -75,10 +93,12 @@ export function useScrollArrows(rootRef: React.RefObject<HTMLElement>) {
     const root = rootRef.current;
     if (!canHover.current || !root) return;
     if ((e.target as HTMLElement).closest?.("[data-scroll-arrow]")) return;
+    hovered.current = e.target;
     update(scrollableAt(e.target, root));
   };
   const onMouseLeave = () => {
     stop();
+    hovered.current = null;
     update(null);
   };
 

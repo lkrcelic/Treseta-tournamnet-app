@@ -1,9 +1,10 @@
 // The numbers and short texts of the Team and Player pages (handoff §6). Framework free so they can be unit tested;
 // the server builds the overviews with the first four, the pages format with the rest.
+import type {PlayerView} from "@/app/_interfaces/player";
 import type {TeamNight, TeamOverview, TeamOverviewLeague} from "@/app/_interfaces/profiles";
 import {leagueEnded} from "@/app/_lib/league";
 import {displayName} from "@/app/_lib/players/names";
-import {count, NOUN} from "@/app/_lib/ui/text";
+import {count, displayDate, NOUN} from "@/app/_lib/ui/text";
 
 // ---------- Zadnje večeri (Team page) ----------
 
@@ -120,4 +121,23 @@ export function playerTeamLeagues(leagues: {league_name: string}[]): string {
 export function teamInitial(name: string | null | undefined): string {
   const first = Array.from(name ?? "").find((ch) => /\d/.test(ch) || ch.toLocaleLowerCase("hr") !== ch.toLocaleUpperCase("hr"));
   return first ? first.toLocaleUpperCase("hr") : "?";
+}
+
+// The Osobni podaci rows of a Player page (P:467): first and last name for everyone; for the player themself and
+// admins (full) also the username, email, phone, birth date and Pušač. A missing value is "—".
+export function personalRows(player: PlayerView, full: boolean): {key: string; value: string}[] {
+  const or = (v: string | null | undefined) => (v && v.trim() ? v : "—");
+  const rows = [
+    {key: "Ime", value: or(player.first_name)},
+    {key: "Prezime", value: or(player.last_name)},
+  ];
+  if (!full) return rows;
+  return [
+    ...rows,
+    {key: "Korisničko ime", value: player.username ? `@${player.username}` : "—"},
+    {key: "Email", value: or(player.email)},
+    {key: "Mobitel", value: or(player.phone)},
+    {key: "Datum rođenja", value: player.birth_date ? `${displayDate(player.birth_date)}.` : "—"},
+    {key: "Pušač", value: player.smoker ? "Da" : "Ne"},
+  ];
 }

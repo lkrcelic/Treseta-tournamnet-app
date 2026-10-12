@@ -1,5 +1,6 @@
 // Scorepad UI kit (Claude Design "Piatnik Bela Liga app refresh")
 export * from "./base";
+export * from "./BackPill";
 export * from "./Buttons";
 export * from "./Controls";
 export * from "./DesktopOnly";
@@ -7,8 +8,10 @@ export * from "./DesktopShell";
 export * from "./Form";
 export * from "./LeaguePicker";
 export * from "./Live";
+export * from "./Profile";
 export * from "./Screen";
 export * from "./Sheet";
+export * from "./StackTopBar";
 export * from "./Standings";
 export * from "./States";
 export * from "./Surface";

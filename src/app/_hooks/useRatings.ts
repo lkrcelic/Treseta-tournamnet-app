@@ -36,9 +36,10 @@ export default function useRatings(): {list: RatingsList | null; error: string |
   return {list, error, reload};
 }
 
-// The viewer's own row, for the Home tile and the Profile card (null while loading or when they aren't listed)
-export function useMyRating(): {me: RatingRow | null; total: number} {
+// The viewer's own row, for the Home tile and the Profile card (null while loading or when they aren't listed; loaded
+// tells the two apart)
+export function useMyRating(): {me: RatingRow | null; total: number; loaded: boolean} {
   const {list} = useRatings();
   const me = list?.players.find((p) => p.id === list.me) ?? null;
-  return {me, total: list?.players.length ?? 0};
+  return {me, total: list?.players.length ?? 0, loaded: list != null};
 }

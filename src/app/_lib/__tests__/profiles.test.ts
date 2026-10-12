@@ -5,6 +5,7 @@ import {
   bestRank,
   inRatingOrder,
   nightLine,
+  personalRows,
   playerTeamLeagues,
   TeamLeagueFacts,
   TeamNightRound,
@@ -177,5 +178,24 @@ test("a team's chips on the Player page follow the team's rating order; anyone n
   assert.deepEqual(
     inRatingOrder([kresimir, zrinka, ivan, ana, marko], list).map((x) => x.first_name),
     ["Ivan", "Marko", "Krešimir", "Ana", "Zrinka"]
+  );
+});
+
+test("Osobni podaci: first and last name for everyone, all seven rows for the player and admins", () => {
+  const other = {id: 7, first_name: "Ivan", last_name: "Perić", name: "Ivan Perić", active: true};
+  assert.deepEqual(personalRows(other, false), [
+    {key: "Ime", value: "Ivan"},
+    {key: "Prezime", value: "Perić"},
+  ]);
+  const full = {...other, username: "iperic", email: "ivan@example.com", phone: "091 234 5678", birth_date: "1988-04-12", smoker: true, is_admin: false};
+  assert.deepEqual(
+    personalRows(full, true).map((r) => `${r.key}: ${r.value}`),
+    ["Ime: Ivan", "Prezime: Perić", "Korisničko ime: @iperic", "Email: ivan@example.com", "Mobitel: 091 234 5678", "Datum rođenja: 12.04.1988.", "Pušač: Da"]
+  );
+  // a Google sign-up without a name, phone or birth date
+  const bare = {id: 8, first_name: "", last_name: "", name: "Igrač bez imena", active: true, username: "g123", email: "g@example.com", phone: null, birth_date: null, smoker: false};
+  assert.deepEqual(
+    personalRows(bare, true).map((r) => r.value),
+    ["—", "—", "@g123", "g@example.com", "—", "—", "Ne"]
   );
 });

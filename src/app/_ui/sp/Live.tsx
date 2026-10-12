@@ -70,12 +70,27 @@ export function LiveLabel({sx}: {sx?: SxProps<Theme>}) {
   );
 }
 
-// Rank circle in standings; red and pulsing while the team is playing
-export function RankBadge({rank, live = false, size = 28}: {rank: number; live?: boolean; size?: number}) {
+// Rank circle in standings; red and pulsing while the team is playing. medal: places 1–3 in their medal colour with
+// white text (the Team page's Lige, 13f); hash: "#2" instead of "2"; no rank (a league not played yet) is "–".
+export function RankBadge({
+  rank,
+  live = false,
+  medal = false,
+  hash = false,
+  size = 28,
+}: {
+  rank: number | null;
+  live?: boolean;
+  medal?: boolean;
+  hash?: boolean;
+  size?: number;
+}) {
+  const medalInk = medal && rank != null && rank >= 1 && rank <= 3 ? color.medal[rank - 1] : null;
+  const label = rank == null ? "bez mjesta" : live ? `${rank}. mjesto, igra uživo` : `${rank}. mjesto`;
   return (
     <Box
       component="span"
-      aria-label={live ? `${rank}. mjesto, igra uživo` : `${rank}. mjesto`}
+      aria-label={label}
       sx={{
         width: size,
         height: size,
@@ -84,15 +99,15 @@ export function RankBadge({rank, live = false, size = 28}: {rank: number; live?:
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        fontSize: size >= 30 ? 14 : size >= 28 ? 14 : 12,
+        fontSize: size >= 28 ? 14 : 12,
         fontWeight: 700,
         ...tabular,
-        color: live ? color.white : color.navy,
-        background: live ? color.red : color.lineFill,
+        color: live || medalInk ? color.white : color.navy,
+        background: live ? color.red : medalInk ?? color.lineFill,
         animation: live ? "spLive 1.5s infinite" : "none",
       }}
     >
-      {rank}
+      {rank == null ? "–" : hash ? `#${rank}` : rank}
     </Box>
   );
 }

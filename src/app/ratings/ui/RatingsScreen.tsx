@@ -8,18 +8,32 @@ import {formatChange, RATING_COLUMNS, roundsLabel} from "@/app/_lib/ui/ratings";
 import {matchesQuery} from "@/app/_lib/ui/text";
 import {TransitionLink, useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, ease, font, shadow, tint} from "@/app/_styles/tokens";
-import {buttonBase, Card, CenteredSpinner, DesktopShell, ellipsis, IconCircleButton, LoadingRows, PrimaryButton, Screen, SearchInput, tabular} from "@/app/_ui/sp";
-import {changeInk, infoTitle, InfoView, LastNights, NoRoundsCard, PlayerCard, ProvisionalTag, RankDot, RatingChartCard, RatingsInfo} from "./RatingParts";
+import {
+  buttonBase,
+  Card,
+  CenteredSpinner,
+  changeInk,
+  DesktopShell,
+  ellipsis,
+  ErrorState,
+  IconCircleButton,
+  LoadingRows,
+  MessageState,
+  PrimaryButton,
+  ProvisionalTag,
+  Screen,
+  SearchInput,
+  tabular,
+} from "@/app/_ui/sp";
+import {infoTitle, InfoView, LastNights, NoRoundsCard, PlayerCard, RankDot, RatingChartCard, RatingsInfo} from "./RatingParts";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
-import CloudOffRoundedIcon from "@mui/icons-material/CloudOffRounded";
 import HelpOutlineRoundedIcon from "@mui/icons-material/HelpOutlineRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import LeaderboardRoundedIcon from "@mui/icons-material/LeaderboardRounded";
 import PersonOffRoundedIcon from "@mui/icons-material/PersonOffRounded";
 import PersonSearchRoundedIcon from "@mui/icons-material/PersonSearchRounded";
-import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import {Box, Drawer, Popover, Tooltip} from "@mui/material";
 import React, {useCallback, useEffect, useId, useMemo, useRef, useState} from "react";
 
@@ -68,29 +82,15 @@ function usePlayerRating(playerId: number | null) {
 }
 
 // Empty list, no search match, the list didn't load (8g, 8h), or a rating link to a player who isn't there (a deleted
-// player: Q9, DECISIONS #40)
-function ListMessage({kind, onRetry}: {kind: "empty" | "noMatch" | "error" | "notFound"; onRetry?: () => void}) {
+// player: Q9, DECISIONS #40). onCard: inside a card; the phone detail shows it on the paper background.
+function ListMessage({kind, onRetry, onCard = true}: {kind: "empty" | "noMatch" | "error" | "notFound"; onRetry?: () => void; onCard?: boolean}) {
+  if (kind === "error") return <ErrorState onCard={onCard} title="Rejting se nije učitao" onRetry={onRetry} />;
   const m = {
     empty: {icon: <LeaderboardRoundedIcon />, title: "Još nema rejtinga", text: "Rejting se pojavi kad se odigra prvo kolo."},
     noMatch: {icon: <PersonSearchRoundedIcon />, title: "Nema takvog igrača", text: "Provjeri kako si napisao ime."},
-    error: {icon: <CloudOffRoundedIcon />, title: "Rejting se nije učitao", text: "Provjeri vezu i pokušaj ponovno."},
     notFound: {icon: <PersonOffRoundedIcon />, title: "Igrač ne postoji", text: "Možda je obrisan ili je poveznica pogrešna."},
   }[kind];
-  return (
-    <Box role={kind === "error" ? "alert" : "status"} sx={{p: "56px 28px", display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", textAlign: "center"}}>
-      <Box aria-hidden sx={{width: 64, height: 64, borderRadius: "50%", background: color.paper, color: color.navy, display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 32}}}>
-        {m.icon}
-      </Box>
-      <Box sx={{fontFamily: font.display, fontSize: 22, fontWeight: 800}}>{m.title}</Box>
-      <Box sx={{fontSize: 15, lineHeight: 1.45, color: color.muted, textWrap: "pretty"}}>{m.text}</Box>
-      {onRetry && (
-        <Box component="button" type="button" onClick={onRetry} sx={{...buttonBase, mt: "8px", height: 48, px: "22px", borderRadius: "16px", background: color.navy, color: color.white, fontSize: 16, fontWeight: 600, display: "flex", alignItems: "center", gap: "8px", "& svg": {fontSize: 20}}}>
-          <RefreshRoundedIcon />
-          Pokušaj ponovno
-        </Box>
-      )}
-    </Box>
-  );
+  return <MessageState onCard={onCard} icon={m.icon} title={m.title} text={m.text} />;
 }
 
 type ListProps = {
@@ -241,8 +241,8 @@ function PhoneDetail({playerId}: {playerId: number}) {
   const router = useTransitionRouter();
   const {detail, missing, error, reload} = usePlayerRating(playerId);
   let body: React.ReactNode;
-  if (missing) body = <ListMessage kind="notFound" />;
-  else if (error && !detail) body = <ListMessage kind="error" onRetry={reload} />;
+  if (missing) body = <ListMessage kind="notFound" onCard={false} />;
+  else if (error && !detail) body = <ListMessage kind="error" onRetry={reload} onCard={false} />;
   else body = detail ? <DetailBody detail={detail} chartWidth={318} /> : <CenteredSpinner />;
   return (
     <Screen fill gap={8} sx={{px: 0}}>

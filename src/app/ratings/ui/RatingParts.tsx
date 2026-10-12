@@ -1,10 +1,10 @@
 "use client";
 
 import {PlayerRatingDetail} from "@/app/_interfaces/ratings";
-import {changeTone, formatChange, nightResult, RATING_COLUMNS, RATING_HOW, ratingChart, roundsLabel, shortDate} from "@/app/_lib/ui/ratings";
+import {formatChange, nightResult, RATING_COLUMNS, RATING_HOW, ratingChart, roundsLabel, shortDate} from "@/app/_lib/ui/ratings";
 import {NOUN, plural} from "@/app/_lib/ui/text";
 import {color, font, tint} from "@/app/_styles/tokens";
-import {buttonBase, Card, ellipsis, tabular} from "@/app/_ui/sp";
+import {buttonBase, Card, changeInk, ellipsis, ProvisionalTag, tabular} from "@/app/_ui/sp";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import StyleRoundedIcon from "@mui/icons-material/StyleRounded";
@@ -13,24 +13,8 @@ import React from "react";
 
 // Pieces of the ratings page (Claude Design "Rejting igrača"), shared by the phone and desktop layouts
 
-const TONE_INK = {up: color.green, down: color.red, flat: color.muted} as const;
 const RESULT_BG = {up: tint.green[12], down: tint.red[10], flat: color.lineFill} as const;
 const RESULT_INK = {up: color.green, down: color.red, flat: color.ink2} as const;
-
-export const changeInk = (change: number | null) => TONE_INK[changeTone(change)];
-
-// a rating that is still settling (few rounds)
-export function ProvisionalTag({size = "sm"}: {size?: "sm" | "md" | "lg"}) {
-  const h = {sm: 18, md: 22, lg: 24}[size];
-  return (
-    <Box
-      component="span"
-      sx={{height: h, flex: "none", display: "inline-flex", alignItems: "center", px: size === "sm" ? "6px" : "7px", borderRadius: size === "sm" ? "6px" : "7px", border: `1px solid ${tint.navy[40]}`, fontSize: {sm: 10.5, md: 11.5, lg: 12}[size], fontWeight: 700, color: color.navy, whiteSpace: "nowrap"}}
-    >
-      Privremeno
-    </Box>
-  );
-}
 
 export function RankDot({rank, size = 28}: {rank: number; size?: number}) {
   return (

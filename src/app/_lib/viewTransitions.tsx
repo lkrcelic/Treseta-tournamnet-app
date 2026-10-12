@@ -11,9 +11,10 @@
 //   back     the reverse
 //   morph    elements with the same view-transition-name morph (Start Game card -> scoreboard), the rest crossfades
 
+import {noteReplace, notePop, recordNavigation} from "@/app/_lib/navStack";
 import Link from "next/link";
 import {usePathname, useRouter} from "next/navigation";
-import React, {useCallback, useLayoutEffect, useMemo} from "react";
+import React, {useCallback, useEffect, useLayoutEffect, useMemo} from "react";
 
 export type NavDirection = "forward" | "back" | "morph";
 
@@ -64,11 +65,41 @@ export function navigateWithTransition(navigate: () => void, direction: NavDirec
   });
 }
 
-// Mounted once in the root layout: tells a running transition that the new route is on screen
+// the path of an href, as usePathname gives it
+export function pathOfHref(href: string): string {
+  try {
+    return new URL(href, window.location.href).pathname;
+  } catch {
+    return href;
+  }
+}
+
+// how this document was loaded: "navigate", "reload", "back_forward" or "prerender"
+function loadType(): string | null {
+  try {
+    const entry = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+    return entry?.type ?? null;
+  } catch {
+    return null;
+  }
+}
+
+let firstPage = true;
+
+// Mounted once in the root layout: tells a running transition that the new route is on screen, and records every
+// page in the page stack (_lib/navStack.ts) that Back and the desktop back pill read
 export function RouteTransitions() {
   const pathname = usePathname();
+  useEffect(() => {
+    // Back and Forward (the browser's, a swipe, or router.back()): the page stack steps back instead of growing
+    const onPop = () => notePop(window.location.pathname);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
   useLayoutEffect(() => {
     pendingCommit?.();
+    recordNavigation(pathname, firstPage, firstPage ? loadType() : null);
+    firstPage = false;
   }, [pathname]);
   return null;
 }
@@ -81,7 +112,11 @@ export function useTransitionRouter() {
     [router]
   );
   const replace = useCallback(
-    (href: string, direction: NavDirection = "forward") => navigateWithTransition(() => router.replace(href), direction),
+    (href: string, direction: NavDirection = "forward") => {
+      // the new page takes the current one's place in the page stack too
+      noteReplace(pathOfHref(href));
+      navigateWithTransition(() => router.replace(href), direction);
+    },
     [router]
   );
   const back = useCallback(() => navigateWithTransition(() => router.back(), "back"), [router]);

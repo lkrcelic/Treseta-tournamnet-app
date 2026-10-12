@@ -7,28 +7,25 @@ import {updateUsernameAPI} from "@/app/_fetchers/player/updateUsername";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useLogout from "@/app/_hooks/useLogout";
 import useMyTeams from "@/app/_hooks/useMyTeams";
+import useNavStack from "@/app/_hooks/useNavStack";
 import {useMyRating} from "@/app/_hooks/useRatings";
 import {fullName} from "@/app/_lib/players/names";
-import {formatChange} from "@/app/_lib/ui/ratings";
-import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {leagueDateString} from "@/app/_lib/dates";
 import {displayDate} from "@/app/_lib/ui/text";
 import {normalizeUsername, USERNAME_MAX, usernameError} from "@/app/_lib/validation/username";
 import useAuthStore from "@/app/_store/authStore";
-import {color, font, tint} from "@/app/_styles/tokens";
+import {color, tint} from "@/app/_styles/tokens";
+import {HeroRating, ProfileHero} from "@/app/_ui/profiles/ProfileHero";
+import {TeamCards} from "@/app/_ui/profiles/TeamCards";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import SmokingRoomsRoundedIcon from "@mui/icons-material/SmokingRoomsRounded";
 import {
   buttonBase,
   Card,
   dateInputFix,
-  CenteredSpinner,
   DesktopShell,
   ellipsis,
-  EmptyState,
   ErrorNote,
-  InitialsAvatar,
-  PlayerChip,
   PrimaryButton,
   Screen,
   ScrollArea,
@@ -37,7 +34,6 @@ import {
   tabular,
   TextButton,
 } from "@/app/_ui/sp";
-import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import {Box, Skeleton} from "@mui/material";
@@ -50,8 +46,10 @@ export default function ProfilePage() {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const {teams, loading: teamsLoading} = useMyTeams();
-  const {me: myRating, total: ratedPlayers} = useMyRating();
+  const {me: myRating, total: ratedPlayers, loaded: ratingsLoaded} = useMyRating();
   const {logout, loggingOut} = useLogout();
+  // the name a Team page opened from "Stranica ekipe ›" shows on its back pill
+  useNavStack("Moj profil");
   const [player, setPlayer] = useState<PlayerById | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,57 +72,22 @@ export default function ProfilePage() {
     {k: "Prezime", v: player?.last_name},
   ];
 
+  // my rating as Rejting shows it; before my first rated round I'm not on Rejting: my stored rating, still Privremeno,
+  // and the strip opens the Rejting list
+  const rating: HeroRating | null = myRating
+    ? {...myRating, total: ratedPlayers}
+    : ratingsLoaded || player
+      ? {rating: player?.rating ?? null, change: null, rounds: 0, rank: null, total: ratedPlayers, provisional: ratingsLoaded}
+      : null;
   const hero = (desktop: boolean) => (
-    <Card
-      component="section"
-      aria-label="Igrač"
-      sx={{
-        background: color.cream,
-        boxShadow: "none",
-        borderRadius: desktop ? "28px" : "24px",
-        p: desktop ? "28px" : "20px",
-        display: "flex",
-        flexDirection: "column",
-        gap: desktop ? "22px" : "18px",
-        flex: "none",
-      }}
-    >
-      <Box sx={{display: "flex", flexDirection: desktop ? "column" : "row", alignItems: desktop ? "flex-start" : "center", gap: desktop ? "22px" : "14px"}}>
-        <InitialsAvatar name={name || user?.username || ""} size={desktop ? 96 : 64} variant="navy" />
-        <Box sx={{display: "flex", flexDirection: "column", gap: desktop ? "4px" : "2px", minWidth: 0}}>
-          <Box component="h1" sx={{m: 0, fontFamily: font.display, fontSize: desktop ? 34 : 28, fontWeight: 800, lineHeight: 1, letterSpacing: "-.02em", ...ellipsis}}>
-            {player?.username ?? user?.username ?? <Skeleton width={160} />}
-          </Box>
-          <Box sx={{fontSize: desktop ? 17 : 16, color: color.ink2}}>{player ? name : <Skeleton width={120} />}</Box>
-        </Box>
-      </Box>
-      {/* my rating: the last change and my place, opening my rating's detail */}
-      <Box
-        component={TransitionLink}
-        href={myRating ? `/ratings/${myRating.id}` : "/ratings"}
-        sx={{...buttonBase, display: "flex", alignItems: "center", gap: "12px", borderTop: `1px solid ${color.border}`, pt: desktop ? "16px" : "14px", textDecoration: "none", color: color.ink, textAlign: "left"}}
-      >
-        <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "4px"}}>
-          <Box sx={{fontSize: 13, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: color.ink2}}>Rejting</Box>
-          {myRating && (
-            <Box sx={{display: "flex", alignItems: "baseline", gap: "8px", fontSize: 14, ...tabular}}>
-              {myRating.rounds > 0 && (
-                <Box component="span" sx={{fontWeight: 700, color: myRating.change! > 0 ? color.green : myRating.change! < 0 ? color.red : color.muted}}>
-                  {formatChange(myRating.change)}
-                </Box>
-              )}
-              <Box component="span" sx={{color: color.ink2}}>
-                #{myRating.rank} od {ratedPlayers}
-              </Box>
-            </Box>
-          )}
-        </Box>
-        <Box sx={{fontFamily: font.display, fontSize: desktop ? 56 : 44, fontWeight: 800, lineHeight: 0.85, color: color.navy, ...tabular}}>
-          {myRating?.rating ?? player?.rating ?? "—"}
-        </Box>
-        <ChevronRightRoundedIcon sx={{fontSize: 24, color: color.navy}} />
-      </Box>
-    </Card>
+    <ProfileHero
+      desktop={desktop}
+      name={player?.username ?? user?.username ?? null}
+      sub={player ? name : null}
+      avatarName={name || user?.username || ""}
+      rating={rating}
+      ratingHref={myRating ? `/ratings/${myRating.id}` : "/ratings"}
+    />
   );
 
   const detailsBlock = (desktop: boolean) => (
@@ -184,34 +147,17 @@ export default function ProfilePage() {
   );
 
   const teamsBlock = (desktop: boolean) => (
-    <Box component="section" aria-labelledby="my-teams" sx={{display: "flex", flexDirection: "column", gap: "8px"}}>
-      <SectionLabel id="my-teams">Moje ekipe</SectionLabel>
-      {teamsLoading ? (
-        <Card>
-          <CenteredSpinner />
-        </Card>
-      ) : teams.length === 0 ? (
-        <Card>
-          <EmptyState>Još nisi član nijedne ekipe.</EmptyState>
-        </Card>
-      ) : (
-        teams.map((t) => (
-          <Card key={t.team_id} sx={{p: desktop ? "18px" : "16px", display: "flex", flexDirection: "column", gap: desktop ? "12px" : "10px"}}>
-            <Box component="h3" sx={{m: 0, fontFamily: font.display, fontSize: desktop ? 24 : 22, fontWeight: 700, letterSpacing: "-.01em"}}>
-              {t.team_name}
-            </Box>
-            <Box component="ul" aria-label="Igrači" sx={{listStyle: "none", m: 0, p: 0, display: "flex", flexWrap: "wrap", gap: "8px"}}>
-              {t.teamPlayers?.map((tp) => (
-                <Box component="li" key={tp.player.id}>
-                  {/* first names: usernames are private (handoff §6) */}
-                  <PlayerChip name={tp.player.first_name || tp.player.last_name} fullName={fullName(tp.player)} />
-                </Box>
-              ))}
-            </Box>
-          </Card>
-        ))
-      )}
-    </Box>
+    <TeamCards
+      title="Moje ekipe"
+      desktop={desktop}
+      loading={teamsLoading}
+      empty="Još nisi član nijedne ekipe."
+      teams={teams.map((t) => ({
+        team_id: t.team_id,
+        team_name: t.team_name,
+        players: (t.teamPlayers ?? []).flatMap(({player: p}) => (p?.id == null ? [] : [{id: p.id, first_name: p.first_name ?? "", last_name: p.last_name ?? ""}])),
+      }))}
+    />
   );
 
   const errorNote = error && <ErrorNote onRetry={load}>{error}</ErrorNote>;

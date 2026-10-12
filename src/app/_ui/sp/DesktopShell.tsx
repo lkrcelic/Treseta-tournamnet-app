@@ -28,7 +28,8 @@ import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import {Box, Drawer, SxProps, Theme} from "@mui/material";
 import Link from "next/link";
-import {TransitionLink} from "@/app/_lib/viewTransitions";
+import {startNavStack} from "@/app/_lib/navStack";
+import {pathOfHref, TransitionLink} from "@/app/_lib/viewTransitions";
 import React, {useEffect, useRef, useState} from "react";
 import {buttonBase, ellipsis, mergeSx} from "./base";
 import {GhostIconButton, IconCircleButton} from "./Buttons";
@@ -51,7 +52,8 @@ export type NavKey =
   | "manageTeam"
   | "profile";
 
-// Desktop page frame: menu button + eyebrow/title header, right-hand controls, content filling the viewport
+// Desktop page frame: menu button + eyebrow/title header, right-hand controls, content filling the viewport. Without a
+// title the header is the menu button and the eyebrow alone (the Team and Player pages: "PIATNIK BELA LIGA", 13f).
 export function DesktopShell({
   active,
   eyebrow,
@@ -63,7 +65,7 @@ export function DesktopShell({
 }: {
   active?: NavKey;
   eyebrow?: React.ReactNode;
-  title: React.ReactNode;
+  title?: React.ReactNode;
   right?: React.ReactNode;
   // a "← label" pill next to the menu button (e.g. back to the round from a table's scorepad)
   back?: {label: string; href: string};
@@ -131,13 +133,15 @@ export function DesktopShell({
         )}
         {/* the title keeps its width (up to half the header); crowded right-hand controls shrink and scroll instead */}
         <Box sx={{display: "flex", flexDirection: "column", gap: "6px", mr: "auto", minWidth: 0, flexShrink: 0, maxWidth: "50%"}}>
-          {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-          <Box
-            component="h1"
-            sx={{m: 0, fontFamily: font.display, fontSize: 44, fontWeight: 800, lineHeight: 1, letterSpacing: "-.02em", ...ellipsis}}
-          >
-            {title}
-          </Box>
+          {eyebrow && <Eyebrow sx={title == null ? {fontWeight: 700, letterSpacing: ".14em", ...ellipsis} : undefined}>{eyebrow}</Eyebrow>}
+          {title != null && (
+            <Box
+              component="h1"
+              sx={{m: 0, fontFamily: font.display, fontSize: 44, fontWeight: 800, lineHeight: 1, letterSpacing: "-.02em", ...ellipsis}}
+            >
+              {title}
+            </Box>
+          )}
         </Box>
         {right && <Box sx={{display: "flex", alignItems: "center", gap: "12px", flex: "0 1 auto", minWidth: 0}}>{right}</Box>}
       </Box>
@@ -260,7 +264,17 @@ export function NavDrawer({open, onClose, active}: {open: boolean; onClose: () =
                 </Box>
               )}
               {n.href ? (
-                <Box component={Link} href={n.href} onClick={onClose} aria-current={on ? "page" : undefined} sx={itemSx(on)}>
+                <Box
+                  component={Link}
+                  href={n.href}
+                  onClick={(e: React.MouseEvent) => {
+                    // a page opened from the menu starts the page stack: it has no Back (a new tab is left alone)
+                    if (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) startNavStack(pathOfHref(n.href!), window.location.pathname);
+                    onClose();
+                  }}
+                  aria-current={on ? "page" : undefined}
+                  sx={itemSx(on)}
+                >
                   {n.icon}
                   <Box component="span" sx={{flex: 1}}>
                     {n.label}
@@ -293,7 +307,7 @@ export function NavDrawer({open, onClose, active}: {open: boolean; onClose: () =
         <Box
           sx={{mt: "auto", display: "flex", alignItems: "center", gap: "10px", p: "10px", borderRadius: "14px", background: color.white, boxShadow: shadow.card}}
         >
-          <InitialsAvatar name={user?.username ?? ""} size={40} variant="navy" sx={{fontSize: 14}} />
+          <InitialsAvatar name={user?.username ?? ""} size={40} variant="navy" />
           <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column"}}>
             <Box component="span" sx={{fontSize: 15, fontWeight: 600, ...ellipsis}}>
               {user?.username ?? "—"}
