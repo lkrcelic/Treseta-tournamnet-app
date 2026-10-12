@@ -31,6 +31,7 @@ export function ProfileHero({
   avatarName,
   rating,
   ratingHref,
+  tag,
   desktop = false,
 }: {
   name: string | null;
@@ -39,6 +40,8 @@ export function ProfileHero({
   avatarName: string;
   rating: HeroRating | null;
   ratingHref: string | null;
+  // a label under the name (a deactivated player's "Neaktivan" on the phone Player page)
+  tag?: React.ReactNode;
   desktop?: boolean;
 }) {
   const nameId = useId();
@@ -115,6 +118,7 @@ export function ProfileHero({
             {name ?? <Skeleton width={160} />}
           </Box>
           {sub !== undefined && <Box sx={{fontSize: desktop ? 17 : 16, color: color.ink2}}>{sub ?? <Skeleton width={120} />}</Box>}
+          {tag && <Box sx={{display: "flex", mt: "6px"}}>{tag}</Box>}
         </Box>
       </Box>
       {ratingHref ? (

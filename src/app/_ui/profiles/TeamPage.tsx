@@ -1,0 +1,459 @@
+"use client";
+
+import useNavStack from "@/app/_hooks/useNavStack";
+import useTeamOverview from "@/app/_hooks/useTeamOverview";
+import type {TeamNight, TeamOverview, TeamOverviewLeague, TeamOverviewPlayer} from "@/app/_interfaces/profiles";
+import {leagueStatusLine, nightParts, rosterSubline, teamInitial, teamTiles} from "@/app/_lib/ui/profiles";
+import {formatChange, shortDate} from "@/app/_lib/ui/ratings";
+import {count, NOUN} from "@/app/_lib/ui/text";
+import {TransitionLink} from "@/app/_lib/viewTransitions";
+import {color, font, shadow} from "@/app/_styles/tokens";
+import {
+  buttonBase,
+  Card,
+  changeInk,
+  ColumnCard,
+  ColumnHead,
+  ellipsis,
+  EmptyState,
+  InitialsAvatar,
+  ProvisionalTag,
+  RankBadge,
+  SectionLabel,
+  tabular,
+  Tag,
+} from "@/app/_ui/sp";
+import {Box} from "@mui/material";
+import React, {useId} from "react";
+import {
+  DesktopFrame,
+  HeroCard,
+  PageStatus,
+  PhoneFrame,
+  PhoneListHead,
+  rowFocus,
+  RowChevron,
+  StatusDot,
+  stretchedLink,
+  stretchedRow,
+  TEAM_GRID,
+  useShortWindow,
+} from "./PageParts";
+
+// The Team page (/teams/[teamId], handoff §6, frames 13a, 13b, 13f, 13k–13o): the cream header with the team's best
+// place, players and leagues, then its players (to their pages), its leagues (to that league's standings with the team
+// highlighted) and its last nights. Read-only for everyone; the admin controls come with the Ekipe directory.
+
+const EMPTY = {
+  players: "Ekipa još nema igrača.",
+  leagues: "Ekipa još ne igra ni u jednoj ligi.",
+  nights: "Još nema odigranih večeri.",
+} as const;
+
+const playerHref = (p: TeamOverviewPlayer) => `/players/${p.id}`;
+const leagueHref = (l: TeamOverviewLeague, teamId: number) => `/league/${l.league_id}/standings?team=${teamId}`;
+
+function Hero({team, desktop, short = false}: {team: TeamOverview; desktop: boolean; short?: boolean}) {
+  return (
+    <HeroCard
+      desktop={desktop}
+      short={short}
+      avatarName={team.team.name}
+      avatarLetters={teamInitial(team.team.name)}
+      title={team.team.name}
+      cornerTag={team.team.mine ? <Tag variant="mine" size={desktop ? "md" : "sm"} /> : undefined}
+      tiles={teamTiles(team.stats)}
+    />
+  );
+}
+
+// A player's name, and under it "Neaktivan" (when deactivated) and @username or the team's name. The tag sits on the
+// second line, so a long name keeps its room.
+function PlayerNames({player, teamName, desktop}: {player: TeamOverviewPlayer; teamName: string; desktop: boolean}) {
+  return (
+    <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: desktop ? "1px" : "2px"}}>
+      <Box component="span" title={desktop ? player.name : undefined} sx={{minWidth: 0, fontSize: 16, fontWeight: player.me ? 700 : 600, color: color.ink, ...ellipsis}}>
+        {player.name}
+      </Box>
+      <Box component="span" sx={{display: "flex", alignItems: "center", gap: "6px", minWidth: 0}}>
+        {!player.active && <Tag variant="inactive" size="row" />}
+        <Box component="span" sx={{minWidth: 0, fontSize: 13, color: color.muted, ...ellipsis}}>
+          {rosterSubline(player, teamName)}
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
+// ---------- phone ----------
+
+export function TeamPagePhone({teamId}: {teamId: number}) {
+  const overview = useTeamOverview(teamId);
+  const team = overview.data;
+  const nav = useNavStack(team?.team.name ?? null);
+  return (
+    <PhoneFrame eyebrow="Ekipa" nav={nav}>
+      {team ? (
+        <>
+          <Hero team={team} desktop={false} />
+          <PhonePlayers team={team} />
+          <PhoneLeagues team={team} />
+          <PhoneNights nights={team.nights} />
+        </>
+      ) : (
+        <PageStatus kind="team" overview={overview} nav={nav} />
+      )}
+    </PhoneFrame>
+  );
+}
+
+function PhoneSection({title, children}: {title: string; children: React.ReactNode}) {
+  const titleId = useId();
+  return (
+    <Box component="section" aria-labelledby={titleId} sx={{flex: "none", display: "flex", flexDirection: "column", gap: "8px"}}>
+      <SectionLabel id={titleId}>{title}</SectionLabel>
+      <Card sx={{overflow: "hidden"}}>{children}</Card>
+    </Box>
+  );
+}
+
+// the rows of a phone card: a hairline between them, none under the last
+const phoneRows = {listStyle: "none", m: 0, p: 0, "& > li": {borderBottom: `1px solid ${color.line}`}, "& > li:last-of-type": {borderBottom: "none"}} as const;
+
+const phoneRowLink = {
+  ...buttonBase,
+  display: "flex",
+  alignItems: "center",
+  gap: "12px",
+  textDecoration: "none",
+  textAlign: "left",
+  color: color.ink,
+  "&:focus-visible": rowFocus,
+} as const;
+
+function PhonePlayers({team}: {team: TeamOverview}) {
+  return (
+    <PhoneSection title="Igrači">
+      {team.players.length === 0 ? (
+        <EmptyState icon>{EMPTY.players}</EmptyState>
+      ) : (
+        <>
+          <PhoneListHead sx={{pl: "14px", pr: "44px"}}>
+            <span>Igrač</span>
+            <span>Rejting</span>
+          </PhoneListHead>
+          <Box component="ul" sx={phoneRows}>
+            {team.players.map((p) => (
+              <Box component="li" key={p.id}>
+                <Box
+                  component={TransitionLink}
+                  href={playerHref(p)}
+                  sx={{...phoneRowLink, height: 62, p: "0 10px 0 14px", background: p.me ? color.cream2 : undefined, boxShadow: p.me ? shadow.mineBar : undefined}}
+                >
+                  <InitialsAvatar name={p.name} size={38} variant="paper" />
+                  <PlayerNames player={p} teamName={team.team.name} desktop={false} />
+                  <Box component="span" sx={{flex: "none", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "3px"}}>
+                    <Box component="span" sx={{fontFamily: font.display, fontSize: 22, fontWeight: 800, lineHeight: 1, color: color.ink, ...tabular}}>
+                      {p.rating}
+                    </Box>
+                    {p.provisional && <ProvisionalTag size="sm" />}
+                  </Box>
+                  <RowChevron />
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        </>
+      )}
+    </PhoneSection>
+  );
+}
+
+function PhoneLeagues({team}: {team: TeamOverview}) {
+  return (
+    <PhoneSection title="Lige">
+      {team.leagues.length === 0 ? (
+        <EmptyState icon>{EMPTY.leagues}</EmptyState>
+      ) : (
+        <>
+          <PhoneListHead sx={{pl: "14px", pr: "44px"}}>
+            <Box component="span" sx={{display: "flex", gap: "12px"}}>
+              <Box component="span" sx={{width: 34, textAlign: "center"}}>
+                #
+              </Box>
+              <span>Liga</span>
+            </Box>
+            <span>Bod</span>
+          </PhoneListHead>
+          <Box component="ul" sx={phoneRows}>
+            {team.leagues.map((l) => (
+              <Box component="li" key={l.league_id}>
+                <Box component={TransitionLink} href={leagueHref(l, team.team.id)} sx={{...phoneRowLink, minHeight: 64, p: "10px 10px 10px 14px"}}>
+                  <RankBadge rank={l.rank} medal hash size={34} />
+                  <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "3px"}}>
+                    <Box component="span" sx={{fontSize: 16, fontWeight: 700, lineHeight: 1.25, color: color.ink, overflowWrap: "anywhere"}}>
+                      {l.league_name}
+                    </Box>
+                    <LeagueStatus league={l} phone />
+                  </Box>
+                  <Box component="span" sx={{flex: "none", minWidth: 34, textAlign: "right", fontFamily: font.display, fontSize: 24, fontWeight: 800, lineHeight: 1, color: color.ink, ...tabular}}>
+                    {l.points ?? "–"}
+                  </Box>
+                  <RowChevron />
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        </>
+      )}
+    </PhoneSection>
+  );
+}
+
+function PhoneNights({nights}: {nights: TeamNight[]}) {
+  return (
+    <PhoneSection title="Zadnje večeri">
+      {nights.length === 0 ? (
+        <EmptyState icon>{EMPTY.nights}</EmptyState>
+      ) : (
+        <Box component="ol" sx={phoneRows}>
+          {nights.map((n) => (
+            <Box
+              component="li"
+              key={`${n.date}|${n.league_id}`}
+              sx={{minHeight: 56, boxSizing: "border-box", display: "grid", gridTemplateColumns: "50px minmax(0,1fr) auto", gap: "10px", alignItems: "center", p: "8px 16px"}}
+            >
+              <NightCells night={n} desktop={false} />
+            </Box>
+          ))}
+        </Box>
+      )}
+    </PhoneSection>
+  );
+}
+
+// "● Jesen 2026 · U tijeku": the dot green while the league runs; the line wraps in a narrow column
+function LeagueStatus({league: l, phone = false}: {league: TeamOverviewLeague; phone?: boolean}) {
+  return (
+    <Box component="span" sx={{display: "flex", alignItems: "baseline", gap: "6px", minWidth: 0, fontSize: phone ? 13 : 12.5, lineHeight: 1.3, color: color.muted}}>
+      <Box component="span" sx={{flex: "none", display: "flex", alignSelf: "flex-start", height: "1.3em", alignItems: "center"}}>
+        <StatusDot live={l.live} />
+      </Box>
+      <span>{leagueStatusLine(l.season, l.live)}</span>
+    </Box>
+  );
+}
+
+// date | result over the league | RAZ
+function NightCells({night: n, desktop}: {night: TeamNight; desktop: boolean}) {
+  return (
+    <>
+      <Box component="span" sx={{fontSize: 14, color: color.muted, ...tabular}}>
+        {shortDate(n.date)}
+      </Box>
+      <Box component="span" sx={{minWidth: 0, display: "flex", flexDirection: "column", gap: desktop ? "2px" : "1px"}}>
+        <Box component="span" sx={{fontSize: 15, fontWeight: 600, color: color.ink}}>
+          {/* in a narrow column the line breaks between the counts, never inside "1 pob", and the next line starts
+              with the separator ("1 pob · 3 ner" / "· 0 por") */}
+          {nightParts(n.wins, n.draws, n.losses).map((part, i) => (
+            <React.Fragment key={i}>
+              {i > 0 && " "}
+              <Box component="span" sx={{whiteSpace: "nowrap"}}>
+                {i > 0 && "· "}
+                {part}
+              </Box>
+            </React.Fragment>
+          ))}
+        </Box>
+        {/* league names differ at their end ("… Proljeće 25/26", "… Jesen 25/26"): they wrap instead of being cut */}
+        <Box component="span" sx={{fontSize: 12.5, lineHeight: 1.3, color: color.muted, overflowWrap: "anywhere"}}>
+          {n.league_name}
+        </Box>
+      </Box>
+      <Box component="span" sx={{textAlign: "right", fontSize: desktop ? 16 : 15, fontWeight: 700, color: changeInk(n.diff), whiteSpace: "nowrap", ...tabular}}>
+        {formatChange(n.diff)}
+      </Box>
+    </>
+  );
+}
+
+// ---------- desktop ----------
+
+const GRID = {
+  players: "minmax(0,1fr) auto 36px",
+  leagues: "40px minmax(0,1fr) 44px 22px",
+  nights: "52px minmax(0,1fr) 56px",
+} as const;
+
+// The desktop Team page (13f; 13n loading, 13o a new team). embedded: inside the admin's Ekipe directory (13h), which
+// brings its own frame.
+export function TeamPageDesktop({teamId, embedded = false}: {teamId: number; embedded?: boolean}) {
+  const overview = useTeamOverview(teamId);
+  const team = overview.data;
+  const nav = useNavStack(team?.team.name ?? null);
+  const short = useShortWindow();
+  return (
+    <DesktopFrame embedded={embedded} short={short} nav={nav}>
+      {team ? (
+        <>
+          <Hero team={team} desktop short={short} />
+          <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: TEAM_GRID, gridTemplateRows: "minmax(0,1fr)", gap: "18px"}}>
+            <DesktopPlayers team={team} />
+            <DesktopLeagues team={team} />
+            <DesktopNights nights={team.nights} />
+          </Box>
+        </>
+      ) : (
+        <PageStatus kind="team" overview={overview} nav={nav} desktop template={TEAM_GRID} />
+      )}
+    </DesktopFrame>
+  );
+}
+
+const rightLabel = {textAlign: "right"} as const;
+
+function DesktopPlayers({team}: {team: TeamOverview}) {
+  return (
+    <ColumnCard
+      title="Igrači"
+      right={count(team.players.length, NOUN.igrač)}
+      header={
+        <ColumnHead grid={GRID.players}>
+          <span>Igrač</span>
+          <Box component="span" sx={rightLabel}>
+            Rejting
+          </Box>
+          <span />
+        </ColumnHead>
+      }
+      empty={team.players.length === 0 && <EmptyState icon>{EMPTY.players}</EmptyState>}
+    >
+      <Box component="ul" sx={{listStyle: "none", m: 0, p: 0}}>
+        {team.players.map((p) => (
+          <Box
+            component="li"
+            key={p.id}
+            sx={{
+              ...stretchedRow,
+              height: 64,
+              display: "grid",
+              gridTemplateColumns: GRID.players,
+              gap: "12px",
+              alignItems: "center",
+              p: "0 12px 0 20px",
+              borderBottom: `1px solid ${color.divider}`,
+              background: p.me ? color.cream2 : undefined,
+              boxShadow: p.me ? shadow.mineBar : undefined,
+              transition: "background 150ms ease",
+              "&:hover": p.me ? undefined : {background: color.paper2},
+            }}
+          >
+            <Box component={TransitionLink} href={playerHref(p)} sx={{...stretchedLink, minWidth: 0, display: "flex", alignItems: "center", gap: "12px"}}>
+              <InitialsAvatar name={p.name} size={40} variant="paper" />
+              <PlayerNames player={p} teamName={team.team.name} desktop />
+            </Box>
+            <Box sx={{justifySelf: "end", display: "flex", alignItems: "center", gap: "8px"}}>
+              {p.provisional && <ProvisionalTag size="row" />}
+              <Box component="span" sx={{fontFamily: font.display, fontSize: 26, fontWeight: 800, lineHeight: 1, color: color.ink, ...tabular}}>
+                {p.rating}
+              </Box>
+            </Box>
+            <Box sx={{width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center"}}>
+              <RowChevron />
+            </Box>
+          </Box>
+        ))}
+      </Box>
+    </ColumnCard>
+  );
+}
+
+function DesktopLeagues({team}: {team: TeamOverview}) {
+  return (
+    <ColumnCard
+      title="Lige"
+      header={
+        <ColumnHead grid={GRID.leagues}>
+          <span>#</span>
+          <span>Liga</span>
+          <Box component="span" sx={rightLabel}>
+            Bod
+          </Box>
+          <span />
+        </ColumnHead>
+      }
+      empty={team.leagues.length === 0 && <EmptyState icon>{EMPTY.leagues}</EmptyState>}
+    >
+      <Box component="ul" sx={{listStyle: "none", m: 0, p: 0}}>
+        {team.leagues.map((l) => (
+          <Box component="li" key={l.league_id}>
+            <Box
+              component={TransitionLink}
+              href={leagueHref(l, team.team.id)}
+              sx={{
+                ...buttonBase,
+                minHeight: 68,
+                boxSizing: "border-box",
+                display: "grid",
+                gridTemplateColumns: GRID.leagues,
+                gap: "12px",
+                alignItems: "center",
+                p: "10px 16px 10px 20px",
+                borderBottom: `1px solid ${color.divider}`,
+                textDecoration: "none",
+                textAlign: "left",
+                color: color.ink,
+                transition: "background 150ms ease",
+                "&:hover": {background: color.paper2},
+                "&:focus-visible": rowFocus,
+              }}
+            >
+              <RankBadge rank={l.rank} medal hash size={34} />
+              <Box component="span" sx={{minWidth: 0, display: "flex", flexDirection: "column", gap: "3px"}}>
+                {/* league names differ at their end: they wrap instead of being cut */}
+                <Box component="span" sx={{fontSize: 15, fontWeight: 700, lineHeight: 1.25, color: color.ink, overflowWrap: "anywhere"}}>
+                  {l.league_name}
+                </Box>
+                <LeagueStatus league={l} />
+              </Box>
+              <Box component="span" sx={{textAlign: "right", fontFamily: font.display, fontSize: 24, fontWeight: 800, color: color.ink, ...tabular}}>
+                {l.points ?? "–"}
+              </Box>
+              <RowChevron />
+            </Box>
+          </Box>
+        ))}
+      </Box>
+    </ColumnCard>
+  );
+}
+
+function DesktopNights({nights}: {nights: TeamNight[]}) {
+  return (
+    <ColumnCard
+      title="Zadnje večeri"
+      header={
+        <ColumnHead grid={GRID.nights}>
+          <span>Datum</span>
+          <span>Liga · rezultat</span>
+          <Box component="span" sx={rightLabel}>
+            Raz
+          </Box>
+        </ColumnHead>
+      }
+      empty={nights.length === 0 && <EmptyState icon>{EMPTY.nights}</EmptyState>}
+    >
+      <Box component="ol" sx={{listStyle: "none", m: 0, p: 0}}>
+        {nights.map((n) => (
+          <Box
+            component="li"
+            key={`${n.date}|${n.league_id}`}
+            sx={{minHeight: 62, boxSizing: "border-box", display: "grid", gridTemplateColumns: GRID.nights, gap: "12px", alignItems: "center", p: "8px 20px", borderBottom: `1px solid ${color.divider}`}}
+          >
+            <NightCells night={n} desktop />
+          </Box>
+        ))}
+      </Box>
+    </ColumnCard>
+  );
+}

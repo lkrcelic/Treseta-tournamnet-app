@@ -60,6 +60,7 @@ export function DesktopShell({
   title,
   right,
   back,
+  lead,
   children,
   sx,
 }: {
@@ -69,6 +70,8 @@ export function DesktopShell({
   right?: React.ReactNode;
   // a "← label" pill next to the menu button (e.g. back to the round from a table's scorepad)
   back?: {label: string; href: string};
+  // any other control next to the menu button (a stacked page's BackPill in a short window)
+  lead?: React.ReactNode;
   children: React.ReactNode;
   sx?: SxProps<Theme>;
 }) {
@@ -131,6 +134,7 @@ export function DesktopShell({
             {back.label}
           </Box>
         )}
+        {lead}
         {/* the title keeps its width (up to half the header); crowded right-hand controls shrink and scroll instead */}
         <Box sx={{display: "flex", flexDirection: "column", gap: "6px", mr: "auto", minWidth: 0, flexShrink: 0, maxWidth: "50%"}}>
           {eyebrow && <Eyebrow sx={title == null ? {fontWeight: 700, letterSpacing: ".14em", ...ellipsis} : undefined}>{eyebrow}</Eyebrow>}

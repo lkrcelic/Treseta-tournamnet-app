@@ -21,12 +21,15 @@ export function TeamCards({
   teams,
   loading = false,
   empty,
+  emptyIcon = false,
   desktop = false,
 }: {
   title: string;
   teams: TeamCardData[];
   loading?: boolean;
   empty: React.ReactNode;
+  // the inbox icon over the empty text, as the Team page's empty cards (the Player page)
+  emptyIcon?: boolean;
   desktop?: boolean;
 }) {
   const titleId = useId();
@@ -39,7 +42,7 @@ export function TeamCards({
         </Card>
       ) : teams.length === 0 ? (
         <Card>
-          <EmptyState>{empty}</EmptyState>
+          <EmptyState icon={emptyIcon}>{empty}</EmptyState>
         </Card>
       ) : (
         teams.map((t) => (

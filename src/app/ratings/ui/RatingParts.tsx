@@ -1,10 +1,10 @@
 "use client";
 
 import {PlayerRatingDetail} from "@/app/_interfaces/ratings";
-import {formatChange, nightResult, RATING_COLUMNS, RATING_HOW, ratingChart, roundsLabel, shortDate} from "@/app/_lib/ui/ratings";
+import {formatChange, RATING_COLUMNS, RATING_HOW, ratingChart, roundsLabel, shortDate} from "@/app/_lib/ui/ratings";
 import {NOUN, plural} from "@/app/_lib/ui/text";
 import {color, font, tint} from "@/app/_styles/tokens";
-import {buttonBase, Card, changeInk, ellipsis, ProvisionalTag, tabular} from "@/app/_ui/sp";
+import {buttonBase, Card, changeInk, ellipsis, ProvisionalTag, ResultPill, tabular} from "@/app/_ui/sp";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import StyleRoundedIcon from "@mui/icons-material/StyleRounded";
@@ -12,9 +12,6 @@ import {Box} from "@mui/material";
 import React from "react";
 
 // Pieces of the ratings page (Claude Design "Rejting igrača"), shared by the phone and desktop layouts
-
-const RESULT_BG = {up: tint.green[12], down: tint.red[10], flat: color.lineFill} as const;
-const RESULT_INK = {up: color.green, down: color.red, flat: color.ink2} as const;
 
 export function RankDot({rank, size = 28}: {rank: number; size?: number}) {
   return (
@@ -94,29 +91,24 @@ export function RatingChartCard({detail, width}: {detail: PlayerRatingDetail; wi
 
 // The player's last five nights: date, who they played, matches won:lost, the change
 export function LastNights({detail, desktop = false}: {detail: PlayerRatingDetail; desktop?: boolean}) {
-  const rows = detail.lastNights.map((n) => {
-    const res = nightResult(n.won, n.lost);
-    return (
-      <Box
-        component="li"
-        key={n.night}
-        sx={{height: desktop ? 50 : 54, display: "grid", gridTemplateColumns: `${desktop ? 56 : 52}px minmax(0,1fr) auto ${desktop ? 52 : 48}px`, gap: "10px", alignItems: "center", px: desktop ? "18px" : "16px", borderTop: desktop ? `1px solid ${color.divider}` : undefined, borderBottom: desktop ? undefined : `1px solid ${color.line}`, "&:last-of-type": desktop ? undefined : {borderBottom: "none"}}}
-      >
-        <Box component="span" sx={{fontSize: 14, color: color.muted, ...tabular}}>
-          {shortDate(n.night)}
-        </Box>
-        <Box component="span" title={n.opponents.join(", ")} sx={{fontSize: 15, fontWeight: 600, ...ellipsis}}>
-          {n.opponents.length ? `vs ${n.opponents.join(", ")}` : "—"}
-        </Box>
-        <Box component="span" aria-label={`mečevi ${res.label}`} sx={{height: 26, display: "flex", alignItems: "center", px: "8px", borderRadius: "8px", background: RESULT_BG[res.tone], color: RESULT_INK[res.tone], fontSize: 14, fontWeight: 700, ...tabular}}>
-          {res.label}
-        </Box>
-        <Box component="span" sx={{textAlign: "right", fontSize: 15, fontWeight: 700, color: changeInk(n.change), ...tabular}}>
-          {formatChange(n.change)}
-        </Box>
+  const rows = detail.lastNights.map((n) => (
+    <Box
+      component="li"
+      key={n.night}
+      sx={{height: desktop ? 50 : 54, display: "grid", gridTemplateColumns: `${desktop ? 56 : 52}px minmax(0,1fr) auto ${desktop ? 52 : 48}px`, gap: "10px", alignItems: "center", px: desktop ? "18px" : "16px", borderTop: desktop ? `1px solid ${color.divider}` : undefined, borderBottom: desktop ? undefined : `1px solid ${color.line}`, "&:last-of-type": desktop ? undefined : {borderBottom: "none"}}}
+    >
+      <Box component="span" sx={{fontSize: 14, color: color.muted, ...tabular}}>
+        {shortDate(n.night)}
       </Box>
-    );
-  });
+      <Box component="span" title={n.opponents.join(", ")} sx={{fontSize: 15, fontWeight: 600, ...ellipsis}}>
+        {n.opponents.length ? `vs ${n.opponents.join(", ")}` : "—"}
+      </Box>
+      <ResultPill won={n.won} lost={n.lost} />
+      <Box component="span" sx={{textAlign: "right", fontSize: 15, fontWeight: 700, color: changeInk(n.change), ...tabular}}>
+        {formatChange(n.change)}
+      </Box>
+    </Box>
+  ));
 
   if (desktop) {
     return (

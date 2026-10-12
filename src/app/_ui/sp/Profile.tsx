@@ -1,6 +1,6 @@
 "use client";
 
-import {changeTone} from "@/app/_lib/ui/ratings";
+import {changeTone, nightResult} from "@/app/_lib/ui/ratings";
 import {matchesQuery} from "@/app/_lib/ui/text";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {color, ease, font, shadow, tint} from "@/app/_styles/tokens";
@@ -32,11 +32,23 @@ export function StatTile({label, value, sub, compact = false}: {label: string; v
         display: "flex",
         flexDirection: "column",
         gap: "3px",
+        // a 320 px phone: "NAJBOLJE" still fits on one line
+        "@media (max-width: 359.98px)": compact ? {px: "8px"} : undefined,
       }}
     >
       <Box
         component="span"
-        sx={{fontSize: compact ? 11 : 12, fontWeight: 700, letterSpacing: compact ? ".06em" : ".08em", lineHeight: 1.2, textTransform: "uppercase", color: color.ink2, overflowWrap: "anywhere"}}
+        sx={{
+          fontSize: compact ? 11 : 12,
+          fontWeight: 700,
+          letterSpacing: compact ? ".06em" : ".08em",
+          lineHeight: 1.2,
+          textTransform: "uppercase",
+          color: color.ink2,
+          // a word breaks only when it is wider than the whole tile
+          overflowWrap: "break-word",
+          "@media (max-width: 359.98px)": compact ? {letterSpacing: ".02em"} : undefined,
+        }}
       >
         {label}
       </Box>
@@ -61,28 +73,29 @@ const TAG = {
 } as const;
 
 // A small label on a header card: "Tvoja ekipa" (navy) or "Neaktivan" (red on white, with a block icon). sm is the
-// phone size.
-export function Tag({variant, size = "md", sx}: {variant: keyof typeof TAG; size?: "sm" | "md"; sx?: SxProps<Theme>}) {
+// phone size; row is the one in a white list row (a Team page's player), where "Neaktivan" sits on a red tint.
+export function Tag({variant, size = "md", sx}: {variant: keyof typeof TAG; size?: "sm" | "md" | "row"; sx?: SxProps<Theme>}) {
   const t = TAG[variant];
   const sm = size === "sm";
+  const row = size === "row";
   return (
     <Box
       component="span"
       sx={mergeSx(
         {
-          height: sm ? 24 : 26,
+          height: row ? 20 : sm ? 24 : 26,
           flex: "none",
           display: "inline-flex",
           alignItems: "center",
-          gap: "4px",
-          px: sm ? "9px" : variant === "mine" ? "10px" : "9px",
-          borderRadius: sm ? "8px" : "9px",
-          background: t.background,
+          gap: row ? "3px" : "4px",
+          px: row ? "6px" : sm ? "9px" : variant === "mine" ? "10px" : "9px",
+          borderRadius: row ? "6px" : sm ? "8px" : "9px",
+          background: row && variant === "inactive" ? tint.red[8] : t.background,
           color: t.color,
-          fontSize: sm ? 12 : 12.5,
+          fontSize: row ? 11 : sm ? 12 : 12.5,
           fontWeight: 700,
           whiteSpace: "nowrap",
-          "& svg": {fontSize: 16, ml: "-2px"},
+          "& svg": {fontSize: row ? 13 : 16, ml: "-2px"},
         },
         sx
       )}
@@ -131,6 +144,41 @@ const CHANGE_INK = {up: color.green, down: color.red, flat: color.muted} as cons
 
 // The colour of a rating change ("+15" green, "−8" red, none muted), as Rejting, the profiles and the Team page show it
 export const changeInk = (change: number | null) => CHANGE_INK[changeTone(change)];
+
+const RESULT = {
+  up: {background: tint.green[12], color: color.green},
+  down: {background: tint.red[10], color: color.red},
+  flat: {background: color.lineFill, color: color.ink2},
+} as const;
+
+// A night's matches won:lost on a tinted pill ("3:1" green, "1:3" red, "2:2" grey), in Rejting's last nights and on
+// the desktop Player page (sm, a narrower column)
+export function ResultPill({won, lost, size = "md", sx}: {won: number; lost: number; size?: "sm" | "md"; sx?: SxProps<Theme>}) {
+  const res = nightResult(won, lost);
+  return (
+    <Box
+      component="span"
+      aria-label={`mečevi ${res.label}`}
+      sx={mergeSx(
+        {
+          height: 26,
+          display: "flex",
+          alignItems: "center",
+          px: size === "sm" ? "7px" : "8px",
+          borderRadius: "8px",
+          ...RESULT[res.tone],
+          fontSize: size === "sm" ? 13.5 : 14,
+          fontWeight: 700,
+          whiteSpace: "nowrap",
+          ...tabular,
+        },
+        sx
+      )}
+    >
+      {res.label}
+    </Box>
+  );
+}
 
 const CHIP = {
   // "Stranica ekipe ›" on team cards (P:107)

@@ -4,14 +4,18 @@ import {
   aggregateTeamNights,
   bestRank,
   inRatingOrder,
-  nightLine,
+  leagueStatusLine,
+  nightParts,
   personalRows,
   playerTeamLeagues,
+  playerTiles,
+  rosterSubline,
   TeamLeagueFacts,
   TeamNightRound,
   teamInitial,
   teamLeagueRows,
   teamSubline,
+  teamTiles,
 } from "../ui/profiles";
 import {leagueEnded} from "../league";
 import {ratingSummary} from "../ui/ratings";
@@ -127,9 +131,9 @@ test("Najbolje mjesto is the best place where the team has played; a tie goes to
 });
 
 test("a night's result reads pob · ner · por, with ner only after a draw", () => {
-  assert.equal(nightLine(3, 0, 1), "3 pob · 1 por");
-  assert.equal(nightLine(2, 1, 1), "2 pob · 1 ner · 1 por");
-  assert.equal(nightLine(0, 0, 4), "0 pob · 4 por");
+  assert.deepEqual(nightParts(3, 0, 1), ["3 pob", "1 por"]);
+  assert.deepEqual(nightParts(2, 1, 1), ["2 pob", "1 ner", "1 por"]);
+  assert.deepEqual(nightParts(0, 0, 4), ["0 pob", "4 por"]);
 });
 
 test("team counts agree with their numbers", () => {
@@ -198,4 +202,46 @@ test("Osobni podaci: first and last name for everyone, all seven rows for the pl
     personalRows(bare, true).map((r) => r.value),
     ["—", "—", "@g123", "g@example.com", "—", "—", "Ne"]
   );
+});
+
+test("the Team page's tiles: the best place with its league, the players, the leagues still running", () => {
+  assert.deepEqual(teamTiles({best: {rank: 3, league_id: 1, league_name: "Piatnik Bela Liga 2025"}, players: 4, leagues: 2, leagues_live: 1}), [
+    {label: "Najbolje mjesto", value: "#3", sub: "Piatnik Bela Liga 2025"},
+    {label: "Igrači", value: "4", sub: "u ekipi"},
+    {label: "Lige", value: "2", sub: "1 u tijeku"},
+  ]);
+  // a new team (13o)
+  assert.deepEqual(
+    teamTiles({best: null, players: 0, leagues: 0, leagues_live: 0}).map((t) => `${t.value}|${t.sub}`),
+    ["–|", "0|u ekipi", "0|0 u tijeku"]
+  );
+});
+
+test("the Player page's tiles: the place out of everyone on Rejting, the rounds, the teams", () => {
+  const rating = {rating: 1684, change: -9, rounds: 24, provisional: false, rank: 2, total: 25};
+  assert.deepEqual(playerTiles(rating, [{team_name: "Istrani"}]), [
+    {label: "Mjesto", value: "#2", sub: "od 25 igrača"},
+    {label: "Odigrano", value: "24", sub: "kola"},
+    {label: "Ekipe", value: "1", sub: "Istrani"},
+  ]);
+  const settling = {rating: 1520, change: 14, rounds: 1, provisional: true, rank: 21, total: 21};
+  assert.deepEqual(
+    playerTiles(settling, [{team_name: "Puleni"}, {team_name: "Istrani"}]).map((t) => `${t.value}|${t.sub}`),
+    ["#21|od 21 igrača", "1|kolo · još privremeno", "2|Puleni, Istrani"]
+  );
+  // not on Rejting yet, in no team
+  const unranked = {rating: 1500, change: null, rounds: 0, provisional: true, rank: null, total: 227};
+  assert.deepEqual(playerTiles(unranked, []).map((t) => `${t.value}|${t.sub}`), ["–|od 227 igrača", "0|kola · još privremeno", "0|"]);
+});
+
+test("a league row says its season and whether it is still running", () => {
+  assert.equal(leagueStatusLine("Jesen 2026", true), "Jesen 2026 · U tijeku");
+  assert.equal(leagueStatusLine("Sezona 2025", false), "Sezona 2025 · Završeno");
+  assert.equal(leagueStatusLine(null, false), "Završeno");
+  assert.equal(leagueStatusLine("  ", true), "U tijeku");
+});
+
+test("a Team page's player shows the username only when the server sent it, else the team's name", () => {
+  assert.equal(rosterSubline({username: "mmarkovic"}, "Dalmatinci"), "@mmarkovic");
+  assert.equal(rosterSubline({username: null}, "Dalmatinci"), "Dalmatinci");
 });

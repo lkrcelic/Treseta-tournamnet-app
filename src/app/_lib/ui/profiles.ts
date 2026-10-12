@@ -1,10 +1,10 @@
 // The numbers and short texts of the Team and Player pages (handoff §6). Framework free so they can be unit tested;
 // the server builds the overviews with the first four, the pages format with the rest.
 import type {PlayerView} from "@/app/_interfaces/player";
-import type {TeamNight, TeamOverview, TeamOverviewLeague} from "@/app/_interfaces/profiles";
+import type {PlayerRatingSummary, TeamNight, TeamOverview, TeamOverviewLeague} from "@/app/_interfaces/profiles";
 import {leagueEnded} from "@/app/_lib/league";
 import {displayName} from "@/app/_lib/players/names";
-import {count, displayDate, NOUN} from "@/app/_lib/ui/text";
+import {count, displayDate, NOUN, plural} from "@/app/_lib/ui/text";
 
 // ---------- Zadnje večeri (Team page) ----------
 
@@ -101,9 +101,10 @@ export function inRatingOrder<P extends {id: number; first_name: string; last_na
 
 // ---------- texts ----------
 
-// A night's result: "3 pob · 1 por", with draws "2 pob · 1 ner · 1 por" (in the standings' order POB · NER · IZG)
-export function nightLine(wins: number, draws: number, losses: number): string {
-  return [`${wins} pob`, ...(draws > 0 ? [`${draws} ner`] : []), `${losses} por`].join(" · ");
+// A night's result, shown as "3 pob · 1 por", with draws "2 pob · 1 ner · 1 por" (in the standings' order
+// POB · NER · IZG); the parts come separately, so a narrow column breaks the line only between them
+export function nightParts(wins: number, draws: number, losses: number): string[] {
+  return [`${wins} pob`, ...(draws > 0 ? [`${draws} ner`] : []), `${losses} por`];
 }
 
 // "3 igrača · 2 lige", "1 igrač · 1 liga", "0 igrača · 0 liga"
@@ -115,6 +116,40 @@ export function teamSubline(players: number, leagues: number): string {
 export function playerTeamLeagues(leagues: {league_name: string}[]): string {
   const shown = leagues.slice(0, 2).map((l) => l.league_name).join(" · ");
   return leagues.length > 2 ? `${shown} +${leagues.length - 2}` : shown;
+}
+
+// One number on a cream header card: "NAJBOLJE MJESTO / #3 / Piatnik Bela Liga 2025"
+export type HeroTile = {label: string; value: string; sub: string};
+
+// The Team page's tiles (13f): Najbolje mjesto ("–" with no sub before the team has played), Igrači, Lige
+export function teamTiles(stats: TeamOverview["stats"]): HeroTile[] {
+  return [
+    {label: "Najbolje mjesto", value: stats.best ? `#${stats.best.rank}` : "–", sub: stats.best?.league_name ?? ""},
+    {label: "Igrači", value: String(stats.players), sub: "u ekipi"},
+    {label: "Lige", value: String(stats.leagues), sub: `${stats.leagues_live} u tijeku`},
+  ];
+}
+
+// The Player page's tiles (13g): Mjesto on Rejting ("–" for a player who isn't on it), Odigrano (rounds, "kola ·
+// još privremeno" under 8 rated rounds), Ekipe with their names
+export function playerTiles(rating: PlayerRatingSummary, teams: {team_name: string}[]): HeroTile[] {
+  return [
+    // "od" takes the genitive, "igrača" for every number (od 1 / 21 / 25 igrača)
+    {label: "Mjesto", value: rating.rank != null ? `#${rating.rank}` : "–", sub: `od ${rating.total} igrača`},
+    {label: "Odigrano", value: String(rating.rounds), sub: `${plural(rating.rounds, ...NOUN.kolo)}${rating.provisional ? " · još privremeno" : ""}`},
+    {label: "Ekipe", value: String(teams.length), sub: teams.map((t) => t.team_name).join(", ")},
+  ];
+}
+
+// A league row's second line on the Team page: "Jesen 2026 · U tijeku", "Završeno" for a league without a season
+export function leagueStatusLine(season: string | null, live: boolean): string {
+  return [season?.trim(), live ? "U tijeku" : "Završeno"].filter(Boolean).join(" · ");
+}
+
+// The second line of a Team page's player: the username for an admin and the player themself (the server sends it
+// only to them), the team's name for everyone else
+export function rosterSubline(player: {username: string | null}, teamName: string): string {
+  return player.username ? `@${player.username}` : teamName;
 }
 
 // A team's avatar: the first letter (or digit) of its name, "?" for none ("Puleni" -> "P", "đaci" -> "Đ")
