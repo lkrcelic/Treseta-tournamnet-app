@@ -2,6 +2,7 @@
 
 import {getSmokingPlanAPI} from "@/app/_fetchers/league/smoking";
 import {SmokingPlan, SmokingPlanSide, SmokingPlanTeam} from "@/app/_interfaces/smoking";
+import {missedTitle, planHeading, roundDotLabel, shareTitle, smokersLabel} from "@/app/_lib/ui/smoking";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {buttonBase, ellipsis, ErrorNote, IconTile, LoadingRows, SwitchTrack, tabular} from "@/app/_ui/sp";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
@@ -10,17 +11,8 @@ import SmokingRoomsRoundedIcon from "@mui/icons-material/SmokingRoomsRounded";
 import {Box} from "@mui/material";
 import {useEffect, useId, useRef, useState} from "react";
 
-// Create Round · Smoking tables and the Smoking plan (Claude Design "Pušači i pušački stolovi", 12g). How the tables
-// are given out is in _lib/matching/smokingTables.ts.
-
-const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-
-// "Tables 1, 2 · 9 smokers in 6 teams"
-export function smokingSummary(on: boolean, tables: number[], smokers: number, smokingTeams: number): string {
-  if (!on) return "Off · all tables are non-smoking";
-  if (!tables.length) return "No table selected";
-  return `${tables.length === 1 ? "Table" : "Tables"} ${tables.join(", ")} · ${count(smokers, "smoker", "smokers")} in ${count(smokingTeams, "team", "teams")}`;
-}
+// Novo kolo · Pušački stolovi and the Pušački raspored (Claude Design "Pušači i pušački stolovi", 12g). How the tables
+// are given out is in _lib/matching/smokingTables.ts; the copy with counts is in _lib/ui/smoking.ts.
 
 // The switch and, while it is on, a chip for every table tonight (half the teams in the round)
 export function SmokingTablesCard({
@@ -54,13 +46,13 @@ export function SmokingTablesCard({
         </IconTile>
         <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "1px"}}>
           <Box component="span" id={titleId} sx={{fontSize: 15, fontWeight: 700, color: color.ink}}>
-            Smoking tables
+            Pušački stolovi
           </Box>
           <Box component="span" aria-live="polite" sx={{fontSize: 12.5, color: color.muted}}>
             {summary}
           </Box>
         </Box>
-        <Box component="button" type="button" role="switch" aria-checked={on} aria-label="Smoking tables" onClick={onToggle} sx={{...buttonBase, display: "flex", borderRadius: "16px"}}>
+        <Box component="button" type="button" role="switch" aria-checked={on} aria-label="Pušački stolovi" onClick={onToggle} sx={{...buttonBase, display: "flex", borderRadius: "16px"}}>
           <SwitchTrack on={on} />
         </Box>
       </Box>
@@ -68,7 +60,7 @@ export function SmokingTablesCard({
         <>
           {tableCount > 0 ? (
             <>
-              <Box sx={{fontSize: 12.5, color: color.ink2}}>Select the tables where smoking is allowed.</Box>
+              <Box sx={{fontSize: 12.5, color: color.ink2}}>Odaberi stolove za kojima se smije pušiti.</Box>
               <Box role="group" aria-label="Pušački stolovi" sx={{display: "grid", gridTemplateColumns: "repeat(8, minmax(0,1fr))", gap: "5px"}}>
                 {Array.from({length: tableCount}, (_, k) => k + 1).map((n) => {
                   const picked = tables.includes(n);
@@ -101,7 +93,7 @@ export function SmokingTablesCard({
               </Box>
             </>
           ) : (
-            <Box sx={{fontSize: 12.5, color: color.ink2}}>Switch on at least two teams to pick the tables.</Box>
+            <Box sx={{fontSize: 12.5, color: color.ink2}}>Uključi barem dvije ekipe da odabereš stolove.</Box>
           )}
           <Box
             component="button"
@@ -124,7 +116,7 @@ export function SmokingTablesCard({
               "& svg": {fontSize: 20},
             }}
           >
-            Smoking plan · rotation
+            Pušački raspored · rotacija
             <ChevronRightRoundedIcon aria-hidden />
           </Box>
         </>
@@ -146,7 +138,7 @@ function useSmokingPlan(leagueId: number) {
         if (!cancelled) setPlan(p);
       })
       .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Plan nije moguće učitati.");
+        if (!cancelled) setError(e instanceof Error ? e.message : "Pušački raspored se nije učitao.");
       });
     return () => {
       cancelled = true;
@@ -155,33 +147,29 @@ function useSmokingPlan(leagueId: number) {
   return {plan, error, reload: () => setNonce((n) => n + 1)};
 }
 
-// "2 smoking tables × 3 rounds · 6 teams with smokers"
-function planHeading(plan: SmokingPlan | null): string {
+// "2 pušačka stola × 3 kola · 6 ekipa s pušačima"
+function planLine(plan: SmokingPlan | null): string {
   if (!plan) return "";
-  const teams = count(plan.teams.filter((t) => t.smokers > 0).length, "team", "teams");
-  if (!plan.roundNumbers.length) return `No rounds tonight yet · ${teams} with smokers`;
   const tables = Math.max(0, ...plan.rounds.map((r) => r.tables.length));
-  return `${count(tables, "smoking table", "smoking tables")} × ${count(plan.roundNumbers.length, "round", "rounds")} · ${teams} with smokers`;
+  return planHeading(tables, plan.roundNumbers.length, plan.teams.filter((t) => t.smokers > 0).length);
 }
-
-const smokersLabel = (n: number) => (n ? count(n, "smoker", "smokers") : "no smokers");
 
 // Tonight's smoking tables, round by round
 function PlanRounds({plan}: {plan: SmokingPlan}) {
   if (!plan.roundNumbers.length) {
     return (
       <Box sx={{p: "14px 16px", borderRadius: "14px", background: color.cream2, fontSize: 14, lineHeight: 1.45, color: color.ink2}}>
-        Tonight&apos;s rounds aren&apos;t created yet. Their smoking tables show here once they are.
+        Večerašnja kola još nisu napravljena. Kad budu, ovdje će se vidjeti njihovi pušački stolovi.
       </Box>
     );
   }
   return (
     <>
       {plan.rounds.map((r) => (
-        <Box key={r.roundNumber} component="section" aria-label={`Round ${r.roundNumber}`} sx={{display: "flex", flexDirection: "column", gap: "8px"}}>
-          <Box sx={{fontSize: 13, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.navy}}>Round {r.roundNumber}</Box>
+        <Box key={r.roundNumber} component="section" aria-label={`Kolo ${r.roundNumber}`} sx={{display: "flex", flexDirection: "column", gap: "8px"}}>
+          <Box sx={{fontSize: 13, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.navy}}>Kolo {r.roundNumber}</Box>
           {r.tables.length === 0 ? (
-            <Box sx={{fontSize: 14, color: color.muted, px: "4px"}}>No smoking tables in this round.</Box>
+            <Box sx={{fontSize: 14, color: color.muted, px: "4px"}}>U ovom kolu nema pušačkih stolova.</Box>
           ) : (
             r.tables.map((t) => (
               <Box
@@ -223,19 +211,23 @@ function PlanSide({side}: {side: SmokingPlanSide}) {
   );
 }
 
+// The rule of _lib/matching/smokingTables.ts (matchNeed: the tier, then the points) in the design's words (Desktop.dc
+// "Kako se biraju stolovi"), with what the design doesn't have: matches with a team that hasn't sat at a smoking table
+// tonight first, then the most missed nights, and the ten points for such a team (DECISIONS #32, #38)
 function HowChosen() {
   return (
     <Box sx={{display: "flex", flexDirection: "column", gap: "8px", p: "14px 16px", borderRadius: "16px", background: color.paper, fontSize: 13.5, lineHeight: 1.5, color: color.ink}}>
-      <Box sx={{fontSize: 12.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.navy}}>How tables are chosen</Box>
-      <div>1. Pairings are made first, by standings. Smoking tables only decide where a match sits.</div>
+      <Box sx={{fontSize: 12.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.navy}}>Kako se biraju stolovi</Box>
+      <div>1. Prvo se sparuju ekipe po poretku. Pušački stolovi odlučuju samo gdje se meč igra.</div>
       <div>
-        2. Teams that haven&apos;t sat at a smoking table tonight come first, and of them the teams that went the most nights with
-        a smoker but without one (Missed). A missed night counts for more than extra smokers.
+        2. Prednost imaju mečevi s ekipom koja večeras još nije sjela za pušački stol, a od njih oni u kojima takva ekipa
+        ima najviše propuštenih večeri (Propušteno). Propuštena večer vrijedi više od dodatnih pušača.
       </div>
       <div>
-        3. Then each match gets a score: one point per smoker at the table, plus extra for teams that have had fewer smoking
-        tables than their share this season. The highest scores get the smoking tables, in the order of the table numbers.
-        A team with more smokers is picked more often, but every smoking team rotates in.
+        3. Među mečevima s jednakom prednošću odlučuju bodovi: deset za svaku ekipu koja večeras još nije sjela za pušački
+        stol, jedan po pušaču za stolom, te do tri boda više za ekipu koja je ove sezone imala manje kola za pušačkim
+        stolom od svog udjela (do tri manje za onu koja je imala više). Mečevi s najviše bodova dobivaju pušačke stolove,
+        redom brojeva stolova gore. Ekipa s više pušača bira se češće, ali se sve ekipe s pušačima izmjenjuju.
       </div>
     </Box>
   );
@@ -243,11 +235,11 @@ function HowChosen() {
 
 // Tonight's rounds as dots: filled at a smoking table, a ring at another table, faint when not at a table
 function TonightDots({team, roundNumbers}: {team: SmokingPlanTeam; roundNumbers: number[]}) {
-  if (!roundNumbers.length) return <Box component="span" aria-label="Večeras još nema rundi" sx={{color: color.faint}}>—</Box>;
+  if (!roundNumbers.length) return <Box component="span" aria-label="Večeras još nema kola" sx={{color: color.faint}}>—</Box>;
   return (
-    <Box component="span" sx={{display: "flex", gap: "5px"}}>
+    <Box component="span" sx={{display: "flex", gap: `${DOT_GAP}px`}}>
       {team.tonight.map((smoking, i) => {
-        const text = `Round ${roundNumbers[i]}: ${smoking == null ? "not at a table" : smoking ? "smoking table" : "regular table"}`;
+        const text = roundDotLabel(roundNumbers[i], smoking);
         return (
           <Box
             key={roundNumbers[i]}
@@ -255,7 +247,7 @@ function TonightDots({team, roundNumbers}: {team: SmokingPlanTeam; roundNumbers:
             role="img"
             title={text}
             aria-label={text}
-            sx={{width: 14, height: 14, flex: "none", borderRadius: "50%", background: smoking ? color.navy : "transparent", boxShadow: `inset 0 0 0 1.5px ${color.navy}`, opacity: smoking == null ? 0.3 : 1}}
+            sx={{width: DOT, height: DOT, flex: "none", borderRadius: "50%", background: smoking ? color.navy : "transparent", boxShadow: `inset 0 0 0 1.5px ${color.navy}`, opacity: smoking == null ? 0.3 : 1}}
           />
         );
       })}
@@ -263,35 +255,41 @@ function TonightDots({team, roundNumbers}: {team: SmokingPlanTeam; roundNumbers:
   );
 }
 
-const shareTitle = (t: SmokingPlanTeam) => `${t.smokingRounds} of ${count(t.rounds, "round", "rounds")} at a smoking table; fair share ${t.fairShare}`;
-const ROTATION_COLUMNS = "minmax(0,1fr) 76px 76px 60px 56px";
+// a rotation dot and the gap between dots; the Večeras column fits all of tonight's rounds (the design's 76 px holds 4).
+// The other columns fit their headers ("Propušteno" on two lines), so the team names keep the room at 1024 px.
+const DOT = 14;
+const DOT_GAP = 5;
+const rotationColumns = (rounds: number) => `minmax(0,1fr) 56px ${Math.max(76, rounds * DOT + (rounds - 1) * DOT_GAP)}px 56px 56px`;
 
-// Every smoking team this season: smokers, tonight, rounds at a smoking table and nights without one
+// Every smoking team this season: smokers, tonight, rounds at a smoking table and nights without one. The design's
+// columns, plus Propušteno, which the rule uses (DECISIONS #38).
 function PlanRotation({plan}: {plan: SmokingPlan}) {
   const cell = {display: "flex", alignItems: "center"} as const;
+  const columns = rotationColumns(plan.roundNumbers.length);
   return (
-    <Box role="table" aria-label="Rotation · smoking teams" sx={{flex: 1, minHeight: 0, display: "flex", flexDirection: "column"}}>
+    <Box role="table" aria-label="Rotacija · ekipe s pušačima" sx={{flex: 1, minHeight: 0, display: "flex", flexDirection: "column"}}>
       <Box
         role="row"
-        sx={{flex: "none", display: "grid", gridTemplateColumns: ROTATION_COLUMNS, gap: "8px", alignItems: "center", height: 32, px: "22px", borderBottom: `1px solid ${tint.navy[12]}`, fontSize: 11.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: color.muted}}
+        sx={{flex: "none", display: "grid", gridTemplateColumns: columns, gap: "8px", alignItems: "center", height: 32, px: "22px", borderBottom: `1px solid ${tint.navy[12]}`, fontSize: 11.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: color.muted}}
       >
-        <span role="columnheader">Team</span>
-        <span role="columnheader">Smokers</span>
-        <span role="columnheader">Tonight</span>
+        <span role="columnheader">Ekipa</span>
+        <span role="columnheader">Pušači</span>
+        <span role="columnheader">Večeras</span>
         <Box component="span" role="columnheader" sx={{textAlign: "right"}}>
-          Share
+          Udio
         </Box>
-        <Box component="span" role="columnheader" sx={{textAlign: "right"}}>
-          Missed
+        {/* the soft hyphen breaks it as "Propu-/šteno" in its narrow column */}
+        <Box component="span" role="columnheader" aria-label="Propušteno" sx={{textAlign: "right", lineHeight: 1.15}}>
+          {"Propu­šteno"}
         </Box>
       </Box>
       <Box role="rowgroup" sx={{flex: 1, minHeight: 0, overflowY: "auto"}}>
-        {plan.teams.length === 0 && <Box sx={{p: "28px 22px", fontSize: 14, color: color.muted}}>No team in this league has a smoker yet.</Box>}
+        {plan.teams.length === 0 && <Box sx={{p: "28px 22px", fontSize: 14, color: color.muted}}>Nijedna ekipa u ovoj ligi još nema pušača.</Box>}
         {plan.teams.map((t) => (
           <Box
             key={t.id}
             role="row"
-            sx={{height: 46, display: "grid", gridTemplateColumns: ROTATION_COLUMNS, gap: "8px", alignItems: "center", px: "22px", borderBottom: `1px solid ${color.divider}`}}
+            sx={{height: 46, display: "grid", gridTemplateColumns: columns, gap: "8px", alignItems: "center", px: "22px", borderBottom: `1px solid ${color.divider}`}}
           >
             <Box component="span" role="cell" sx={{fontSize: 14.5, fontWeight: 600, ...ellipsis}}>
               {t.name}
@@ -305,13 +303,18 @@ function PlanRotation({plan}: {plan: SmokingPlan}) {
             <Box component="span" role="cell" sx={cell}>
               <TonightDots team={t} roundNumbers={plan.roundNumbers} />
             </Box>
-            <Box component="span" role="cell" title={shareTitle(t)} sx={{textAlign: "right", fontSize: 13.5, fontWeight: 600, color: color.ink2, ...tabular}}>
+            <Box
+              component="span"
+              role="cell"
+              title={shareTitle(t.smokingRounds, t.rounds, t.fairShare)}
+              sx={{textAlign: "right", fontSize: 13.5, fontWeight: 600, color: color.ink2, ...tabular}}
+            >
               {t.smokingRounds} / {t.rounds}
             </Box>
             <Box
               component="span"
               role="cell"
-              title={count(t.missedNights, "night", "nights") + " with a smoker but no smoking table"}
+              title={missedTitle(t.missedNights)}
               sx={{textAlign: "right", fontSize: 13.5, fontWeight: 700, color: t.missedNights ? color.red : color.muted, ...tabular}}
             >
               {t.missedNights}
@@ -327,76 +330,90 @@ function RotationHeading() {
   return (
     <Box sx={{display: "flex", flexDirection: "column", gap: "2px"}}>
       <Box component="span" sx={{fontSize: 13, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.navy}}>
-        Rotation · smoking teams
+        Rotacija · ekipe s pušačima
       </Box>
       <Box component="span" sx={{fontSize: 12.5, color: color.muted}}>
-        Share = rounds on a smoking table this season, including tonight. Missed = nights with a smoker but no smoking table.
+        Udio = kola za pušačkim stolom ove sezone, uključujući večeras. Propušteno = večeri s pušačem, a bez pušačkog stola.
       </Box>
     </Box>
   );
 }
 
-// Desktop: over the Create round view (the design's "Smoking plan · tonight")
+// Desktop: over the Novo kolo view (the design's "Pušački raspored · večeras")
 export function SmokingPlanOverlay({leagueId, onClose}: {leagueId: number; onClose: () => void}) {
   const {plan, error, reload} = useSmokingPlan(leagueId);
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+  // the control that opened the plan, read while rendering (before the view under the plan turns inert); it gets the
+  // focus back when the plan closes
+  const [opener] = useState(() => (typeof document === "undefined" ? null : document.activeElement));
   useEffect(() => {
     closeRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCloseRef.current();
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      if (opener instanceof HTMLElement && opener !== document.body && opener.isConnected) opener.focus();
+    };
+  }, [opener]);
 
+  // the paper under the card hides the Novo kolo view at its rounded corners
   return (
-    <Box
-      role="dialog"
-      aria-labelledby={titleId}
-      sx={{position: "absolute", inset: 0, zIndex: 4, background: color.white, borderRadius: "24px", boxShadow: shadow.popover, display: "flex", flexDirection: "column", overflow: "hidden"}}
-    >
-      <Box sx={{flex: "none", display: "flex", alignItems: "center", gap: "14px", p: "18px 22px", borderBottom: `1px solid ${tint.navy[10]}`}}>
-        <IconTile size={44} radius={12}>
-          <SmokingRoomsRoundedIcon />
-        </IconTile>
-        <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
-          <Box component="h2" id={titleId} sx={{m: 0, fontFamily: font.display, fontSize: 24, fontWeight: 800}}>
-            Smoking plan · tonight
-          </Box>
-          <Box component="span" sx={{fontSize: 14, color: color.muted}}>
-            {planHeading(plan)}
-          </Box>
-        </Box>
-        <Box
-          ref={closeRef}
-          component="button"
-          type="button"
-          onClick={onClose}
-          sx={{...buttonBase, height: 44, px: "16px", border: `1.5px solid ${color.borderControl}`, borderRadius: "12px", background: color.white, color: color.navy, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: "6px", "& svg": {fontSize: 20}}}
-        >
-          <CloseRoundedIcon aria-hidden />
-          Close
-        </Box>
-      </Box>
-      {error ? (
-        <ErrorNote onRetry={reload} sx={{m: "18px 22px"}}>
-          {error}
-        </ErrorNote>
-      ) : !plan ? (
-        <LoadingRows rows={8} height={46} />
-      ) : (
-        <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1.25fr) minmax(0,1fr)", overflow: "hidden"}}>
-          <Box sx={{minHeight: 0, overflowY: "auto", p: "18px 22px", display: "flex", flexDirection: "column", gap: "16px", borderRight: `1px solid ${tint.navy[10]}`}}>
-            <PlanRounds plan={plan} />
-            <HowChosen />
-          </Box>
-          <Box sx={{minHeight: 0, display: "flex", flexDirection: "column"}}>
-            <Box sx={{flex: "none", p: "18px 22px 8px"}}>
-              <RotationHeading />
+    <Box sx={{position: "absolute", inset: 0, zIndex: 4, background: color.paper}}>
+      <Box
+        role="dialog"
+        aria-labelledby={titleId}
+        sx={{height: "100%", background: color.white, borderRadius: "24px", boxShadow: shadow.popover, display: "flex", flexDirection: "column", overflow: "hidden"}}
+      >
+        <Box sx={{flex: "none", display: "flex", alignItems: "center", gap: "14px", p: "18px 22px", borderBottom: `1px solid ${tint.navy[10]}`}}>
+          <IconTile size={44} radius={12}>
+            <SmokingRoomsRoundedIcon />
+          </IconTile>
+          <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
+            <Box component="h2" id={titleId} sx={{m: 0, fontFamily: font.display, fontSize: 24, fontWeight: 800}}>
+              Pušački raspored · večeras
             </Box>
-            <PlanRotation plan={plan} />
+            <Box component="span" sx={{fontSize: 14, color: color.muted}}>
+              {planLine(plan)}
+            </Box>
+          </Box>
+          <Box
+            ref={closeRef}
+            component="button"
+            type="button"
+            onClick={onClose}
+            sx={{...buttonBase, height: 44, px: "16px", border: `1.5px solid ${color.borderControl}`, borderRadius: "12px", background: color.white, color: color.navy, fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", gap: "6px", "& svg": {fontSize: 20}}}
+          >
+            <CloseRoundedIcon aria-hidden />
+            Zatvori
           </Box>
         </Box>
-      )}
+        {error ? (
+          <ErrorNote onRetry={reload} sx={{m: "18px 22px"}}>
+            {error}
+          </ErrorNote>
+        ) : !plan ? (
+          <LoadingRows rows={8} height={46} />
+        ) : (
+          // below 1200 px the rotation gets half, so its team names stay readable next to the extra Propušteno column
+          <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: {xs: "minmax(0,1fr) minmax(0,1fr)", lg: "minmax(0,1.25fr) minmax(0,1fr)"}, overflow: "hidden"}}>
+            <Box sx={{minHeight: 0, overflowY: "auto", p: "18px 22px", display: "flex", flexDirection: "column", gap: "16px", borderRight: `1px solid ${tint.navy[10]}`}}>
+              <PlanRounds plan={plan} />
+              <HowChosen />
+            </Box>
+            <Box sx={{minHeight: 0, display: "flex", flexDirection: "column"}}>
+              <Box sx={{flex: "none", p: "18px 22px 8px"}}>
+                <RotationHeading />
+              </Box>
+              <PlanRotation plan={plan} />
+            </Box>
+          </Box>
+        )}
+      </Box>
     </Box>
   );
 }
