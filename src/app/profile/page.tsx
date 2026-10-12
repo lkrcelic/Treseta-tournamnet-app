@@ -65,8 +65,8 @@ export default function ProfilePage() {
   const fullName = player ? `${player.first_name} ${player.last_name}`.trim() : "";
   const details = [
     {k: "Email", v: player?.email},
-    {k: "First name", v: player?.first_name},
-    {k: "Last name", v: player?.last_name},
+    {k: "Ime", v: player?.first_name},
+    {k: "Prezime", v: player?.last_name},
   ];
 
   const hero = (desktop: boolean) => (
@@ -124,7 +124,7 @@ export default function ProfilePage() {
 
   const detailsBlock = (desktop: boolean) => (
     <Box component="section" aria-labelledby="details" sx={{display: "flex", flexDirection: "column", gap: "8px"}}>
-      <SectionLabel id="details">Details</SectionLabel>
+      <SectionLabel id="details">Podaci</SectionLabel>
       <Card component="dl" sx={{m: 0, overflow: "hidden"}}>
         <UsernameRow
           value={player?.username ?? null}
@@ -180,7 +180,7 @@ export default function ProfilePage() {
 
   const teamsBlock = (desktop: boolean) => (
     <Box component="section" aria-labelledby="my-teams" sx={{display: "flex", flexDirection: "column", gap: "8px"}}>
-      <SectionLabel id="my-teams">My Teams</SectionLabel>
+      <SectionLabel id="my-teams">Moje ekipe</SectionLabel>
       {teamsLoading ? (
         <Card>
           <CenteredSpinner />
@@ -212,14 +212,15 @@ export default function ProfilePage() {
 
   if (isDesktop) {
     return (
-      <DesktopShell active="profile" eyebrow="My Profile" title="Profil">
+      <DesktopShell active="profile" eyebrow="Moj profil" title="Profil">
         {errorNote}
-        <Box sx={{flex: 1, minHeight: 0, overflowY: "auto", display: "grid", gridTemplateColumns: "360px minmax(0,1fr)", gap: "20px", alignItems: "start"}}>
-          {hero(true)}
-          <Box sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "20px", alignItems: "start"}}>
-            {detailsBlock(true)}
-            {teamsBlock(true)}
-          </Box>
+        {/* three columns, each scrolling on its own (the padding keeps the cards' shadows inside the scroll box) */}
+        <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "360px minmax(0,1fr) minmax(0,1fr)", gridTemplateRows: "minmax(0,1fr)", gap: "20px", alignItems: "start"}}>
+          {[hero(true), detailsBlock(true), teamsBlock(true)].map((column, i) => (
+            <Box key={i} sx={{minHeight: 0, maxHeight: "100%", overflowY: "auto", p: "0 4px 4px", mx: "-4px", display: "flex", flexDirection: "column"}}>
+              {column}
+            </Box>
+          ))}
         </Box>
       </DesktopShell>
     );
@@ -240,7 +241,7 @@ export default function ProfilePage() {
   );
 }
 
-// The last Details row: Smoker with its switch, saved when it is flipped (Create Round seats smokers at the smoking
+// The last Podaci row: Pušač with its switch, saved when it is flipped (Novo kolo seats smokers at the smoking
 // tables)
 function SmokerRow({value, desktop, onSave}: {value: boolean; desktop: boolean; onSave: (smoker: boolean) => Promise<void>}) {
   // the switch moves at once; a failed save puts it back
@@ -268,19 +269,19 @@ function SmokerRow({value, desktop, onSave}: {value: boolean; desktop: boolean; 
     <Box sx={{borderBottom: `1px solid ${color.line}`}}>
       <Box sx={{height: desktop ? 56 : 52, display: "flex", alignItems: "center", gap: "10px", pl: desktop ? "18px" : "16px", pr: "14px"}}>
         <Box component="dt" sx={{flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: "8px", fontSize: 15, color: color.muted, "& svg": {fontSize: 20, color: color.navy}}}>
-          Smoker
+          Pušač
           <SmokingRoomsRoundedIcon aria-hidden />
         </Box>
         <Box component="dd" sx={{m: 0, display: "flex", alignItems: "center", gap: "10px"}}>
           <Box component="span" aria-hidden sx={{fontSize: 15, fontWeight: 600, color: color.ink}}>
-            {shown ? "Yes" : "No"}
+            {shown ? "Da" : "Ne"}
           </Box>
           <Box
             component="button"
             type="button"
             role="switch"
             aria-checked={shown}
-            aria-label="Smoker"
+            aria-label="Pušač"
             aria-busy={saving || undefined}
             onClick={flip}
             sx={{...buttonBase, display: "flex", borderRadius: "16px"}}
@@ -294,7 +295,7 @@ function SmokerRow({value, desktop, onSave}: {value: boolean; desktop: boolean; 
   );
 }
 
-// The birth date Details row, with an edit button opening a date field with Cancel and Save in place
+// The birth date Podaci row, with an edit button opening a date field with Odustani and Spremi in place
 function BirthDateRow({value, desktop, onSave}: {value: string | null; desktop: boolean; onSave: (birthDate: string) => Promise<void>}) {
   const [draft, setDraft] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -306,7 +307,7 @@ function BirthDateRow({value, desktop, onSave}: {value: string | null; desktop: 
     return (
       <Box sx={{height: desktop ? 56 : 52, display: "flex", alignItems: "center", gap: "8px", pl: px, pr: "6px", borderBottom: `1px solid ${color.line}`}}>
         <Box component="dt" sx={{flex: "none", whiteSpace: "nowrap", fontSize: 15, color: color.muted}}>
-          Birth date
+          Datum rođenja
         </Box>
         <Box component="dd" sx={{m: 0, flex: 1, minWidth: 0, textAlign: "right", fontSize: 15, fontWeight: 600, whiteSpace: "nowrap", ...tabular}}>
           {value ? `${displayDate(value)}.` : "—"}
@@ -314,7 +315,7 @@ function BirthDateRow({value, desktop, onSave}: {value: string | null; desktop: 
         <Box
           component="button"
           type="button"
-          aria-label="Edit birth date"
+          aria-label="Uredi datum rođenja"
           onClick={() => {
             setDraft(value ?? "");
             setError(null);
@@ -346,7 +347,7 @@ function BirthDateRow({value, desktop, onSave}: {value: string | null; desktop: 
   return (
     <Box sx={{display: "flex", flexDirection: "column", gap: "10px", p: `12px ${px} 14px`, borderBottom: `1px solid ${color.line}`, background: color.cream2}}>
       <Box component="dt" sx={{fontSize: 13, fontWeight: 600, color: color.ink2}}>
-        <label htmlFor="birth-date">Birth date</label>
+        <label htmlFor="birth-date">Datum rođenja</label>
       </Box>
       <Box component="dd" sx={{m: 0}}>
         <Box component="form" onSubmit={save} noValidate sx={{display: "flex", flexDirection: "column", gap: "10px"}}>
@@ -370,7 +371,7 @@ function BirthDateRow({value, desktop, onSave}: {value: string | null; desktop: 
               onClick={() => setDraft(null)}
               sx={{...buttonBase, flex: 1, height: 46, borderRadius: "14px", border: `1.5px solid ${tint.navy[25]}`, background: color.white, color: color.navy, fontSize: 15, fontWeight: 600}}
             >
-              Cancel
+              Odustani
             </Box>
             <Box
               component="button"
@@ -379,7 +380,7 @@ function BirthDateRow({value, desktop, onSave}: {value: string | null; desktop: 
               aria-busy={saving || undefined}
               sx={{...buttonBase, flex: 1, height: 46, borderRadius: "14px", background: color.navy, color: color.white, fontSize: 15, fontWeight: 600, "&:disabled": {opacity: 0.4}}}
             >
-              {saving ? "Saving…" : "Save"}
+              {saving ? "Spremam…" : "Spremi"}
             </Box>
           </Box>
         </Box>
@@ -388,7 +389,7 @@ function BirthDateRow({value, desktop, onSave}: {value: string | null; desktop: 
   );
 }
 
-// The first Details row: "@username" with an edit button, opening a field with the username rules, Cancel and Save in place.
+// The first Podaci row: "@username" with an edit button, opening a field with the username rules, Odustani and Spremi in place.
 // value is null while the profile loads.
 function UsernameRow({value, desktop, onSave}: {value: string | null; desktop: boolean; onSave: (username: string) => Promise<void>}) {
   const [draft, setDraft] = useState<string | null>(null);
@@ -401,7 +402,7 @@ function UsernameRow({value, desktop, onSave}: {value: string | null; desktop: b
     return (
       <Box sx={{height: desktop ? 56 : 52, display: "flex", alignItems: "center", gap: "8px", pl: px, pr: "6px", borderBottom: `1px solid ${color.line}`}}>
         <Box component="dt" sx={{flex: "none", whiteSpace: "nowrap", fontSize: 15, color: color.muted}}>
-          Username
+          Korisničko ime
         </Box>
         <Box component="dd" sx={{m: 0, flex: 1, minWidth: 0, textAlign: "right", fontSize: 15, fontWeight: 600, ...ellipsis}}>
           {value != null ? `@${value}` : <Skeleton width={110} sx={{ml: "auto"}} />}
@@ -409,7 +410,7 @@ function UsernameRow({value, desktop, onSave}: {value: string | null; desktop: b
         <Box
           component="button"
           type="button"
-          aria-label="Edit username"
+          aria-label="Uredi korisničko ime"
           disabled={value == null}
           onClick={() => {
             setDraft(value ?? "");
@@ -437,7 +438,7 @@ function UsernameRow({value, desktop, onSave}: {value: string | null; desktop: b
       await onSave(username);
       setDraft(null);
     } catch (err) {
-      setSaveError({draft, message: err instanceof Error ? err.message : "Username not saved."});
+      setSaveError({draft, message: err instanceof Error ? err.message : "Korisničko ime nije spremljeno."});
     }
     setSaving(false);
   };
@@ -445,7 +446,7 @@ function UsernameRow({value, desktop, onSave}: {value: string | null; desktop: b
   return (
     <Box sx={{display: "flex", flexDirection: "column", gap: "8px", p: `12px ${px} 14px`, borderBottom: `1px solid ${color.line}`, background: color.cream2}}>
       <Box component="dt" sx={{fontSize: 13, fontWeight: 600, color: color.ink2}}>
-        <label htmlFor="username">Username</label>
+        <label htmlFor="username">Korisničko ime</label>
       </Box>
       <Box component="dd" sx={{m: 0}}>
         <Box component="form" onSubmit={save} noValidate sx={{display: "flex", flexDirection: "column", gap: "8px"}}>
@@ -473,7 +474,7 @@ function UsernameRow({value, desktop, onSave}: {value: string | null; desktop: b
             />
           </Box>
           <Box id="username-hint" aria-live="polite" sx={{fontSize: 12.5, color: error ? color.red : color.muted}}>
-            {error ?? "Teammates find you by this name when adding you to a team."}
+            {error ?? "Po ovom imenu te suigrači pronalaze kad te dodaju u ekipu."}
           </Box>
           <Box sx={{display: "flex", gap: "8px"}}>
             <Box
@@ -482,7 +483,7 @@ function UsernameRow({value, desktop, onSave}: {value: string | null; desktop: b
               onClick={() => setDraft(null)}
               sx={{...buttonBase, flex: 1, height: 46, borderRadius: "14px", border: `1.5px solid ${tint.navy[25]}`, background: color.white, color: color.navy, fontSize: 15, fontWeight: 600}}
             >
-              Cancel
+              Odustani
             </Box>
             <Box
               component="button"
@@ -491,7 +492,7 @@ function UsernameRow({value, desktop, onSave}: {value: string | null; desktop: b
               aria-busy={saving || undefined}
               sx={{...buttonBase, flex: 1, height: 46, borderRadius: "14px", background: color.navy, color: color.white, fontSize: 15, fontWeight: 600, "&:disabled": {opacity: 0.4}}}
             >
-              {saving ? "Saving…" : "Save"}
+              {saving ? "Spremam…" : "Spremi"}
             </Box>
           </Box>
         </Box>

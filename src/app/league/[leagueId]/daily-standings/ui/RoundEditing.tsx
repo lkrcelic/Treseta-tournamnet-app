@@ -16,7 +16,7 @@ import WarningRoundedIcon from "@mui/icons-material/WarningRounded";
 import {Box, Dialog} from "@mui/material";
 import React, {useId, useState} from "react";
 
-// Admin editing of a round's tables on the desktop Daily screen
+// Admin editing of a round's tables on the desktop Dnevni poredak screen
 
 const pill = {
   ...buttonBase,
@@ -160,7 +160,7 @@ export function PairDialog({
     });
 
   const notes: Note[] = [];
-  if (isNew) notes.push({kind: "info", text: "Prikazane su samo ekipe koje ne igraju u ovoj rundi."});
+  if (isNew) notes.push({kind: "info", text: "Prikazane su samo ekipe koje ne igraju u ovom kolu."});
   if (row) {
     const changed = a !== row.teamAId || b !== row.teamBId;
     ([[a, row.teamA], [b, row.teamB]] as const).forEach(([id, old]) => {

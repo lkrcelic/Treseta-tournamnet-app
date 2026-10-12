@@ -29,7 +29,7 @@ export function PhoneRoundTables({title, rows}: {title: string; rows: TableRow[]
           >
             <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", height: 24}}>
               <Box component="span" sx={{display: "flex", alignItems: "center", gap: "6px", fontSize: 13, fontWeight: 600, color: color.muted}}>
-                Table {t.table}
+                Stol {t.table}
                 {t.smoking && <SmokingMark />}
               </Box>
               {t.live && <LiveLabel />}

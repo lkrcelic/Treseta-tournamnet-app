@@ -53,7 +53,7 @@ export default function DesktopHome() {
   const today = leagueDateString();
   const dailySub = !lastDate
     ? "Još nema okupljanja"
-    : `${displayDate(lastDate)} · ${liveRound ? `Round ${liveRound} u tijeku` : lastDate === today ? "Večeras" : "Završeno"}`;
+    : `${displayDate(lastDate)} · ${liveRound ? `Kolo ${liveRound} u tijeku` : lastDate === today ? "Večeras" : "Završeno"}`;
 
   // the picker remembers the pick itself (chooseLeague), and Početna follows it like the other league screens
   const picker = leagueId != null && leagues.length > 0 ? <LeagueMenuButton leagues={leagues} value={leagueId} onChange={() => undefined} /> : undefined;
@@ -67,7 +67,7 @@ export default function DesktopHome() {
     >
       <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "20px"}}>
         <Panel
-          title="Daily Standings"
+          title="Dnevni poredak"
           sub={dailySub}
           badge={liveRound ? <LivePill size="sm" /> : null}
           onOpen={() => router.push(currentLeagueHref("daily-standings", leagueId))}
@@ -87,7 +87,7 @@ export default function DesktopHome() {
           )}
         </Panel>
 
-        <Panel title="League Standings" sub={leagueName} onOpen={() => router.push(currentLeagueHref("standings", leagueId))}>
+        <Panel title="Ukupni poredak" sub={leagueName} onOpen={() => router.push(currentLeagueHref("standings", leagueId))}>
           {league.error ? (
             <ErrorNote onRetry={league.reload} sx={{m: "0 20px"}}>
               {league.error}

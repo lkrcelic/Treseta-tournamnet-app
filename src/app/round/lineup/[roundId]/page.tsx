@@ -19,10 +19,10 @@ import {Box} from "@mui/material";
 import {useParams, useSearchParams} from "next/navigation";
 import React, {useCallback, useEffect, useState} from "react";
 
-// Start Game · who plays this round (Claude Design 7c "Lineup card", desktop "tko igra"). Shown before the
+// Započni igru · who plays this round (Claude Design 7c "Lineup card", desktop "tko igra"). Shown before the
 // scoreboard of the round's first match: two players per team, suggested from the team's last round in the league
 // (or its founders in the league's first round). A slot opens to swap in a teammate who isn't playing.
-// With ?league=, an admin is opening the table's scorepad from Daily: confirming goes on to that scorepad, where
+// With ?league=, an admin is opening the table's scorepad from Dnevni poredak: confirming goes on to that scorepad, where
 // the admin's first hand starts the match.
 
 const TITLE = "Tko igra ovu rundu?";
@@ -121,8 +121,8 @@ export default function LineupPage() {
     return (
       <DesktopShell
         active={padLeague ? "daily" : "game"}
-        back={padLeague ? {label: "Daily", href: `/league/${padLeague}/daily-standings`} : undefined}
-        eyebrow={label || "Start Game"}
+        back={padLeague ? {label: "Dnevni poredak", href: `/league/${padLeague}/daily-standings`} : undefined}
+        eyebrow={label || "Započni igru"}
         title={TITLE}
       >
         {status ?? (

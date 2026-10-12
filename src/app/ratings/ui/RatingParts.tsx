@@ -2,6 +2,7 @@
 
 import {PlayerRatingDetail} from "@/app/_interfaces/ratings";
 import {changeTone, formatChange, nightResult, RATING_COLUMNS, RATING_HOW, ratingChart, roundsLabel, shortDate} from "@/app/_lib/ui/ratings";
+import {NOUN, plural} from "@/app/_lib/ui/text";
 import {color, font, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, ellipsis, tabular} from "@/app/_ui/sp";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
@@ -57,7 +58,7 @@ export function PlayerCard({detail, desktop = false}: {detail: PlayerRatingDetai
         <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
           <Box sx={{fontFamily: font.display, fontSize: desktop ? 60 : 64, fontWeight: 800, lineHeight: 0.9, letterSpacing: "-.03em", ...tabular}}>
             {player.rating}
-            <VisuallyHiddenText> bodova rejtinga</VisuallyHiddenText>
+            <VisuallyHiddenText> {plural(player.rating, ...NOUN.bod)} rejtinga</VisuallyHiddenText>
           </Box>
           {player.provisional && (
             <Box sx={{alignSelf: "flex-start"}}>

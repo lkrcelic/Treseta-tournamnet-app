@@ -1,7 +1,7 @@
 "use client";
 
 import {deleteLeagueRoundAPI, getLeagueRoundsAPI, LeagueRoundSummary} from "@/app/_fetchers/admin/daily";
-import {displayDate} from "@/app/_lib/ui/text";
+import {count, displayDate, NOUN} from "@/app/_lib/ui/text";
 import {color, font, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, EmptyState, ErrorNote, InfoNote, LoadingRows} from "@/app/_ui/sp";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
@@ -11,22 +11,22 @@ import WarningRoundedIcon from "@mui/icons-material/WarningRounded";
 import {Box} from "@mui/material";
 import React, {useCallback, useEffect, useRef, useState} from "react";
 
-// Manage League · Rounds: every round of the league per night, and deleting one. A delete waits a few seconds so it
+// Upravljanje ligom · Kola: every round of the league per night, and deleting one. A delete waits a few seconds so it
 // can be undone; it is sent right away when another round is deleted or the page is left.
 
 const UNDO_MS = 8000;
 const keyOf = (r: LeagueRoundSummary) => `${r.date}|${r.roundNumber}`;
 
 const STATUS: Record<LeagueRoundSummary["status"], {label: string; ink: string}> = {
-  played: {label: "Played", ink: color.green},
-  live: {label: "In progress", ink: color.red},
-  new: {label: "Not started", ink: color.faint},
+  played: {label: "Odigrano", ink: color.green},
+  live: {label: "U tijeku", ink: color.red},
+  new: {label: "Nije počelo", ink: color.faint},
 };
 
 function warning(r: LeagueRoundSummary): string {
-  if (r.status === "new") return `Nothing has been played yet. The ${r.tables} pairings will be removed.`;
-  if (r.status === "live") return `This round is in progress. ${r.tables} tables and their hands will be removed.`;
-  return `${r.tables} tables and all recorded results will be removed. Standings and ratings are recalculated.`;
+  if (r.status === "new") return `Još se ništa nije odigralo. Uklonit će se ${count(r.tables, NOUN.par)}.`;
+  if (r.status === "live") return `Ovo kolo je u tijeku. Uklonit će se ${count(r.tables, NOUN.stol)} i njihove igre.`;
+  return `Uklonit će se ${count(r.tables, NOUN.stol)} i svi upisani rezultati. Poredak i rejting se ponovno izračunaju.`;
 }
 
 export function useLeagueRounds(leagueId: number) {
@@ -41,7 +41,7 @@ export function useLeagueRounds(leagueId: number) {
         if (!cancelled) setRounds(r);
       })
       .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Runde nije moguće učitati.");
+        if (!cancelled) setError(e instanceof Error ? e.message : "Kola se nisu učitala.");
       });
     return () => {
       cancelled = true;
@@ -73,7 +73,7 @@ export default function RoundsView({leagueId, data}: {leagueId: number; data: Re
           next.splice(Math.min(p.index, next.length), 0, p.round);
           return next;
         });
-        setActionError(e instanceof Error ? e.message : "Runda nije obrisana.");
+        setActionError(e instanceof Error ? e.message : "Kolo nije obrisano.");
       }
     },
     [leagueId, setRounds]
@@ -123,15 +123,15 @@ export default function RoundsView({leagueId, data}: {leagueId: number; data: Re
 
   return (
     <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) 380px", gap: "20px"}}>
-      <Card component="section" aria-label="Runde lige" sx={{minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderRadius: "24px"}}>
+      <Card component="section" aria-label="Kola lige" sx={{minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderRadius: "24px"}}>
         <Box
           aria-hidden
           sx={{flex: "none", height: 40, display: "grid", gridTemplateColumns: grid, gap: "12px", alignItems: "center", px: "20px", background: color.paper2, borderBottom: `1px solid ${tint.navy[10]}`, fontSize: 12, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: color.muted}}
         >
-          <span>Round</span>
-          <span>Date</span>
+          <span>Kolo</span>
+          <span>Datum</span>
           <Box component="span" sx={{textAlign: "center"}}>
-            Tables
+            Stolovi
           </Box>
           <span>Status</span>
           <span />
@@ -144,7 +144,7 @@ export default function RoundsView({leagueId, data}: {leagueId: number; data: Re
         ) : rounds == null ? (
           <LoadingRows rows={8} height={60} />
         ) : rounds.length === 0 ? (
-          <EmptyState>This league has no rounds.</EmptyState>
+          <EmptyState>Ova liga nema kola.</EmptyState>
         ) : (
           <Box component="ul" sx={{listStyle: "none", m: 0, p: 0, flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable"}}>
             {rounds.map((r) => {
@@ -155,7 +155,7 @@ export default function RoundsView({leagueId, data}: {leagueId: number; data: Re
                 <Box component="li" key={k} sx={{display: "flex", flexDirection: "column", borderBottom: `1px solid ${color.divider}`, background: asking ? tint.red[6] : "transparent", transition: "background 160ms ease"}}>
                   <Box sx={{height: 60, display: "grid", gridTemplateColumns: grid, gap: "12px", alignItems: "center", pl: "20px", pr: "12px", fontVariantNumeric: "tabular-nums"}}>
                     <Box component="span" sx={{fontFamily: font.display, fontSize: 20, fontWeight: 800}}>
-                      Round {r.roundNumber}
+                      Kolo {r.roundNumber}
                     </Box>
                     <Box component="span" sx={{fontSize: 15, color: color.ink2}}>
                       {displayDate(r.date)}
@@ -173,11 +173,11 @@ export default function RoundsView({leagueId, data}: {leagueId: number; data: Re
                           component="button"
                           type="button"
                           onClick={() => setConfirm(k)}
-                          aria-label={`Delete Round ${r.roundNumber}, ${displayDate(r.date)}`}
+                          aria-label={`Obriši kolo ${r.roundNumber}, ${displayDate(r.date)}`}
                           sx={{...small, pl: "10px", pr: "14px", color: color.red, display: "flex", alignItems: "center", gap: "6px", "& svg": {fontSize: 20}, "&:hover": {background: tint.red[8]}}}
                         >
                           <DeleteRoundedIcon />
-                          Delete
+                          Obriši
                         </Box>
                       )}
                     </Box>
@@ -190,17 +190,17 @@ export default function RoundsView({leagueId, data}: {leagueId: number; data: Re
                       <WarningRoundedIcon />
                       <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
                         <Box component="span" sx={{fontSize: 15, fontWeight: 700}}>
-                          Delete Round {r.roundNumber} · {displayDate(r.date)}?
+                          Obrisati kolo {r.roundNumber} · {displayDate(r.date)}?
                         </Box>
                         <Box component="span" sx={{fontSize: 13, color: color.ink2}}>
                           {warning(r)}
                         </Box>
                       </Box>
                       <Box component="button" type="button" onClick={() => setConfirm(null)} sx={{...small, border: `1.5px solid ${tint.navy[25]}`, color: color.navy}}>
-                        Cancel
+                        Odustani
                       </Box>
                       <Box component="button" type="button" onClick={() => remove(r)} sx={{...small, background: color.red, color: color.white}}>
-                        Delete round
+                        Obriši kolo
                       </Box>
                     </Box>
                   )}
@@ -210,21 +210,21 @@ export default function RoundsView({leagueId, data}: {leagueId: number; data: Re
           </Box>
         )}
       </Card>
-      <Box sx={{display: "flex", flexDirection: "column", gap: "16px"}}>
+      <Box sx={{minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: "16px"}}>
         <Box role="status" sx={{display: "contents"}}>
         {pending && (
           <Card sx={{borderRadius: "24px", p: "16px 18px", display: "flex", alignItems: "center", gap: "12px", "& > svg": {fontSize: 24, color: color.green}}}>
             <CheckCircleRoundedIcon />
             <Box component="span" sx={{flex: 1, fontSize: 14, fontWeight: 600}}>
-              Round {pending.round.roundNumber} · {displayDate(pending.round.date)} deleted
+              Kolo {pending.round.roundNumber} · {displayDate(pending.round.date)} obrisano
             </Box>
             <Box component="button" type="button" onClick={undo} sx={{...buttonBase, height: 40, px: "14px", borderRadius: "10px", background: color.paper, color: color.navy, fontSize: 14, fontWeight: 700}}>
-              Undo
+              Poništi
             </Box>
           </Card>
         )}
         </Box>
-        <InfoNote icon={<InfoRoundedIcon />}>Deleting a round removes its tables and any recorded hands. Daily and league standings are recalculated.</InfoNote>
+        <InfoNote icon={<InfoRoundedIcon />}>Brisanjem kola brišu se njegovi stolovi i upisane igre. Dnevni i ukupni poredak se ponovno izračunaju.</InfoNote>
       </Box>
     </Box>
   );

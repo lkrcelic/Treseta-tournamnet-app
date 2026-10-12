@@ -23,7 +23,7 @@ const THRESHOLD = MATCH_THRESHOLD;
 const playedHands = (m: PadMatch): PlayedHand[] =>
   m.hands.map((h) => ({team1_game_points: h.total1, team2_game_points: h.total2, dosta_side: h.dosta}));
 
-// The admin scorepad of one Daily table: every hand of its matches, finished or being played, can be added,
+// The admin scorepad of one Dnevni poredak table: every hand of its matches, finished or being played, can be added,
 // changed or deleted, also as a custom hand ("Custom"). Desktop only, like the design.
 export default function TableScorepad() {
   const params = useParams<{leagueId: string; roundId: string}>();
@@ -56,7 +56,7 @@ export default function TableScorepad() {
     if (isAdmin) load();
   }, [isAdmin, load]);
 
-  // a table still to be played: confirm who plays first, as players do on Start Game (the ratings need it)
+  // a table still to be played: confirm who plays first, as players do on Započni igru (the ratings need it)
   const needsLineup = pad != null && !pad.done && !pad.bye && !pad.hasLineup;
   useEffect(() => {
     if (needsLineup) router.replace(`/round/lineup/${roundId}?league=${leagueId}`);
@@ -157,14 +157,14 @@ export default function TableScorepad() {
     );
   }
 
-  const back = pad?.date && pad.roundNumber ? {label: `Round ${pad.roundNumber}`, href: `/league/${leagueId}/daily-standings?date=${pad.date}&round=${pad.roundNumber}`} : {label: "Daily", href: `/league/${leagueId}/daily-standings`};
+  const back = pad?.date && pad.roundNumber ? {label: `Kolo ${pad.roundNumber}`, href: `/league/${leagueId}/daily-standings?date=${pad.date}&round=${pad.roundNumber}`} : {label: "Dnevni poredak", href: `/league/${leagueId}/daily-standings`};
   const state = !pad ? "" : pad.done ? `Meč ${match?.number ?? 1} · završeno` : match?.kind === "ongoing" && match.id === 0 && match.number === 1 ? "nije počelo" : "uživo";
 
   return (
     <DesktopShell
       active="daily"
       back={back}
-      eyebrow={pad ? `Stol ${pad.table ?? "–"} · Round ${pad.roundNumber ?? "–"} · ${state}` : "Admin"}
+      eyebrow={pad ? `Stol ${pad.table ?? "–"} · Kolo ${pad.roundNumber ?? "–"} · ${state}` : "Admin"}
       title={pad ? `${pad.team1.name} vs ${pad.team2.name}` : "Stol"}
       right={
         <Box sx={{display: "flex", alignItems: "center", gap: "10px"}}>
@@ -186,7 +186,7 @@ export default function TableScorepad() {
         <CenteredSpinner />
       ) : pad.bye ? (
         <Card>
-          <EmptyState>Za ovim stolom je slobodna runda (bye), nema igara za uređivanje.</EmptyState>
+          <EmptyState>Za ovim stolom je slobodna runda, nema igara za uređivanje.</EmptyState>
         </Card>
       ) : (
         <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) 460px", gap: "20px"}}>

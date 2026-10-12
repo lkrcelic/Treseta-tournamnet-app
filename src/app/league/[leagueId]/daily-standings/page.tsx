@@ -14,7 +14,7 @@ import {leagueDateString} from "@/app/_lib/dates";
 import {inConference, splitPodium, toStandingsRows} from "@/app/_lib/ui/standings";
 import {filterTables, liveCount, splitColumns, TableFilter, tableColumns, toTableRows} from "@/app/_lib/ui/tables";
 import {ConferenceFilter} from "@/app/_ui/league/ConferenceFilter";
-import {displayDate, plural} from "@/app/_lib/ui/text";
+import {count, displayDate, NOUN} from "@/app/_lib/ui/text";
 import {color, font} from "@/app/_styles/tokens";
 import {
   Card,
@@ -100,7 +100,17 @@ export default function DailyStandings() {
     setTab(k);
     setTabTouched(true);
   };
-  const tabs = [{key: 0, label: "Tablica okupljanja"}, ...roundNumbers.map((n) => ({key: n, label: `Round ${n}`, live: roundsLive(n)}))];
+  const tabs = [{key: 0, label: "Tablica okupljanja"}, ...roundNumbers.map((n) => ({key: n, label: `Kolo ${n}`, live: roundsLive(n)}))];
+  // on a narrow desktop the tabs scroll sideways: keep the open one in view (only the tab strip scrolls, not the page)
+  useEffect(() => {
+    const el = isDesktop ? document.getElementById(`daily-tab-${tab}`) : null;
+    const strip = el?.parentElement;
+    if (!el || !strip || strip.scrollWidth <= strip.clientWidth) return;
+    const box = strip.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    if (r.left < box.left) strip.scrollLeft -= box.left - r.left;
+    else if (r.right > box.right) strip.scrollLeft += r.right - box.right;
+  }, [isDesktop, tab, roundNumbers.length]);
   const roundRows = useMemo(
     () => toTableRows((daily.data?.rounds ?? []).filter((r) => r.round_number === tab), myTeamNames, conferences.of),
     [daily.data, tab, myTeamNames, conferences]
@@ -163,7 +173,7 @@ export default function DailyStandings() {
             <DesktopNightTable rows={standings} date={confName ? `${dateTitle} · ${confName}` : dateTitle} />
           ) : (
             <DesktopRound
-              title={`Round ${tab}`}
+              title={`Kolo ${tab}`}
               rows={roundRows}
               admin={isAdmin ? {leagueId, date: date || "", roundNumber: tab, onChanged: daily.refresh} : null}
             />
@@ -214,7 +224,7 @@ export default function DailyStandings() {
           </ScrollCard>
         ) : (
           <ScrollArea bleed sx={{gap: "10px"}}>
-            <PhoneRoundTables title={`Round ${tab}`} rows={roundRows} />
+            <PhoneRoundTables title={`Kolo ${tab}`} rows={roundRows} />
           </ScrollArea>
         )}
       </Box>
@@ -313,7 +323,7 @@ function DesktopRound({title, rows, admin}: {title: string; rows: ReturnType<typ
             {title}
           </Box>
           <Box sx={{fontSize: 16, color: color.ink2, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap"}}>
-            {rows.length} {plural(rows.length, "stol", "stola", "stolova")} · {live} uživo
+            {count(rows.length, NOUN.stol)} · {live} uživo
           </Box>
         </Box>
         <Box sx={{display: "flex", alignItems: "center", gap: "10px"}}>

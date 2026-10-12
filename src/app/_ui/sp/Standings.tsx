@@ -1,5 +1,6 @@
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {statsLine, StandingsRow} from "@/app/_lib/ui/standings";
+import {count, NOUN, plural} from "@/app/_lib/ui/text";
 import {Box, SxProps, Theme} from "@mui/material";
 import React from "react";
 import {mergeSx, tabular} from "./base";
@@ -59,7 +60,7 @@ export function Podium({
                       sx={{fontFamily: font.display, fontSize: 30, fontWeight: 800, lineHeight: 1, color: live ? color.red : undefined, ...tabular}}
                     >
                       {r.points}
-                      <VisuallyHidden> bodova</VisuallyHidden>
+                      <VisuallyHidden> {plural(r.points, ...NOUN.bod)}</VisuallyHidden>
                     </Box>
                     <Box component="span" sx={{fontSize: 14, fontWeight: 700, color: color.navy, ...tabular}}>
                       {r.diff}
@@ -83,7 +84,7 @@ export function Podium({
                     sx={{fontFamily: font.display, fontSize: 56, fontWeight: 800, lineHeight: 0.85, color: live ? color.red : undefined, ...tabular}}
                   >
                     {r.points}
-                    <VisuallyHidden> bodova</VisuallyHidden>
+                    <VisuallyHidden> {plural(r.points, ...NOUN.bod)}</VisuallyHidden>
                   </Box>
                 </Box>
               </>
@@ -186,7 +187,7 @@ function StandingsLine({r, withPlayed, medal}: {r: StandingsRow; withPlayed: boo
           {r.diff}
         </Box>
         <Box
-          aria-label={`${r.points} bodova`}
+          aria-label={count(r.points, NOUN.bod)}
           sx={{
             minWidth: 34,
             textAlign: "right",

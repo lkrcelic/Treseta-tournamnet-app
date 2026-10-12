@@ -155,16 +155,16 @@ type NavItem = {key: NavKey; label: string; icon: React.ReactNode; href?: string
 
 const NAV: NavItem[] = [
   {key: "home", label: "Početna", icon: <HomeRoundedIcon />, href: "/"},
-  {key: "game", label: "Start Game", icon: <PlayArrowRoundedIcon />},
-  {key: "daily", label: "Daily Standings", icon: <CalendarMonthRoundedIcon />, leaguePage: "daily-standings"},
-  {key: "league", label: "League Standings", icon: <EmojiEventsRoundedIcon />, leaguePage: "standings"},
+  {key: "game", label: "Započni igru", icon: <PlayArrowRoundedIcon />},
+  {key: "daily", label: "Dnevni poredak", icon: <CalendarMonthRoundedIcon />, leaguePage: "daily-standings"},
+  {key: "league", label: "Ukupni poredak", icon: <EmojiEventsRoundedIcon />, leaguePage: "standings"},
   {key: "ratings", label: "Rejting", icon: <LeaderboardRoundedIcon />, href: "/ratings"},
   {key: "raspored", label: "Raspored", icon: <EventRoundedIcon />, href: "/raspored"},
   {key: "burza", label: "Burza igrača", icon: <GroupsRoundedIcon />, href: "/burza"},
-  {key: "manageLeague", label: "Manage League", icon: <TuneRoundedIcon />, leaguePage: "manage", head: "Admin", adminOnly: true},
-  {key: "createLeague", label: "Create League", icon: <LibraryAddRoundedIcon />, href: "/league/new", adminOnly: true},
-  {key: "manageTeam", label: "Manage Team", icon: <EditRoundedIcon />, href: "/teams", adminOnly: true},
-  {key: "profile", label: "My Profile", icon: <AccountCircleRoundedIcon />, href: "/profile", head: "Račun"},
+  {key: "manageLeague", label: "Upravljanje ligom", icon: <TuneRoundedIcon />, leaguePage: "manage", head: "Admin", adminOnly: true},
+  {key: "createLeague", label: "Nova liga", icon: <LibraryAddRoundedIcon />, href: "/league/new", adminOnly: true},
+  {key: "manageTeam", label: "Ekipe", icon: <EditRoundedIcon />, href: "/teams", adminOnly: true},
+  {key: "profile", label: "Moj profil", icon: <AccountCircleRoundedIcon />, href: "/profile", head: "Račun"},
 ];
 
 export function NavDrawer({open, onClose, active}: {open: boolean; onClose: () => void; active?: NavKey}) {
@@ -176,7 +176,7 @@ export function NavDrawer({open, onClose, active}: {open: boolean; onClose: () =
   const leagueId = useSelectedLeagueId();
   const signedIn = user != null;
 
-  // the red dot on Daily Standings: is any table of tonight being played right now
+  // the red dot on Dnevni poredak: is any table of tonight being played right now
   useEffect(() => {
     if (!open || !signedIn || leagueId == null) return;
     let cancelled = false;

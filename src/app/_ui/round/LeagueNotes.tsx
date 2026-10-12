@@ -14,7 +14,7 @@ const SAVE_DELAY_MS = 600;
 // loadError: the notes couldn't be read, so the box stays locked (typing would overwrite notes it never saw)
 type Status = "loading" | "loadError" | "saved" | "saving" | "error";
 
-// Create Round · Notes: the admins' notes for a league (who's away next week, table changes, reminders). Saved on
+// Novo kolo · Bilješke: the admins' notes for a league (who's away next week, table changes, reminders). Saved on
 // their own a moment after typing stops; whatever is still waiting goes out when the view closes.
 export default function LeagueNotes({leagueId}: {leagueId: number}) {
   const [text, setText] = useState("");
@@ -72,18 +72,18 @@ export default function LeagueNotes({leagueId}: {leagueId: number}) {
   };
 
   const state = {
-    loading: {icon: <SyncRoundedIcon />, label: "Loading…", ink: color.muted},
-    loadError: {icon: <CloudOffRoundedIcon />, label: "Couldn't load", ink: color.red},
-    saving: {icon: <SyncRoundedIcon />, label: "Saving…", ink: color.muted},
-    saved: {icon: <CloudDoneRoundedIcon />, label: "Saved", ink: color.green},
-    error: {icon: <CloudOffRoundedIcon />, label: "Not saved", ink: color.red},
+    loading: {icon: <SyncRoundedIcon />, label: "Učitavam…", ink: color.muted},
+    loadError: {icon: <CloudOffRoundedIcon />, label: "Nije učitano", ink: color.red},
+    saving: {icon: <SyncRoundedIcon />, label: "Spremam…", ink: color.muted},
+    saved: {icon: <CloudDoneRoundedIcon />, label: "Spremljeno", ink: color.green},
+    error: {icon: <CloudOffRoundedIcon />, label: "Nije spremljeno", ink: color.red},
   }[status];
 
   return (
     <Box component="section" aria-labelledby={labelId} sx={{flex: 1, minHeight: 150, display: "flex", flexDirection: "column", gap: "8px"}}>
       <Box sx={{px: "6px", display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "8px"}}>
         <SectionLabel id={labelId} sx={{px: 0}}>
-          Notes
+          Bilješke
         </SectionLabel>
         <Box component="span" role="status" sx={{display: "flex", alignItems: "center", gap: "4px", fontSize: 12, fontWeight: 600, color: state.ink, "& svg": {fontSize: 16}}}>
           {state.icon}
@@ -97,7 +97,7 @@ export default function LeagueNotes({leagueId}: {leagueId: number}) {
         disabled={status === "loading" || status === "loadError"}
         maxLength={5000}
         onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}
-        placeholder="Notes for this league: who's away next week, table changes, reminders…"
+        placeholder="Bilješke za ovu ligu: tko ne dolazi idući tjedan, promjene stolova, podsjetnici…"
         sx={{
           flex: 1,
           minHeight: 0,

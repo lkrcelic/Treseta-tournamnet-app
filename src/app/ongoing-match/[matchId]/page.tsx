@@ -277,7 +277,7 @@ export default function ScoreBoardPage() {
     </PrimaryButton>
   );
 
-  // the phone board's root shares its view-transition-name with the Start Game card, which grows into it
+  // the phone board's root shares its view-transition-name with the Započni igru card, which grows into it
   const boardSx = {viewTransitionName: "table", background: color.paper};
 
   if (loading)
@@ -312,7 +312,7 @@ export default function ScoreBoardPage() {
               >
                 <TableRestaurantRoundedIcon sx={{fontSize: 20, color: color.navy}} />
                 Stol {sides.tableNumber}
-                {sides.roundNumber != null && ` · Round ${sides.roundNumber}`}
+                {sides.roundNumber != null && ` · Kolo ${sides.roundNumber}`}
               </Box>
             )}
           </Box>

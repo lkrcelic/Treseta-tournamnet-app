@@ -5,7 +5,7 @@ import useLeagues from "@/app/_hooks/useLeagues";
 import useLeagueNights from "@/app/_hooks/useLeagueNights";
 import useLeagueTeams from "@/app/_hooks/useLeagueTeams";
 import {useLeagueStandings} from "@/app/_hooks/useStandings";
-import {matchesQuery, NOUN} from "@/app/_lib/ui/text";
+import {count, matchesQuery, NOUN, plural} from "@/app/_lib/ui/text";
 import {addTeamToLeagueAPI, removeTeamFromLeagueAPI, setLeagueTeamActiveAPI, setLeagueTeamConferenceAPI} from "@/app/_fetchers/league/leagues";
 import {setTeamConferencesAPI} from "@/app/_fetchers/league/conferences";
 import useConferences, {setCachedConferences, setCachedTeamConference} from "@/app/_hooks/useConferences";
@@ -72,10 +72,11 @@ const UNDO_MS = 8000;
 const TEAM_GRID = "minmax(0,1.1fr) minmax(0,1.4fr) 80px 170px 44px";
 
 function removalNote(played: number | null): string {
-  const stay = "The team itself and its players stay in the app.";
-  if (played == null) return `Removes the team from this league's standings. ${stay}`;
-  if (played === 0) return `The team has no played rounds. ${stay}`;
-  return `Removes the team and its ${played} played ${played === 1 ? "round" : "rounds"} from this league's standings. ${stay}`;
+  const stay = "Ekipa i igrači ostaju u aplikaciji.";
+  if (played == null) return `Uklanja ekipu iz poretka ove lige. ${stay}`;
+  if (played === 0) return `Ekipa nema odigranih kola. ${stay}`;
+  // "njezino 1 odigrano kolo", "njezina 2 odigrana kola", "njezinih 12 odigranih kola"
+  return `Uklanja ekipu i ${plural(played, "njezino", "njezina", "njezinih")} ${count(played, NOUN.odigranoKolo)} iz poretka ove lige. ${stay}`;
 }
 
 export default function ManageLeague() {
@@ -137,9 +138,9 @@ export default function ManageLeague() {
       matchesQuery(`${r.name} ${r.players.join(" ")}`, query)
   );
   const filters = [
-    {key: "all" as Filter, label: "All", count: rows.length},
-    {key: "active" as Filter, label: "Active", count: rows.filter((r) => r.active).length},
-    {key: "inactive" as Filter, label: "Inactive", count: rows.filter((r) => !r.active).length},
+    {key: "all" as Filter, label: "Sve", count: rows.length},
+    {key: "active" as Filter, label: "Aktivne", count: rows.filter((r) => r.active).length},
+    {key: "inactive" as Filter, label: "Neaktivne", count: rows.filter((r) => !r.active).length},
   ];
   const confFilters = [
     {key: ALL_CONFERENCES, label: "Sve", count: rows.length},
@@ -289,11 +290,12 @@ export default function ManageLeague() {
       <SearchInput
         soft
         height={46}
-        placeholder="Search teams or players"
+        placeholder="Traži ekipe ili igrače"
         aria-label="Traži ekipe ili igrače"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        sx={{flex: 1, minWidth: 200}}
+        // wide enough for the whole placeholder; a narrow card puts the search under the filters
+        sx={{flex: 1, minWidth: 250}}
       />
     </Box>
   );
@@ -322,7 +324,7 @@ export default function ManageLeague() {
         "&:hover": {background: color.paper},
       }}
     >
-      {r.active ? "Active" : "Inactive"}
+      {r.active ? "Aktivna" : "Neaktivna"}
       <SwitchTrack on={r.active} onColor={color.green} />
     </Box>
   );
@@ -330,7 +332,7 @@ export default function ManageLeague() {
   // keyed by league (so switching league starts from the saved list), apart from the league name card next to it
   const conferencesCard = <ConferencesCard key={`conferences-${leagueId}`} leagueId={leagueId} teamCounts={teamCounts} onSaved={conferencesSaved} />;
 
-  // the desktop renames the league and edits its conferences in the Details view
+  // the desktop renames the league and edits its conferences in the Podaci view
   const sidePanel = (
     <Box sx={{minHeight: 0, overflowY: isDesktop ? "auto" : undefined, display: "flex", flexDirection: "column", gap: "16px"}}>
       {!isDesktop && <LeagueNameCard key={leagueId} leagueId={leagueId} leagues={leagues} />}
@@ -338,7 +340,7 @@ export default function ManageLeague() {
       {hasConferences && teams && <DistributeCard conferences={confList} teams={rows} order={tableOrder} onDistribute={distribute} />}
       <AddTeamCard exclude={rows.map((r) => r.id)} onAdd={onAdd} onCreate={() => router.push(`/teams/new?league=${leagueId}`)} />
       <InfoNote icon={<InfoRoundedIcon />}>
-        Inactive teams stay in the league and its standings, but are not signed in automatically when you create a round.
+        Neaktivne ekipe ostaju u ligi i poretku, ali se ne uključuju automatski kad kreiraš kolo.
       </InfoNote>
     </Box>
   );
@@ -348,7 +350,7 @@ export default function ManageLeague() {
       <DesktopShell
         active="manageLeague"
         eyebrow="Admin"
-        title="Manage League"
+        title="Upravljanje ligom"
         right={<LeagueMenuButton leagues={leagues} value={leagueId} onChange={(id) => router.router.push(`/league/${id}/manage?view=${view}`)} />}
       >
         <ViewSwitch view={view} onChange={setView} teams={rows.length} rounds={leagueRounds.rounds?.length ?? null} nights={leagueNights.nights?.length ?? null} />
@@ -373,10 +375,10 @@ export default function ManageLeague() {
                 aria-hidden
                 sx={{flex: "none", height: 40, display: "grid", gridTemplateColumns: TEAM_GRID, gap: "12px", alignItems: "center", px: "20px", background: color.paper2, borderBottom: `1px solid ${tint.navy[10]}`, fontSize: 12, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: color.muted}}
               >
-                <span>Team</span>
-                <span>Players</span>
+                <span>Ekipa</span>
+                <span>Igrači</span>
                 <Box component="span" sx={{textAlign: "center"}}>
-                  Played
+                  Odigrano
                 </Box>
                 <Box component="span" sx={{textAlign: "right"}}>
                   Status
@@ -421,9 +423,9 @@ export default function ManageLeague() {
                         component="button"
                         type="button"
                         onClick={() => setConfirmDelete(confirmDelete === r.id ? null : r.id)}
-                        aria-label={`Delete ${r.name} from the league`}
+                        aria-label={`Ukloni ${r.name} iz lige`}
                         aria-expanded={confirmDelete === r.id}
-                        title="Delete from league"
+                        title="Ukloni iz lige"
                         sx={{
                           ...buttonBase,
                           width: 44,
@@ -457,7 +459,7 @@ export default function ManageLeague() {
                           <WarningRoundedIcon />
                           <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
                             <Box component="span" sx={{fontSize: 15, fontWeight: 700, color: color.ink}}>
-                              Delete {r.name} from this league?
+                              Ukloniti {r.name} iz ove lige?
                             </Box>
                             <Box component="span" sx={{fontSize: 13, color: color.ink2}}>
                               {removalNote(r.played)}
@@ -469,7 +471,7 @@ export default function ManageLeague() {
                             onClick={() => setConfirmDelete(null)}
                             sx={{...buttonBase, flex: "none", height: 42, px: "16px", border: `1.5px solid ${color.borderControl}`, borderRadius: "12px", background: color.white, color: color.navy, fontSize: 14, fontWeight: 600}}
                           >
-                            Cancel
+                            Odustani
                           </Box>
                           <Box
                             component="button"
@@ -478,7 +480,7 @@ export default function ManageLeague() {
                             sx={{...buttonBase, flex: "none", height: 42, px: "16px", borderRadius: "12px", background: color.red, color: color.white, display: "flex", alignItems: "center", gap: "6px", fontSize: 14, fontWeight: 600, "& svg": {fontSize: 18}}}
                           >
                             <DeleteRoundedIcon />
-                            Delete team
+                            Obriši ekipu
                           </Box>
                         </Box>
                       )}
@@ -505,14 +507,14 @@ export default function ManageLeague() {
                         boxShadow: shadow.tooltip,
                       }}
                     >
-                      <span>{pending.team.name} deleted from the league</span>
+                      <span>{pending.team.name} uklonjena iz lige</span>
                       <Box
                         component="button"
                         type="button"
                         onClick={undoRemoval}
                         sx={{...buttonBase, height: 36, px: "12px", borderRadius: "10px", background: tint.white[14], color: color.white, fontSize: 14, fontWeight: 600}}
                       >
-                        Undo
+                        Poništi
                       </Box>
                     </Box>
                   )}
@@ -535,7 +537,7 @@ export default function ManageLeague() {
         </IconCircleButton>
         <Box sx={{display: "flex", flexDirection: "column", gap: "6px", minWidth: 0, pt: "2px"}}>
           <LeagueEyebrowButton leagues={leagues} value={leagueId} onChange={(id) => router.router.push(`/league/${id}/manage`)} />
-          <ScreenTitle title="Manage League" sx={{px: 0}} />
+          <ScreenTitle title="Upravljanje ligom" sx={{px: 0}} />
         </Box>
       </Box>
       <Card sx={{overflow: "hidden"}}>
@@ -610,12 +612,12 @@ function AddTeamCard({exclude, onAdd, onCreate}: {exclude: number[]; onAdd: (t: 
   return (
     <Card component="section" aria-labelledby="add-team" sx={{p: "20px", display: "flex", flexDirection: "column", gap: "12px", borderRadius: "24px"}}>
       <Box component="h2" id="add-team" sx={{m: 0, fontFamily: font.display, fontSize: 22, fontWeight: 800}}>
-        Add team
+        Dodaj ekipu
       </Box>
       <SearchInput
         soft
         height={50}
-        placeholder="Search existing teams"
+        placeholder="Traži postojeće ekipe"
         aria-label="Traži postojeće ekipe"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
@@ -627,7 +629,7 @@ function AddTeamCard({exclude, onAdd, onCreate}: {exclude: number[]; onAdd: (t: 
               <Spinner size={18} /> Tražim…
             </Box>
           ) : shown.length === 0 ? (
-            <Box sx={{p: "18px 14px", fontSize: 14, color: color.muted}}>No teams found outside this league.</Box>
+            <Box sx={{p: "18px 14px", fontSize: 14, color: color.muted}}>Nema ekipa izvan ove lige.</Box>
           ) : (
             shown.map((h) => (
               <Box key={h.id} sx={{minHeight: 58, display: "flex", alignItems: "center", gap: "10px", pl: "14px", pr: "8px", borderBottom: `1px solid ${color.divider}`}}>
@@ -660,7 +662,7 @@ function AddTeamCard({exclude, onAdd, onCreate}: {exclude: number[]; onAdd: (t: 
       )}
       <OutlineButton onClick={onCreate} height={50} tone={color.navy} sx={{borderWidth: "1.5px", borderColor: tint.navy[25], fontSize: 15}}>
         <GroupAddRoundedIcon sx={{fontSize: 22}} />
-        Create new team
+        Nova ekipa
       </OutlineButton>
     </Card>
   );
@@ -680,11 +682,11 @@ function ViewSwitch({
   nights: number | null;
 }) {
   const items: {key: View; label: string; icon: ReactNode; count: number | null}[] = [
-    {key: "create", label: "Create round", icon: <AddCircleRoundedIcon />, count: null},
-    {key: "teams", label: "Teams", icon: <GroupsRoundedIcon />, count: teams},
-    {key: "rounds", label: "Rounds", icon: <EventNoteRoundedIcon />, count: rounds},
-    {key: "dates", label: "Dates", icon: <CalendarMonthRoundedIcon />, count: nights},
-    {key: "details", label: "Details", icon: <TuneRoundedIcon />, count: null},
+    {key: "create", label: "Novo kolo", icon: <AddCircleRoundedIcon />, count: null},
+    {key: "teams", label: "Ekipe", icon: <GroupsRoundedIcon />, count: teams},
+    {key: "rounds", label: "Kola", icon: <EventNoteRoundedIcon />, count: rounds},
+    {key: "dates", label: "Datumi", icon: <CalendarMonthRoundedIcon />, count: nights},
+    {key: "details", label: "Podaci", icon: <TuneRoundedIcon />, count: null},
   ];
   return (
     <Box role="tablist" aria-label="Prikaz" sx={{flex: "none", alignSelf: "flex-start", display: "flex", gap: "4px", p: "4px", borderRadius: "16px", background: color.white, boxShadow: shadow.card}}>

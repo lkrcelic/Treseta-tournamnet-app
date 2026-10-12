@@ -11,6 +11,7 @@ import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import {Box} from "@mui/material";
 import {useParams} from "next/navigation";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
+import {NOUN, plural} from "@/app/_lib/ui/text";
 import React, {useCallback, useEffect, useState} from "react";
 
 type FinishedMatch = {id?: number; player_pair1_score: number; player_pair2_score: number};
@@ -77,7 +78,7 @@ export default function RoundResultPage() {
                 }}
               >
                 {sides.wins[i]}
-                <VisuallyHidden> {sides.wins[i] === 1 ? "pobjeda" : "pobjede"}</VisuallyHidden>
+                <VisuallyHidden> {plural(sides.wins[i], ...NOUN.pobjeda)}</VisuallyHidden>
               </Box>
             </Card>
           ))}

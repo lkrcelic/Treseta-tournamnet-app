@@ -2,6 +2,7 @@
 
 import {canSave, clearPoints, EntryState, setActive, switchMode, typeDigit} from "@/app/_lib/ui/adminEntry";
 import {Side} from "@/app/_lib/game/scoring";
+import {count, NOUN} from "@/app/_lib/ui/text";
 import {color, font, shadow, teamColor, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, ErrorNote, PrimaryButton, tabular} from "@/app/_ui/sp";
 import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
@@ -156,7 +157,7 @@ export default function AdminEntryPanel({
               type="button"
               role="radio"
               aria-checked={on}
-              aria-label={`${names[i]}: ${points} bodova`}
+              aria-label={`${names[i]}: ${count(points, NOUN.bod)}`}
               onClick={() => onChange(setActive(entry, side))}
               sx={{
                 ...buttonBase,
