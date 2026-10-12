@@ -49,7 +49,7 @@ export function LeagueEyebrowButton({
           letterSpacing: ".1em",
           textTransform: "uppercase",
           color: color.navy,
-          "&:active": {background: color.hover},
+          "&:active": {background: color.line},
           "& svg": {fontSize: 20, flex: "none"},
         }}
       >
@@ -141,7 +141,7 @@ export function LeagueMenuButton({
           pl: "8px",
           pr: "12px",
           borderRadius: "24px",
-          background: color.card,
+          background: color.white,
           color: color.ink,
           fontSize: 15,
           fontWeight: 600,

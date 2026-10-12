@@ -5,7 +5,7 @@ import {nextNightIndex, nightLabel} from "@/app/_lib/nights";
 import {adCount, namesAndMore, teamsLooking} from "@/app/_lib/ui/burza";
 import {initials} from "@/app/_lib/ui/text";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
-import {color, font, shadow} from "@/app/_styles/tokens";
+import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {buttonBase, ellipsis} from "@/app/_ui/sp";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import EventRoundedIcon from "@mui/icons-material/EventRounded";
@@ -33,7 +33,7 @@ export function NextNightCard({league, night, today}: {league: MyLeague; night: 
     <Box
       component="section"
       aria-label={tonight ? "Večeras" : "Sljedeća večer"}
-      sx={{flex: "none", borderRadius: "24px", background: color.navy, color: "#FFFFFF", p: "18px", display: "flex", flexDirection: "column", gap: "14px", boxShadow: shadow.hero}}
+      sx={{flex: "none", borderRadius: "24px", background: color.navy, color: color.white, p: "18px", display: "flex", flexDirection: "column", gap: "14px", boxShadow: shadow.hero}}
     >
       <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px"}}>
         <Box component="h2" sx={{m: 0, fontSize: 12.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.cream, whiteSpace: "nowrap"}}>
@@ -74,8 +74,8 @@ export function NextNightCard({league, night, today}: {league: MyLeague; night: 
           ...buttonBase,
           height: 52,
           borderRadius: "14px",
-          background: "rgba(237,224,191,.16)",
-          color: "#FFFFFF",
+          background: tint.creamOnNavy[16],
+          color: color.white,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -85,7 +85,7 @@ export function NextNightCard({league, night, today}: {league: MyLeague; night: 
           fontWeight: 600,
           textDecoration: "none",
           transition: "background 160ms ease",
-          "&:hover": {background: "rgba(237,224,191,.24)"},
+          "&:hover": {background: tint.creamOnNavy[24]},
           "& svg": {fontSize: 22, color: color.cream},
         }}
       >
@@ -98,7 +98,7 @@ export function NextNightCard({league, night, today}: {league: MyLeague; night: 
 
 // While the player's leagues load: the card's frame, so Početna doesn't jump
 export function NextNightPlaceholder() {
-  const bar = {bgcolor: "rgba(237,224,191,.16)"};
+  const bar = {bgcolor: tint.creamOnNavy[16]};
   return (
     <Box role="status" aria-label="Učitavanje" sx={{flex: "none", minHeight: 200, boxSizing: "border-box", borderRadius: "24px", background: color.navy, p: "18px", display: "flex", flexDirection: "column", gap: "14px", boxShadow: shadow.hero}}>
       <Skeleton variant="text" width={140} height={20} sx={bar} />
@@ -126,7 +126,7 @@ export function BurzaHomeCard({posts}: {posts: BurzaPost[] | null}) {
         width: "100%",
         boxSizing: "border-box",
         borderRadius: "22px",
-        background: color.card,
+        background: color.white,
         color: color.ink,
         p: "16px",
         display: "flex",
@@ -154,7 +154,7 @@ export function BurzaHomeCard({posts}: {posts: BurzaPost[] | null}) {
         {asking && (
           <Box aria-hidden sx={{display: "flex", flex: "none"}}>
             {shown.map((name, i) => (
-              <Bubble key={name} bg={i === 0 ? color.cream : "#E3DCCB"} ring={i > 0}>
+              <Bubble key={name} bg={i === 0 ? color.cream : color.hairline} ring={i > 0}>
                 {initials(name)}
               </Bubble>
             ))}
@@ -175,7 +175,7 @@ export function BurzaHomeCard({posts}: {posts: BurzaPost[] | null}) {
         </Box>
         <ChevronRightRoundedIcon aria-hidden sx={{fontSize: 26, color: color.navy}} />
       </Box>
-      <Box component="span" sx={{fontSize: 15, lineHeight: 1.4, color: color.ink2}}>
+      <Box component="span" sx={{fontSize: 15, lineHeight: 1.4, color: color.ink}}>
         {asking || posts == null ? "Možeš li uskočiti ili znaš nekoga tko može?" : "Objavi oglas kad tebi zatreba igrač ili partner."}
       </Box>
     </Box>
@@ -184,7 +184,7 @@ export function BurzaHomeCard({posts}: {posts: BurzaPost[] | null}) {
 
 function Bubble({bg, ring, children}: {bg: string; ring: boolean; children: React.ReactNode}) {
   return (
-    <Box component="span" sx={{ml: ring ? "-9px" : 0, display: "flex", borderRadius: "50%", boxShadow: ring ? "0 0 0 2.5px #FFFFFF" : "none"}}>
+    <Box component="span" sx={{ml: ring ? "-9px" : 0, display: "flex", borderRadius: "50%", boxShadow: ring ? `0 0 0 2.5px ${color.white}` : "none"}}>
       <Box component="span" sx={{width: 34, height: 34, flex: "none", borderRadius: "50%", background: bg, color: color.navy, fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center"}}>
         {children}
       </Box>
@@ -203,7 +203,7 @@ export function HomeTile({href, icon, label}: {href: string; icon: React.ReactNo
         height: 64,
         boxSizing: "border-box",
         borderRadius: "18px",
-        background: color.card,
+        background: color.white,
         color: color.ink,
         display: "flex",
         alignItems: "center",

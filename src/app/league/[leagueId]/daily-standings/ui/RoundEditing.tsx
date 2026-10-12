@@ -2,7 +2,7 @@
 
 import {LeagueTeam} from "@/app/_hooks/useLeagueTeams";
 import {TableRow} from "@/app/_lib/ui/tables";
-import {color, font, shadow} from "@/app/_styles/tokens";
+import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {buttonBase, ellipsis, ErrorNote, OutlineButton, SolidButton} from "@/app/_ui/sp";
 import {SmokingMark} from "@/app/_ui/smoking/SmokingParts";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
@@ -40,7 +40,7 @@ export function EditToggle({editing, onClick}: {editing: boolean; onClick: () =>
       type="button"
       onClick={onClick}
       aria-pressed={editing}
-      sx={{...pill, background: editing ? color.navy : color.card, color: editing ? "#FFFFFF" : color.navy, boxShadow: shadow.card}}
+      sx={{...pill, background: editing ? color.navy : color.white, color: editing ? color.white : color.navy, boxShadow: shadow.card}}
     >
       {editing ? <CheckRoundedIcon /> : <EditRoundedIcon />}
       {editing ? "Završi uređivanje" : "Uredi stolove"}
@@ -82,7 +82,7 @@ export function RowActions({t, onEdit, onRemove}: {t: TableRow; onEdit: () => vo
       <Box component="button" type="button" onClick={(e: React.MouseEvent) => {
           e.stopPropagation();
           onRemove();
-        }} aria-label={`Ukloni stol ${t.table}`} sx={{...iconBtn, color: color.red, "&:hover": {background: "rgba(188,71,73,.1)"}}}>
+        }} aria-label={`Ukloni stol ${t.table}`} sx={{...iconBtn, color: color.red, "&:hover": {background: tint.red[10]}}}>
         <DeleteRoundedIcon />
       </Box>
     </Box>
@@ -96,10 +96,10 @@ export function ConfirmRemove({t, busy, onCancel, onConfirm}: {t: TableRow; busy
       <Box component="span" role="alert" sx={{flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, color: color.red, ...ellipsis}}>
         Ukloniti stol {t.table}?{t.started ? " Odigrane igre se brišu." : ""}
       </Box>
-      <Box component="button" type="button" onClick={onCancel} sx={{...small, border: `1.5px solid rgba(60,74,103,.25)`, background: color.card, color: color.navy}}>
+      <Box component="button" type="button" onClick={onCancel} sx={{...small, border: `1.5px solid ${tint.navy[25]}`, background: color.white, color: color.navy}}>
         Odustani
       </Box>
-      <Box component="button" type="button" onClick={onConfirm} disabled={busy} aria-busy={busy || undefined} sx={{...small, background: color.red, color: "#FFFFFF"}}>
+      <Box component="button" type="button" onClick={onConfirm} disabled={busy} aria-busy={busy || undefined} sx={{...small, background: color.red, color: color.white}}>
         Ukloni
       </Box>
     </>
@@ -110,9 +110,9 @@ type Note = {kind: "info" | "swap" | "warn" | "error"; text: string};
 
 const NOTE_STYLE: Record<Note["kind"], {bg: string; ink: string; icon: React.ReactNode}> = {
   info: {bg: color.paper, ink: color.navy, icon: <InfoRoundedIcon />},
-  swap: {bg: "rgba(212,168,44,.16)", ink: color.medal[0], icon: <SwapHorizRoundedIcon />},
-  warn: {bg: "rgba(188,71,73,.1)", ink: color.red, icon: <WarningRoundedIcon />},
-  error: {bg: "rgba(188,71,73,.1)", ink: color.red, icon: <ErrorRoundedIcon />},
+  swap: {bg: tint.gold[16], ink: color.medal[0], icon: <SwapHorizRoundedIcon />},
+  warn: {bg: tint.red[10], ink: color.red, icon: <WarningRoundedIcon />},
+  error: {bg: tint.red[10], ink: color.red, icon: <ErrorRoundedIcon />},
 };
 
 export type PairTarget = {kind: "edit"; row: TableRow} | {kind: "new"; tableNumber: number};
@@ -192,7 +192,7 @@ export function PairDialog({
 
   const select = (label: string, id: string, value: number | "", onChange: (v: number | "") => void) => (
     <Box sx={{display: "flex", flexDirection: "column", gap: "6px", minWidth: 0}}>
-      <Box component="label" htmlFor={id} sx={{fontSize: 14, fontWeight: 600, color: color.inkSoft, pl: "4px"}}>
+      <Box component="label" htmlFor={id} sx={{fontSize: 14, fontWeight: 600, color: color.ink2, pl: "4px"}}>
         {label}
       </Box>
       <Box
@@ -205,14 +205,14 @@ export function PairDialog({
           height: 52,
           borderRadius: "14px",
           border: `1.5px solid ${color.border}`,
-          background: color.tableHead,
+          background: color.paper2,
           px: "12px",
           fontFamily: "inherit",
           fontSize: 16,
           fontWeight: 600,
           color: color.ink,
           cursor: "pointer",
-          "&:focus-visible": {outline: "none", borderColor: color.navy, boxShadow: "0 0 0 3px rgba(60,74,103,.18)"},
+          "&:focus-visible": {outline: "none", borderColor: color.navy, boxShadow: shadow.focus},
         }}
       >
         <option value="">Odaberi ekipu</option>
@@ -230,8 +230,8 @@ export function PairDialog({
       open
       onClose={onClose}
       aria-labelledby={titleId}
-      slotProps={{backdrop: {sx: {background: "rgba(21,24,31,.32)"}}}}
-      PaperProps={{sx: {width: 560, maxWidth: "calc(100% - 32px)", borderRadius: "24px", p: "24px", display: "flex", flexDirection: "column", gap: "16px", boxShadow: "0 30px 80px rgba(21,24,31,.3)"}}}
+      slotProps={{backdrop: {sx: {background: tint.scrim[32]}}}}
+      PaperProps={{sx: {width: 560, maxWidth: "calc(100% - 32px)", borderRadius: "24px", p: "24px", display: "flex", flexDirection: "column", gap: "16px", boxShadow: shadow.dialog}}}
     >
       <Box sx={{display: "flex", flexDirection: "column", gap: "4px"}}>
         <Box sx={{fontSize: 13, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: color.muted}}>{roundLabel}</Box>
@@ -243,7 +243,7 @@ export function PairDialog({
       </Box>
       <Box sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) 36px minmax(0,1fr)", gap: "8px", alignItems: "end"}}>
         {select("Ekipa A", `${titleId}-a`, a, setA)}
-        <Box aria-hidden sx={{height: 52, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: color.placeholder}}>
+        <Box aria-hidden sx={{height: 52, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: color.faint}}>
           vs
         </Box>
         {select("Ekipa B", `${titleId}-b`, b, setB)}
@@ -260,7 +260,7 @@ export function PairDialog({
       ))}
       {error && <ErrorNote>{error}</ErrorNote>}
       <Box sx={{display: "flex", gap: "10px", pt: "4px"}}>
-        <OutlineButton height={52} onClick={onClose} sx={{flex: 1, fontSize: 16, border: `1.5px solid rgba(60,74,103,.25)`}}>
+        <OutlineButton height={52} onClick={onClose} sx={{flex: 1, fontSize: 16, border: `1.5px solid ${tint.navy[25]}`}}>
           Odustani
         </OutlineButton>
         <SolidButton height={52} onClick={save} disabled={!ok} loading={saving} sx={{flex: 1, fontSize: 16}}>

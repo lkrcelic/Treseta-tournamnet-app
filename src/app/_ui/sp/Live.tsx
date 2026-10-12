@@ -18,7 +18,7 @@ export function LiveDot({size = 8, pulse = true, label, sx}: {size?: number; pul
           width: size,
           height: size,
           borderRadius: "50%",
-          background: color.live,
+          background: color.red,
           animation: pulse ? "spLive 1.5s infinite" : "none",
         },
         sx
@@ -40,8 +40,8 @@ export function LivePill({children, sx}: {children?: React.ReactNode; sx?: SxPro
           gap: "6px",
           px: "10px",
           borderRadius: "14px",
-          background: color.live,
-          color: "#FFFFFF",
+          background: color.red,
+          color: color.white,
           fontSize: 13,
           fontWeight: 700,
           letterSpacing: ".04em",
@@ -50,7 +50,7 @@ export function LivePill({children, sx}: {children?: React.ReactNode; sx?: SxPro
         sx
       )}
     >
-      <Box component="span" sx={{width: 7, height: 7, borderRadius: "50%", background: "#FFFFFF"}} />
+      <Box component="span" sx={{width: 7, height: 7, borderRadius: "50%", background: color.white}} />
       {children ?? "LIVE"}
     </Box>
   );
@@ -61,7 +61,7 @@ export function LiveLabel({sx}: {sx?: SxProps<Theme>}) {
   return (
     <Box
       component="span"
-      sx={mergeSx({display: "inline-flex", alignItems: "center", gap: "6px", fontSize: 12, fontWeight: 700, letterSpacing: ".06em", color: color.live}, sx)}
+      sx={mergeSx({display: "inline-flex", alignItems: "center", gap: "6px", fontSize: 12, fontWeight: 700, letterSpacing: ".06em", color: color.red}, sx)}
     >
       <LiveDot />
       LIVE
@@ -86,8 +86,8 @@ export function RankBadge({rank, live = false, size = 28}: {rank: number; live?:
         fontSize: size >= 30 ? 14 : size >= 28 ? 14 : 12,
         fontWeight: 700,
         ...tabular,
-        color: live ? "#FFFFFF" : color.navy,
-        background: live ? color.live : color.paper,
+        color: live ? color.white : color.navy,
+        background: live ? color.red : color.lineFill,
         animation: live ? "spLive 1.5s infinite" : "none",
       }}
     >

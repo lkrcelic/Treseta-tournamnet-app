@@ -1,7 +1,7 @@
 "use client";
 
 import {TableRow} from "@/app/_lib/ui/tables";
-import {color, font, shadow} from "@/app/_styles/tokens";
+import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {Card, Eyebrow, LiveDot, LiveLabel, LivePill, tabular, TeamLabel} from "@/app/_ui/sp";
 import {SmokingMark} from "@/app/_ui/smoking/SmokingParts";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
@@ -25,7 +25,7 @@ export function PhoneRoundTables({title, rows}: {title: string; rows: TableRow[]
             aria-label={`Stol ${t.table}${t.smoking ? ", pušački" : ""}: ${t.teamA} ${t.winsA}, ${t.teamB} ${t.winsB}${t.live ? ", uživo" : ""}`}
             aria-current={t.mine ? "true" : undefined}
             // the player's own table: cream with a navy ring
-            sx={{p: "12px 16px 6px", display: "flex", flexDirection: "column", background: t.mine ? color.creamSoft : color.card, ...(t.mine && {boxShadow: `${shadow.card}, ${shadow.mineRing}`})}}
+            sx={{p: "12px 16px 6px", display: "flex", flexDirection: "column", background: t.mine ? color.cream2 : color.white, ...(t.mine && {boxShadow: `${shadow.card}, ${shadow.selectRing}`})}}
           >
             <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", height: 24}}>
               <Box component="span" sx={{display: "flex", alignItems: "center", gap: "6px", fontSize: 13, fontWeight: 600, color: color.muted}}>
@@ -98,7 +98,7 @@ export function DesktopTableRow({
     return (
       <Box
         component="li"
-        sx={{height: TABLE_ROW_HEIGHT, display: "flex", alignItems: "center", gap: "6px", pl: dense ? "12px" : "18px", pr: "8px", borderBottom: `1px solid rgba(60,74,103,.07)`, background: "rgba(188,71,73,.08)"}}
+        sx={{height: TABLE_ROW_HEIGHT, display: "flex", alignItems: "center", gap: "6px", pl: dense ? "12px" : "18px", pr: "8px", borderBottom: `1px solid ${color.divider}`, background: tint.red[8]}}
       >
         {confirm}
       </Box>
@@ -113,9 +113,9 @@ export function DesktopTableRow({
     alignItems: "center",
     gap: dense ? "6px" : "10px",
     px: dense ? "12px" : "18px",
-    borderBottom: `1px solid rgba(60,74,103,.07)`,
+    borderBottom: `1px solid ${color.divider}`,
     // the player's own table: the standings' cream row with the navy bar
-    background: fresh ? color.creamSoft : t.mine ? color.mine : "transparent",
+    background: fresh ? color.cream2 : t.mine ? color.cream2 : "transparent",
     boxShadow: t.mine ? shadow.mineBar : "none",
     color: color.ink,
     textDecoration: "none",
@@ -126,7 +126,7 @@ export function DesktopTableRow({
       <Box
         component="span"
         aria-hidden
-        sx={{position: "relative", height: 28, borderRadius: "8px", background: fresh ? color.navy : color.paper, color: fresh ? "#FFFFFF" : color.navy, fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center"}}
+        sx={{position: "relative", height: 28, borderRadius: "8px", background: fresh ? color.navy : color.paper, color: fresh ? color.white : color.navy, fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center"}}
       >
         {t.table}
         {/* a smoking table: the cream mark on the number's corner */}
@@ -151,7 +151,7 @@ export function DesktopTableRow({
     <Box
       component="span"
       aria-hidden
-      sx={{display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "5px", fontSize: 11, fontWeight: 700, letterSpacing: ".06em", color: t.live ? color.live : color.faint}}
+      sx={{display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "5px", fontSize: 11, fontWeight: 700, letterSpacing: ".06em", color: t.live ? color.red : color.muted}}
     >
       {t.live && (
         <>
@@ -165,7 +165,7 @@ export function DesktopTableRow({
   if (href) {
     return (
       <Box component="li">
-        <Box component={TransitionLink} href={href} aria-label={`${label}. Otvori stol`} sx={{...rowSx, "&:hover": {background: color.tableHead}}}>
+        <Box component={TransitionLink} href={href} aria-label={`${label}. Otvori stol`} sx={{...rowSx, "&:hover": {background: color.paper2}}}>
           {cells}
           {status}
         </Box>
@@ -173,7 +173,7 @@ export function DesktopTableRow({
     );
   }
   return (
-    <Box component="li" aria-label={label} onClick={onOpen} sx={onOpen ? {...rowSx, cursor: "pointer", "&:hover": {background: fresh ? color.creamSoft : color.tableHead}} : rowSx}>
+    <Box component="li" aria-label={label} onClick={onOpen} sx={onOpen ? {...rowSx, cursor: "pointer", "&:hover": {background: fresh ? color.cream2 : color.paper2}} : rowSx}>
       {cells}
       {actions ?? status}
     </Box>

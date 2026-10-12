@@ -1,10 +1,17 @@
-import {color} from "@/app/_styles/tokens";
+import {color, tint} from "@/app/_styles/tokens";
 import ErrorRoundedIcon from "@mui/icons-material/ErrorRounded";
 import {Box, Skeleton, SxProps, Theme} from "@mui/material";
 import React from "react";
 import {buttonBase, mergeSx} from "./base";
 
-export function Spinner({size = 22, color: ink = color.navy, label}: {size?: number; color?: string; label?: string}) {
+// navy on light surfaces, white on navy and on the team colours; the track is the same colour at 25%
+const SPINNER_TONE = {
+  navy: {ink: color.navy, track: tint.navy[25]},
+  white: {ink: color.white, track: tint.white[25]},
+} as const;
+
+export function Spinner({size = 22, tone = "navy", label}: {size?: number; tone?: keyof typeof SPINNER_TONE; label?: string}) {
+  const {ink, track} = SPINNER_TONE[tone];
   return (
     <Box
       component="span"
@@ -16,7 +23,7 @@ export function Spinner({size = 22, color: ink = color.navy, label}: {size?: num
         height: size,
         flex: "none",
         borderRadius: "50%",
-        border: `3px solid ${ink}40`,
+        border: `3px solid ${track}`,
         borderTopColor: ink,
         animation: "spSpin 700ms linear infinite",
       }}
@@ -78,11 +85,12 @@ export function ErrorNote({
           gap: "10px",
           p: "12px 14px",
           borderRadius: "16px",
-          background: "rgba(188,71,73,.1)",
-          color: "#8E2F31",
+          background: tint.red[10],
+          // ink text: red text on the red tint would be under 4:1; the icon and the tint carry the red
+          color: color.ink,
           fontSize: 15,
           fontWeight: 600,
-          "& > svg": {fontSize: 20, flex: "none"},
+          "& > svg": {fontSize: 20, flex: "none", color: color.red},
         },
         sx
       )}
@@ -108,7 +116,7 @@ export function SuccessNote({children, sx}: {children: React.ReactNode; sx?: SxP
     <Box
       role="status"
       sx={mergeSx(
-        {p: "12px 14px", borderRadius: "16px", background: "rgba(56,102,65,.12)", color: "#2B5233", fontSize: 15, fontWeight: 600},
+        {p: "12px 14px", borderRadius: "16px", background: tint.green[12], color: color.green, fontSize: 15, fontWeight: 600},
         sx
       )}
     >

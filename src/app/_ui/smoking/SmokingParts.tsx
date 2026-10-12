@@ -1,6 +1,6 @@
 "use client";
 
-import {color} from "@/app/_styles/tokens";
+import {color, tint} from "@/app/_styles/tokens";
 import {mergeSx, Segmented} from "@/app/_ui/sp";
 import SmokingRoomsRoundedIcon from "@mui/icons-material/SmokingRoomsRounded";
 import {Box, SxProps, Theme} from "@mui/material";
@@ -13,7 +13,7 @@ export const SMOKER_HINT = "Pušače smještamo za stolove gdje se smije pušiti
 export function SmokerChoice({value, onChange, size = 44}: {value: boolean; onChange: (smoker: boolean) => void; size?: number}) {
   return (
     <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
-      <Box aria-hidden sx={{fontSize: 14, fontWeight: 600, color: color.inkSoft, pl: "4px"}}>
+      <Box aria-hidden sx={{fontSize: 14, fontWeight: 600, color: color.ink2, pl: "4px"}}>
         Pušiš li?
       </Box>
       <Segmented
@@ -45,9 +45,9 @@ export function SmokerChoice({value, onChange, size = 44}: {value: boolean; onCh
 // on the corner of the desktop table number
 export function SmokingMark({variant = "dot", sx}: {variant?: "onNavy" | "dot" | "badge"; sx?: SxProps<Theme>}) {
   const look = {
-    onNavy: {width: 28, height: 28, borderRadius: "9px", border: "1.5px solid rgba(237,224,191,.55)", color: color.cream, icon: 18},
+    onNavy: {width: 28, height: 28, borderRadius: "9px", border: `1.5px solid ${tint.creamOnNavy[55]}`, color: color.cream, icon: 18},
     dot: {width: 24, height: 24, borderRadius: "50%", background: color.cream, color: color.navy, icon: 16},
-    badge: {width: 18, height: 18, borderRadius: "50%", background: color.cream, color: color.navy, boxShadow: "0 0 0 2px #FFFFFF", icon: 12},
+    badge: {width: 18, height: 18, borderRadius: "50%", background: color.cream, color: color.navy, boxShadow: `0 0 0 2px ${color.white}`, icon: 12},
   }[variant];
   const {icon, ...box} = look;
   return (

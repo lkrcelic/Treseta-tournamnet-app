@@ -1,7 +1,7 @@
 "use client";
 
 import {CONFERENCE_COLORS, CONFERENCE_NAME_MAX, MAX_CONFERENCES, MIN_CONFERENCES, nextFreeColor} from "@/app/_lib/conferences";
-import {color} from "@/app/_styles/tokens";
+import {color, tint} from "@/app/_styles/tokens";
 import {buttonBase, GhostIconButton, OutlineButton, TeamDot, TextInput} from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
@@ -44,7 +44,7 @@ export function ConferenceEditor({value, onChange, disabled = false}: {value: Co
             key={r.key}
             role="group"
             aria-label={label}
-            sx={{display: "flex", flexDirection: "column", gap: "10px", p: "10px 8px 12px 12px", borderRadius: "16px", border: `1px solid ${color.lineStrong}`, background: color.card}}
+            sx={{display: "flex", flexDirection: "column", gap: "10px", p: "10px 8px 12px 12px", borderRadius: "16px", border: `1px solid ${tint.navy[12]}`, background: color.white}}
           >
             <Box sx={{display: "flex", alignItems: "center", gap: "10px"}}>
               <TeamDot color={r.color} size={14} />
@@ -83,12 +83,12 @@ export function ConferenceEditor({value, onChange, disabled = false}: {value: Co
                       flex: "none",
                       borderRadius: "50%",
                       background: c.hex,
-                      color: "#FFFFFF",
+                      color: color.white,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       // the picked one: a white gap and a ring in its own color
-                      boxShadow: on ? `0 0 0 2px ${color.card}, 0 0 0 4px ${c.hex}` : "none",
+                      boxShadow: on ? `0 0 0 2px ${color.white}, 0 0 0 4px ${c.hex}` : "none",
                       transition: "box-shadow 140ms ease",
                       "& svg": {fontSize: 20},
                     }}
@@ -102,7 +102,7 @@ export function ConferenceEditor({value, onChange, disabled = false}: {value: Co
         );
       })}
       {value.length < MAX_CONFERENCES && (
-        <OutlineButton height={48} onClick={add} disabled={disabled} sx={{borderWidth: "1.5px", borderColor: "rgba(60,74,103,.25)", fontSize: 15}}>
+        <OutlineButton height={48} onClick={add} disabled={disabled} sx={{borderWidth: "1.5px", borderColor: tint.navy[25], fontSize: 15}}>
           <AddRoundedIcon sx={{fontSize: 22}} />
           Dodaj konferenciju
         </OutlineButton>

@@ -3,12 +3,13 @@
 import type {BurzaKind, BurzaPost} from "@/app/_interfaces/burza";
 import {nightLabel} from "@/app/_lib/nights";
 import {plural} from "./text";
+import {color, tint} from "@/app/_styles/tokens";
 
 // The tag on each ad: label, background, text color
 export const KIND_TAG: Record<BurzaKind, {label: string; bg: string; ink: string}> = {
-  SUBSTITUTE: {label: "Treba zamjena", bg: "rgba(188,71,73,.1)", ink: "#A63B3D"},
-  PARTNER: {label: "Traži partnera", bg: "rgba(60,74,103,.1)", ink: "#3C4A67"},
-  AVAILABLE: {label: "Dostupan", bg: "rgba(56,102,65,.12)", ink: "#386641"},
+  SUBSTITUTE: {label: "Treba zamjena", bg: tint.red[10], ink: color.red},
+  PARTNER: {label: "Traži partnera", bg: tint.navy[10], ink: color.navy},
+  AVAILABLE: {label: "Dostupan", bg: tint.green[12], ink: color.green},
 };
 
 // "4 ekipe traže igrača", "1 ekipa traži igrača", "5 ekipa traži igrača"

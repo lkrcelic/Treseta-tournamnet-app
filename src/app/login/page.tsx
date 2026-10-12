@@ -20,7 +20,7 @@ export default function LogIn() {
   const onSuccess = () => router.replace(next);
 
   const signupLink = (
-    <TextButton onClick={() => router.push("/signup")} sx={{alignSelf: "center", fontWeight: 500, color: color.inkSoft}}>
+    <TextButton onClick={() => router.push("/signup")} sx={{alignSelf: "center", fontWeight: 500, color: color.ink2}}>
       Nemaš profil?{" "}
       <Box component="span" sx={{fontWeight: 700, color: color.navy}}>
         Registriraj se

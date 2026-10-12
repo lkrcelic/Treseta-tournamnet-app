@@ -2,7 +2,7 @@
 
 import {searchPlayersAPI} from "@/app/_fetchers/player/search";
 import {fullName, MTPlayer, MTTeam, playerCount, playerRole, teamSubtitle} from "@/app/_lib/ui/manageTeam";
-import {color, font, shadow} from "@/app/_styles/tokens";
+import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {
   buttonBase,
   Card,
@@ -64,7 +64,7 @@ export function TeamList({
 
   return (
     <Card component="section" aria-label="Ekipe" sx={{minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderRadius: "24px", ...sx}}>
-      <Box sx={{flex: "none", p: "14px", borderBottom: `1px solid rgba(60,74,103,.1)`, display: "flex", flexDirection: "column", gap: "10px"}}>
+      <Box sx={{flex: "none", p: "14px", borderBottom: `1px solid ${tint.navy[10]}`, display: "flex", flexDirection: "column", gap: "10px"}}>
         <SearchInput soft height={46} placeholder="Search teams or players" aria-label="Traži ekipe ili igrače" value={query} onChange={(e) => onQuery(e.target.value)} />
         <Box
           component="button"
@@ -76,7 +76,7 @@ export function TeamList({
             height: 48,
             borderRadius: "14px",
             background: isNew ? color.navy : color.paper,
-            color: isNew ? "#FFFFFF" : color.navy,
+            color: isNew ? color.white : color.navy,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -126,7 +126,7 @@ export function TeamList({
                   <Box
                     component="span"
                     aria-hidden
-                    sx={{width: 38, height: 38, flex: "none", borderRadius: "12px", background: on ? color.navy : color.cream, color: on ? "#FFFFFF" : color.navy, display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 20}}}
+                    sx={{width: 38, height: 38, flex: "none", borderRadius: "12px", background: on ? color.navy : color.cream, color: on ? color.white : color.navy, display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 20}}}
                   >
                     <GroupsRoundedIcon />
                   </Box>
@@ -215,7 +215,7 @@ export function NameCard({
         />
         {error && <ErrorNote>{error}</ErrorNote>}
         <Box sx={{display: "flex", gap: "10px"}}>
-          <OutlineButton height={52} onClick={onCancel} disabled={!canCancel || saving} sx={{flex: 1, fontSize: 16, border: `1.5px solid rgba(60,74,103,.25)`}}>
+          <OutlineButton height={52} onClick={onCancel} disabled={!canCancel || saving} sx={{flex: 1, fontSize: 16, border: `1.5px solid ${tint.navy[25]}`}}>
             Cancel
           </OutlineButton>
           <SolidButton type="submit" height={52} disabled={!canSave} loading={saving} sx={{flex: 1, fontSize: 16}}>
@@ -224,7 +224,7 @@ export function NameCard({
         </Box>
       </Box>
       {team && (
-        <Box sx={{display: "flex", flexDirection: "column", gap: "8px", pt: "6px", borderTop: `1px solid rgba(60,74,103,.1)`}}>
+        <Box sx={{display: "flex", flexDirection: "column", gap: "8px", pt: "6px", borderTop: `1px solid ${tint.navy[10]}`}}>
           <Box component="h3" sx={{m: 0, p: "8px 4px 0", fontSize: 13, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: color.muted}}>
             Leagues
           </Box>
@@ -235,7 +235,7 @@ export function NameCard({
               {team.leagues.map((l) => (
                 <Box component="li" key={l.id} sx={{height: 34, display: "flex", alignItems: "center", gap: "8px", px: "12px", borderRadius: "17px", background: color.paper, fontSize: 14, fontWeight: 600}}>
                   {l.name}
-                  <Box component="span" sx={{fontSize: 12, fontWeight: 700, color: l.active ? color.green : color.faint}}>
+                  <Box component="span" sx={{fontSize: 12, fontWeight: 700, color: l.active ? color.green : color.muted}}>
                     {l.active ? "Active" : "Inactive"}
                   </Box>
                 </Box>
@@ -276,11 +276,11 @@ export function TeammatesCard({
         <Box sx={{fontSize: 14, color: color.muted}}>{playerCount(players.length)}</Box>
       </Box>
       {players.length === 0 ? (
-        <Box sx={{p: "18px 16px", borderRadius: "16px", border: `1.5px dashed rgba(60,74,103,.22)`, fontSize: 14, color: color.muted}}>
+        <Box sx={{p: "18px 16px", borderRadius: "16px", border: `1.5px dashed ${tint.navy[22]}`, fontSize: 14, color: color.muted}}>
           No teammates yet. Search below to add players.
         </Box>
       ) : (
-        <Box component="ul" sx={{listStyle: "none", m: 0, p: 0, display: "flex", flexDirection: "column", border: `1px solid rgba(60,74,103,.1)`, borderRadius: "16px", overflow: "hidden"}}>
+        <Box component="ul" sx={{listStyle: "none", m: 0, p: 0, display: "flex", flexDirection: "column", border: `1px solid ${tint.navy[10]}`, borderRadius: "16px", overflow: "hidden"}}>
           {players.map((p, i) => {
             const name = fullName(p);
             return (
@@ -293,8 +293,8 @@ export function TeammatesCard({
                   alignItems: "center",
                   gap: "12px",
                   p: "0 8px 0 14px",
-                  borderTop: i ? `1px solid rgba(60,74,103,.07)` : "none",
-                  background: p.id === highlight ? color.creamSoft : "transparent",
+                  borderTop: i ? `1px solid ${color.divider}` : "none",
+                  background: p.id === highlight ? color.cream2 : "transparent",
                   transition: "background 600ms ease",
                 }}
               >
@@ -372,7 +372,7 @@ function TeammateSearch({exclude, onAdd}: {exclude: number[]; onAdd: (p: MTPlaye
 
   return (
     <Box sx={{display: "flex", flexDirection: "column", gap: "6px", pt: "4px"}}>
-      <Box component="label" htmlFor={inputId} sx={{fontSize: 14, fontWeight: 600, color: color.inkSoft, pl: "4px"}}>
+      <Box component="label" htmlFor={inputId} sx={{fontSize: 14, fontWeight: 600, color: color.ink2, pl: "4px"}}>
         Add teammate
       </Box>
       <Box sx={{position: "relative"}}>
@@ -397,7 +397,7 @@ function TeammateSearch({exclude, onAdd}: {exclude: number[]; onAdd: (p: MTPlaye
         />
       </Box>
       {q && (
-        <Box role="region" aria-live="polite" aria-label="Pronađeni igrači" sx={{display: "flex", flexDirection: "column", border: `1px solid rgba(60,74,103,.12)`, borderRadius: "16px", overflow: "hidden", boxShadow: shadow.popover}}>
+        <Box role="region" aria-live="polite" aria-label="Pronađeni igrači" sx={{display: "flex", flexDirection: "column", border: `1px solid ${tint.navy[12]}`, borderRadius: "16px", overflow: "hidden", boxShadow: shadow.popover}}>
           {failed ? (
             <Box sx={{p: "16px 14px", fontSize: 14, color: color.red}}>Igrače nije moguće dohvatiti.</Box>
           ) : hits == null ? (
@@ -410,7 +410,7 @@ function TeammateSearch({exclude, onAdd}: {exclude: number[]; onAdd: (p: MTPlaye
             shown.map((p, i) => {
               const name = fullName(p);
               return (
-                <Box key={p.id} sx={{minHeight: 56, display: "flex", alignItems: "center", gap: "12px", p: "0 8px 0 14px", borderTop: i ? `1px solid rgba(60,74,103,.07)` : "none", background: color.card}}>
+                <Box key={p.id} sx={{minHeight: 56, display: "flex", alignItems: "center", gap: "12px", p: "0 8px 0 14px", borderTop: i ? `1px solid ${color.divider}` : "none", background: color.white}}>
                   <InitialsAvatar name={name || p.username} size={34} />
                   <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column"}}>
                     <Box component="span" sx={{fontSize: 15, fontWeight: 600, ...ellipsis}}>
@@ -427,7 +427,7 @@ function TeammateSearch({exclude, onAdd}: {exclude: number[]; onAdd: (p: MTPlaye
                     type="button"
                     aria-label={`Dodaj ${p.username} u ekipu`}
                     onClick={() => add(p)}
-                    sx={{...buttonBase, width: 44, height: 44, flex: "none", borderRadius: "12px", background: color.navy, color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 24}}}
+                    sx={{...buttonBase, width: 44, height: 44, flex: "none", borderRadius: "12px", background: color.navy, color: color.white, display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 24}}}
                   >
                     <AddRoundedIcon />
                   </Box>
@@ -436,7 +436,7 @@ function TeammateSearch({exclude, onAdd}: {exclude: number[]; onAdd: (p: MTPlaye
             })
           )}
           {!failed && left > 0 && (
-            <LoadMoreButton left={left} noun={["player", "players"]} onClick={() => setPages((n) => n + 1)} sx={{borderTop: `1px solid rgba(60,74,103,.07)`}} />
+            <LoadMoreButton left={left} noun={["player", "players"]} onClick={() => setPages((n) => n + 1)} sx={{borderTop: `1px solid ${color.divider}`}} />
           )}
         </Box>
       )}

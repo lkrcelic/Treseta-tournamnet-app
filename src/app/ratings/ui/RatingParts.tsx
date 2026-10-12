@@ -2,7 +2,7 @@
 
 import {PlayerRatingDetail} from "@/app/_interfaces/ratings";
 import {changeTone, formatChange, nightResult, RATING_COLUMNS, RATING_HOW, ratingChart, roundsLabel, shortDate} from "@/app/_lib/ui/ratings";
-import {color, font} from "@/app/_styles/tokens";
+import {color, font, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, ellipsis, tabular} from "@/app/_ui/sp";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
@@ -13,8 +13,8 @@ import React from "react";
 // Pieces of the ratings page (Claude Design "Rejting igrača"), shared by the phone and desktop layouts
 
 const TONE_INK = {up: color.green, down: color.red, flat: color.muted} as const;
-const RESULT_BG = {up: "rgba(56,102,65,.12)", down: "rgba(188,71,73,.1)", flat: color.paperDeep} as const;
-const RESULT_INK = {up: color.green, down: color.red, flat: color.inkSoft} as const;
+const RESULT_BG = {up: tint.green[12], down: tint.red[10], flat: color.lineFill} as const;
+const RESULT_INK = {up: color.green, down: color.red, flat: color.ink2} as const;
 
 export const changeInk = (change: number | null) => TONE_INK[changeTone(change)];
 
@@ -24,7 +24,7 @@ export function ProvisionalTag({size = "sm"}: {size?: "sm" | "md" | "lg"}) {
   return (
     <Box
       component="span"
-      sx={{height: h, flex: "none", display: "inline-flex", alignItems: "center", px: size === "sm" ? "6px" : "7px", borderRadius: size === "sm" ? "6px" : "7px", border: "1px solid rgba(60,74,103,.4)", fontSize: {sm: 10.5, md: 11.5, lg: 12}[size], fontWeight: 700, color: color.navy, whiteSpace: "nowrap"}}
+      sx={{height: h, flex: "none", display: "inline-flex", alignItems: "center", px: size === "sm" ? "6px" : "7px", borderRadius: size === "sm" ? "6px" : "7px", border: `1px solid ${tint.navy[40]}`, fontSize: {sm: 10.5, md: 11.5, lg: 12}[size], fontWeight: 700, color: color.navy, whiteSpace: "nowrap"}}
     >
       Privremeno
     </Box>
@@ -35,7 +35,7 @@ export function RankDot({rank, size = 28}: {rank: number; size?: number}) {
   return (
     <Box
       component="span"
-      sx={{width: size, height: size, flex: "none", borderRadius: "50%", background: color.paperDeep, color: color.navy, fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", ...tabular}}
+      sx={{width: size, height: size, flex: "none", borderRadius: "50%", background: color.lineFill, color: color.navy, fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", ...tabular}}
     >
       {rank}
     </Box>
@@ -51,7 +51,7 @@ export function PlayerCard({detail, desktop = false}: {detail: PlayerRatingDetai
         <Box component="h2" sx={{m: 0, fontFamily: font.display, fontSize: 28, fontWeight: 800, lineHeight: 1.05, letterSpacing: "-.01em", textWrap: "pretty"}}>
           {player.name}
         </Box>
-        <Box sx={{fontSize: 15, color: color.inkSoft}}>{[player.team, roundsLabel(player.rounds)].filter(Boolean).join(" · ")}</Box>
+        <Box sx={{fontSize: 15, color: color.ink2}}>{[player.team, roundsLabel(player.rounds)].filter(Boolean).join(" · ")}</Box>
       </Box>
       <Box sx={{display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "12px"}}>
         <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
@@ -67,7 +67,7 @@ export function PlayerCard({detail, desktop = false}: {detail: PlayerRatingDetai
         </Box>
         <Box sx={{display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px", pb: "4px"}}>
           {player.rounds > 0 && (
-            <Box component="span" sx={{height: 30, display: "flex", alignItems: "center", px: "10px", borderRadius: "15px", background: color.card, color: changeInk(player.change), fontSize: desktop ? 15 : 16, fontWeight: 700, whiteSpace: "nowrap", ...tabular}}>
+            <Box component="span" sx={{height: 30, display: "flex", alignItems: "center", px: "10px", borderRadius: "15px", background: color.white, color: changeInk(player.change), fontSize: desktop ? 15 : 16, fontWeight: 700, whiteSpace: "nowrap", ...tabular}}>
               {formatChange(player.change)} zadnja večer
             </Box>
           )}
@@ -90,15 +90,15 @@ export function RatingChartCard({detail, width}: {detail: PlayerRatingDetail; wi
     <Card component="section" aria-label="Rejting kroz večeri" sx={{borderRadius: "22px", p: "16px 16px 12px", display: "flex", flexDirection: "column", gap: "10px", flex: "none"}}>
       <Box sx={{fontSize: 13, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: color.muted}}>Kroz večeri</Box>
       <Box component="svg" viewBox={`0 0 ${width} ${H}`} width="100%" role="img" aria-label={`Rejting od ${first ? shortDate(first.night) : ""} do ${last ? shortDate(last.night) : ""}: sada ${detail.player.rating}`} sx={{display: "block", overflow: "visible"}}>
-        <path d={chart.area} fill="rgba(60,74,103,.07)" />
-        <line x1={0} x2={width} y1={chart.baseY} y2={chart.baseY} stroke="#B8B2A4" strokeWidth={1.5} strokeDasharray="4 4" />
+        <path d={chart.area} fill={tint.navy[7]} />
+        <line x1={0} x2={width} y1={chart.baseY} y2={chart.baseY} stroke={color.rule} strokeWidth={1.5} strokeDasharray="4 4" />
         <path d={chart.line} fill="none" stroke={color.navy} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
-        <circle cx={chart.end.x} cy={chart.end.y} r={5} fill={color.navy} stroke="#FFFFFF" strokeWidth={2} />
+        <circle cx={chart.end.x} cy={chart.end.y} r={5} fill={color.navy} stroke={color.white} strokeWidth={2} />
       </Box>
       <Box sx={{display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, color: color.muted, ...tabular}}>
         <span>{first ? shortDate(first.night) : ""}</span>
         <Box component="span" sx={{display: "flex", alignItems: "center", gap: "6px"}}>
-          <Box component="span" aria-hidden sx={{width: 16, borderTop: "1.5px dashed #B8B2A4"}} />
+          <Box component="span" aria-hidden sx={{width: 16, borderTop: `1.5px dashed ${color.rule}`}} />
           Početak 1500
         </Box>
         <span>{last ? shortDate(last.night) : ""}</span>
@@ -115,7 +115,7 @@ export function LastNights({detail, desktop = false}: {detail: PlayerRatingDetai
       <Box
         component="li"
         key={n.night}
-        sx={{height: desktop ? 50 : 54, display: "grid", gridTemplateColumns: `${desktop ? 56 : 52}px minmax(0,1fr) auto ${desktop ? 52 : 48}px`, gap: "10px", alignItems: "center", px: desktop ? "18px" : "16px", borderTop: desktop ? "1px solid rgba(60,74,103,.07)" : undefined, borderBottom: desktop ? undefined : "1px solid rgba(60,74,103,.08)", "&:last-of-type": desktop ? undefined : {borderBottom: "none"}}}
+        sx={{height: desktop ? 50 : 54, display: "grid", gridTemplateColumns: `${desktop ? 56 : 52}px minmax(0,1fr) auto ${desktop ? 52 : 48}px`, gap: "10px", alignItems: "center", px: desktop ? "18px" : "16px", borderTop: desktop ? `1px solid ${color.divider}` : undefined, borderBottom: desktop ? undefined : `1px solid ${color.line}`, "&:last-of-type": desktop ? undefined : {borderBottom: "none"}}}
       >
         <Box component="span" sx={{fontSize: 14, color: color.muted, ...tabular}}>
           {shortDate(n.night)}
@@ -181,7 +181,7 @@ export function RatingsInfo({view, onSwitch, compact = false}: {view: InfoView; 
         <Box component="ol" sx={{listStyle: "none", m: 0, p: 0, display: "flex", flexDirection: "column", gap: compact ? "8px" : "14px"}}>
           {RATING_HOW.map((t, i) => (
             <Box component="li" key={t} sx={{display: "flex", gap: compact ? "12px" : "14px", alignItems: "flex-start", py: compact ? "4px" : 0}}>
-              <Box component="span" aria-hidden sx={{width: compact ? 28 : 30, height: compact ? 28 : 30, flex: "none", borderRadius: "50%", background: color.navy, color: "#FFFFFF", fontSize: compact ? 13 : 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center"}}>
+              <Box component="span" aria-hidden sx={{width: compact ? 28 : 30, height: compact ? 28 : 30, flex: "none", borderRadius: "50%", background: color.navy, color: color.white, fontSize: compact ? 13 : 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center"}}>
                 {i + 1}
               </Box>
               <Box component="span" sx={{pt: compact ? "3px" : "4px", fontSize: compact ? 15 : 16, lineHeight: 1.45, color: color.ink, textWrap: "pretty"}}>
@@ -201,11 +201,11 @@ export function RatingsInfo({view, onSwitch, compact = false}: {view: InfoView; 
     <>
       <Box component="dl" sx={{m: 0, display: "flex", flexDirection: "column"}}>
         {RATING_COLUMNS.map(([k, v], i) => (
-          <Box key={k} sx={{display: "grid", gridTemplateColumns: `${compact ? 96 : 92}px minmax(0,1fr)`, gap: "12px", alignItems: "start", py: compact ? "8px" : "12px", borderBottom: i < RATING_COLUMNS.length - 1 ? "1px solid rgba(60,74,103,.08)" : "none"}}>
-            <Box component="dt" sx={{justifySelf: "start", height: compact ? 24 : 26, display: "flex", alignItems: "center", px: compact ? "8px" : "9px", borderRadius: compact ? "7px" : "8px", background: k === "Privremeno" ? "transparent" : color.paper, border: k === "Privremeno" ? "1px solid rgba(60,74,103,.4)" : "1px solid transparent", color: color.navy, fontSize: compact ? 12.5 : 13, fontWeight: 700}}>
+          <Box key={k} sx={{display: "grid", gridTemplateColumns: `${compact ? 96 : 92}px minmax(0,1fr)`, gap: "12px", alignItems: "start", py: compact ? "8px" : "12px", borderBottom: i < RATING_COLUMNS.length - 1 ? `1px solid ${color.line}` : "none"}}>
+            <Box component="dt" sx={{justifySelf: "start", height: compact ? 24 : 26, display: "flex", alignItems: "center", px: compact ? "8px" : "9px", borderRadius: compact ? "7px" : "8px", background: k === "Privremeno" ? "transparent" : color.paper, border: k === "Privremeno" ? `1px solid ${tint.navy[40]}` : "1px solid transparent", color: color.navy, fontSize: compact ? 12.5 : 13, fontWeight: 700}}>
               {k}
             </Box>
-            <Box component="dd" sx={{m: 0, fontSize: compact ? 14 : 15, lineHeight: 1.45, color: "#2A3043", textWrap: "pretty"}}>
+            <Box component="dd" sx={{m: 0, fontSize: compact ? 14 : 15, lineHeight: 1.45, color: color.ink, textWrap: "pretty"}}>
               {v}
             </Box>
           </Box>

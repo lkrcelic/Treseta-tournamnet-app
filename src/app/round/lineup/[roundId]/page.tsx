@@ -7,7 +7,7 @@ import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import type {Lineup, LineupMember, LineupTeam} from "@/app/_lib/service/round/lineup";
 import {initials} from "@/app/_lib/ui/text";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
-import {color, font, teamColor} from "@/app/_styles/tokens";
+import {color, font, teamColor, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, CenteredSpinner, DesktopShell, ErrorNote, IconCircleButton, PrimaryButton, Screen, ScrollArea} from "@/app/_ui/sp";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
@@ -27,7 +27,7 @@ import React, {useCallback, useEffect, useState} from "react";
 
 const TITLE = "Tko igra ovu rundu?";
 // the slot's background while it is open, per side (viewer's team green, opponent red)
-const TINT = ["rgba(56,102,65,.09)", "rgba(188,71,73,.08)"] as const;
+const TINT = [tint.green[9], tint.red[8]] as const;
 const NOTES = [
   {icon: <InsightsRoundedIcon />, text: "Ovi podaci potrebni su za izračun rejtinga svakog igrača."},
   {icon: <PersonAddRoundedIcon />, text: "Igrač nije na popisu? Neka napravi račun i javi se administratoru da ga doda u tim."},
@@ -175,7 +175,7 @@ export default function LineupPage() {
               {teams.map((t, ti) => (
                 <Box component="section" aria-label={t.name} key={t.id} sx={{display: "flex", flexDirection: "column"}}>
                   {ti === 1 && (
-                    <Box aria-hidden sx={{display: "flex", alignItems: "center", gap: "10px", px: "16px", py: "4px", "& > i": {flex: 1, height: "1px", background: "rgba(60,74,103,.12)"}}}>
+                    <Box aria-hidden sx={{display: "flex", alignItems: "center", gap: "10px", px: "16px", py: "4px", "& > i": {flex: 1, height: "1px", background: tint.navy[12]}}}>
                       <i />
                       <Box component="span" sx={{fontFamily: font.display, fontSize: 16, fontWeight: 800, color: color.muted}}>
                         vs
@@ -254,7 +254,7 @@ function TeamSlots({
                 p: big ? "10px 10px 10px 12px" : "8px 8px 8px 10px",
                 borderRadius: "16px",
                 textAlign: "left",
-                "&:hover": big ? {background: "rgba(60,74,103,.04)"} : undefined,
+                "&:hover": big ? {background: tint.navy[4]} : undefined,
               }}
             >
               <Avatar player={player} side={side} size={big ? 42 : 38} />
@@ -286,13 +286,13 @@ function TeamSlots({
                       type="button"
                       key={m.id}
                       onClick={() => onPick(s, m.id)}
-                      sx={{...buttonBase, minHeight: 48, display: "flex", alignItems: "center", p: big ? "6px 10px" : "6px 8px", borderTop: "1px solid rgba(60,74,103,.08)", fontSize: big ? 15.5 : 15, fontWeight: 500, color: color.ink, textAlign: "left", lineHeight: 1.25, "&:hover": big ? {background: "rgba(60,74,103,.04)"} : undefined}}
+                      sx={{...buttonBase, minHeight: 48, display: "flex", alignItems: "center", p: big ? "6px 10px" : "6px 8px", borderTop: `1px solid ${color.line}`, fontSize: big ? 15.5 : 15, fontWeight: 500, color: color.ink, textAlign: "left", lineHeight: 1.25, "&:hover": big ? {background: tint.navy[4]} : undefined}}
                     >
                       {m.name}
                     </Box>
                   ))
                 ) : (
-                  <Box sx={{p: "10px", fontSize: 14, color: color.muted, borderTop: "1px solid rgba(60,74,103,.08)"}}>Nema drugih igrača u timu.</Box>
+                  <Box sx={{p: "10px", fontSize: 14, color: color.muted, borderTop: `1px solid ${color.line}`}}>Nema drugih igrača u timu.</Box>
                 )}
               </Box>
             )}
@@ -308,7 +308,7 @@ function Avatar({player, side, size}: {player?: LineupMember; side: number; size
     <Box
       component="span"
       aria-hidden
-      sx={{width: size, height: size, flex: "none", borderRadius: "50%", background: teamColor[side], color: "#FFFFFF", fontSize: size >= 42 ? 15 : 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center"}}
+      sx={{width: size, height: size, flex: "none", borderRadius: "50%", background: teamColor[side], color: color.white, fontSize: size >= 42 ? 15 : 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center"}}
     >
       {initials(player?.name)}
     </Box>
@@ -321,7 +321,7 @@ function Notes({centered = false}: {centered?: boolean}) {
       {NOTES.map((n) => (
         <Box key={n.text} sx={{display: "flex", gap: "10px", alignItems: "flex-start", "& svg": {fontSize: centered ? 20 : 19, color: color.navy, flex: "none"}}}>
           {n.icon}
-          <Box component="span" sx={{fontSize: centered ? 14.5 : 13.5, lineHeight: 1.45, color: color.inkSoft}}>
+          <Box component="span" sx={{fontSize: centered ? 14.5 : 13.5, lineHeight: 1.45, color: color.ink2}}>
             {n.text}
           </Box>
         </Box>

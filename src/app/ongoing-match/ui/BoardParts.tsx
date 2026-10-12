@@ -141,7 +141,7 @@ export function HandList({
                   gridTemplateColumns: desk ? "minmax(0,1fr) 56px minmax(0,1fr)" : "minmax(0,1fr) 40px minmax(0,1fr)",
                   alignItems: "center",
                   borderBottom: `1px solid ${color.line}`,
-                  background: selectedId != null && selectedId === r.id ? color.creamSoft : "transparent",
+                  background: selectedId != null && selectedId === r.id ? color.cream2 : "transparent",
                   fontFamily: font.display,
                   fontSize: desk ? 28 : 26,
                   fontWeight: 700,
@@ -150,12 +150,12 @@ export function HandList({
                   ...tabular,
                   animation:
                     r.animate === "in" ? `spRowIn 420ms ${ease} both` : r.animate === "flash" ? "spRowFlash 900ms ease-out" : "none",
-                  "&:active": {background: color.pressed},
-                  "&:hover": desk ? {background: color.tableHead} : undefined,
+                  "&:active": {background: color.lineFill},
+                  "&:hover": desk ? {background: color.paper2} : undefined,
                 }}
               >
                 <span>{r.left}</span>
-                <Box component="span" sx={{fontFamily: font.body, fontSize: 14, fontWeight: 600, color: color.faint}}>
+                <Box component="span" sx={{fontFamily: font.body, fontSize: 14, fontWeight: 600, color: color.muted}}>
                   {i + 1}
                 </Box>
                 <span>{r.right}</span>

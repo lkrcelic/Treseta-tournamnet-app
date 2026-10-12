@@ -37,7 +37,7 @@ export default function SmokerPrompt() {
     }
   };
 
-  const choice = {flex: 1, height: 56, borderRadius: "16px", border: `1.5px solid ${color.border}`, background: color.card, color: color.ink, fontSize: 17};
+  const choice = {flex: 1, height: 56, borderRadius: "16px", border: `1.5px solid ${color.border}`, background: color.white, color: color.ink, fontSize: 17};
   return (
     <BottomSheet open onClose={() => setLater(true)} title="Pušiš li?">
       <Box sx={{display: "flex", flexDirection: "column", gap: "14px", px: "8px"}}>

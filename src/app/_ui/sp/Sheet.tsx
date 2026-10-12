@@ -1,4 +1,4 @@
-import {color, ease, font, shadow} from "@/app/_styles/tokens";
+import {color, ease, font, shadow, tint} from "@/app/_styles/tokens";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import {Box, Drawer} from "@mui/material";
 import React, {useId} from "react";
@@ -32,7 +32,7 @@ export function BottomSheet({
       onClose={onClose}
       transitionDuration={{enter: 260, exit: 200}}
       SlideProps={{easing: {enter: ease, exit: "cubic-bezier(.4,0,.6,1)"}}}
-      slotProps={{backdrop: {sx: {background: paper ? "rgba(21,24,31,.42)" : color.scrim}}}}
+      slotProps={{backdrop: {sx: {background: paper ? tint.scrim[42] : tint.scrim[32]}}}}
       PaperProps={{
         role: "dialog",
         "aria-labelledby": titleId,
@@ -40,7 +40,7 @@ export function BottomSheet({
           maxWidth: 560,
           mx: "auto",
           borderRadius: "28px 28px 0 0",
-          background: paper ? color.paper : color.card,
+          background: paper ? color.paper : color.white,
           boxShadow: shadow.sheet,
           p: paper ? "10px 20px calc(24px + env(safe-area-inset-bottom))" : "10px 16px calc(24px + env(safe-area-inset-bottom))",
           display: "flex",
@@ -49,7 +49,7 @@ export function BottomSheet({
         },
       }}
     >
-      <Box aria-hidden sx={{alignSelf: "center", width: paper ? 36 : 40, height: 5, borderRadius: "3px", background: paper ? "#CFC9BC" : color.switchOff, mb: paper ? 0 : "10px"}} />
+      <Box aria-hidden sx={{alignSelf: "center", width: paper ? 36 : 40, height: 5, borderRadius: "3px", background: color.hairline, mb: paper ? 0 : "10px"}} />
       {paper ? (
         <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px"}}>
           {heading}

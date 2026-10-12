@@ -8,7 +8,7 @@ import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import {dostaCallers, MATCH_THRESHOLD, matchState, PlayedHand, Side} from "@/app/_lib/game/scoring";
 import useRoundStore from "@/app/_store/RoundStore";
 import useOngoingMatchStore from "@/app/_store/ongoingMatchStore";
-import {color, teamColor} from "@/app/_styles/tokens";
+import {color, shadow, teamColor} from "@/app/_styles/tokens";
 import {buttonBase, CenteredSpinner, DesktopShell, ErrorNote, Eyebrow, PrimaryButton, Screen} from "@/app/_ui/sp";
 import {currentRoundPath} from "@/app/ongoing-match/ui/currentRoundPath";
 import {HandList, HandRow, ScorePanel} from "@/app/ongoing-match/ui/BoardParts";
@@ -308,7 +308,7 @@ export default function ScoreBoardPage() {
             {targetFlag}
             {sides.tableNumber != null && (
               <Box
-                sx={{display: "flex", alignItems: "center", gap: "10px", height: 44, px: "16px", borderRadius: "22px", background: color.card, fontSize: 15, fontWeight: 600, boxShadow: "0 1px 3px rgba(31,36,51,.06)"}}
+                sx={{display: "flex", alignItems: "center", gap: "10px", height: 44, px: "16px", borderRadius: "22px", background: color.white, fontSize: 15, fontWeight: 600, boxShadow: shadow.card}}
               >
                 <TableRestaurantRoundedIcon sx={{fontSize: 20, color: color.navy}} />
                 Stol {sides.tableNumber}
@@ -325,7 +325,7 @@ export default function ScoreBoardPage() {
           </Box>
           {winner != null && editingId == null ? (
             <Box sx={{display: "flex", flexDirection: "column", justifyContent: "flex-end", gap: "12px"}}>
-              <Box sx={{p: "20px", borderRadius: "24px", background: color.card, display: "flex", flexDirection: "column", gap: "8px"}}>
+              <Box sx={{p: "20px", borderRadius: "24px", background: color.white, display: "flex", flexDirection: "column", gap: "8px"}}>
                 <Eyebrow>Kraj meča</Eyebrow>
                 <Box sx={{fontSize: 17, fontWeight: 600}}>
                   Pobjednik meča: {sides.names[winner]}
@@ -372,12 +372,12 @@ export default function ScoreBoardPage() {
               width: 44,
               height: 44,
               borderRadius: "50%",
-              background: color.card,
+              background: color.white,
               color: color.navy,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 1px 3px rgba(31,36,51,.1)",
+              boxShadow: shadow.pill,
               "&:active": {transform: "scale(.94)"},
               "& svg": {fontSize: 24},
             }}

@@ -10,7 +10,7 @@ import {currentLeagueHref} from "@/app/_lib/league";
 import {splitPodium, toStandingsRows} from "@/app/_lib/ui/standings";
 import {displayDate, weekdayDate} from "@/app/_lib/ui/text";
 import useAuthStore from "@/app/_store/authStore";
-import {color, font} from "@/app/_styles/tokens";
+import {color, font, tint} from "@/app/_styles/tokens";
 import {Card, ChipButton, DesktopShell, EmptyState, ErrorNote, LeagueMenuButton, LivePill, LoadingRows, Podium, StandingsGrid} from "@/app/_ui/sp";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import {Box} from "@mui/material";
@@ -99,7 +99,7 @@ export default function DesktopHome() {
           ) : (
             <>
               <Podium rows={podium} compact sx={{px: "20px", pb: "14px"}} />
-              <Box sx={{flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable", borderTop: `1px solid rgba(60,74,103,.1)`}}>
+              <Box sx={{flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable", borderTop: `1px solid ${tint.navy[10]}`}}>
                 <StandingsGrid rows={rest} columns={[]} dense showLive={false} caption="Ukupni poredak lige, od 4. mjesta" />
               </Box>
             </>

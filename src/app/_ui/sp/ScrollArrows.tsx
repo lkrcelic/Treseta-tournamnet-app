@@ -1,6 +1,6 @@
 "use client";
 
-import {color} from "@/app/_styles/tokens";
+import {color, shadow, tint} from "@/app/_styles/tokens";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import KeyboardArrowUpRoundedIcon from "@mui/icons-material/KeyboardArrowUpRounded";
 import {Box} from "@mui/material";
@@ -117,13 +117,13 @@ export function useScrollArrows(rootRef: React.RefObject<HTMLElement>) {
         p: 0,
         border: "none",
         borderRadius: "50%",
-        background: "rgba(60,74,103,.92)",
-        color: "#FFFFFF",
+        background: tint.navy[92],
+        color: color.white,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         cursor: "pointer",
-        boxShadow: "0 6px 16px rgba(21,24,31,.25)",
+        boxShadow: shadow.arrow,
         transition: "transform 120ms ease, background 120ms ease",
         "&:hover": {background: color.navy, transform: "scale(1.06)"},
         "& svg": {fontSize: 26},

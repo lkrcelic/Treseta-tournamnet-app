@@ -6,7 +6,7 @@ import {isValidPhone, normalizePhone, phoneInput, PHONE_ERROR, PHONE_HINT} from 
 import {busyLine, KIND_TAG, postBody, postSub, postTitle, timeAgo} from "@/app/_lib/ui/burza";
 import {initials} from "@/app/_lib/ui/text";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
-import {color, font, shadow} from "@/app/_styles/tokens";
+import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, ellipsis, mergeSx, tabular} from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import BackHandRoundedIcon from "@mui/icons-material/BackHandRounded";
@@ -74,7 +74,7 @@ export function NightChip({night}: {night: string}) {
 // "Taj dan igraš za ekipu Dalmatinci"
 export function BusyLine({team}: {team: string}) {
   return (
-    <Box sx={{display: "flex", alignItems: "center", gap: "6px", fontSize: 13, fontWeight: 600, color: "#A63B3D", "& svg": {fontSize: 18}}}>
+    <Box sx={{display: "flex", alignItems: "center", gap: "6px", fontSize: 13, fontWeight: 600, color: color.red, "& svg": {fontSize: 18}}}>
       <EventBusyRoundedIcon aria-hidden />
       {busyLine(team)}
     </Box>
@@ -85,7 +85,7 @@ const cardSx = {
   width: "100%",
   boxSizing: "border-box",
   borderRadius: "22px",
-  background: color.card,
+  background: color.white,
   p: "14px 16px",
   display: "flex",
   flexDirection: "column",
@@ -120,7 +120,7 @@ export function PostCard({post, href, ago, footer}: {post: BurzaPost; href?: str
         </Box>
         {post.kind === "SUBSTITUTE" && post.night && <NightChip night={post.night} />}
       </Box>
-      <Box sx={{fontSize: 14.5, lineHeight: 1.45, color: color.ink2, textWrap: "pretty", overflowWrap: "anywhere"}}>{postBody(post)}</Box>
+      <Box sx={{fontSize: 14.5, lineHeight: 1.45, color: color.ink, textWrap: "pretty", overflowWrap: "anywhere"}}>{postBody(post)}</Box>
       {post.busy_team && <BusyLine team={post.busy_team} />}
       {footer}
     </>
@@ -130,7 +130,7 @@ export function PostCard({post, href, ago, footer}: {post: BurzaPost; href?: str
     <Box
       component={TransitionLink}
       href={href}
-      sx={{...buttonBase, ...cardSx, transition: "transform 120ms ease", "&:active": {transform: "scale(.99)"}, "&:hover": {boxShadow: "0 4px 14px rgba(31,36,51,.1)"}}}
+      sx={{...buttonBase, ...cardSx, transition: "transform 120ms ease", "&:active": {transform: "scale(.99)"}, "&:hover": {boxShadow: shadow.cardHover}}}
     >
       {body}
     </Box>
@@ -167,7 +167,7 @@ export function DateArrows({
     );
   };
   return (
-    <Box sx={mergeSx({flex: "none", height: 56, display: "flex", alignItems: "center", gap: "6px", px: "6px", borderRadius: "18px", background: color.card, boxShadow: shadow.card}, sx)}>
+    <Box sx={mergeSx({flex: "none", height: 56, display: "flex", alignItems: "center", gap: "6px", px: "6px", borderRadius: "18px", background: color.white, boxShadow: shadow.card}, sx)}>
       {arrow(true)}
       <Box aria-live="polite" sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "1px"}}>
         <Box component="span" sx={{fontSize: 16, fontWeight: 700, color: color.ink, whiteSpace: "nowrap"}}>
@@ -186,7 +186,7 @@ export function DateArrows({
 export function Step({n, children, id}: {n: number; children: React.ReactNode; id?: string}) {
   return (
     <Box component="h2" id={id} sx={{m: 0, display: "flex", alignItems: "center", gap: "10px", px: "2px"}}>
-      <Box component="span" aria-hidden sx={{width: 26, height: 26, flex: "none", borderRadius: "50%", background: color.navy, color: "#FFFFFF", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center"}}>
+      <Box component="span" aria-hidden sx={{width: 26, height: 26, flex: "none", borderRadius: "50%", background: color.navy, color: color.white, fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center"}}>
         {n}
       </Box>
       <Box component="span" sx={{fontSize: 17, fontWeight: 700, whiteSpace: "nowrap"}}>
@@ -217,7 +217,7 @@ export function ChoicePill({on, onClick, children}: {on: boolean; onClick: () =>
       role="radio"
       aria-checked={on}
       onClick={onClick}
-      sx={{...buttonBase, height: 44, px: "16px", borderRadius: "22px", border: `1.5px solid ${color.navy}`, background: on ? color.navy : color.card, color: on ? "#FFFFFF" : color.navy, fontSize: 15, fontWeight: 600, whiteSpace: "nowrap", transition: "background 160ms ease, color 160ms ease"}}
+      sx={{...buttonBase, height: 44, px: "16px", borderRadius: "22px", border: `1.5px solid ${color.navy}`, background: on ? color.navy : color.white, color: on ? color.white : color.navy, fontSize: 15, fontWeight: 600, whiteSpace: "nowrap", transition: "background 160ms ease, color 160ms ease"}}
     >
       {children}
     </Box>
@@ -242,8 +242,8 @@ export function TogglePill({on, onClick, children, height = 48}: {on: boolean; o
         pr: height > 44 ? "18px" : "16px",
         borderRadius: `${height / 2}px`,
         border: `1.5px solid ${color.navy}`,
-        background: on ? color.navy : color.card,
-        color: on ? "#FFFFFF" : color.navy,
+        background: on ? color.navy : color.white,
+        color: on ? color.white : color.navy,
         fontSize: 15,
         fontWeight: 600,
         whiteSpace: "nowrap",
@@ -259,11 +259,11 @@ export function TogglePill({on, onClick, children, height = 48}: {on: boolean; o
 
 // A note above or below a form: an icon and a short text on a tinted background
 export function Callout({icon, tone = "public", children, sx}: {icon: React.ReactNode; tone?: "public" | "warn" | "ok" | "plain"; children: React.ReactNode; sx?: SxProps<Theme>}) {
-  const bg = {public: color.creamSoft, warn: "rgba(188,71,73,.08)", ok: "rgba(56,102,65,.1)", plain: color.card}[tone];
+  const bg = {public: color.cream2, warn: tint.red[8], ok: tint.green[9], plain: color.white}[tone];
   return (
     <Box
       sx={mergeSx(
-        {display: "flex", gap: "10px", alignItems: "flex-start", p: "12px 14px", borderRadius: "16px", background: bg, fontSize: 13.5, lineHeight: 1.45, color: color.ink2, "& > svg": {fontSize: 20, flex: "none", color: color.navy}},
+        {display: "flex", gap: "10px", alignItems: "flex-start", p: "12px 14px", borderRadius: "16px", background: bg, fontSize: 13.5, lineHeight: 1.45, color: color.ink, "& > svg": {fontSize: 20, flex: "none", color: color.navy}},
         sx
       )}
     >
@@ -327,11 +327,11 @@ export function PhoneField({
           alignItems: "center",
           gap: "10px",
           borderRadius: "16px",
-          border: `1.5px solid ${bad ? color.red : valid ? color.navy : "rgba(60,74,103,.25)"}`,
-          background: color.card,
+          border: `1.5px solid ${bad ? color.red : valid ? color.navy : tint.navy[25]}`,
+          background: color.white,
           px: "14px",
           boxSizing: "border-box",
-          "&:focus-within": {boxShadow: "0 0 0 3px rgba(60,74,103,.18)"},
+          "&:focus-within": {boxShadow: shadow.focus},
           "& > svg": {fontSize: 22, color: color.muted, flex: "none"},
         }}
       >
@@ -349,7 +349,7 @@ export function PhoneField({
           value={value}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(phoneInput(e.target.value))}
           onBlur={onBlur}
-          sx={{flex: 1, minWidth: 0, height: "100%", p: 0, border: "none", outline: "none", background: "transparent", font: "inherit", fontSize: 17, fontWeight: 600, color: color.ink, ...tabular, "&::placeholder": {color: color.placeholder, fontWeight: 600}}}
+          sx={{flex: 1, minWidth: 0, height: "100%", p: 0, border: "none", outline: "none", background: "transparent", font: "inherit", fontSize: 17, fontWeight: 600, color: color.ink, ...tabular, "&::placeholder": {color: color.faint, fontWeight: 600}}}
         />
       </Box>
       <Box id={`${id}-hint`} aria-live="polite" sx={{px: "6px", fontSize: 13, lineHeight: 1.4, color: bad ? color.red : color.muted}}>
@@ -387,7 +387,7 @@ function CheckRow({checked, onChange, hint, children}: {checked: boolean; onChan
       <Box
         component="span"
         aria-hidden
-        sx={{width: 24, height: 24, flex: "none", boxSizing: "border-box", borderRadius: "7px", border: `2px solid ${color.navy}`, background: checked ? color.navy : color.card, color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 18}}}
+        sx={{width: 24, height: 24, flex: "none", boxSizing: "border-box", borderRadius: "7px", border: `2px solid ${color.navy}`, background: checked ? color.navy : color.white, color: color.white, display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 18}}}
       >
         {checked && <CheckRoundedIcon />}
       </Box>
@@ -432,16 +432,16 @@ export function TextArea({id, value, onChange, placeholder, height, maxLength, l
         resize: "none",
         boxSizing: "border-box",
         borderRadius: "16px",
-        border: "1.5px solid rgba(60,74,103,.2)",
-        background: color.card,
+        border: `1.5px solid ${color.borderControl}`,
+        background: color.white,
         p: "12px 14px",
         font: "inherit",
         fontSize: 16,
         lineHeight: 1.45,
         color: color.ink,
         outline: "none",
-        "&:focus": {borderColor: color.navy, boxShadow: "0 0 0 3px rgba(60,74,103,.18)"},
-        "&::placeholder": {color: color.placeholder},
+        "&:focus": {borderColor: color.navy, boxShadow: shadow.focus},
+        "&::placeholder": {color: color.faint},
       }}
     />
   );
@@ -466,9 +466,9 @@ export function KindList({onPick}: {onPick: (href: string) => void}) {
               gap: "14px",
               p: "12px 14px",
               borderBottom: i < KINDS.length - 1 ? `1px solid ${color.line}` : "none",
-              background: color.card,
+              background: color.white,
               textAlign: "left",
-              "&:active": {background: color.pressed},
+              "&:active": {background: color.lineFill},
               "& > svg": {fontSize: 24, color: color.navy, flex: "none"},
             }}
           >
@@ -542,8 +542,8 @@ export function OutlineAction({icon, onClick, children, sx}: {icon: React.ReactN
           flex: "none",
           width: "100%",
           borderRadius: "18px",
-          border: "1.5px solid rgba(60,74,103,.2)",
-          background: color.card,
+          border: `1.5px solid ${color.borderControl}`,
+          background: color.white,
           color: color.navy,
           display: "flex",
           alignItems: "center",

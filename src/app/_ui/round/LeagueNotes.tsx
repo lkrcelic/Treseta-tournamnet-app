@@ -1,7 +1,7 @@
 "use client";
 
 import {getLeagueNotesAPI, saveLeagueNotesAPI} from "@/app/_fetchers/league/leagues";
-import {color} from "@/app/_styles/tokens";
+import {color, shadow} from "@/app/_styles/tokens";
 import {SectionLabel} from "@/app/_ui/sp";
 import CloudDoneRoundedIcon from "@mui/icons-material/CloudDoneRounded";
 import CloudOffRoundedIcon from "@mui/icons-material/CloudOffRounded";
@@ -104,7 +104,7 @@ export default function LeagueNotes({leagueId}: {leagueId: number}) {
           resize: "none",
           border: "1.5px solid transparent",
           borderRadius: "18px",
-          background: color.card,
+          background: color.white,
           p: "14px 16px",
           fontFamily: "inherit",
           fontSize: 15,
@@ -112,9 +112,9 @@ export default function LeagueNotes({leagueId}: {leagueId: number}) {
           color: color.ink,
           outline: "none",
           boxSizing: "border-box",
-          boxShadow: "0 1px 3px rgba(31,36,51,.06)",
+          boxShadow: shadow.card,
           "&:focus": {borderColor: color.navy},
-          "&::placeholder": {color: color.placeholder},
+          "&::placeholder": {color: color.faint},
         }}
       />
     </Box>

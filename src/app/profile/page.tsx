@@ -13,7 +13,7 @@ import {leagueDateString} from "@/app/_lib/dates";
 import {displayDate} from "@/app/_lib/ui/text";
 import {normalizeUsername, USERNAME_MAX, usernameError} from "@/app/_lib/validation/username";
 import useAuthStore from "@/app/_store/authStore";
-import {color, font} from "@/app/_styles/tokens";
+import {color, font, tint} from "@/app/_styles/tokens";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import SmokingRoomsRoundedIcon from "@mui/icons-material/SmokingRoomsRounded";
 import {
@@ -90,7 +90,7 @@ export default function ProfilePage() {
           <Box component="h1" sx={{m: 0, fontFamily: font.display, fontSize: desktop ? 34 : 28, fontWeight: 800, lineHeight: 1, letterSpacing: "-.02em", ...ellipsis}}>
             {player?.username ?? user?.username ?? <Skeleton width={160} />}
           </Box>
-          <Box sx={{fontSize: desktop ? 17 : 16, color: color.inkSoft}}>{player ? fullName : <Skeleton width={120} />}</Box>
+          <Box sx={{fontSize: desktop ? 17 : 16, color: color.ink2}}>{player ? fullName : <Skeleton width={120} />}</Box>
         </Box>
       </Box>
       {/* my rating: the last change and my place, opening my rating's detail */}
@@ -100,7 +100,7 @@ export default function ProfilePage() {
         sx={{...buttonBase, display: "flex", alignItems: "center", gap: "12px", borderTop: `1px solid ${color.border}`, pt: desktop ? "16px" : "14px", textDecoration: "none", color: color.ink, textAlign: "left"}}
       >
         <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "4px"}}>
-          <Box sx={{fontSize: 13, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: color.inkSoft}}>Rejting</Box>
+          <Box sx={{fontSize: 13, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: color.ink2}}>Rejting</Box>
           {myRating && (
             <Box sx={{display: "flex", alignItems: "baseline", gap: "8px", fontSize: 14, ...tabular}}>
               {myRating.rounds > 0 && (
@@ -108,7 +108,7 @@ export default function ProfilePage() {
                   {formatChange(myRating.change)}
                 </Box>
               )}
-              <Box component="span" sx={{color: color.inkSoft}}>
+              <Box component="span" sx={{color: color.ink2}}>
                 #{myRating.rank} od {ratedPlayers}
               </Box>
             </Box>
@@ -344,8 +344,8 @@ function BirthDateRow({value, desktop, onSave}: {value: string | null; desktop: 
   };
 
   return (
-    <Box sx={{display: "flex", flexDirection: "column", gap: "10px", p: `12px ${px} 14px`, borderBottom: `1px solid ${color.line}`, background: color.creamSoft}}>
-      <Box component="dt" sx={{fontSize: 13, fontWeight: 600, color: color.inkSoft}}>
+    <Box sx={{display: "flex", flexDirection: "column", gap: "10px", p: `12px ${px} 14px`, borderBottom: `1px solid ${color.line}`, background: color.cream2}}>
+      <Box component="dt" sx={{fontSize: 13, fontWeight: 600, color: color.ink2}}>
         <label htmlFor="birth-date">Birth date</label>
       </Box>
       <Box component="dd" sx={{m: 0}}>
@@ -360,7 +360,7 @@ function BirthDateRow({value, desktop, onSave}: {value: string | null; desktop: 
             max={today}
             value={draft}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDraft(e.target.value)}
-            sx={{...dateInputFix, height: 50, width: "100%", boxSizing: "border-box", borderRadius: "14px", border: `1.5px solid ${color.navy}`, background: color.card, px: "14px", font: "inherit", fontSize: 16, color: color.ink, outline: "none"}}
+            sx={{...dateInputFix, height: 50, width: "100%", boxSizing: "border-box", borderRadius: "14px", border: `1.5px solid ${color.navy}`, background: color.white, px: "14px", font: "inherit", fontSize: 16, color: color.ink, outline: "none"}}
           />
           {error && <ErrorNote>{error}</ErrorNote>}
           <Box sx={{display: "flex", gap: "8px"}}>
@@ -368,7 +368,7 @@ function BirthDateRow({value, desktop, onSave}: {value: string | null; desktop: 
               component="button"
               type="button"
               onClick={() => setDraft(null)}
-              sx={{...buttonBase, flex: 1, height: 46, borderRadius: "14px", border: "1.5px solid rgba(60,74,103,.25)", background: color.card, color: color.navy, fontSize: 15, fontWeight: 600}}
+              sx={{...buttonBase, flex: 1, height: 46, borderRadius: "14px", border: `1.5px solid ${tint.navy[25]}`, background: color.white, color: color.navy, fontSize: 15, fontWeight: 600}}
             >
               Cancel
             </Box>
@@ -377,7 +377,7 @@ function BirthDateRow({value, desktop, onSave}: {value: string | null; desktop: 
               type="submit"
               disabled={!canSave}
               aria-busy={saving || undefined}
-              sx={{...buttonBase, flex: 1, height: 46, borderRadius: "14px", background: color.navy, color: "#FFFFFF", fontSize: 15, fontWeight: 600, "&:disabled": {opacity: 0.4}}}
+              sx={{...buttonBase, flex: 1, height: 46, borderRadius: "14px", background: color.navy, color: color.white, fontSize: 15, fontWeight: 600, "&:disabled": {opacity: 0.4}}}
             >
               {saving ? "Saving…" : "Save"}
             </Box>
@@ -443,16 +443,16 @@ function UsernameRow({value, desktop, onSave}: {value: string | null; desktop: b
   };
 
   return (
-    <Box sx={{display: "flex", flexDirection: "column", gap: "8px", p: `12px ${px} 14px`, borderBottom: `1px solid ${color.line}`, background: color.creamSoft}}>
-      <Box component="dt" sx={{fontSize: 13, fontWeight: 600, color: color.inkSoft}}>
+    <Box sx={{display: "flex", flexDirection: "column", gap: "8px", p: `12px ${px} 14px`, borderBottom: `1px solid ${color.line}`, background: color.cream2}}>
+      <Box component="dt" sx={{fontSize: 13, fontWeight: 600, color: color.ink2}}>
         <label htmlFor="username">Username</label>
       </Box>
       <Box component="dd" sx={{m: 0}}>
         <Box component="form" onSubmit={save} noValidate sx={{display: "flex", flexDirection: "column", gap: "8px"}}>
           <Box
-            sx={{height: 50, display: "flex", alignItems: "center", gap: "2px", boxSizing: "border-box", borderRadius: "14px", border: `1.5px solid ${error ? color.red : color.navy}`, background: color.card, px: "14px"}}
+            sx={{height: 50, display: "flex", alignItems: "center", gap: "2px", boxSizing: "border-box", borderRadius: "14px", border: `1.5px solid ${error ? color.red : color.navy}`, background: color.white, px: "14px"}}
           >
-            <Box component="span" aria-hidden sx={{flex: "none", fontSize: 16, color: color.placeholder}}>
+            <Box component="span" aria-hidden sx={{flex: "none", fontSize: 16, color: color.faint}}>
               @
             </Box>
             <Box
@@ -480,7 +480,7 @@ function UsernameRow({value, desktop, onSave}: {value: string | null; desktop: b
               component="button"
               type="button"
               onClick={() => setDraft(null)}
-              sx={{...buttonBase, flex: 1, height: 46, borderRadius: "14px", border: "1.5px solid rgba(60,74,103,.25)", background: color.card, color: color.navy, fontSize: 15, fontWeight: 600}}
+              sx={{...buttonBase, flex: 1, height: 46, borderRadius: "14px", border: `1.5px solid ${tint.navy[25]}`, background: color.white, color: color.navy, fontSize: 15, fontWeight: 600}}
             >
               Cancel
             </Box>
@@ -489,7 +489,7 @@ function UsernameRow({value, desktop, onSave}: {value: string | null; desktop: b
               type="submit"
               disabled={!canSave}
               aria-busy={saving || undefined}
-              sx={{...buttonBase, flex: 1, height: 46, borderRadius: "14px", background: color.navy, color: "#FFFFFF", fontSize: 15, fontWeight: 600, "&:disabled": {opacity: 0.4}}}
+              sx={{...buttonBase, flex: 1, height: 46, borderRadius: "14px", background: color.navy, color: color.white, fontSize: 15, fontWeight: 600, "&:disabled": {opacity: 0.4}}}
             >
               {saving ? "Saving…" : "Save"}
             </Box>

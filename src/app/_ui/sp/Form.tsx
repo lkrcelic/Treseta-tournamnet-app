@@ -1,4 +1,4 @@
-import {color} from "@/app/_styles/tokens";
+import {color, shadow} from "@/app/_styles/tokens";
 import ErrorRoundedIcon from "@mui/icons-material/ErrorRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
@@ -24,7 +24,7 @@ export const inputSx = {
   height: 56,
   borderRadius: "16px",
   border: `1.5px solid ${color.border}`,
-  background: color.card,
+  background: color.white,
   px: "16px",
   fontFamily: "inherit",
   fontSize: 17,
@@ -32,8 +32,8 @@ export const inputSx = {
   outline: "none",
   boxSizing: "border-box",
   transition: "border-color 150ms ease, background 150ms ease",
-  "&:focus": {borderColor: color.navy, background: color.card},
-  "&:focus-visible": {outline: "none", boxShadow: `0 0 0 3px rgba(60,74,103,.18)`},
+  "&:focus": {borderColor: color.navy, background: color.white},
+  "&:focus-visible": {outline: "none", boxShadow: shadow.focus},
   "&[aria-invalid=true]": {borderColor: color.red},
   "&::-webkit-calendar-picker-indicator": {opacity: 0.6},
   "&[type=date]": dateInputFix,
@@ -52,7 +52,7 @@ export function Field({label, error, children, sx}: FieldProps) {
   const errorId = `${id}-error`;
   return (
     <Box sx={mergeSx({display: "flex", flexDirection: "column", gap: "6px", minWidth: 0}, sx)}>
-      <Box component="label" htmlFor={id} sx={{fontSize: 14, fontWeight: 600, color: color.inkSoft, pl: "4px"}}>
+      <Box component="label" htmlFor={id} sx={{fontSize: 14, fontWeight: 600, color: color.ink2, pl: "4px"}}>
         {label}
       </Box>
       {children({id, "aria-invalid": error ? true : undefined, "aria-describedby": error ? errorId : undefined})}
@@ -73,7 +73,7 @@ type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {sx?: SxProps<Th
 
 // soft: the cream-tinted fill used on desktop forms and the login card
 export const TextInput = React.forwardRef<HTMLInputElement, InputProps>(function TextInput({sx, soft, ...rest}, ref) {
-  return <Box component="input" ref={ref} sx={mergeSx(inputSx, soft && {background: color.paperSoft}, sx)} {...rest} />;
+  return <Box component="input" ref={ref} sx={mergeSx(inputSx, soft && {background: color.paper2}, sx)} {...rest} />;
 });
 
 export function TextField({

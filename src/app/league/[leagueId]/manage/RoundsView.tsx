@@ -2,7 +2,7 @@
 
 import {deleteLeagueRoundAPI, getLeagueRoundsAPI, LeagueRoundSummary} from "@/app/_fetchers/admin/daily";
 import {displayDate} from "@/app/_lib/ui/text";
-import {color, font} from "@/app/_styles/tokens";
+import {color, font, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, EmptyState, ErrorNote, InfoNote, LoadingRows} from "@/app/_ui/sp";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
@@ -20,7 +20,7 @@ const keyOf = (r: LeagueRoundSummary) => `${r.date}|${r.roundNumber}`;
 const STATUS: Record<LeagueRoundSummary["status"], {label: string; ink: string}> = {
   played: {label: "Played", ink: color.green},
   live: {label: "In progress", ink: color.red},
-  new: {label: "Not started", ink: color.placeholder},
+  new: {label: "Not started", ink: color.faint},
 };
 
 function warning(r: LeagueRoundSummary): string {
@@ -126,7 +126,7 @@ export default function RoundsView({leagueId, data}: {leagueId: number; data: Re
       <Card component="section" aria-label="Runde lige" sx={{minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderRadius: "24px"}}>
         <Box
           aria-hidden
-          sx={{flex: "none", height: 40, display: "grid", gridTemplateColumns: grid, gap: "12px", alignItems: "center", px: "20px", background: color.tableHead, borderBottom: `1px solid rgba(60,74,103,.1)`, fontSize: 12, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: color.muted}}
+          sx={{flex: "none", height: 40, display: "grid", gridTemplateColumns: grid, gap: "12px", alignItems: "center", px: "20px", background: color.paper2, borderBottom: `1px solid ${tint.navy[10]}`, fontSize: 12, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: color.muted}}
         >
           <span>Round</span>
           <span>Date</span>
@@ -152,15 +152,15 @@ export default function RoundsView({leagueId, data}: {leagueId: number; data: Re
               const asking = confirm === k;
               const st = STATUS[r.status];
               return (
-                <Box component="li" key={k} sx={{display: "flex", flexDirection: "column", borderBottom: `1px solid rgba(60,74,103,.07)`, background: asking ? "rgba(188,71,73,.06)" : "transparent", transition: "background 160ms ease"}}>
+                <Box component="li" key={k} sx={{display: "flex", flexDirection: "column", borderBottom: `1px solid ${color.divider}`, background: asking ? tint.red[6] : "transparent", transition: "background 160ms ease"}}>
                   <Box sx={{height: 60, display: "grid", gridTemplateColumns: grid, gap: "12px", alignItems: "center", pl: "20px", pr: "12px", fontVariantNumeric: "tabular-nums"}}>
                     <Box component="span" sx={{fontFamily: font.display, fontSize: 20, fontWeight: 800}}>
                       Round {r.roundNumber}
                     </Box>
-                    <Box component="span" sx={{fontSize: 15, color: color.inkSoft}}>
+                    <Box component="span" sx={{fontSize: 15, color: color.ink2}}>
                       {displayDate(r.date)}
                     </Box>
-                    <Box component="span" sx={{textAlign: "center", fontSize: 15, color: color.inkSoft}}>
+                    <Box component="span" sx={{textAlign: "center", fontSize: 15, color: color.ink2}}>
                       {r.tables}
                     </Box>
                     <Box component="span" sx={{display: "flex", alignItems: "center", gap: "6px", fontSize: 13, fontWeight: 700, color: st.ink}}>
@@ -174,7 +174,7 @@ export default function RoundsView({leagueId, data}: {leagueId: number; data: Re
                           type="button"
                           onClick={() => setConfirm(k)}
                           aria-label={`Delete Round ${r.roundNumber}, ${displayDate(r.date)}`}
-                          sx={{...small, pl: "10px", pr: "14px", color: color.red, display: "flex", alignItems: "center", gap: "6px", "& svg": {fontSize: 20}, "&:hover": {background: "rgba(188,71,73,.08)"}}}
+                          sx={{...small, pl: "10px", pr: "14px", color: color.red, display: "flex", alignItems: "center", gap: "6px", "& svg": {fontSize: 20}, "&:hover": {background: tint.red[8]}}}
                         >
                           <DeleteRoundedIcon />
                           Delete
@@ -185,21 +185,21 @@ export default function RoundsView({leagueId, data}: {leagueId: number; data: Re
                   {asking && (
                     <Box
                       role="alert"
-                      sx={{display: "flex", alignItems: "center", gap: "12px", m: "0 12px 12px 20px", p: "12px 12px 12px 16px", borderRadius: "16px", background: color.card, border: "1.5px solid rgba(188,71,73,.35)", "& > svg": {fontSize: 24, color: color.red, flex: "none"}}}
+                      sx={{display: "flex", alignItems: "center", gap: "12px", m: "0 12px 12px 20px", p: "12px 12px 12px 16px", borderRadius: "16px", background: color.white, border: `1.5px solid ${tint.red[35]}`, "& > svg": {fontSize: 24, color: color.red, flex: "none"}}}
                     >
                       <WarningRoundedIcon />
                       <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
                         <Box component="span" sx={{fontSize: 15, fontWeight: 700}}>
                           Delete Round {r.roundNumber} · {displayDate(r.date)}?
                         </Box>
-                        <Box component="span" sx={{fontSize: 13, color: color.inkSoft}}>
+                        <Box component="span" sx={{fontSize: 13, color: color.ink2}}>
                           {warning(r)}
                         </Box>
                       </Box>
-                      <Box component="button" type="button" onClick={() => setConfirm(null)} sx={{...small, border: "1.5px solid rgba(60,74,103,.25)", color: color.navy}}>
+                      <Box component="button" type="button" onClick={() => setConfirm(null)} sx={{...small, border: `1.5px solid ${tint.navy[25]}`, color: color.navy}}>
                         Cancel
                       </Box>
-                      <Box component="button" type="button" onClick={() => remove(r)} sx={{...small, background: color.red, color: "#FFFFFF"}}>
+                      <Box component="button" type="button" onClick={() => remove(r)} sx={{...small, background: color.red, color: color.white}}>
                         Delete round
                       </Box>
                     </Box>

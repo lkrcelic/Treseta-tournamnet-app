@@ -9,7 +9,7 @@ import {END_DATE_ERROR, endsAfterStart} from "@/app/_interfaces/league";
 import {invalidateLeagues} from "@/app/_hooks/useLeagues";
 import {conferencesError} from "@/app/_lib/conferences";
 import {generateNights, isIsoDate, nightLabel, sortNights} from "@/app/_lib/nights";
-import {color, font} from "@/app/_styles/tokens";
+import {color, font, tint} from "@/app/_styles/tokens";
 import {ConferenceDraft, ConferenceEditor, startingDrafts} from "@/app/_ui/league/ConferenceEditor";
 import {
   buttonBase,
@@ -189,7 +189,7 @@ export default function CreateLeague() {
         />
       </Box>
       <Box role="radiogroup" aria-labelledby="play-day" sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
-        <Box id="play-day" sx={{fontSize: 14, fontWeight: 600, color: color.inkSoft, pl: "4px"}}>
+        <Box id="play-day" sx={{fontSize: 14, fontWeight: 600, color: color.ink2, pl: "4px"}}>
           Play day
         </Box>
         <Box sx={{display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))", gap: "6px"}}>
@@ -207,7 +207,7 @@ export default function CreateLeague() {
                 height: 48,
                 borderRadius: "12px",
                 background: playDay === i ? color.navy : color.paper,
-                color: playDay === i ? "#FFFFFF" : color.navy,
+                color: playDay === i ? color.white : color.navy,
                 fontSize: 14,
                 fontWeight: 700,
                 transition: "background 160ms ease",
@@ -220,7 +220,7 @@ export default function CreateLeague() {
       </Box>
       <Box role="group" aria-labelledby="league-nights" sx={{display: "flex", flexDirection: "column", gap: "10px"}}>
         <Box sx={{display: "flex", alignItems: "baseline", justifyContent: "space-between", px: "4px"}}>
-          <Box id="league-nights" sx={{fontSize: 14, fontWeight: 600, color: color.inkSoft}}>
+          <Box id="league-nights" sx={{fontSize: 14, fontWeight: 600, color: color.ink2}}>
             League nights
           </Box>
           <Box component="span" aria-live="polite" sx={{fontSize: 13, color: color.muted}}>
@@ -244,7 +244,7 @@ export default function CreateLeague() {
                   type="button"
                   onClick={() => removeNight(n)}
                   aria-label={`Remove the night ${nightLabel(n)}`}
-                  sx={{...buttonBase, width: 28, height: 28, borderRadius: "50%", color: color.muted, display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 18}, "&:hover": {background: "rgba(188,71,73,.12)", color: color.red}}}
+                  sx={{...buttonBase, width: 28, height: 28, borderRadius: "50%", color: color.muted, display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 18}, "&:hover": {background: tint.red[12], color: color.red}}}
                 >
                   <CloseRoundedIcon />
                 </Box>
@@ -265,21 +265,21 @@ export default function CreateLeague() {
                 addNight();
               }
             }}
-            sx={{...dateInputFix, flex: 1, minWidth: 0, height: 48, boxSizing: "border-box", borderRadius: "14px", border: "1.5px solid rgba(60,74,103,.18)", background: color.tableHead, px: "14px", font: "inherit", fontSize: 15, color: color.ink, outline: "none", "&:focus": {borderColor: color.navy, background: color.card}}}
+            sx={{...dateInputFix, flex: 1, minWidth: 0, height: 48, boxSizing: "border-box", borderRadius: "14px", border: `1.5px solid ${color.border}`, background: color.paper2, px: "14px", font: "inherit", fontSize: 15, color: color.ink, outline: "none", "&:focus": {borderColor: color.navy, background: color.white}}}
           />
           <Box
             component="button"
             type="button"
             onClick={addNight}
             disabled={!canAddNight}
-            sx={{...buttonBase, flex: "none", height: 48, px: "16px", border: "1.5px solid rgba(60,74,103,.2)", borderRadius: "14px", background: color.card, color: color.navy, display: "flex", alignItems: "center", gap: "6px", fontSize: 15, fontWeight: 600, "&:disabled": {opacity: 0.4}, "& svg": {fontSize: 20}}}
+            sx={{...buttonBase, flex: "none", height: 48, px: "16px", border: `1.5px solid ${color.borderControl}`, borderRadius: "14px", background: color.white, color: color.navy, display: "flex", alignItems: "center", gap: "6px", fontSize: 15, fontWeight: 600, "&:disabled": {opacity: 0.4}, "& svg": {fontSize: 20}}}
           >
             <AddRoundedIcon />
             Add night
           </Box>
         </Box>
       </Box>
-      <Box role="group" aria-labelledby="rpn" sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", p: "12px 14px", borderRadius: "16px", background: color.tableHead}}>
+      <Box role="group" aria-labelledby="rpn" sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", p: "12px 14px", borderRadius: "16px", background: color.paper2}}>
         <Box sx={{display: "flex", flexDirection: "column"}}>
           <Box id="rpn" component="span" sx={{fontSize: 15, fontWeight: 600}}>
             Rounds per night
@@ -300,7 +300,7 @@ export default function CreateLeague() {
           </IconCircleButton>
         </Box>
       </Box>
-      <Box role="group" aria-labelledby="conf-title" sx={{display: "flex", flexDirection: "column", gap: "12px", p: "12px 14px", borderRadius: "16px", background: color.tableHead}}>
+      <Box role="group" aria-labelledby="conf-title" sx={{display: "flex", flexDirection: "column", gap: "12px", p: "12px 14px", borderRadius: "16px", background: color.paper2}}>
         <Box
           component="button"
           type="button"
@@ -361,7 +361,7 @@ export default function CreateLeague() {
 
   const teamList = (
     <>
-      <Box sx={{flex: "none", p: "22px 20px 14px", display: "flex", flexDirection: "column", gap: "12px", borderBottom: `1px solid rgba(60,74,103,.1)`}}>
+      <Box sx={{flex: "none", p: "22px 20px 14px", display: "flex", flexDirection: "column", gap: "12px", borderBottom: `1px solid ${tint.navy[10]}`}}>
         <Box sx={{display: "flex", alignItems: "baseline", justifyContent: "space-between"}}>
           <Box component="h2" sx={{m: 0, fontFamily: font.display, fontSize: 24, fontWeight: 800}}>
             Teams
@@ -400,7 +400,7 @@ export default function CreateLeague() {
                     gap: "12px",
                     pl: "20px",
                     pr: "16px",
-                    borderBottom: `1px solid rgba(60,74,103,.07)`,
+                    borderBottom: `1px solid ${color.divider}`,
                     textAlign: "left",
                   }}
                 >
@@ -422,8 +422,8 @@ export default function CreateLeague() {
                       boxSizing: "border-box",
                       borderRadius: "8px",
                       border: `2px solid ${on ? color.navy : color.borderStrong}`,
-                      background: on ? color.navy : color.card,
-                      color: "#FFFFFF",
+                      background: on ? color.navy : color.white,
+                      color: color.white,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",

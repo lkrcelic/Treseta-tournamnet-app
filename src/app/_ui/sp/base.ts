@@ -1,4 +1,4 @@
-import {color, font} from "@/app/_styles/tokens";
+import {color, font, radius, shadow} from "@/app/_styles/tokens";
 import type {SxProps, Theme} from "@mui/material";
 
 // Plain <button> reset shared by every Scorepad button: no UA chrome, visible keyboard focus, press feedback.
@@ -34,9 +34,9 @@ export const displaySx = {
 } as const;
 
 export const cardSx = {
-  background: color.card,
-  borderRadius: "22px",
-  boxShadow: "0 1px 3px rgba(31,36,51,.06)",
+  background: color.white,
+  borderRadius: radius.card,
+  boxShadow: shadow.card,
 } as const;
 
 export const tabular = {fontVariantNumeric: "tabular-nums"} as const;

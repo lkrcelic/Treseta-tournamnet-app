@@ -19,7 +19,7 @@ export function SwitchTrack({on, onColor = color.navy}: {on: boolean; onColor?: 
         width: 52,
         height: 32,
         borderRadius: "16px",
-        background: on ? onColor : color.switchOff,
+        background: on ? onColor : color.borderControl,
         transition: "background 180ms ease",
       }}
     >
@@ -32,8 +32,8 @@ export function SwitchTrack({on, onColor = color.navy}: {on: boolean; onColor?: 
           width: 26,
           height: 26,
           borderRadius: "50%",
-          background: "#FFFFFF",
-          boxShadow: "0 1px 3px rgba(0,0,0,.2)",
+          background: color.white,
+          boxShadow: shadow.knob,
           transform: on ? "translateX(20px)" : "none",
           transition: `transform 180ms ${ease}`,
         }}
@@ -80,7 +80,7 @@ export function SwitchRow({
           borderBottom: `1px solid ${color.line}`,
           fontSize: 16,
           fontWeight: 500,
-          color: checked ? color.ink : color.faint,
+          color: checked ? color.ink : color.muted,
           textAlign: "left",
         },
         sx
@@ -131,7 +131,7 @@ export function Stepper({
       aria-label={label}
       sx={mergeSx(
         {
-          background: color.card,
+          background: color.white,
           borderRadius: "20px",
           p: "10px 8px 10px 14px",
           display: "flex",
@@ -238,8 +238,8 @@ export function PillTabs<K extends string | number>({
               height: 44,
               px: "16px",
               borderRadius: "22px",
-              background: on ? color.navy : color.card,
-              color: on ? "#FFFFFF" : color.ink,
+              background: on ? color.navy : color.white,
+              color: on ? color.white : color.ink,
               fontSize: 15,
               fontWeight: 600,
               whiteSpace: "nowrap",
@@ -297,14 +297,14 @@ export function Segmented<K extends string | number>({
       onKeyDown={onKeyDown}
       sx={mergeSx(
         track
-          ? {display: "grid", gridTemplateColumns: `repeat(${items.length}, minmax(0,1fr))`, flex: "none", gap: "4px", p: "4px", borderRadius: "16px", background: color.track}
+          ? {display: "grid", gridTemplateColumns: `repeat(${items.length}, minmax(0,1fr))`, flex: "none", gap: "4px", p: "4px", borderRadius: "16px", background: color.lineFill}
           : {
               display: "flex",
               flex: "none",
               gap: solid ? "6px" : "4px",
               p: solid ? "4px" : "3px",
               borderRadius: solid ? "24px" : "14px",
-              background: navyOn ? color.card : color.paper,
+              background: navyOn ? color.white : color.paper,
               boxShadow: navyOn ? shadow.card : "none",
             },
         sx
@@ -335,9 +335,9 @@ export function Segmented<K extends string | number>({
               height: size,
               px: solid ? "16px" : panel ? "14px" : track ? "4px" : "12px",
               borderRadius: solid ? `${size / 2}px` : track ? "12px" : "11px",
-              background: on ? (navyOn ? color.navy : color.card) : "transparent",
-              color: on ? (navyOn ? "#FFFFFF" : color.ink) : solid ? color.ink : color.inkSoft,
-              boxShadow: on && !navyOn ? (track ? "0 1px 3px rgba(31,36,51,.1)" : "0 1px 3px rgba(31,36,51,.12)") : "none",
+              background: on ? (navyOn ? color.navy : color.white) : "transparent",
+              color: on ? (navyOn ? color.white : color.ink) : solid ? color.ink : color.ink2,
+              boxShadow: on && !navyOn ? (track ? shadow.pill : shadow.segment) : "none",
               fontSize: solid ? 15 : 14,
               fontWeight: track && on ? 700 : 600,
               display: "flex",

@@ -134,7 +134,7 @@ function Schedule({shown, today, desktop}: {shown: Shown; today: string; desktop
   const left = nextIndex >= 0 ? shown.nights.length - nextIndex : 0;
 
   const nextCard = (
-    <Box component="section" aria-label="Sljedeća večer" sx={{flex: "none", borderRadius: "22px", background: color.navy, color: "#FFFFFF", p: "16px 18px", display: "flex", alignItems: "center", gap: "14px"}}>
+    <Box component="section" aria-label="Sljedeća večer" sx={{flex: "none", borderRadius: "22px", background: color.navy, color: color.white, p: "16px 18px", display: "flex", alignItems: "center", gap: "14px"}}>
       <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "4px"}}>
         <Box component="span" sx={{fontSize: 12.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.cream}}>
           {next === today ? "Večeras" : "Sljedeća večer"}
@@ -154,7 +154,7 @@ function Schedule({shown, today, desktop}: {shown: Shown; today: string; desktop
     <Box
       component={TransitionLink}
       href={`/burza/novi/zamjena?league=${shown.leagueId}&night=${next}`}
-      sx={{...buttonBase, flex: "none", height: 52, borderRadius: "16px", border: "1.5px solid rgba(60,74,103,.2)", background: color.card, color: color.navy, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontSize: 16, fontWeight: 600, textDecoration: "none", "& svg": {fontSize: 22}}}
+      sx={{...buttonBase, flex: "none", height: 52, borderRadius: "16px", border: `1.5px solid ${color.borderControl}`, background: color.white, color: color.navy, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontSize: 16, fontWeight: 600, textDecoration: "none", "& svg": {fontSize: 22}}}
     >
       <PersonSearchRoundedIcon aria-hidden />
       Nađi zamjenu
@@ -181,7 +181,7 @@ function Schedule({shown, today, desktop}: {shown: Shown; today: string; desktop
                 component="li"
                 key={night}
                 aria-current={isNext ? "date" : undefined}
-                sx={{height: 56, display: "flex", alignItems: "center", gap: "12px", px: "16px", borderBottom: i < shown.nights.length - 1 ? `1px solid ${color.line}` : "none", background: isNext ? color.mine : "transparent", boxShadow: isNext ? shadow.mineBar : "none"}}
+                sx={{height: 56, display: "flex", alignItems: "center", gap: "12px", px: "16px", borderBottom: i < shown.nights.length - 1 ? `1px solid ${color.line}` : "none", background: isNext ? color.cream2 : "transparent", boxShadow: isNext ? shadow.mineBar : "none"}}
               >
                 <Box component="span" sx={{width: 26, flex: "none", fontSize: 14, fontWeight: 700, color: color.muted, ...tabular}}>
                   {i + 1}
@@ -199,7 +199,7 @@ function Schedule({shown, today, desktop}: {shown: Shown; today: string; desktop
                       px: "10px",
                       borderRadius: "9px",
                       background: isNext ? color.navy : last ? color.cream : "transparent",
-                      color: isNext ? "#FFFFFF" : past ? (status === "played" ? color.muted : color.faint) : color.navy,
+                      color: isNext ? color.white : past ? color.muted : color.navy,
                       fontSize: 12.5,
                       fontWeight: 700,
                       whiteSpace: "nowrap",

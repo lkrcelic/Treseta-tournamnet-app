@@ -29,7 +29,7 @@ export default function SignUp() {
         <Box sx={{width: 520, display: "flex", flexDirection: "column", gap: "16px"}}>
           <ScreenTitle eyebrow="Novi igrač" title="Registracija" size={44} sx={{px: 0}} />
           {done || <SignUpForm onSuccess={() => setCreated(true)} twoColumn />}
-          <TextButton onClick={() => router.push("/login", "back")} sx={{alignSelf: "center", fontWeight: 500, color: color.inkSoft}}>
+          <TextButton onClick={() => router.push("/login", "back")} sx={{alignSelf: "center", fontWeight: 500, color: color.ink2}}>
             Već imaš profil?{" "}
             <Box component="span" sx={{fontWeight: 700, color: color.navy}}>
               Prijavi se

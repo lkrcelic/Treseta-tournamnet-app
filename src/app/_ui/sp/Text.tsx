@@ -58,5 +58,5 @@ export function ScreenTitle({
 }
 
 export function Muted({children, sx}: TextProps) {
-  return <Box sx={mergeSx({fontSize: 15, color: color.inkSoft, lineHeight: 1.45}, sx)}>{children}</Box>;
+  return <Box sx={mergeSx({fontSize: 15, color: color.ink2, lineHeight: 1.45}, sx)}>{children}</Box>;
 }

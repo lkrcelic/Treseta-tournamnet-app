@@ -1,4 +1,4 @@
-import {color, font, shadow} from "@/app/_styles/tokens";
+import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {statsLine, StandingsRow} from "@/app/_lib/ui/standings";
 import {Box, SxProps, Theme} from "@mui/material";
 import React from "react";
@@ -56,7 +56,7 @@ export function Podium({
                   <Box sx={{display: "flex", alignItems: "baseline", gap: "8px"}}>
                     <Box
                       component="span"
-                      sx={{fontFamily: font.display, fontSize: 30, fontWeight: 800, lineHeight: 1, color: live ? color.live : undefined, ...tabular}}
+                      sx={{fontFamily: font.display, fontSize: 30, fontWeight: 800, lineHeight: 1, color: live ? color.red : undefined, ...tabular}}
                     >
                       {r.points}
                       <VisuallyHidden> bodova</VisuallyHidden>
@@ -80,7 +80,7 @@ export function Podium({
                   </Box>
                   <Box
                     component="span"
-                    sx={{fontFamily: font.display, fontSize: 56, fontWeight: 800, lineHeight: 0.85, color: live ? color.live : undefined, ...tabular}}
+                    sx={{fontFamily: font.display, fontSize: 56, fontWeight: 800, lineHeight: 0.85, color: live ? color.red : undefined, ...tabular}}
                   >
                     {r.points}
                     <VisuallyHidden> bodova</VisuallyHidden>
@@ -105,9 +105,9 @@ function Medal({rank, index, size, live = false}: {rank: number; index: number; 
         width: size,
         height: size,
         borderRadius: "50%",
-        background: live ? color.live : color.medal[index],
+        background: live ? color.red : color.medal[index],
         animation: live ? "spLive 1.5s infinite" : "none",
-        color: "#FFFFFF",
+        color: color.white,
         fontSize: size >= 34 ? 16 : 14,
         fontWeight: 700,
         display: "flex",
@@ -140,7 +140,7 @@ export function StandingsRows({rows, podium, withPlayed = false}: {rows: Standin
   return (
     <>
       {top && (
-        <Box sx={{position: "sticky", top: 0, zIndex: 2, background: color.card, boxShadow: "0 6px 12px -8px rgba(31,36,51,.25)"}}>
+        <Box sx={{position: "sticky", top: 0, zIndex: 2, background: color.white, boxShadow: shadow.sticky}}>
           <Box component="ol" aria-label="Prva tri mjesta" sx={{listStyle: "none", m: 0, p: 0}}>
             {top.map((r, i) => (
               <StandingsLine key={r.key} r={r} withPlayed={withPlayed} medal={i} />
@@ -172,14 +172,14 @@ function StandingsLine({r, withPlayed, medal}: {r: StandingsRow; withPlayed: boo
         pl: "12px",
         pr: "16px",
         borderBottom: `1px solid ${color.line}`,
-        background: onPodium ? color.medalRow[medal] : r.mine ? color.mine : "transparent",
+        background: r.mine ? color.cream2 : onPodium ? color.medalBg[medal] : "transparent",
         boxShadow: r.mine ? shadow.mineBar : "none",
       }}
     >
       {onPodium ? <Medal rank={r.rank} index={medal} size={28} /> : <RankBadge rank={r.rank} live={r.live} />}
       <Box sx={{display: "flex", flexDirection: "column", gap: "2px", minWidth: 0}}>
         <TeamLabel name={r.name} conference={r.conference} sx={{fontSize: 16, fontWeight: onPodium || r.mine ? 700 : 600}} />
-        <Box sx={{fontSize: 12.5, color: onPodium ? color.inkSoft : color.muted, whiteSpace: "nowrap", ...tabular}}>{statsLine(r, withPlayed)}</Box>
+        <Box sx={{fontSize: 12.5, color: onPodium ? color.ink2 : color.muted, whiteSpace: "nowrap", ...tabular}}>{statsLine(r, withPlayed)}</Box>
       </Box>
       <Box sx={{display: "flex", alignItems: "baseline", gap: "12px"}}>
         <Box aria-label={`razlika ${r.diff}`} sx={{minWidth: 48, textAlign: "right", fontSize: 17, fontWeight: 700, color: color.navy, ...tabular}}>
@@ -193,7 +193,7 @@ function StandingsLine({r, withPlayed, medal}: {r: StandingsRow; withPlayed: boo
             fontFamily: font.display,
             fontSize: 26,
             fontWeight: 800,
-            color: !onPodium && r.live ? color.live : color.ink,
+            color: !onPodium && r.live ? color.red : color.ink,
             ...tabular,
           }}
         >
@@ -240,8 +240,8 @@ export function StandingsGrid({
           sx={{
             ...cell,
             height: dense ? 34 : 44,
-            background: color.tableHead,
-            borderBottom: `1px solid rgba(60,74,103,.1)`,
+            background: color.paper2,
+            borderBottom: `1px solid ${tint.navy[10]}`,
             fontSize: dense ? 11 : 12,
             fontWeight: 600,
             letterSpacing: ".08em",
@@ -283,8 +283,8 @@ export function StandingsGrid({
               sx={{
                 ...cell,
                 height: dense ? 46 : 56,
-                borderBottom: `1px solid rgba(60,74,103,.07)`,
-                background: r.mine ? color.mine : "transparent",
+                borderBottom: `1px solid ${color.divider}`,
+                background: r.mine ? color.cream2 : "transparent",
                 boxShadow: r.mine ? shadow.mineBar : "none",
                 ...tabular,
                 "& td": {p: 0},
@@ -297,7 +297,7 @@ export function StandingsGrid({
                 <TeamLabel name={r.name} conference={r.conference} />
               </Box>
               {columns.map((c) => (
-                <Box component="td" role="cell" key={c} sx={{textAlign: "center", fontSize: dense ? 14 : 15, color: color.inkSoft}}>
+                <Box component="td" role="cell" key={c} sx={{textAlign: "center", fontSize: dense ? 14 : 15, color: color.ink2}}>
                   {r[c]}
                 </Box>
               ))}
@@ -307,7 +307,7 @@ export function StandingsGrid({
               <Box
                 component="td"
                 role="cell"
-                sx={{textAlign: "right", fontFamily: font.display, fontSize: dense ? 22 : 26, fontWeight: 800, color: live ? color.live : color.ink}}
+                sx={{textAlign: "right", fontFamily: font.display, fontSize: dense ? 22 : 26, fontWeight: 800, color: live ? color.red : color.ink}}
               >
                 {r.points}
               </Box>

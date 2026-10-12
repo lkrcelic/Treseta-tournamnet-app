@@ -12,7 +12,7 @@ import useConferences, {setCachedConferences, setCachedTeamConference} from "@/a
 import {LeagueConferences} from "@/app/_interfaces/league";
 import ConferencesCard from "./ConferencesCard";
 import {ConferencePicker, DistributeCard} from "./ConferenceParts";
-import {color, font} from "@/app/_styles/tokens";
+import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {
   buttonBase,
   Card,
@@ -273,7 +273,7 @@ export default function ManageLeague() {
   ) : null;
 
   const toolbar = (
-    <Box sx={{flex: "none", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "12px", p: "14px", borderBottom: `1px solid rgba(60,74,103,.1)`}}>
+    <Box sx={{flex: "none", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "12px", p: "14px", borderBottom: `1px solid ${tint.navy[10]}`}}>
       <Segmented<Filter> items={filters} value={filter} onChange={setFilter} label="Status ekipa" variant="soft" asTabs={false} />
       {hasConferences && (
         <Segmented<number>
@@ -318,7 +318,7 @@ export default function ManageLeague() {
         borderRadius: "12px",
         fontSize: 14,
         fontWeight: 600,
-        color: r.active ? color.green : color.faint,
+        color: r.active ? color.green : color.muted,
         "&:hover": {background: color.paper},
       }}
     >
@@ -371,7 +371,7 @@ export default function ManageLeague() {
               {actionError && <ErrorNote sx={{m: "12px 14px 0"}}>{actionError}</ErrorNote>}
               <Box
                 aria-hidden
-                sx={{flex: "none", height: 40, display: "grid", gridTemplateColumns: TEAM_GRID, gap: "12px", alignItems: "center", px: "20px", background: color.tableHead, borderBottom: `1px solid rgba(60,74,103,.1)`, fontSize: 12, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: color.muted}}
+                sx={{flex: "none", height: 40, display: "grid", gridTemplateColumns: TEAM_GRID, gap: "12px", alignItems: "center", px: "20px", background: color.paper2, borderBottom: `1px solid ${tint.navy[10]}`, fontSize: 12, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: color.muted}}
               >
                 <span>Team</span>
                 <span>Players</span>
@@ -397,13 +397,13 @@ export default function ManageLeague() {
                         gap: "0 12px",
                         alignItems: "center",
                         px: "20px",
-                        borderBottom: `1px solid rgba(60,74,103,.07)`,
-                        background: confirmDelete === r.id ? "rgba(188,71,73,.04)" : r.id === justAdded ? color.creamSoft : "transparent",
+                        borderBottom: `1px solid ${color.divider}`,
+                        background: confirmDelete === r.id ? tint.red[6] : r.id === justAdded ? color.cream2 : "transparent",
                         animation: r.id === justAdded ? "spRowIn 420ms cubic-bezier(.2,.8,.2,1) both" : "none",
                       }}
                     >
                       <Box sx={{display: "flex", flexDirection: "column", gap: "4px", minWidth: 0, py: hasConferences ? "8px" : 0}}>
-                        <Box component="span" sx={{fontSize: 16, fontWeight: 600, color: r.active ? color.ink : color.faint, ...ellipsis}}>
+                        <Box component="span" sx={{fontSize: 16, fontWeight: 600, color: r.active ? color.ink : color.muted, ...ellipsis}}>
                           {r.name}
                         </Box>
                         {hasConferences && <ConferencePicker teamName={r.name} value={r.conferenceId} conferences={confList} onPick={(id) => setConference(r, id)} />}
@@ -413,7 +413,7 @@ export default function ManageLeague() {
                           <PlayerChip key={p} name={p} size="sm" />
                         ))}
                       </Box>
-                      <Box component="span" sx={{textAlign: "center", fontSize: 15, color: color.inkSoft, fontVariantNumeric: "tabular-nums"}}>
+                      <Box component="span" sx={{textAlign: "center", fontSize: 15, color: color.ink2, fontVariantNumeric: "tabular-nums"}}>
                         {r.played ?? "—"}
                       </Box>
                       {statusToggle(r)}
@@ -429,12 +429,12 @@ export default function ManageLeague() {
                           width: 44,
                           height: 44,
                           borderRadius: "12px",
-                          color: confirmDelete === r.id ? color.red : color.placeholder,
+                          color: confirmDelete === r.id ? color.red : color.faint,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           "& svg": {fontSize: 22},
-                          "&:hover": {background: "rgba(188,71,73,.1)", color: color.red},
+                          "&:hover": {background: tint.red[10], color: color.red},
                         }}
                       >
                         <DeleteRoundedIcon />
@@ -446,8 +446,8 @@ export default function ManageLeague() {
                             gridColumn: "1 / -1",
                             mx: "-20px",
                             p: "14px 20px",
-                            background: "rgba(188,71,73,.07)",
-                            borderTop: "1px solid rgba(188,71,73,.2)",
+                            background: tint.red[8],
+                            borderTop: `1px solid ${tint.red[20]}`,
                             display: "flex",
                             alignItems: "center",
                             gap: "14px",
@@ -459,7 +459,7 @@ export default function ManageLeague() {
                             <Box component="span" sx={{fontSize: 15, fontWeight: 700, color: color.ink}}>
                               Delete {r.name} from this league?
                             </Box>
-                            <Box component="span" sx={{fontSize: 13, color: color.inkSoft}}>
+                            <Box component="span" sx={{fontSize: 13, color: color.ink2}}>
                               {removalNote(r.played)}
                             </Box>
                           </Box>
@@ -467,7 +467,7 @@ export default function ManageLeague() {
                             component="button"
                             type="button"
                             onClick={() => setConfirmDelete(null)}
-                            sx={{...buttonBase, flex: "none", height: 42, px: "16px", border: "1.5px solid rgba(60,74,103,.2)", borderRadius: "12px", background: color.card, color: color.navy, fontSize: 14, fontWeight: 600}}
+                            sx={{...buttonBase, flex: "none", height: 42, px: "16px", border: `1.5px solid ${color.borderControl}`, borderRadius: "12px", background: color.white, color: color.navy, fontSize: 14, fontWeight: 600}}
                           >
                             Cancel
                           </Box>
@@ -475,7 +475,7 @@ export default function ManageLeague() {
                             component="button"
                             type="button"
                             onClick={() => removeTeam(r)}
-                            sx={{...buttonBase, flex: "none", height: 42, px: "16px", borderRadius: "12px", background: color.red, color: "#FFFFFF", display: "flex", alignItems: "center", gap: "6px", fontSize: 14, fontWeight: 600, "& svg": {fontSize: 18}}}
+                            sx={{...buttonBase, flex: "none", height: 42, px: "16px", borderRadius: "12px", background: color.red, color: color.white, display: "flex", alignItems: "center", gap: "6px", fontSize: 14, fontWeight: 600, "& svg": {fontSize: 18}}}
                           >
                             <DeleteRoundedIcon />
                             Delete team
@@ -500,9 +500,9 @@ export default function ManageLeague() {
                         p: "8px 8px 8px 16px",
                         borderRadius: "14px",
                         background: color.ink,
-                        color: "#FFFFFF",
+                        color: color.white,
                         fontSize: 14,
-                        boxShadow: "0 10px 30px rgba(21,24,31,.25)",
+                        boxShadow: shadow.tooltip,
                       }}
                     >
                       <span>{pending.team.name} deleted from the league</span>
@@ -510,7 +510,7 @@ export default function ManageLeague() {
                         component="button"
                         type="button"
                         onClick={undoRemoval}
-                        sx={{...buttonBase, height: 36, px: "12px", borderRadius: "10px", background: "rgba(255,255,255,.14)", color: "#FFFFFF", fontSize: 14, fontWeight: 600}}
+                        sx={{...buttonBase, height: 36, px: "12px", borderRadius: "10px", background: tint.white[14], color: color.white, fontSize: 14, fontWeight: 600}}
                       >
                         Undo
                       </Box>
@@ -547,10 +547,10 @@ export default function ManageLeague() {
               <Box
                 component="li"
                 key={r.id}
-                sx={{display: "flex", alignItems: "center", gap: "10px", p: "12px 10px 12px 16px", borderBottom: `1px solid ${color.line}`, background: r.id === justAdded ? color.creamSoft : "transparent"}}
+                sx={{display: "flex", alignItems: "center", gap: "10px", p: "12px 10px 12px 16px", borderBottom: `1px solid ${color.line}`, background: r.id === justAdded ? color.cream2 : "transparent"}}
               >
                 <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "6px"}}>
-                  <Box component="span" sx={{fontSize: 16, fontWeight: 600, color: r.active ? color.ink : color.faint, ...ellipsis}}>
+                  <Box component="span" sx={{fontSize: 16, fontWeight: 600, color: r.active ? color.ink : color.muted, ...ellipsis}}>
                     {r.name}
                   </Box>
                   <Box component="span" sx={{fontSize: 13, color: color.muted, ...ellipsis}}>
@@ -621,7 +621,7 @@ function AddTeamCard({exclude, onAdd, onCreate}: {exclude: number[]; onAdd: (t: 
         onChange={(e) => setQuery(e.target.value)}
       />
       {hits != null && (
-        <Box aria-live="polite" sx={{display: "flex", flexDirection: "column", border: `1px solid rgba(60,74,103,.1)`, borderRadius: "16px", overflow: "hidden"}}>
+        <Box aria-live="polite" sx={{display: "flex", flexDirection: "column", border: `1px solid ${tint.navy[10]}`, borderRadius: "16px", overflow: "hidden"}}>
           {loading ? (
             <Box sx={{p: "16px 14px", display: "flex", gap: "10px", alignItems: "center", fontSize: 14, color: color.muted}}>
               <Spinner size={18} /> Tražim…
@@ -630,7 +630,7 @@ function AddTeamCard({exclude, onAdd, onCreate}: {exclude: number[]; onAdd: (t: 
             <Box sx={{p: "18px 14px", fontSize: 14, color: color.muted}}>No teams found outside this league.</Box>
           ) : (
             shown.map((h) => (
-              <Box key={h.id} sx={{minHeight: 58, display: "flex", alignItems: "center", gap: "10px", pl: "14px", pr: "8px", borderBottom: `1px solid rgba(60,74,103,.07)`}}>
+              <Box key={h.id} sx={{minHeight: 58, display: "flex", alignItems: "center", gap: "10px", pl: "14px", pr: "8px", borderBottom: `1px solid ${color.divider}`}}>
                 <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column"}}>
                   <Box component="span" sx={{fontSize: 15, fontWeight: 600, ...ellipsis}}>
                     {h.title}
@@ -648,9 +648,9 @@ function AddTeamCard({exclude, onAdd, onCreate}: {exclude: number[]; onAdd: (t: 
                     await onAdd(h).catch(() => undefined);
                     setAdding(null);
                   }}
-                  sx={{borderRadius: "12px", background: color.navy, color: "#FFFFFF", boxShadow: "none", "& svg": {fontSize: 24}}}
+                  sx={{borderRadius: "12px", background: color.navy, color: color.white, boxShadow: "none", "& svg": {fontSize: 24}}}
                 >
-                  {adding === h.id ? <Spinner size={20} color="#FFFFFF" /> : <AddRoundedIcon />}
+                  {adding === h.id ? <Spinner size={20} tone="white" /> : <AddRoundedIcon />}
                 </IconCircleButton>
               </Box>
             ))
@@ -658,7 +658,7 @@ function AddTeamCard({exclude, onAdd, onCreate}: {exclude: number[]; onAdd: (t: 
           {!loading && left > 0 && <LoadMoreButton left={left} noun={["team", "teams"]} onClick={() => setPages((n) => n + 1)} />}
         </Box>
       )}
-      <OutlineButton onClick={onCreate} height={50} tone={color.navy} sx={{borderWidth: "1.5px", borderColor: "rgba(60,74,103,.25)", fontSize: 15}}>
+      <OutlineButton onClick={onCreate} height={50} tone={color.navy} sx={{borderWidth: "1.5px", borderColor: tint.navy[25], fontSize: 15}}>
         <GroupAddRoundedIcon sx={{fontSize: 22}} />
         Create new team
       </OutlineButton>
@@ -687,7 +687,7 @@ function ViewSwitch({
     {key: "details", label: "Details", icon: <TuneRoundedIcon />, count: null},
   ];
   return (
-    <Box role="tablist" aria-label="Prikaz" sx={{flex: "none", alignSelf: "flex-start", display: "flex", gap: "4px", p: "4px", borderRadius: "16px", background: color.card, boxShadow: "0 1px 3px rgba(31,36,51,.06)"}}>
+    <Box role="tablist" aria-label="Prikaz" sx={{flex: "none", alignSelf: "flex-start", display: "flex", gap: "4px", p: "4px", borderRadius: "16px", background: color.white, boxShadow: shadow.card}}>
       {items.map((it) => {
         const on = it.key === view;
         return (
@@ -704,7 +704,7 @@ function ViewSwitch({
               px: "18px",
               borderRadius: "12px",
               background: on ? color.navy : "transparent",
-              color: on ? "#FFFFFF" : color.ink,
+              color: on ? color.white : color.ink,
               display: "flex",
               alignItems: "center",
               gap: "8px",
@@ -717,7 +717,7 @@ function ViewSwitch({
             {it.icon}
             {it.label}
             {it.count != null && (
-              <Box component="span" sx={{fontSize: 12, fontWeight: 700, color: on ? color.cream : color.placeholder}}>
+              <Box component="span" sx={{fontSize: 12, fontWeight: 700, color: on ? color.cream : color.faint}}>
                 {it.count}
               </Box>
             )}

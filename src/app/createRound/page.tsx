@@ -2,7 +2,7 @@
 
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useLeagues, {useSelectedLeagueId} from "@/app/_hooks/useLeagues";
-import {color, shadow} from "@/app/_styles/tokens";
+import {color, shadow, tint} from "@/app/_styles/tokens";
 import {InactiveBadge, useCreateRound} from "@/app/_ui/round/CreateRound";
 import {SmokingPlanSheet} from "@/app/_ui/round/SmokingTables";
 import {buttonBase, ErrorNote, IconCircleButton, IconTile, Screen, ScreenTitle, ScrollCard, SearchInput, SwitchRow, TeamLabel} from "@/app/_ui/sp";
@@ -53,7 +53,7 @@ export default function CreateRound() {
                 ...buttonBase,
                 minHeight: 76,
                 borderRadius: "22px",
-                background: color.card,
+                background: color.white,
                 display: "flex",
                 alignItems: "center",
                 gap: "14px",
@@ -104,7 +104,7 @@ export default function CreateRound() {
               checked={allOn}
               onChange={toggleAll}
               disabled={visible.length === 0}
-              sx={{background: color.paperSoft, fontWeight: 700, color: color.ink, borderBottom: `1px solid rgba(60,74,103,.12)`}}
+              sx={{background: color.paper2, fontWeight: 700, color: color.ink, borderBottom: `1px solid ${tint.navy[12]}`}}
             >
               {query ? "Select all filtered" : "Select all"}
             </SwitchRow>

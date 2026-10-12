@@ -91,7 +91,7 @@ export default function LeagueNameCard({leagueId, leagues}: {leagueId: number; l
           {serverError && <ErrorNote>{serverError}</ErrorNote>}
           <Box sx={{fontSize: 13, color: color.muted}}>Shown on standings, pairings and the league selector.</Box>
           <Box sx={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px"}}>
-            <Box component="button" type="button" onClick={cancel} sx={{...small, border: "1.5px solid rgba(60,74,103,.2)", background: color.card, color: color.navy}}>
+            <Box component="button" type="button" onClick={cancel} sx={{...small, border: `1.5px solid ${color.borderControl}`, background: color.white, color: color.navy}}>
               Cancel
             </Box>
             <Box
@@ -99,7 +99,7 @@ export default function LeagueNameCard({leagueId, leagues}: {leagueId: number; l
               type="submit"
               disabled={!canSave}
               aria-busy={saving || undefined}
-              sx={{...small, background: color.navy, color: "#FFFFFF", opacity: canSave || saving ? 1 : 0.4}}
+              sx={{...small, background: color.navy, color: color.white, opacity: canSave || saving ? 1 : 0.4}}
             >
               {saving ? "Saving…" : "Save name"}
             </Box>
@@ -116,7 +116,7 @@ export default function LeagueNameCard({leagueId, leagues}: {leagueId: number; l
               type="button"
               onClick={start}
               disabled={!name}
-              sx={{...buttonBase, height: 44, flex: "none", display: "flex", alignItems: "center", gap: "6px", px: "14px", border: "1.5px solid rgba(60,74,103,.2)", borderRadius: "12px", background: color.card, color: color.navy, fontSize: 14, fontWeight: 600, "& svg": {fontSize: 20}}}
+              sx={{...buttonBase, height: 44, flex: "none", display: "flex", alignItems: "center", gap: "6px", px: "14px", border: `1.5px solid ${color.borderControl}`, borderRadius: "12px", background: color.white, color: color.navy, fontSize: 14, fontWeight: 600, "& svg": {fontSize: 20}}}
             >
               <EditRoundedIcon />
               Rename

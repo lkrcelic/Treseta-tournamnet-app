@@ -3,7 +3,7 @@
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import {Conference, distributeEvenly} from "@/app/_lib/conferences";
 import {plural} from "@/app/_lib/ui/text";
-import {color, font, shadow} from "@/app/_styles/tokens";
+import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {BottomSheet, buttonBase, Card, ellipsis, ErrorNote, OutlineButton, SolidButton, TeamDot} from "@/app/_ui/sp";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
@@ -94,8 +94,8 @@ export function ConferencePicker({
           pl: "10px",
           pr: "4px",
           borderRadius: "15px",
-          border: `1px solid ${current ? color.lineStrong : "rgba(188,71,73,.35)"}`,
-          background: color.card,
+          border: `1px solid ${current ? tint.navy[12] : tint.red[35]}`,
+          background: color.white,
           fontSize: 13,
           fontWeight: 600,
           color: current ? color.ink : color.red,
@@ -173,7 +173,7 @@ export function DistributeCard({
             <Box component="span" sx={{flex: 1, fontSize: 15, fontWeight: 600, ...ellipsis}}>
               {c.name}
             </Box>
-            <Box component="span" sx={{fontSize: 15, color: color.inkSoft, fontVariantNumeric: "tabular-nums"}}>
+            <Box component="span" sx={{fontSize: 15, color: color.ink2, fontVariantNumeric: "tabular-nums"}}>
               {c.n}
             </Box>
           </Box>
@@ -191,7 +191,7 @@ export function DistributeCard({
         )}
       </Box>
       {confirming ? (
-        <Box role="alert" sx={{display: "flex", flexDirection: "column", gap: "10px", p: "12px 14px", borderRadius: "14px", background: color.tableHead}}>
+        <Box role="alert" sx={{display: "flex", flexDirection: "column", gap: "10px", p: "12px 14px", borderRadius: "14px", background: color.paper2}}>
           <Box sx={{fontSize: 14, lineHeight: 1.4, color: color.ink}}>
             {plural(teams.length, "Raspoređuje se", "Raspoređuju se", "Raspoređuje se")} {teams.length} {plural(teams.length, "ekipa", "ekipe", "ekipa")} po
             poretku lige:{" "}
@@ -200,7 +200,7 @@ export function DistributeCard({
           </Box>
           {error && <ErrorNote>{error}</ErrorNote>}
           <Box sx={{display: "flex", gap: "8px"}}>
-            <OutlineButton height={44} onClick={() => setConfirming(false)} disabled={busy} sx={{flex: 1, fontSize: 15, border: "1.5px solid rgba(60,74,103,.25)"}}>
+            <OutlineButton height={44} onClick={() => setConfirming(false)} disabled={busy} sx={{flex: 1, fontSize: 15, border: `1.5px solid ${tint.navy[25]}`}}>
               Odustani
             </OutlineButton>
             <SolidButton height={44} onClick={go} loading={busy} sx={{flex: 1, fontSize: 15}}>
@@ -209,7 +209,7 @@ export function DistributeCard({
           </Box>
         </Box>
       ) : (
-        <OutlineButton height={48} onClick={() => setConfirming(true)} disabled={teams.length === 0} sx={{borderWidth: "1.5px", borderColor: "rgba(60,74,103,.25)", fontSize: 15}}>
+        <OutlineButton height={48} onClick={() => setConfirming(true)} disabled={teams.length === 0} sx={{borderWidth: "1.5px", borderColor: tint.navy[25], fontSize: 15}}>
           <ShuffleRoundedIcon sx={{fontSize: 20}} />
           Rasporedi ravnomjerno
         </OutlineButton>

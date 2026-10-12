@@ -6,7 +6,7 @@ import useIsAdmin from "@/app/_hooks/useIsAdmin";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import {blankEntry, EntryState, fromPadHand, toAdminHand} from "@/app/_lib/ui/adminEntry";
 import {dostaCallers, MATCH_THRESHOLD, PlayedHand, Side} from "@/app/_lib/game/scoring";
-import {color, teamColor} from "@/app/_styles/tokens";
+import {color, shadow, teamColor, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, CenteredSpinner, DesktopShell, EmptyState, ErrorNote, Screen} from "@/app/_ui/sp";
 import {HandList, ScorePanel} from "@/app/ongoing-match/ui/BoardParts";
 import AdminEntryPanel from "@/app/league/[leagueId]/daily-standings/table/AdminEntryPanel";
@@ -169,7 +169,7 @@ export default function TableScorepad() {
       right={
         <Box sx={{display: "flex", alignItems: "center", gap: "10px"}}>
           {match && dostaTeams.length === 0 && <TargetFlag target={match.threshold} />}
-          <Box sx={{height: 36, display: "flex", alignItems: "center", gap: "6px", pl: "10px", pr: "14px", borderRadius: "18px", background: color.navy, color: "#FFFFFF", fontSize: 13, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", whiteSpace: "nowrap", "& svg": {fontSize: 18}}}>
+          <Box sx={{height: 36, display: "flex", alignItems: "center", gap: "6px", pl: "10px", pr: "14px", borderRadius: "18px", background: color.navy, color: color.white, fontSize: 13, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", whiteSpace: "nowrap", "& svg": {fontSize: 18}}}>
             <AdminPanelSettingsRoundedIcon />
             Admin · uređivanje
           </Box>
@@ -208,14 +208,14 @@ export default function TableScorepad() {
                         ...buttonBase,
                         height: 56,
                         borderRadius: "16px",
-                        background: on ? color.navy : color.card,
-                        color: on ? "#FFFFFF" : color.ink,
+                        background: on ? color.navy : color.white,
+                        color: on ? color.white : color.ink,
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "center",
                         justifyContent: "center",
                         gap: "1px",
-                        boxShadow: "0 1px 3px rgba(31,36,51,.06)",
+                        boxShadow: shadow.card,
                         transition: "background 160ms ease",
                         fontVariantNumeric: "tabular-nums",
                       }}
@@ -230,7 +230,7 @@ export default function TableScorepad() {
                   );
                 })}
                 {pad.done && (
-                  <Box sx={{display: "flex", alignItems: "center", gap: "10px", px: "14px", borderRadius: "16px", background: "rgba(212,168,44,.16)", fontSize: 13, lineHeight: 1.35, "& svg": {fontSize: 20, color: color.medal[0], flex: "none"}}}>
+                  <Box sx={{display: "flex", alignItems: "center", gap: "10px", px: "14px", borderRadius: "16px", background: tint.gold[16], fontSize: 13, lineHeight: 1.35, "& svg": {fontSize: 20, color: color.medal[0], flex: "none"}}}>
                     <HistoryEduRoundedIcon />
                     Runda je završena. Izmjene mijenjaju rezultat i poredak.
                   </Box>

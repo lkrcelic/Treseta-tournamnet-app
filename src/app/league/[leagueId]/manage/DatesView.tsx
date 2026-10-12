@@ -4,7 +4,7 @@ import {addLeagueNightAPI, removeLeagueNightAPI} from "@/app/_fetchers/league/ni
 import useLeagueNights from "@/app/_hooks/useLeagueNights";
 import {leagueDateString} from "@/app/_lib/dates";
 import {isIsoDate, nextNightIndex, nightLabelLong, nightStatus, NightStatus} from "@/app/_lib/nights";
-import {color, font, shadow} from "@/app/_styles/tokens";
+import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, cardSx, dateInputFix, EmptyState, ErrorNote, LoadingRows, tabular} from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
@@ -20,10 +20,10 @@ import React, {useState} from "react";
 
 const GRID = "56px minmax(0,1fr) 140px 52px";
 const STATUS: Record<NightStatus, {label: string; bg: string; ink: string}> = {
-  played: {label: "Played", bg: "rgba(56,102,65,.12)", ink: color.green},
-  notPlayed: {label: "Not played", bg: "transparent", ink: color.faint},
-  next: {label: "Next", bg: color.navy, ink: "#FFFFFF"},
-  upcoming: {label: "Upcoming", bg: color.paper, ink: color.inkSoft},
+  played: {label: "Played", bg: tint.green[12], ink: color.green},
+  notPlayed: {label: "Not played", bg: "transparent", ink: color.muted},
+  next: {label: "Next", bg: color.navy, ink: color.white},
+  upcoming: {label: "Upcoming", bg: color.paper, ink: color.ink2},
 };
 
 export default function DatesView({leagueId, data}: {leagueId: number; data: ReturnType<typeof useLeagueNights>}) {
@@ -86,7 +86,7 @@ export default function DatesView({leagueId, data}: {leagueId: number; data: Ret
         </Box>
         <Box
           aria-hidden
-          sx={{flex: "none", display: "grid", gridTemplateColumns: GRID, gap: "12px", alignItems: "center", height: 36, px: "20px", borderTop: `1px solid ${color.line}`, borderBottom: "1px solid rgba(60,74,103,.12)", fontSize: 12, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: color.muted}}
+          sx={{flex: "none", display: "grid", gridTemplateColumns: GRID, gap: "12px", alignItems: "center", height: 36, px: "20px", borderTop: `1px solid ${color.line}`, borderBottom: `1px solid ${tint.navy[12]}`, fontSize: 12, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: color.muted}}
         >
           <span>#</span>
           <span>Date</span>
@@ -111,7 +111,7 @@ export default function DatesView({leagueId, data}: {leagueId: number; data: Ret
                   component="li"
                   key={n.date}
                   aria-current={isNext ? "date" : undefined}
-                  sx={{height: 56, display: "grid", gridTemplateColumns: GRID, gap: "12px", alignItems: "center", px: "20px", borderBottom: "1px solid rgba(60,74,103,.07)", background: isNext ? color.mine : "transparent", boxShadow: isNext ? shadow.mineBar : "none"}}
+                  sx={{height: 56, display: "grid", gridTemplateColumns: GRID, gap: "12px", alignItems: "center", px: "20px", borderBottom: `1px solid ${color.divider}`, background: isNext ? color.cream2 : "transparent", boxShadow: isNext ? shadow.mineBar : "none"}}
                 >
                   <Box component="span" sx={{fontSize: 15, fontWeight: 700, color: color.muted, ...tabular}}>
                     {i + 1}
@@ -132,7 +132,7 @@ export default function DatesView({leagueId, data}: {leagueId: number; data: Ret
                       disabled={removing != null}
                       aria-label={`Remove the night ${nightLabelLong(n.date)}`}
                       title="Remove night"
-                      sx={{...buttonBase, width: 44, height: 44, borderRadius: "12px", color: color.placeholder, display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 22}, "&:hover": {background: "rgba(188,71,73,.1)", color: color.red}}}
+                      sx={{...buttonBase, width: 44, height: 44, borderRadius: "12px", color: color.faint, display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 22}, "&:hover": {background: tint.red[10], color: color.red}}}
                     >
                       <DeleteRoundedIcon />
                     </Box>
@@ -155,7 +155,7 @@ export default function DatesView({leagueId, data}: {leagueId: number; data: Ret
             value={draft}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDraft(e.target.value)}
             aria-invalid={duplicate || undefined}
-            sx={{...dateInputFix, width: "100%", height: 52, boxSizing: "border-box", borderRadius: "14px", border: `1.5px solid ${duplicate ? color.red : "rgba(60,74,103,.18)"}`, background: color.tableHead, px: "14px", font: "inherit", fontSize: 16, color: color.ink, outline: "none", "&:focus": {borderColor: color.navy, background: color.card}}}
+            sx={{...dateInputFix, width: "100%", height: 52, boxSizing: "border-box", borderRadius: "14px", border: `1.5px solid ${duplicate ? color.red : color.border}`, background: color.paper2, px: "14px", font: "inherit", fontSize: 16, color: color.ink, outline: "none", "&:focus": {borderColor: color.navy, background: color.white}}}
           />
           {duplicate && (
             <Box role="alert" sx={{fontSize: 13, fontWeight: 600, color: color.red}}>
@@ -168,7 +168,7 @@ export default function DatesView({leagueId, data}: {leagueId: number; data: Ret
             type="submit"
             disabled={!canAdd}
             aria-busy={adding || undefined}
-            sx={{...buttonBase, height: 52, borderRadius: "14px", background: color.navy, color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontSize: 16, fontWeight: 600, "&:disabled": {opacity: 0.4}, "& svg": {fontSize: 22}}}
+            sx={{...buttonBase, height: 52, borderRadius: "14px", background: color.navy, color: color.white, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontSize: 16, fontWeight: 600, "&:disabled": {opacity: 0.4}, "& svg": {fontSize: 22}}}
           >
             <AddRoundedIcon />
             Add night
@@ -191,7 +191,7 @@ export default function DatesView({leagueId, data}: {leagueId: number; data: Ret
 
 function UsedLine({icon, children}: {icon: React.ReactNode; children: React.ReactNode}) {
   return (
-    <Box sx={{display: "flex", gap: "10px", alignItems: "flex-start", fontSize: 14, lineHeight: 1.5, color: color.ink2, "& > svg": {fontSize: 22, flex: "none", color: color.ink}}}>
+    <Box sx={{display: "flex", gap: "10px", alignItems: "flex-start", fontSize: 14, lineHeight: 1.5, color: color.ink, "& > svg": {fontSize: 22, flex: "none", color: color.ink}}}>
       {icon}
       <span>{children}</span>
     </Box>

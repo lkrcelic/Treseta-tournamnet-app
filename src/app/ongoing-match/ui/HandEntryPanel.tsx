@@ -3,7 +3,7 @@
 import {TeamSide} from "@/app/_interfaces/side";
 import {handError} from "@/app/_lib/game/scoring";
 import useResultStore from "@/app/_store/game/resultStore";
-import {color, font, teamColor} from "@/app/_styles/tokens";
+import {color, font, teamColor, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, ErrorNote, PrimaryButton, tabular} from "@/app/_ui/sp";
 import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
 import {Box} from "@mui/material";
@@ -97,7 +97,7 @@ export default function HandEntryPanel({
     fontSize: 26,
     fontWeight: 700,
     minHeight: 44,
-    "&:active:not(:disabled)": {transform: "scale(.96)", background: "#EAE4D6"},
+    "&:active:not(:disabled)": {transform: "scale(.96)", background: color.lineFill},
     "&:disabled": {opacity: 0.35},
   } as const;
 
@@ -139,8 +139,8 @@ export default function HandEntryPanel({
                 minWidth: 0,
                 borderRadius: "16px",
                 border: `2px solid ${teamColor[i]}`,
-                background: on ? teamColor[i] : color.card,
-                color: on ? "#FFFFFF" : teamColor[i],
+                background: on ? teamColor[i] : color.white,
+                color: on ? color.white : teamColor[i],
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "flex-start",
@@ -181,7 +181,7 @@ export default function HandEntryPanel({
           type="button"
           onClick={toggleCustom}
           aria-pressed={result.custom}
-          sx={{...key, background: result.custom ? color.navy : color.cream, color: result.custom ? "#FFFFFF" : color.navy, fontFamily: font.body, fontSize: 16}}
+          sx={{...key, background: result.custom ? color.navy : color.cream, color: result.custom ? color.white : color.navy, fontFamily: font.body, fontSize: 16}}
         >
           Ručno
         </Box>
@@ -193,7 +193,7 @@ export default function HandEntryPanel({
           type="button"
           onClick={resetScore}
           aria-label="Obriši bodove"
-          sx={{...key, background: "transparent", border: `2px solid rgba(60,74,103,.25)`, color: color.navy, fontSize: 22}}
+          sx={{...key, background: "transparent", border: `2px solid ${tint.navy[25]}`, color: color.navy, fontSize: 22}}
         >
           X
         </Box>

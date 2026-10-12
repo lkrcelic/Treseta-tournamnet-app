@@ -1,5 +1,5 @@
 import {conferenceDot, Conference} from "@/app/_lib/conferences";
-import {color as tokens} from "@/app/_styles/tokens";
+import {color as tokens, tint} from "@/app/_styles/tokens";
 import {Box, SxProps, Theme} from "@mui/material";
 import React from "react";
 import {ellipsis, mergeSx} from "./base";
@@ -39,8 +39,8 @@ export function TeamDot({
           boxSizing: "border-box",
           borderRadius: "50%",
           ...(color
-            ? {background: color, boxShadow: ring ? "0 0 0 1.5px #FFFFFF" : "none"}
-            : {border: `1.5px solid ${onNavy ? "rgba(255,255,255,.6)" : tokens.borderStrong}`}),
+            ? {background: color, boxShadow: ring ? `0 0 0 1.5px ${tokens.white}` : "none"}
+            : {border: `1.5px solid ${onNavy ? tint.white[62] : tokens.borderStrong}`}),
         },
         sx
       )}

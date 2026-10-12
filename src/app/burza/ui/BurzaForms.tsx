@@ -7,7 +7,7 @@ import {BurzaCreateRequest, BurzaKind, BurzaPost, MyLeague} from "@/app/_interfa
 import {leagueDateString} from "@/app/_lib/dates";
 import {nextNightIndex, nightLabel} from "@/app/_lib/nights";
 import {isValidPhone, savesToProfile} from "@/app/_lib/phone";
-import {color, font} from "@/app/_styles/tokens";
+import {color, font, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, cardSx, EmptyState, ErrorNote, InitialsAvatar, PrimaryButton} from "@/app/_ui/sp";
 import CallRoundedIcon from "@mui/icons-material/CallRounded";
 import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
@@ -142,9 +142,9 @@ export function SubstituteForm({leagues, preset, ...props}: FormProps & {leagues
               role="radio"
               aria-checked={on}
               onClick={() => setOut(p.id)}
-              sx={{...buttonBase, width: "100%", minHeight: 68, display: "flex", alignItems: "center", gap: "12px", p: "10px 14px", borderBottom: i < players.length - 1 ? `1px solid ${color.line}` : "none", background: on ? color.mine : color.card, textAlign: "left", transition: "background 160ms ease"}}
+              sx={{...buttonBase, width: "100%", minHeight: 68, display: "flex", alignItems: "center", gap: "12px", p: "10px 14px", borderBottom: i < players.length - 1 ? `1px solid ${color.line}` : "none", background: on ? color.cream2 : color.white, textAlign: "left", transition: "background 160ms ease"}}
             >
-              <InitialsAvatar name={p.name} size={40} variant={p.me ? "navy" : "cream"} sx={{fontSize: 14, ...(p.me ? {color: "#FFFFFF"} : {})}} />
+              <InitialsAvatar name={p.name} size={40} variant={p.me ? "navy" : "cream"} sx={{fontSize: 14, ...(p.me ? {color: color.white} : {})}} />
               <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
                 <Box component="span" sx={{fontSize: 16, fontWeight: 600, color: color.ink}}>
                   {p.me ? `Ja · ${p.name}` : p.name}
@@ -170,7 +170,7 @@ export function SubstituteForm({leagues, preset, ...props}: FormProps & {leagues
 
 function RadioDot({on}: {on: boolean}) {
   return (
-    <Box component="span" aria-hidden sx={{width: 24, height: 24, flex: "none", boxSizing: "border-box", borderRadius: "50%", border: `2px solid ${on ? color.navy : "rgba(60,74,103,.3)"}`, display: "flex", alignItems: "center", justifyContent: "center"}}>
+    <Box component="span" aria-hidden sx={{width: 24, height: 24, flex: "none", boxSizing: "border-box", borderRadius: "50%", border: `2px solid ${on ? color.navy : color.borderStrong}`, display: "flex", alignItems: "center", justifyContent: "center"}}>
       <Box component="span" sx={{width: 12, height: 12, borderRadius: "50%", background: on ? color.navy : "transparent", transition: "background 160ms ease"}} />
     </Box>
   );
@@ -216,7 +216,7 @@ export function PartnerForm({leagues, preset, me, ...props}: FormProps & {league
       <Step n={3}>Kontakt</Step>
       <Phone phone={props.phone} setPhone={props.setPhone} />
       <Card sx={{p: "12px 14px", display: "flex", alignItems: "center", gap: "12px"}}>
-        <InitialsAvatar name={me.name} size={40} variant="navy" sx={{fontSize: 14, color: "#FFFFFF"}} />
+        <InitialsAvatar name={me.name} size={40} variant="navy" sx={{fontSize: 14, color: color.white}} />
         <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
           <Box component="span" sx={{fontSize: 15, fontWeight: 600}}>
             Uz oglas se vidi tvoj rejting
@@ -257,7 +257,7 @@ export function AvailableForm({initial, ...props}: FormProps & {initial: {as_sub
         </TogglePill>
       </Box>
       {!asSub && !asPartner && (
-        <Box role="alert" sx={{px: "6px", fontSize: 13, color: "#A63B3D"}}>
+        <Box role="alert" sx={{px: "6px", fontSize: 13, color: color.red}}>
           Odaberi barem jedno.
         </Box>
       )}
@@ -316,13 +316,13 @@ export function Published({
   return layout(
     <>
       <Box sx={{display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", p: "22px 8px 6px", textAlign: "center"}}>
-        <Box component="span" aria-hidden sx={{width: 72, height: 72, borderRadius: "50%", background: "rgba(56,102,65,.14)", display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 44, color: color.green}}}>
+        <Box component="span" aria-hidden sx={{width: 72, height: 72, borderRadius: "50%", background: tint.green[14], display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 44, color: color.green}}}>
           <CheckCircleRoundedIcon />
         </Box>
         <Box component="h1" sx={{m: 0, fontFamily: font.display, fontSize: 30, fontWeight: 800, lineHeight: 1.05, letterSpacing: "-.02em"}}>
           {current.closed ? "Oglas je zatvoren" : "Oglas je objavljen"}
         </Box>
-        <Box component="p" sx={{m: 0, fontSize: 15, lineHeight: 1.45, color: color.inkSoft, maxWidth: 300}}>
+        <Box component="p" sx={{m: 0, fontSize: 15, lineHeight: 1.45, color: color.ink2, maxWidth: 300}}>
           {current.closed ? "Više se ne vidi u Burzi." : CLOSES[current.kind]}
         </Box>
       </Box>
@@ -346,7 +346,7 @@ export function Published({
           onClick={close}
           disabled={closing}
           aria-busy={closing || undefined}
-          sx={{...buttonBase, alignSelf: "center", height: 44, px: "14px", borderRadius: "12px", color: "#A63B3D", display: "flex", alignItems: "center", gap: "6px", fontSize: 15, fontWeight: 600, "&:hover": {background: "rgba(188,71,73,.08)"}, "&:disabled": {opacity: 0.5}, "& svg": {fontSize: 20}}}
+          sx={{...buttonBase, alignSelf: "center", height: 44, px: "14px", borderRadius: "12px", color: color.red, display: "flex", alignItems: "center", gap: "6px", fontSize: 15, fontWeight: 600, "&:hover": {background: tint.red[8]}, "&:disabled": {opacity: 0.5}, "& svg": {fontSize: 20}}}
         >
           <CancelRoundedIcon aria-hidden />
           Zatvori oglas

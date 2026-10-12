@@ -9,7 +9,7 @@ import {leagueDateString} from "@/app/_lib/dates";
 import {currentLeagueHref, LeaguePage} from "@/app/_lib/league";
 import {useSelectedLeagueId} from "@/app/_hooks/useLeagues";
 import useAuthStore from "@/app/_store/authStore";
-import {color, ease, font, shadow} from "@/app/_styles/tokens";
+import {color, ease, font, shadow, tint} from "@/app/_styles/tokens";
 import AccountCircleRoundedIcon from "@mui/icons-material/AccountCircleRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
@@ -112,7 +112,7 @@ export function DesktopShell({
               pl: "12px",
               pr: "18px",
               borderRadius: "26px",
-              background: color.card,
+              background: color.white,
               color: color.navy,
               display: "flex",
               alignItems: "center",
@@ -121,7 +121,7 @@ export function DesktopShell({
               fontWeight: 700,
               whiteSpace: "nowrap",
               textDecoration: "none",
-              boxShadow: "0 1px 3px rgba(31,36,51,.1)",
+              boxShadow: shadow.pill,
               "& svg": {fontSize: 24},
             }}
           >
@@ -202,7 +202,7 @@ export function NavDrawer({open, onClose, active}: {open: boolean; onClose: () =
     height: 44,
     borderRadius: "12px",
     background: on ? color.navy : "transparent",
-    color: on ? "#FFFFFF" : color.ink,
+    color: on ? color.white : color.ink,
     display: "flex",
     alignItems: "center",
     gap: "12px",
@@ -211,7 +211,7 @@ export function NavDrawer({open, onClose, active}: {open: boolean; onClose: () =
     fontWeight: 600,
     textDecoration: "none",
     textAlign: "left" as const,
-    "&:hover": {background: on ? color.navy : color.hover},
+    "&:hover": {background: on ? color.navy : color.line},
     "& svg": {fontSize: 22},
   });
 
@@ -223,14 +223,14 @@ export function NavDrawer({open, onClose, active}: {open: boolean; onClose: () =
       onClose={onClose}
       transitionDuration={{enter: 240, exit: 200}}
       SlideProps={{easing: {enter: ease, exit: ease}}}
-      slotProps={{backdrop: {sx: {background: "rgba(21,24,31,.28)"}}}}
+      slotProps={{backdrop: {sx: {background: tint.scrim[28]}}}}
       PaperProps={{
         component: "nav",
         "aria-label": "Glavni izbornik",
         sx: {
           width: 264,
-          background: color.paperDeep,
-          boxShadow: "16px 0 48px rgba(21,24,31,.22)",
+          background: color.lineFill,
+          boxShadow: shadow.drawer,
           p: "24px 16px 20px",
           display: "flex",
           flexDirection: "column",
@@ -291,7 +291,7 @@ export function NavDrawer({open, onClose, active}: {open: boolean; onClose: () =
         </Box>
       ) : (
         <Box
-          sx={{mt: "auto", display: "flex", alignItems: "center", gap: "10px", p: "10px", borderRadius: "14px", background: color.card, boxShadow: shadow.card}}
+          sx={{mt: "auto", display: "flex", alignItems: "center", gap: "10px", p: "10px", borderRadius: "14px", background: color.white, boxShadow: shadow.card}}
         >
           <InitialsAvatar name={user?.username ?? ""} size={40} variant="navy" sx={{fontSize: 14}} />
           <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column"}}>

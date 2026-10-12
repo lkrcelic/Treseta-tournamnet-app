@@ -4,7 +4,8 @@ import useReducedMotion from "@/app/_hooks/useReducedMotion";
 import {BRAND} from "@/app/_lib/brand";
 import {chromeIntentUrl} from "@/app/_lib/installPlatform";
 import {useInstallPrompt} from "@/app/_lib/installPrompt";
-import {color, ease, font, shadow} from "@/app/_styles/tokens";
+// osBlue: the system blue of each OS, as in its own menus (`platform` is the detected OS below)
+import {color, ease, font, platform as osBlue, shadow, tint} from "@/app/_styles/tokens";
 import {buttonBase} from "@/app/_ui/sp";
 import AddBoxRoundedIcon from "@mui/icons-material/AddBoxRounded";
 import AddToHomeScreenRoundedIcon from "@mui/icons-material/AddToHomeScreenRounded";
@@ -26,8 +27,6 @@ import React, {useEffect, useId, useState} from "react";
 // at the menu. Samsung Internet instead gets a link that opens the page in Chrome, as Play Protect blocks what
 // Samsung's own install builds (ChromeHandoff). Opened from the home screen, nothing shows.
 
-const IOS_BLUE = "#0A84FF";
-const ANDROID_BLUE = "#0B57D0";
 // a moment after the page appears, so Chrome has announced whether it can install before the sheet picks a variant
 const OPEN_DELAY_MS = 600;
 
@@ -86,7 +85,7 @@ export default function InstallSheet() {
         onClose={() => setOpen(false)}
         transitionDuration={{enter: 260, exit: 200}}
         SlideProps={{easing: {enter: ease, exit: "cubic-bezier(.4,0,.6,1)"}}}
-        slotProps={{backdrop: {sx: {background: "rgba(21,24,31,.42)"}}}}
+        slotProps={{backdrop: {sx: {background: tint.scrim[42]}}}}
         PaperProps={{
           role: "dialog",
           "aria-labelledby": titleId,
@@ -94,7 +93,7 @@ export default function InstallSheet() {
             maxWidth: 560,
             mx: "auto",
             borderRadius: "28px 28px 0 0",
-            background: color.card,
+            background: color.white,
             boxShadow: shadow.sheet,
             p: "10px 22px calc(24px + env(safe-area-inset-bottom))",
             display: "flex",
@@ -103,14 +102,14 @@ export default function InstallSheet() {
           },
         }}
       >
-        <Box aria-hidden sx={{alignSelf: "center", width: 40, height: 5, borderRadius: "3px", background: color.switchOff}} />
+        <Box aria-hidden sx={{alignSelf: "center", width: 40, height: 5, borderRadius: "3px", background: color.hairline}} />
         <Box sx={{display: "flex", alignItems: "center", gap: "14px", pt: "4px"}}>
           <AppIcon size={60} radius="16px" />
           <Box component="h2" id={titleId} sx={{m: 0, minWidth: 0, fontFamily: font.display, fontSize: 24, fontWeight: 800, lineHeight: 1.05}}>
             {BRAND.name} radi bolje kao aplikacija
           </Box>
         </Box>
-        <Box sx={{fontSize: 15, lineHeight: 1.45, color: color.inkSoft, textWrap: "pretty"}}>
+        <Box sx={{fontSize: 15, lineHeight: 1.45, color: color.ink2, textWrap: "pretty"}}>
           Otvara se preko cijelog zaslona, bez trake preglednika, i pokreće se ravno s početnog zaslona.
         </Box>
         {samsung ? (
@@ -121,15 +120,15 @@ export default function InstallSheet() {
               <Box
                 component="li"
                 key={s.text}
-                sx={{minHeight: 50, py: "6px", display: "flex", alignItems: "center", gap: "12px", borderBottom: i < steps.length - 1 ? "1px solid rgba(60,74,103,.1)" : "none"}}
+                sx={{minHeight: 50, py: "6px", display: "flex", alignItems: "center", gap: "12px", borderBottom: i < steps.length - 1 ? `1px solid ${tint.navy[10]}` : "none"}}
               >
-                <Box component="span" aria-hidden sx={{width: 26, height: 26, flex: "none", borderRadius: "50%", background: color.navy, color: "#FFFFFF", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center"}}>
+                <Box component="span" aria-hidden sx={{width: 26, height: 26, flex: "none", borderRadius: "50%", background: color.navy, color: color.white, fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center"}}>
                   {i + 1}
                 </Box>
                 <Box component="span" sx={{flex: 1, fontSize: 15, fontWeight: 600, lineHeight: 1.3}}>
                   {s.text}
                 </Box>
-                <Box component="span" aria-hidden sx={{width: 34, height: 34, flex: "none", borderRadius: "10px", background: color.card, color: ios ? IOS_BLUE : ANDROID_BLUE, display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 22}}}>
+                <Box component="span" aria-hidden sx={{width: 34, height: 34, flex: "none", borderRadius: "10px", background: color.white, color: ios ? osBlue.ios : osBlue.android, display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 22}}}>
                   {s.icon}
                 </Box>
               </Box>
@@ -141,24 +140,24 @@ export default function InstallSheet() {
             type="button"
             onClick={install}
             disabled={busy}
-            sx={{...buttonBase, height: 60, borderRadius: "18px", background: color.navy, color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", fontSize: 18, fontWeight: 600, boxShadow: shadow.action, "& svg": {fontSize: 24}, "&:disabled": {opacity: 0.7}}}
+            sx={{...buttonBase, height: 60, borderRadius: "18px", background: color.navy, color: color.white, display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", fontSize: 18, fontWeight: 600, boxShadow: shadow.action, "& svg": {fontSize: 24}, "&:disabled": {opacity: 0.7}}}
           >
             <InstallMobileRoundedIcon />
             Instaliraj aplikaciju
           </Box>
         )}
-        <Box component="button" type="button" onClick={() => setOpen(false)} sx={{...buttonBase, height: 48, borderRadius: "14px", background: "transparent", color: color.inkSoft, fontSize: 16, fontWeight: 600}}>
+        <Box component="button" type="button" onClick={() => setOpen(false)} sx={{...buttonBase, height: 48, borderRadius: "14px", background: "transparent", color: color.ink2, fontSize: 16, fontWeight: 600}}>
           Nastavi u pregledniku
         </Box>
       </Drawer>
       {/* where the steps start: Safari's ••• under the page, Chrome's ⋮ above it */}
       {open && ios && (
-        <Box aria-hidden sx={{...arrowSx, right: "29px", bottom: "calc(4px + env(safe-area-inset-bottom))", color: IOS_BLUE}}>
+        <Box aria-hidden sx={{...arrowSx, right: "29px", bottom: "calc(4px + env(safe-area-inset-bottom))", color: osBlue.ios}}>
           <SouthRoundedIcon />
         </Box>
       )}
       {open && steps && !ios && (
-        <Box aria-hidden sx={{...arrowSx, right: "8px", top: "8px", color: ANDROID_BLUE}}>
+        <Box aria-hidden sx={{...arrowSx, right: "8px", top: "8px", color: osBlue.android}}>
           <NorthRoundedIcon />
         </Box>
       )}
@@ -216,17 +215,17 @@ function ChromeHandoff() {
       <Box
         component="a"
         href={chromeIntentUrl(url)}
-        sx={{...buttonBase, height: 60, borderRadius: "18px", background: color.navy, color: "#FFFFFF", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", fontSize: 18, fontWeight: 600, boxShadow: shadow.action, "& svg": {fontSize: 24}}}
+        sx={{...buttonBase, height: 60, borderRadius: "18px", background: color.navy, color: color.white, textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", fontSize: 18, fontWeight: 600, boxShadow: shadow.action, "& svg": {fontSize: 24}}}
       >
         <OpenInBrowserRoundedIcon />
         Otvori u Chromeu
       </Box>
       {/* whether Samsung opens Chrome, asks first or does nothing varies; the link can always be pasted into Chrome */}
-      <Box component="button" type="button" onClick={copyLink} sx={{...buttonBase, minHeight: 40, background: "transparent", color: color.inkSoft, fontSize: 14, fontWeight: 600, textDecoration: "underline"}}>
+      <Box component="button" type="button" onClick={copyLink} sx={{...buttonBase, minHeight: 40, background: "transparent", color: color.ink2, fontSize: 14, fontWeight: 600, textDecoration: "underline"}}>
         Ne otvara se? Kopiraj poveznicu
       </Box>
       {/* the result is read out where the button stays focused */}
-      <Box role="status" sx={{mt: "-8px", textAlign: "center", fontSize: 14, lineHeight: 1.4, color: color.inkSoft, "&:empty": {display: "none"}}}>
+      <Box role="status" sx={{mt: "-8px", textAlign: "center", fontSize: 14, lineHeight: 1.4, color: color.ink2, "&:empty": {display: "none"}}}>
         {copy === "copied" && "Poveznica je kopirana, zalijepi je u Chrome."}
         {copy === "failed" && (
           <>
@@ -246,7 +245,7 @@ function Installed() {
   return (
     <Box
       role="status"
-      sx={{position: "fixed", inset: 0, zIndex: 1400, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "16px", px: "28px", textAlign: "center", background: color.navy, color: "#FFFFFF"}}
+      sx={{position: "fixed", inset: 0, zIndex: 1400, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "16px", px: "28px", textAlign: "center", background: color.navy, color: color.white}}
     >
       <Box aria-hidden sx={{width: 88, height: 88, borderRadius: "50%", background: color.cream, color: color.green, display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 52}}}>
         <CheckRoundedIcon />
@@ -257,12 +256,12 @@ function Installed() {
       <Box sx={{fontSize: 16, lineHeight: 1.45, color: color.cream, maxWidth: 300}}>Zatvori preglednik i otvori {BRAND.nameAccusative} s početnog zaslona.</Box>
       <Box
         aria-hidden
-        sx={{width: "100%", maxWidth: 300, display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: "14px 10px", p: "18px 16px", borderRadius: "24px", background: "rgba(255,255,255,.08)", mt: "6px"}}
+        sx={{width: "100%", maxWidth: 300, display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: "14px 10px", p: "18px 16px", borderRadius: "24px", background: tint.white[8], mt: "6px"}}
       >
         {Array.from({length: 8}, (_, i) =>
           i === 5 ? (
             <Box key={i} sx={{display: "flex", flexDirection: "column", alignItems: "center", gap: "6px"}}>
-              <Box sx={{borderRadius: "50%", boxShadow: "0 0 0 3px rgba(237,224,191,.45), 0 0 0 7px rgba(237,224,191,.18)"}}>
+              <Box sx={{borderRadius: "50%", boxShadow: `0 0 0 3px ${tint.creamOnNavy[45]}, 0 0 0 7px ${tint.creamOnNavy[16]}`}}>
                 <AppIcon size={52} radius="50%" inverted />
               </Box>
               <Box component="span" sx={{fontSize: 11, fontWeight: 700, whiteSpace: "nowrap"}}>
@@ -271,7 +270,7 @@ function Installed() {
             </Box>
           ) : (
             <Box key={i} sx={{display: "flex", flexDirection: "column", alignItems: "center", gap: "6px"}}>
-              <Box sx={{width: 52, height: 52, borderRadius: "50%", background: "rgba(255,255,255,.14)"}} />
+              <Box sx={{width: 52, height: 52, borderRadius: "50%", background: tint.white[14]}} />
               <Box component="span" sx={{height: 14}} />
             </Box>
           )

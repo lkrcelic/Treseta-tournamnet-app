@@ -7,7 +7,7 @@ import {PlayerRatingDetail, RatingRow} from "@/app/_interfaces/ratings";
 import {formatChange, RATING_COLUMNS, roundsLabel} from "@/app/_lib/ui/ratings";
 import {matchesQuery} from "@/app/_lib/ui/text";
 import {TransitionLink, useTransitionRouter} from "@/app/_lib/viewTransitions";
-import {color, ease, font, shadow} from "@/app/_styles/tokens";
+import {color, ease, font, shadow, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, CenteredSpinner, DesktopShell, ellipsis, IconCircleButton, LoadingRows, PrimaryButton, Screen, SearchInput, tabular} from "@/app/_ui/sp";
 import {changeInk, infoTitle, InfoView, LastNights, NoRoundsCard, PlayerCard, ProvisionalTag, RankDot, RatingChartCard, RatingsInfo} from "./RatingParts";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
@@ -76,7 +76,7 @@ function ListMessage({kind, onRetry}: {kind: "empty" | "noMatch" | "error"; onRe
       <Box sx={{fontFamily: font.display, fontSize: 22, fontWeight: 800}}>{m.title}</Box>
       <Box sx={{fontSize: 15, lineHeight: 1.45, color: color.muted, textWrap: "pretty"}}>{m.text}</Box>
       {onRetry && (
-        <Box component="button" type="button" onClick={onRetry} sx={{...buttonBase, mt: "8px", height: 48, px: "22px", borderRadius: "16px", background: color.navy, color: "#FFFFFF", fontSize: 16, fontWeight: 600, display: "flex", alignItems: "center", gap: "8px", "& svg": {fontSize: 20}}}>
+        <Box component="button" type="button" onClick={onRetry} sx={{...buttonBase, mt: "8px", height: 48, px: "22px", borderRadius: "16px", background: color.navy, color: color.white, fontSize: 16, fontWeight: 600, display: "flex", alignItems: "center", gap: "8px", "& svg": {fontSize: 20}}}>
           <RefreshRoundedIcon />
           Pokušaj ponovno
         </Box>
@@ -131,7 +131,7 @@ function PhoneList({all, me, players, error, reload, query, setQuery}: ListProps
       </Box>
       <SearchInput height={48} placeholder="Traži igrača" aria-label="Traži igrača" value={query} onChange={(e) => setQuery(e.target.value)} />
       <Card sx={{flex: 1, minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", borderRadius: "22px"}}>
-        <Box aria-hidden sx={{position: "sticky", top: 0, zIndex: 3, background: color.card, height: 34, display: "flex", alignItems: "center", justifyContent: "space-between", pl: "14px", pr: "16px", borderBottom: "1px solid rgba(60,74,103,.1)", fontSize: 11.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: color.muted}}>
+        <Box aria-hidden sx={{position: "sticky", top: 0, zIndex: 3, background: color.white, height: 34, display: "flex", alignItems: "center", justifyContent: "space-between", pl: "14px", pr: "16px", borderBottom: `1px solid ${tint.navy[10]}`, fontSize: 11.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: color.muted}}>
           <span>#&nbsp;&nbsp;&nbsp;Igrač</span>
           <span>Rejting</span>
         </Box>
@@ -159,13 +159,13 @@ function PhoneRow({player: p, me}: {player: RatingRow; me: boolean}) {
         rowGap: "1px",
         alignItems: "center",
         p: "9px 16px 9px 12px",
-        borderBottom: "1px solid rgba(60,74,103,.08)",
-        background: me ? color.mine : "transparent",
+        borderBottom: `1px solid ${color.line}`,
+        background: me ? color.cream2 : "transparent",
         boxShadow: me ? shadow.mineBar : "none",
         textDecoration: "none",
         textAlign: "left",
         color: color.ink,
-        "&:active": {background: me ? color.mine : color.pressed},
+        "&:active": {background: me ? color.cream2 : color.lineFill},
       }}
     >
       <Box sx={{gridRow: "1 / span 2"}}>
@@ -208,14 +208,14 @@ function InfoSheet({view, onChange}: {view: InfoView | null; onChange: (view: In
       onClose={() => onChange(null)}
       transitionDuration={{enter: 240, exit: 200}}
       SlideProps={{easing: {enter: ease, exit: "cubic-bezier(.4,0,.6,1)"}}}
-      slotProps={{backdrop: {sx: {background: "rgba(21,24,31,.4)"}}}}
+      slotProps={{backdrop: {sx: {background: tint.scrim[42]}}}}
       PaperProps={{
         role: "dialog",
         "aria-labelledby": titleId,
-        sx: {maxWidth: 560, mx: "auto", maxHeight: "88%", borderRadius: "28px 28px 0 0", background: color.card, p: "10px 20px calc(24px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: "14px", boxShadow: "0 -10px 30px rgba(21,24,31,.18)"},
+        sx: {maxWidth: 560, mx: "auto", maxHeight: "88%", borderRadius: "28px 28px 0 0", background: color.white, p: "10px 20px calc(24px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: "14px", boxShadow: shadow.sheet},
       }}
     >
-      <Box aria-hidden sx={{alignSelf: "center", width: 36, height: 5, borderRadius: "3px", background: "#D8D4CA"}} />
+      <Box aria-hidden sx={{alignSelf: "center", width: 36, height: 5, borderRadius: "3px", background: color.hairline}} />
       <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px"}}>
         <Box component="h2" id={titleId} sx={{m: 0, fontFamily: font.display, fontSize: 24, fontWeight: 800, letterSpacing: "-.01em"}}>
           {infoTitle(shown.current)}
@@ -312,9 +312,9 @@ function DesktopRatings({list, me, players, error, reload, query, setQuery, init
                   gridTemplateColumns: DESK_COLUMNS,
                   alignItems: "center",
                   px: "18px",
-                  borderBottom: "1px solid rgba(60,74,103,.07)",
-                  background: mine ? color.mine : on ? "rgba(60,74,103,.08)" : "transparent",
-                  boxShadow: [mine ? shadow.mineBar : null, on ? "inset 0 0 0 2px #3C4A67" : null].filter(Boolean).join(", ") || "none",
+                  borderBottom: `1px solid ${color.divider}`,
+                  background: mine ? color.cream2 : on ? color.line : "transparent",
+                  boxShadow: [mine ? shadow.mineBar : null, on ? shadow.selectRing : null].filter(Boolean).join(", ") || "none",
                   textAlign: "left",
                   "&:hover": {filter: "brightness(.98)"},
                 }}
@@ -335,7 +335,7 @@ function DesktopRatings({list, me, players, error, reload, query, setQuery, init
                   </Box>
                 </Box>
                 <Box sx={{justifySelf: "end", fontSize: 15, fontWeight: 700, color: changeInk(p.change), ...tabular}}>{formatChange(p.rounds ? p.change : null)}</Box>
-                <Box sx={{justifySelf: "end", fontSize: 15, fontWeight: 600, color: color.inkSoft, ...tabular}}>{p.rounds}</Box>
+                <Box sx={{justifySelf: "end", fontSize: 15, fontWeight: 600, color: color.ink2, ...tabular}}>{p.rounds}</Box>
               </Box>
             </Box>
           );
@@ -360,7 +360,7 @@ function DesktopRatings({list, me, players, error, reload, query, setQuery, init
                 setInfoView("cols");
                 setInfoAnchor(infoAnchor ? null : e.currentTarget);
               }}
-              sx={{...buttonBase, height: 46, display: "flex", alignItems: "center", gap: "8px", pl: "12px", pr: "16px", border: "1.5px solid rgba(60,74,103,.2)", borderRadius: "14px", background: infoAnchor ? color.paper : color.card, color: color.navy, fontSize: 15, fontWeight: 600, "& svg": {fontSize: 22}}}
+              sx={{...buttonBase, height: 46, display: "flex", alignItems: "center", gap: "8px", pl: "12px", pr: "16px", border: `1.5px solid ${color.borderControl}`, borderRadius: "14px", background: infoAnchor ? color.paper : color.white, color: color.navy, fontSize: 15, fontWeight: 600, "& svg": {fontSize: 22}}}
             >
               <InfoOutlinedIcon />
               Što znače stupci?
@@ -372,7 +372,7 @@ function DesktopRatings({list, me, players, error, reload, query, setQuery, init
               onClose={() => setInfoAnchor(null)}
               anchorOrigin={{vertical: "bottom", horizontal: "right"}}
               transformOrigin={{vertical: "top", horizontal: "right"}}
-              slotProps={{paper: {role: "dialog", "aria-label": infoTitle(infoView), sx: {mt: "10px", width: 420, borderRadius: "20px", p: "18px 20px", boxShadow: "0 18px 50px rgba(21,24,31,.22), 0 0 0 1px rgba(60,74,103,.08)", display: "flex", flexDirection: "column", gap: "10px"}}}}
+              slotProps={{paper: {role: "dialog", "aria-label": infoTitle(infoView), sx: {mt: "10px", width: 420, borderRadius: "20px", p: "18px 20px", boxShadow: shadow.popover, display: "flex", flexDirection: "column", gap: "10px"}}}}
             >
               <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between"}}>
                 <Box component="h2" sx={{m: 0, fontFamily: font.display, fontSize: 20, fontWeight: 800}}>
@@ -385,14 +385,14 @@ function DesktopRatings({list, me, players, error, reload, query, setQuery, init
               <RatingsInfo view={infoView} onSwitch={setInfoView} compact />
             </Popover>
           </Box>
-          <Box role="row" sx={{flex: "none", display: "grid", gridTemplateColumns: DESK_COLUMNS, alignItems: "center", height: 40, px: "18px", borderTop: "1px solid rgba(60,74,103,.08)", borderBottom: "1px solid rgba(60,74,103,.12)"}}>
+          <Box role="row" sx={{flex: "none", display: "grid", gridTemplateColumns: DESK_COLUMNS, alignItems: "center", height: 40, px: "18px", borderTop: `1px solid ${color.line}`, borderBottom: `1px solid ${tint.navy[12]}`}}>
             {HEADS.map((h) => (
               <Tooltip
                 key={h.key}
                 title={RATING_COLUMNS.find(([k]) => k === h.key)![1]}
                 placement={h.align === "end" ? "bottom-end" : "bottom-start"}
                 enterDelay={150}
-                slotProps={{tooltip: {sx: {width: 260, maxWidth: 260, p: "10px 12px", borderRadius: "12px", background: color.ink, fontSize: 13.5, fontWeight: 500, lineHeight: 1.45, boxShadow: "0 10px 30px rgba(21,24,31,.25)"}}}}
+                slotProps={{tooltip: {sx: {width: 260, maxWidth: 260, p: "10px 12px", borderRadius: "12px", background: color.ink, fontSize: 13.5, fontWeight: 500, lineHeight: 1.45, boxShadow: shadow.tooltip}}}}
               >
                 <Box
                   role="columnheader"

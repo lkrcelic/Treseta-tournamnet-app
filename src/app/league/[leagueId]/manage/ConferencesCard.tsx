@@ -5,7 +5,7 @@ import useConferences, {setCachedConferences} from "@/app/_hooks/useConferences"
 import {LeagueConferences} from "@/app/_interfaces/league";
 import {Conference, conferencesError} from "@/app/_lib/conferences";
 import {plural} from "@/app/_lib/ui/text";
-import {color, font} from "@/app/_styles/tokens";
+import {color, font, tint} from "@/app/_styles/tokens";
 import {ConferenceDraft, conferenceDraft, ConferenceEditor, startingDrafts} from "@/app/_ui/league/ConferenceEditor";
 import {buttonBase, Card, ErrorNote, LoadingRows, OutlineButton, PrimaryButton} from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
@@ -99,13 +99,13 @@ export default function ConferencesCard({
           </Box>
         )}
       </Box>
-      <Box sx={{fontSize: 14, lineHeight: 1.4, color: color.inkSoft}}>
+      <Box sx={{fontSize: 14, lineHeight: 1.4, color: color.ink2}}>
         Skupine ekipa, svaka sa svojom bojom: točka ispred imena ekipe i vlastita tablica na Dnevnom i Ukupnom poretku.
       </Box>
       {drafts == null ? (
         <LoadingRows rows={2} height={56} />
       ) : list.length === 0 ? (
-        <OutlineButton height={50} onClick={() => edit(startingDrafts())} sx={{borderWidth: "1.5px", borderColor: "rgba(60,74,103,.25)", fontSize: 15}}>
+        <OutlineButton height={50} onClick={() => edit(startingDrafts())} sx={{borderWidth: "1.5px", borderColor: tint.navy[25], fontSize: 15}}>
           <AddRoundedIcon sx={{fontSize: 22}} />
           Dodaj konferencije
         </OutlineButton>
@@ -119,7 +119,7 @@ export default function ConferencesCard({
         </Box>
       )}
       {confirming && (
-        <Box role="alert" sx={{p: "12px 14px", borderRadius: "14px", background: "rgba(188,71,73,.07)", display: "flex", gap: "10px", "& > svg": {fontSize: 22, color: color.red, flex: "none"}}}>
+        <Box role="alert" sx={{p: "12px 14px", borderRadius: "14px", background: tint.red[6], display: "flex", gap: "10px", "& > svg": {fontSize: 22, color: color.red, flex: "none"}}}>
           <WarningRoundedIcon />
           <Box sx={{fontSize: 14, lineHeight: 1.4, color: color.ink}}>
             {removed.map((c) => c.name).join(", ")} {removed.length === 1 ? "ima" : "imaju"} {orphaned} {plural(orphaned, "ekipu", "ekipe", "ekipa")}. Ostat će
@@ -130,7 +130,7 @@ export default function ConferencesCard({
       {error && <ErrorNote>{error}</ErrorNote>}
       {(dirty || done) && (
         <Box sx={{display: "flex", gap: "10px"}}>
-          <OutlineButton height={52} onClick={discard} disabled={!dirty || saving} sx={{flex: 1, fontSize: 15, border: "1.5px solid rgba(60,74,103,.25)", "&:disabled": {opacity: 0.4}}}>
+          <OutlineButton height={52} onClick={discard} disabled={!dirty || saving} sx={{flex: 1, fontSize: 15, border: `1.5px solid ${tint.navy[25]}`, "&:disabled": {opacity: 0.4}}}>
             Odbaci
           </OutlineButton>
           <PrimaryButton onClick={save} disabled={!dirty || !!invalid} loading={saving} height={52} sx={{flex: 1, fontSize: 16}}>

@@ -7,7 +7,7 @@ import {BurzaPost} from "@/app/_interfaces/burza";
 import {telHref, whatsappHref} from "@/app/_lib/phone";
 import {busyLine, postContact, postDetails, postHeadline, postTitle, timeAgo} from "@/app/_lib/ui/burza";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
-import {color, font, shadow} from "@/app/_styles/tokens";
+import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, CenteredSpinner, DesktopShell, EmptyState, ErrorNote, IconCircleButton, Screen, SectionLabel, tabular, TopBar} from "@/app/_ui/sp";
 import CallRoundedIcon from "@mui/icons-material/CallRounded";
 import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
@@ -124,7 +124,7 @@ function PostBody({post, desktop, closing, onClose, notice, error}: {post: Burza
       <Box component="section" aria-label="Oglas" sx={{borderRadius: "24px", background: color.cream, p: "18px", display: "flex", flexDirection: "column", gap: "12px", opacity: post.closed ? 0.7 : 1}}>
         <KindTag kind={post.kind} />
         <Box sx={{display: "flex", alignItems: "center", gap: "12px"}}>
-          <AdAvatar name={postTitle(post)} size={52} sx={{background: color.card}} />
+          <AdAvatar name={postTitle(post)} size={52} sx={{background: color.white}} />
           <Box component="h2" sx={{m: 0, fontFamily: font.display, fontSize: desktop ? 28 : 25, fontWeight: 800, lineHeight: 1.1, letterSpacing: "-.01em", textWrap: "pretty", overflowWrap: "anywhere"}}>
             {postHeadline(post)}
           </Box>
@@ -143,7 +143,7 @@ function PostBody({post, desktop, closing, onClose, notice, error}: {post: Burza
         ))}
       </Card>
       {post.note && (
-        <Card sx={{p: "14px 16px", fontSize: 15, lineHeight: 1.5, color: color.ink2, overflowWrap: "anywhere", whiteSpace: "pre-line"}}>“{post.note}”</Card>
+        <Card sx={{p: "14px 16px", fontSize: 15, lineHeight: 1.5, color: color.ink, overflowWrap: "anywhere", whiteSpace: "pre-line"}}>“{post.note}”</Card>
       )}
       {post.busy_team && (
         <Callout icon={<EventBusyRoundedIcon aria-hidden />} tone="warn">
@@ -188,7 +188,7 @@ function PostBody({post, desktop, closing, onClose, notice, error}: {post: Burza
           onClick={onClose}
           disabled={closing}
           aria-busy={closing || undefined}
-          sx={{...buttonBase, alignSelf: "center", height: 44, px: "14px", borderRadius: "12px", color: "#A63B3D", display: "flex", alignItems: "center", gap: "6px", fontSize: 15, fontWeight: 600, "&:hover": {background: "rgba(188,71,73,.08)"}, "&:disabled": {opacity: 0.5}, "& svg": {fontSize: 20}}}
+          sx={{...buttonBase, alignSelf: "center", height: 44, px: "14px", borderRadius: "12px", color: color.red, display: "flex", alignItems: "center", gap: "6px", fontSize: 15, fontWeight: 600, "&:hover": {background: tint.red[8]}, "&:disabled": {opacity: 0.5}, "& svg": {fontSize: 20}}}
         >
           <CancelRoundedIcon aria-hidden />
           {post.mine ? "Zatvori oglas" : "Zatvori oglas (admin)"}
@@ -211,9 +211,9 @@ function ContactLink({href, icon, primary = false, external = false, children}: 
         minWidth: 0,
         height: 52,
         borderRadius: "18px",
-        border: primary ? "none" : "1.5px solid rgba(60,74,103,.2)",
-        background: primary ? color.navy : color.card,
-        color: primary ? "#FFFFFF" : color.navy,
+        border: primary ? "none" : `1.5px solid ${color.borderControl}`,
+        background: primary ? color.navy : color.white,
+        color: primary ? color.white : color.navy,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",

@@ -3,7 +3,7 @@
 import {updateLeagueAPI} from "@/app/_fetchers/league/leagues";
 import {LeagueOption, updateCachedLeague} from "@/app/_hooks/useLeagues";
 import {END_DATE_ERROR, endsAfterStart} from "@/app/_interfaces/league";
-import {color, font} from "@/app/_styles/tokens";
+import {color, font, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, ErrorNote, IconCircleButton, OutlineButton, PrimaryButton, TextField} from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ErrorRoundedIcon from "@mui/icons-material/ErrorRounded";
@@ -102,7 +102,7 @@ export default function LeagueDetailsView({leagueId, leagues, aside}: {leagueId:
             <TextField label="End date" type="date" value={d.end} min={d.start || undefined} onChange={(e) => set("end", e.target.value)} soft inputSx={inputSx} />
           </Box>
           <Box role="radiogroup" aria-labelledby="ld-day" sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
-            <Box id="ld-day" sx={{fontSize: 14, fontWeight: 600, color: color.inkSoft, pl: "4px"}}>
+            <Box id="ld-day" sx={{fontSize: 14, fontWeight: 600, color: color.ink2, pl: "4px"}}>
               Play day
             </Box>
             <Box sx={{display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))", gap: "6px"}}>
@@ -120,7 +120,7 @@ export default function LeagueDetailsView({leagueId, leagues, aside}: {leagueId:
                     height: 48,
                     borderRadius: "12px",
                     background: d.day === i ? color.navy : color.paper,
-                    color: d.day === i ? "#FFFFFF" : color.navy,
+                    color: d.day === i ? color.white : color.navy,
                     fontSize: 14,
                     fontWeight: 700,
                     transition: "background 160ms ease",
@@ -131,7 +131,7 @@ export default function LeagueDetailsView({leagueId, leagues, aside}: {leagueId:
               ))}
             </Box>
           </Box>
-          <Box role="group" aria-labelledby="ld-rpn" sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", p: "12px 14px", borderRadius: "16px", background: color.tableHead}}>
+          <Box role="group" aria-labelledby="ld-rpn" sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", p: "12px 14px", borderRadius: "16px", background: color.paper2}}>
             <Box sx={{display: "flex", flexDirection: "column"}}>
               <Box id="ld-rpn" component="span" sx={{fontSize: 15, fontWeight: 600}}>
                 Rounds per night
@@ -167,7 +167,7 @@ export default function LeagueDetailsView({leagueId, leagues, aside}: {leagueId:
                 setServerError(null);
               }}
               disabled={!dirty || saving}
-              sx={{flex: 1, fontSize: 16, border: "1.5px solid rgba(60,74,103,.25)", "&:disabled": {opacity: 0.4}}}
+              sx={{flex: 1, fontSize: 16, border: `1.5px solid ${tint.navy[25]}`, "&:disabled": {opacity: 0.4}}}
             >
               Discard changes
             </OutlineButton>

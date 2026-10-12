@@ -119,7 +119,7 @@ export default function BurzaPage() {
             ref={publishRef}
             onClick={() => setPicking(true)}
             aria-haspopup="dialog"
-            sx={{...buttonBase, height: 52, pl: "16px", pr: "22px", borderRadius: "26px", background: color.navy, color: "#FFFFFF", display: "flex", alignItems: "center", gap: "8px", fontSize: 17, fontWeight: 600, boxShadow: shadow.action, "& svg": {fontSize: 26}}}
+            sx={{...buttonBase, height: 52, pl: "16px", pr: "22px", borderRadius: "26px", background: color.navy, color: color.white, display: "flex", alignItems: "center", gap: "8px", fontSize: 17, fontWeight: 600, boxShadow: shadow.action, "& svg": {fontSize: 26}}}
           >
             <AddRoundedIcon />
             Objavi
@@ -180,13 +180,13 @@ export default function BurzaPage() {
           pr: "22px",
           borderRadius: "28px",
           background: color.navy,
-          color: "#FFFFFF",
+          color: color.white,
           display: "flex",
           alignItems: "center",
           gap: "8px",
           fontSize: 17,
           fontWeight: 600,
-          boxShadow: "0 12px 28px rgba(31,36,51,.3)",
+          boxShadow: shadow.fab,
           transition: "transform 120ms ease",
           "&:active": {transform: "scale(.97)"},
           "& svg": {fontSize: 26},

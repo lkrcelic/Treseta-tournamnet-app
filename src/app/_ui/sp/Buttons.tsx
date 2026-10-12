@@ -19,7 +19,7 @@ type PrimaryButtonProps = NativeButtonProps & {
 
 // The 60 px navy action at the bottom of a phone screen
 export const PrimaryButton = React.forwardRef<HTMLButtonElement, PrimaryButtonProps>(function PrimaryButton(
-  {icon, loading = false, bg = color.navy, ink = "#FFFFFF", height = 60, disabled, children, sx, type = "button", ...rest},
+  {icon, loading = false, bg = color.navy, ink = color.white, height = 60, disabled, children, sx, type = "button", ...rest},
   ref
 ) {
   const off = disabled || loading;
@@ -55,7 +55,7 @@ export const PrimaryButton = React.forwardRef<HTMLButtonElement, PrimaryButtonPr
       )}
       {...rest}
     >
-      {loading ? <Spinner size={22} color={ink} /> : icon}
+      {loading ? <Spinner size={22} tone="white" /> : icon}
       <span>{children}</span>
     </Box>
   );
@@ -110,7 +110,7 @@ export function SolidButton({children, sx, height = 56, disabled, loading, type 
           height,
           borderRadius: "16px",
           background: color.navy,
-          color: "#FFFFFF",
+          color: color.white,
           fontSize: 17,
           fontWeight: 600,
           display: "flex",
@@ -125,7 +125,7 @@ export function SolidButton({children, sx, height = 56, disabled, loading, type 
       )}
       {...rest}
     >
-      {loading && <Spinner size={18} color="#FFFFFF" />}
+      {loading && <Spinner size={18} tone="white" />}
       {children}
     </Box>
   );
@@ -179,14 +179,14 @@ export function IconCircleButton({label, size = 48, children, sx, type = "button
           height: size,
           flex: "none",
           borderRadius: "50%",
-          background: color.card,
+          background: color.white,
           color: color.navy,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           boxShadow: shadow.raised,
           transition: "box-shadow 160ms ease, opacity 160ms ease",
-          "&:hover:not(:disabled)": {boxShadow: "0 4px 12px rgba(31,36,51,.14)"},
+          "&:hover:not(:disabled)": {boxShadow: shadow.cardHover},
           "&:disabled": {opacity: 0.35},
           "& svg": {fontSize: size >= 48 ? 28 : 24},
         },
@@ -218,7 +218,7 @@ export function GhostIconButton({label, children, sx, size = 44, type = "button"
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          "&:hover": {background: color.hover},
+          "&:hover": {background: color.line},
           "& svg": {fontSize: 22},
         },
         sx
@@ -250,7 +250,7 @@ export function ChipButton({children, sx, type = "button", ...rest}: NativeButto
           gap: "2px",
           fontSize: 14,
           fontWeight: 600,
-          "&:hover": {background: "#EEE9DD"},
+          "&:hover": {background: color.lineFill},
           "& svg": {fontSize: 20},
         },
         sx
@@ -281,7 +281,7 @@ export function TextButton({children, sx, type = "button", ...rest}: NativeButto
           fontSize: 16,
           fontWeight: 600,
           color: color.navy,
-          "&:hover": {background: color.hover},
+          "&:hover": {background: color.line},
           "& svg": {fontSize: 22},
         },
         sx
@@ -306,7 +306,7 @@ export function LoadMoreButton({left, noun, onClick, sx}: {left: number; noun: [
           width: "100%",
           height: 48,
           flex: "none",
-          background: color.tableHead,
+          background: color.paper2,
           color: color.navy,
           display: "flex",
           alignItems: "center",

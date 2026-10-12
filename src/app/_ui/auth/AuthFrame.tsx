@@ -2,7 +2,7 @@
 
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import {BRAND} from "@/app/_lib/brand";
-import {color, font} from "@/app/_styles/tokens";
+import {color, font, tint} from "@/app/_styles/tokens";
 import {Box} from "@mui/material";
 import React from "react";
 
@@ -29,7 +29,7 @@ export function AuthFrame({children, phoneBrand = true}: {children: React.ReactN
   if (isDesktop) {
     return (
       <Box sx={{minHeight: "100dvh", display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)"}}>
-        <Box sx={{background: color.navy, color: "#FFFFFF", p: "64px", display: "flex", flexDirection: "column"}}>
+        <Box sx={{background: color.navy, color: color.white, p: "64px", display: "flex", flexDirection: "column"}}>
           <Brand size={96} light />
         </Box>
         <Box component="main" sx={{display: "flex", alignItems: "center", justifyContent: "center", p: "48px"}}>
@@ -69,9 +69,9 @@ export function AuthFrame({children, phoneBrand = true}: {children: React.ReactN
 export function OrDivider() {
   return (
     <Box role="separator" aria-label="ili" sx={{display: "flex", alignItems: "center", gap: "12px", color: color.muted, fontSize: 14}}>
-      <Box sx={{flex: 1, height: "1px", background: color.lineStrong}} />
+      <Box sx={{flex: 1, height: "1px", background: tint.navy[12]}} />
       ili
-      <Box sx={{flex: 1, height: "1px", background: color.lineStrong}} />
+      <Box sx={{flex: 1, height: "1px", background: tint.navy[12]}} />
     </Box>
   );
 }

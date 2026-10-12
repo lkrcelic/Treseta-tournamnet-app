@@ -312,7 +312,7 @@ function DesktopRound({title, rows, admin}: {title: string; rows: ReturnType<typ
           <Box component="h2" sx={{m: 0, fontFamily: font.display, fontSize: 26, fontWeight: 800, whiteSpace: "nowrap"}}>
             {title}
           </Box>
-          <Box sx={{fontSize: 16, color: color.inkSoft, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap"}}>
+          <Box sx={{fontSize: 16, color: color.ink2, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap"}}>
             {rows.length} {plural(rows.length, "stol", "stola", "stolova")} · {live} uživo
           </Box>
         </Box>

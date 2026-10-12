@@ -2,7 +2,7 @@
 
 import {handError} from "@/app/_lib/game/scoring";
 import useResultStore from "@/app/_store/game/resultStore";
-import {color, font} from "@/app/_styles/tokens";
+import {color, font, shadow} from "@/app/_styles/tokens";
 import {ActionPair, buttonBase, ErrorNote} from "@/app/_ui/sp";
 import {discardHand, saveHand, takeEntryOrigin} from "@/app/ongoing-match/ui/handFlow";
 import {Box} from "@mui/material";
@@ -51,14 +51,14 @@ export default function ScorePage({actionType}: ActionProps) {
     ...buttonBase,
     height: 66,
     borderRadius: "16px",
-    background: color.card,
+    background: color.white,
     color: color.ink,
     fontFamily: font.display,
     fontSize: 30,
     fontWeight: 700,
-    boxShadow: "0 1px 2px rgba(31,36,51,.06)",
+    boxShadow: shadow.card,
     transition: "transform 100ms ease, opacity 200ms ease, background 200ms ease, color 200ms ease",
-    "&:active:not(:disabled)": {transform: "scale(.95)", background: "#EFEAE0"},
+    "&:active:not(:disabled)": {transform: "scale(.95)", background: color.lineFill},
     "&:disabled": {opacity: 0.35},
   } as const;
 
@@ -79,7 +79,7 @@ export default function ScorePage({actionType}: ActionProps) {
             sx={{
               ...key,
               background: result.custom ? color.navy : color.cream,
-              color: result.custom ? "#FFFFFF" : color.navy,
+              color: result.custom ? color.white : color.navy,
               fontFamily: font.body,
               fontSize: 17,
               boxShadow: "none",
