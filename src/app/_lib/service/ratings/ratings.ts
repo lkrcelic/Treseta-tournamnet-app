@@ -9,6 +9,7 @@ import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {PlayerRatingDetail, RatingNight, RatingRow, RatingsList} from "@/app/_interfaces/ratings";
 import {PLAYER_NOT_FOUND} from "@/app/_interfaces/player";
 import {displayName} from "@/app/_lib/players/names";
+import {ratingSummary, RatingSummary} from "@/app/_lib/ui/ratings";
 
 // Player ratings across all leagues: everyone on a team or with a rated round, highest rating first. Deleted players
 // aren't listed (their rounds still count for everyone else's rating); usernames are private, so they aren't sent.
@@ -16,6 +17,13 @@ import {displayName} from "@/app/_lib/players/names";
 type Row = {id: number; first_name: string; last_name: string; rating: number; team: string | null; rounds: number; change: number | null};
 
 export async function listRatings(viewerId: number | null): Promise<RatingsList> {
+  const list = await allRatings();
+  return {players: list, me: viewerId != null && list.some((p) => p.id === viewerId) ? viewerId : null};
+}
+
+// The whole list, ranked: players with the same rating share a place. One query per call (not cached), so a caller
+// that needs it twice passes it on.
+export async function allRatings(): Promise<RatingRow[]> {
   const rows = await prisma.$queryRaw<Row[]>`
       SELECT p.id, p.first_name, p.last_name, p.rating,
              team.team_name                AS team,
@@ -46,7 +54,7 @@ export async function listRatings(viewerId: number | null): Promise<RatingsList>
     .sort((a, b) => b.rating - a.rating || a.name.localeCompare(b.name, "hr"));
 
   let rank = 0;
-  const list: RatingRow[] = players.map((p, i) => {
+  return players.map((p, i) => {
     if (i === 0 || p.rating !== players[i - 1].rating) rank = i + 1;
     return {
       id: p.id,
@@ -59,13 +67,18 @@ export async function listRatings(viewerId: number | null): Promise<RatingsList>
       provisional: p.rounds < PROVISIONAL_ROUNDS,
     };
   });
+}
 
-  return {players: list, me: viewerId != null && list.some((p) => p.id === viewerId) ? viewerId : null};
+// These players' ratings as Rejting shows them (a team's players on the Team page). A player who isn't on the list
+// keeps their stored rating, unranked and Privremeno (ratingSummary).
+export async function ratingSummaries(players: {id: number; rating: number}[]): Promise<Map<number, RatingSummary>> {
+  const list = await allRatings();
+  return new Map(players.map((p) => [p.id, ratingSummary(list, p)]));
 }
 
 // A deleted player (or one never on a team) isn't on the list: 404 "Igrač ne postoji."
 export async function getPlayerRating(playerId: number): Promise<PlayerRatingDetail> {
-  const {players} = await listRatings(null);
+  const players = await allRatings();
   const player = players.find((p) => p.id === playerId);
   if (!player) throw new NotFoundError(PLAYER_NOT_FOUND);
 
@@ -85,9 +98,9 @@ export async function getPlayerRating(playerId: number): Promise<PlayerRatingDet
 
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 
-// What the player played on each of these nights: the opponents and the matches won and lost, from the same rounds
-// the rating replay counted for them
-async function lastNights(playerId: number, nights: {night: Date; change: number}[]): Promise<RatingNight[]> {
+// What the player played on each of these nights (newest first, as given): the opponents and the matches won and
+// lost, from the same rounds the rating replay counted for them. Rejting's detail and the Player page.
+export async function lastNights(playerId: number, nights: {night: Date; change: number}[]): Promise<RatingNight[]> {
   if (nights.length === 0) return [];
   const teamIds = (await prisma.teamPlayer.findMany({where: {player_id: playerId}, select: {team_id: true}})).map((t) => t.team_id);
   const rounds = await prisma.round.findMany({

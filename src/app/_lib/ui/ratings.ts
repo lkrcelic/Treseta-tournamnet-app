@@ -1,6 +1,19 @@
-// Formatting and chart geometry for the ratings page. Framework free so they can be unit tested.
+// Formatting and chart geometry for Rejting, and a player's rating summary as Rejting has it (the server builds the
+// Team and Player pages with it). Framework free so they can be unit tested.
 import {MU0} from "@/app/_lib/rating/glicko2";
 import {count, NOUN} from "@/app/_lib/ui/text";
+import type {RatingRow} from "@/app/_interfaces/ratings";
+import type {PlayerRatingSummary} from "@/app/_interfaces/profiles";
+
+export type RatingSummary = Omit<PlayerRatingSummary, "total">;
+
+// A player's rating as Rejting shows it (the Team and Player pages). A player who isn't on the list (never on a team,
+// no rated round) keeps their stored rating with no change and no rounds: Privremeno, and no place.
+export function ratingSummary(list: RatingRow[], player: {id: number; rating: number}): RatingSummary {
+  const row = list.find((r) => r.id === player.id);
+  if (!row) return {rating: player.rating, change: null, rounds: 0, provisional: true, rank: null};
+  return {rating: row.rating, change: row.change, rounds: row.rounds, provisional: row.provisional, rank: row.rank};
+}
 
 // +18, −12 (a real minus sign), 0
 export function formatChange(change: number | null | undefined): string {

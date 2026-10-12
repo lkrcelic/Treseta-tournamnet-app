@@ -10,6 +10,14 @@ export function pickActiveLeague<T extends {league_id: number; last_played: stri
   return best?.league_id ?? null;
 }
 
+// Whether a league's season is over ("Završeno"; otherwise "U tijeku"): its end date has passed or, for a league
+// without an end date (the older ones), its last night has. A league with neither is still running. Dates are
+// YYYY-MM-DD; today is the league date (leagueDateString), so the end date itself and tonight still count as running.
+export function leagueEnded(end: string | null, lastNight: string | null, today: string): boolean {
+  if (end != null) return end < today;
+  return lastNight != null && lastNight < today;
+}
+
 export type LeaguePage = "daily-standings" | "standings" | "manage";
 
 // A link to a page of the active league: straight to it once its id is known (useActiveLeagueId), otherwise through
