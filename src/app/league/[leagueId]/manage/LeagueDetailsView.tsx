@@ -2,7 +2,7 @@
 
 import {updateLeagueAPI} from "@/app/_fetchers/league/leagues";
 import {LeagueOption, updateCachedLeague} from "@/app/_hooks/useLeagues";
-import {END_DATE_ERROR, endsAfterStart} from "@/app/_interfaces/league";
+import {END_DATE_ERROR, endsAfterStart, LEAGUE_NAME_TAKEN, leagueNameTaken} from "@/app/_interfaces/league";
 import {color, font, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, ErrorNote, IconCircleButton, OutlineButton, PrimaryButton, TextField} from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
@@ -43,11 +43,11 @@ export default function LeagueDetailsView({leagueId, leagues, aside}: {leagueId:
   };
 
   const name = d.name.trim();
-  const duplicate = name !== "" && leagues.some((l) => l.id !== leagueId && l.name.toLowerCase() === name.toLowerCase());
+  const duplicate = leagueNameTaken(leagues, name, leagueId);
   const error = !name
     ? "Ime lige je obavezno."
     : duplicate
-      ? "Druga liga već ima to ime."
+      ? LEAGUE_NAME_TAKEN
       : !d.start
         ? "Početak je obavezan."
         : !endsAfterStart(d.start, d.end)

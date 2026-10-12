@@ -1,11 +1,11 @@
-import {LeagueNightRow, MAX_NIGHTS_ERROR} from "@/app/_interfaces/league";
+import {LeagueNightRow, MAX_NIGHTS_ERROR, NIGHT_TAKEN} from "@/app/_interfaces/league";
 import {MAX_NIGHTS} from "@/app/_lib/nights";
 import {prisma} from "@/app/_lib/prisma";
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {Prisma} from "@prisma/client";
 
-// League nights (Manage League · Dates): the nights a league plays. Raspored shows them to the players, and
+// League nights (Upravljanje ligom · Datumi): the nights a league plays. Raspored shows them to the players, and
 // Burza igrača offers only these nights to a team that needs a substitute.
 
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);
@@ -45,7 +45,7 @@ export async function addLeagueNight(leagueId: number, date: string): Promise<vo
     await prisma.leagueNight.create({data: {league_id: leagueId, night: nightValue(date)}});
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2002") throw new InvalidResultError("Ta je večer već na popisu.");
+      if (error.code === "P2002") throw new InvalidResultError(NIGHT_TAKEN);
       if (error.code === "P2003") throw new NotFoundError("Liga ne postoji.");
     }
     throw error;

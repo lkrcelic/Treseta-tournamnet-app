@@ -7,7 +7,7 @@ import {NextRequest, NextResponse} from "next/server";
 
 export const dynamic = "force-dynamic";
 
-// A league's nights, each with whether it has rounds (Raspored, Manage League · Dates). Public, like the season table.
+// A league's nights, each with whether it has rounds (Raspored, Upravljanje ligom · Datumi). Public, like the season table.
 export async function GET(_request: NextRequest, {params}: {params: {id: string}}) {
   try {
     const nights = await listLeagueNights(Number(params.id));

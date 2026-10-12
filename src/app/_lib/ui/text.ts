@@ -80,6 +80,10 @@ export const NOUN = {
   ekipaNeIgra: ["ekipa ne igra", "ekipe ne igraju", "ekipa ne igra"],
   neaktivna: ["neaktivna", "neaktivne", "neaktivnih"],
   isključena: ["isključena", "isključene", "isključenih"],
+  // "1 odigrana", "2 odigrane", "6 odigrano" (večeri, design "6 odigrano")
+  odigrana: ["odigrana", "odigrane", "odigrano"],
+  // "1 odabrana", "2 odabrane", "0 odabrano" (ekipe, design "0 odabrano")
+  odabrana: ["odabrana", "odabrane", "odabrano"],
   znak: ["znak", "znaka", "znakova"],
 } as const satisfies Record<string, NounForms>;
 

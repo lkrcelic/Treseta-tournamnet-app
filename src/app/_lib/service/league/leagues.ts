@@ -1,6 +1,7 @@
-import {END_DATE_ERROR, endsAfterStart, LeagueCreateRequest, LeagueSummary, LeagueTeamDetails, LeagueUpdateRequest} from "@/app/_interfaces/league";
+import {END_DATE_ERROR, endsAfterStart, LEAGUE_NAME_TAKEN, LeagueCreateRequest, LeagueSummary, LeagueTeamDetails, LeagueUpdateRequest} from "@/app/_interfaces/league";
 import {BYE_TEAM_ID} from "@/app/_lib/bye";
 import {conferencesError} from "@/app/_lib/conferences";
+import {anyCase} from "@/app/_lib/helpers/query/anyCase";
 import {pickActiveLeague} from "@/app/_lib/league";
 import {generateNights, sortNights} from "@/app/_lib/nights";
 import {nightValue} from "@/app/_lib/service/league/nights";
@@ -49,10 +50,19 @@ export async function activeLeagueId(): Promise<number | null> {
   return (await listLeagues()).find((l) => l.active)?.league_id ?? null;
 }
 
+// Throws when another league already has this name (any case); `exceptId` is the league being renamed
+async function checkLeagueNameFree(name: string, exceptId?: number): Promise<void> {
+  const taken = await prisma.league.count({
+    where: {league_id: exceptId != null ? {not: exceptId} : undefined, league_name: anyCase(name)},
+  });
+  if (taken) throw new InvalidResultError(LEAGUE_NAME_TAKEN);
+}
+
 // Creates a league with its nights and, optionally, adds existing teams to it and gives it conferences (the teams are
-// put in them in Manage League). The nights the admin left in Create League are kept; without a list they are every
-// play day from the start to the end date.
+// put in them in Upravljanje ligom). The nights the admin left in Nova liga are kept; without a list they are every
+// play day from the start to the end date. The name can't be another league's (any case), as when renaming.
 export async function createLeague(req: LeagueCreateRequest): Promise<LeagueSummary> {
+  await checkLeagueNameFree(req.league_name);
   const teamIds = Array.from(new Set(req.team_ids.filter((id) => id !== BYE_TEAM_ID)));
   if (teamIds.length) {
     const found = await prisma.team.count({where: {team_id: {in: teamIds}}});
@@ -113,18 +123,13 @@ export async function listLeagueTeams(leagueId: number): Promise<LeagueTeamDetai
     .sort((a, b) => a.team_name.localeCompare(b.team_name, "hr"));
 }
 
-// Changes a league's details (Manage League · Details); fields left out stay as they are. The name is shown on
+// Changes a league's details (Upravljanje ligom · Podaci); fields left out stay as they are. The name is shown on
 // standings and the league pickers, so two leagues can't share it (any case). Returns false when the league doesn't exist.
 export async function updateLeague(leagueId: number, req: LeagueUpdateRequest): Promise<boolean> {
   const league = await prisma.league.findUnique({where: {league_id: leagueId}, select: {start_date: true, end_date: true}});
   if (!league) return false;
   const leagueName = req.league_name?.trim();
-  if (leagueName) {
-    const taken = await prisma.league.count({
-      where: {league_id: {not: leagueId}, league_name: {equals: leagueName, mode: "insensitive"}},
-    });
-    if (taken) throw new InvalidResultError("Druga liga već ima to ime.");
-  }
+  if (leagueName) await checkLeagueNameFree(leagueName, leagueId);
   const start = req.start_date !== undefined ? req.start_date : dateString(league.start_date);
   const end = req.end_date !== undefined ? req.end_date : dateString(league.end_date);
   if (!endsAfterStart(start, end)) throw new InvalidResultError(END_DATE_ERROR);

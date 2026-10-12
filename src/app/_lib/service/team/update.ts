@@ -2,12 +2,13 @@ import {prisma} from "@/app/_lib/prisma";
 import {Team} from "@prisma/client";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {isByeTeam} from "@/app/_lib/bye";
+import {anyCase} from "@/app/_lib/helpers/query/anyCase";
 
 // Team names are unique ignoring case ("Lavovi" and "lavovi" would be the same team in a standings table)
 export async function teamNameTaken(name: string, exceptTeamId?: number): Promise<boolean> {
   const other = await prisma.team.findFirst({
     where: {
-      team_name: {equals: name.trim(), mode: "insensitive"},
+      team_name: anyCase(name.trim()),
       ...(exceptTeamId != null ? {team_id: {not: exceptTeamId}} : {}),
     },
     select: {team_id: true},

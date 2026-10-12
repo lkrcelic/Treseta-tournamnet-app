@@ -28,7 +28,7 @@ const PLAY_DAY = ["ponedjeljkom", "utorkom", "srijedom", "četvrtkom", "petkom",
 // share one request
 let cache: LeagueOption[] | null = null;
 let inflight: Promise<LeagueOption[]> | null = null;
-// mounted pickers, told when a league is renamed
+// mounted pickers, told when a league is renamed or created
 const listeners = new Set<(leagues: LeagueOption[]) => void>();
 
 function leagueMeta(teamCount: number, playDay: number | null | undefined, active: boolean): string {
@@ -150,9 +150,14 @@ export function useSelectedLeagueId(): number | null | undefined {
   return error ? null : undefined;
 }
 
-// Clears the cached list after a league was created
-export function invalidateLeagues() {
+// Fetches the list again after a league was created (here or elsewhere), and shows it in every mounted picker
+export function reloadLeagues(): Promise<void> {
   cache = null;
+  return loadLeagues()
+    .then((options) => listeners.forEach((notify) => notify(options)))
+    .catch(() => {
+      // the pickers keep the list they have; the next page load fetches it again
+    });
 }
 
 // Shows a league's new name and details everywhere at once, without fetching the list again

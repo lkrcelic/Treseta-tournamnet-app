@@ -5,12 +5,11 @@ import useLeagueNights from "@/app/_hooks/useLeagueNights";
 import useLeagues, {useSelectedLeagueId} from "@/app/_hooks/useLeagues";
 import useMySchedule from "@/app/_hooks/useMySchedule";
 import {leagueDateString} from "@/app/_lib/dates";
-import {nextNightIndex, nightLabel, nightsCountLabel, nightsLeftLabel, nightStatus, NightStatus} from "@/app/_lib/nights";
+import {nextNightIndex, nightLabel, nightsCountLabel, nightsLeftLabel, RASPORED_PILL, rasporedPill, RasporedPill} from "@/app/_lib/nights";
 import {TransitionLink, useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, font, shadow} from "@/app/_styles/tokens";
 import {buttonBase, Card, CenteredSpinner, DesktopShell, ellipsis, EmptyState, ErrorNote, InitialsAvatar, Screen, Segmented, tabPanelProps, tabular, TopBar} from "@/app/_ui/sp";
 import EventRoundedIcon from "@mui/icons-material/EventRounded";
-import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import PersonSearchRoundedIcon from "@mui/icons-material/PersonSearchRounded";
 import {Box} from "@mui/material";
 import {useSearchParams} from "next/navigation";
@@ -30,7 +29,14 @@ type Shown = {
   canAsk: boolean;
 };
 
-const STATUS: Record<NightStatus, string> = {played: "Odigrano", notPlayed: "Nije odigrano", next: "Sljedeća", upcoming: ""};
+// The pill colours: the next night navy, the season's last one cream, past nights plain
+const PILL: Record<RasporedPill, {bg: string; ink: string}> = {
+  played: {bg: "transparent", ink: color.muted},
+  notPlayed: {bg: "transparent", ink: color.muted},
+  tonight: {bg: color.navy, ink: color.white},
+  next: {bg: color.navy, ink: color.white},
+  last: {bg: color.cream, ink: color.navy},
+};
 
 export default function RasporedPage() {
   const router = useTransitionRouter();
@@ -118,7 +124,7 @@ export default function RasporedPage() {
 
   return (
     <Screen fill>
-      <TopBar eyebrow={eyebrow} title="Raspored" onBack={() => router.push("/", "back")} backLabel="Početna" backIcon={<HomeRoundedIcon />} />
+      <TopBar eyebrow={eyebrow} title="Raspored" onBack={() => router.push("/", "back")} />
       {tabs}
       <Box {...(tabs ? tabPanelProps("raspored", current!.league_id) : {})} sx={{flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: "14px"}}>
         {body}
@@ -132,18 +138,23 @@ function Schedule({shown, today, desktop}: {shown: Shown; today: string; desktop
   const next = nextIndex >= 0 ? shown.nights[nextIndex] : null;
   const playedCount = shown.nights.filter((n) => shown.played.has(n)).length;
   const left = nextIndex >= 0 ? shown.nights.length - nextIndex : 0;
+  const hasNights = shown.nights.length > 0;
+  // after the season the card shows the last night
+  const cardNight = next ?? shown.nights[shown.nights.length - 1];
+  const cardTitle = next === today ? "Večeras" : next ? "Sljedeća večer" : "Zadnja večer";
 
-  const nextCard = (
-    <Box component="section" aria-label="Sljedeća večer" sx={{flex: "none", borderRadius: "22px", background: color.navy, color: color.white, p: "16px 18px", display: "flex", alignItems: "center", gap: "14px"}}>
+  // without nights the list says so, and there is no card
+  const nextCard = hasNights && (
+    <Box component="section" aria-label={cardTitle} sx={{flex: "none", borderRadius: "22px", background: color.navy, color: color.white, p: "16px 18px", display: "flex", alignItems: "center", gap: "14px"}}>
       <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "4px"}}>
         <Box component="span" sx={{fontSize: 12.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.cream}}>
-          {next === today ? "Večeras" : "Sljedeća večer"}
+          {cardTitle}
         </Box>
         <Box component="span" sx={{fontFamily: font.display, fontSize: 26, fontWeight: 800, lineHeight: 1.05}}>
-          {next ? nightLabel(next) : "—"}
+          {nightLabel(cardNight)}
         </Box>
         <Box component="span" sx={{fontSize: 14, color: color.cream}}>
-          {shown.nights.length ? nightsLeftLabel(left) : "Admin još nije upisao večeri lige."}
+          {nightsLeftLabel(left)}
         </Box>
       </Box>
       <EventRoundedIcon aria-hidden sx={{fontSize: 34, color: color.cream}} />
@@ -163,19 +174,19 @@ function Schedule({shown, today, desktop}: {shown: Shown; today: string; desktop
 
   const list = (
     <Box sx={{flex: desktop ? 1 : "none", minHeight: 0, display: "flex", flexDirection: "column", gap: "10px"}}>
-      <Box component="h2" sx={{m: 0, px: "6px", fontSize: 13, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: color.muted}}>
-        {nightsCountLabel(shown.nights.length, playedCount)}
-      </Box>
+      {hasNights && (
+        <Box component="h2" sx={{m: 0, px: "6px", fontSize: 13, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: color.muted}}>
+          {nightsCountLabel(shown.nights.length, playedCount)}
+        </Box>
+      )}
       <Card component="ol" sx={{listStyle: "none", m: 0, p: 0, overflowY: "auto", overscrollBehavior: "contain", flex: desktop ? 1 : "none", minHeight: 0}}>
-        {shown.nights.length === 0 ? (
-          <EmptyState>Nema upisanih večeri.</EmptyState>
+        {!hasNights ? (
+          <EmptyState>Admin još nije upisao večeri lige.</EmptyState>
         ) : (
           shown.nights.map((night, i) => {
             const isNext = i === nextIndex;
-            const status = nightStatus(night, isNext, today, shown.played.has(night));
+            const pill = rasporedPill(night, isNext, i === shown.nights.length - 1, today, shown.played.has(night));
             const past = night < today;
-            const last = !past && i === shown.nights.length - 1 && !isNext;
-            const label = isNext && night === today ? "Večeras" : last ? "Zadnja" : STATUS[status];
             return (
               <Box
                 component="li"
@@ -189,7 +200,7 @@ function Schedule({shown, today, desktop}: {shown: Shown; today: string; desktop
                 <Box component="span" sx={{flex: 1, fontSize: 16, fontWeight: isNext ? 700 : 600, color: past ? color.muted : color.ink}}>
                   {nightLabel(night)}
                 </Box>
-                {label && (
+                {pill && (
                   <Box
                     component="span"
                     sx={{
@@ -198,14 +209,14 @@ function Schedule({shown, today, desktop}: {shown: Shown; today: string; desktop
                       alignItems: "center",
                       px: "10px",
                       borderRadius: "9px",
-                      background: isNext ? color.navy : last ? color.cream : "transparent",
-                      color: isNext ? color.white : past ? color.muted : color.navy,
+                      background: PILL[pill].bg,
+                      color: PILL[pill].ink,
                       fontSize: 12.5,
                       fontWeight: 700,
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {label}
+                    {RASPORED_PILL[pill]}
                   </Box>
                 )}
               </Box>

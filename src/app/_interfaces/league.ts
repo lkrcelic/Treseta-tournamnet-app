@@ -16,6 +16,16 @@ const ConferenceInputValidation = z.object({
 });
 
 export const END_DATE_ERROR = "Kraj mora biti nakon početka.";
+// Two leagues can't share a name (any case): it is shown on standings and the league pickers
+export const LEAGUE_NAME_TAKEN = "Druga liga već ima to ime.";
+// Whether another league in the list already has this name (any case); exceptId is the league being renamed. The
+// server checks it too (Nova liga, Upravljanje ligom · Podaci).
+export function leagueNameTaken(leagues: {id: number; name: string}[], name: string, exceptId?: number): boolean {
+  const wanted = name.trim().toLowerCase();
+  return wanted !== "" && leagues.some((l) => l.id !== exceptId && l.name.trim().toLowerCase() === wanted);
+}
+// A league can't have the same night twice
+export const NIGHT_TAKEN = "Ta je večer već na popisu.";
 export const MAX_NIGHTS_ERROR = `Liga može imati najviše ${count(MAX_NIGHTS, NOUN.večer)}.`;
 // ISO dates compare as strings; either date may be missing
 export const endsAfterStart = (start?: string | null, end?: string | null) => !start || !end || end > start;
@@ -39,7 +49,7 @@ export const LeagueCreateRequestValidation = z
   })
   .refine((l) => endsAfterStart(l.start_date, l.end_date), {message: END_DATE_ERROR, path: ["end_date"]});
 
-// Manage League · Details: any of the league's fields; the ones left out stay as they are
+// Upravljanje ligom · Podaci: any of the league's fields; the ones left out stay as they are
 export const LeagueUpdateRequestValidation = z.object({
   league_name: leagueName.optional(),
   season: season.nullable().optional(),
@@ -53,7 +63,7 @@ export const LeagueNotesRequestValidation = z.object({
   notes: z.string().max(5000, "Bilješke mogu imati najviše 5000 znakova."),
 });
 
-// Manage League · Dates: add a night
+// Upravljanje ligom · Datumi: add a night
 export const LeagueNightAddRequestValidation = z.object({
   date: z.string().refine(isIsoDate, DATE_FORMAT_ERROR),
 });

@@ -2,7 +2,21 @@ import assert from "node:assert/strict";
 import {test} from "node:test";
 import type {BurzaPost} from "../../_interfaces/burza";
 import {BurzaCreateRequestValidation} from "../../_interfaces/burza";
-import {generateNights, MAX_NIGHTS, nextNightIndex, nightLabel, nightLabelLong, nightsCountLabel, nightsLeftLabel, nightStatus, sortNights} from "../nights";
+import {
+  generateNights,
+  MAX_NIGHTS,
+  nextNightIndex,
+  NIGHT_STATUS_LABEL,
+  nightLabel,
+  nightLabelLong,
+  nightsCountLabel,
+  nightsLeftLabel,
+  nightsSummaryLabel,
+  nightStatus,
+  RASPORED_PILL,
+  rasporedPill,
+  sortNights,
+} from "../nights";
 import {isValidPhone, normalizePhone, phoneInput, savesToProfile, telHref, whatsappHref} from "../phone";
 import {
   adCount,
@@ -59,6 +73,47 @@ test("the next night counts tonight, and a past night was played only with round
   assert.equal(nightsLeftLabel(10), "još 10 večeri do kraja sezone");
   assert.equal(nightsLeftLabel(1), "još 1 večer do kraja sezone");
   assert.equal(nightsCountLabel(16, 6), "16 večeri · 6 odigrano");
+  assert.equal(nightsCountLabel(1, 0), "1 večer · 0 odigrano");
+  // the participle agrees with the number (večer)
+  assert.equal(nightsCountLabel(17, 1), "17 večeri · 1 odigrana");
+  assert.equal(nightsCountLabel(17, 2), "17 večeri · 2 odigrane");
+  assert.equal(nightsSummaryLabel(6, 10), "6 odigrano · još 10");
+  assert.equal(nightsSummaryLabel(1, 16), "1 odigrana · još 16");
+  // after the season there is nothing to go
+  assert.equal(nightsSummaryLabel(6, 0), "6 odigrano");
+});
+
+test("Datumi labels every night: Odigrano, Nije odigrano, Sljedeća, Nadolazi", () => {
+  const label = (night: string, isNext: boolean, hasRounds: boolean) => NIGHT_STATUS_LABEL[nightStatus(night, isNext, "2026-10-10", hasRounds)];
+  assert.equal(label("2026-10-06", false, true), "Odigrano");
+  assert.equal(label("2026-10-06", false, false), "Nije odigrano");
+  assert.equal(label("2026-10-13", true, false), "Sljedeća");
+  assert.equal(label("2026-10-20", false, false), "Nadolazi");
+});
+
+test("Raspored marks past nights, the next one and the season's last one", () => {
+  const nights = ["2026-09-29", "2026-10-06", "2026-10-13", "2026-10-20", "2026-10-27"];
+  const today = "2026-10-10";
+  // as Raspored calls it: the next night from nextNightIndex, the last one by its index
+  const at = (i: number, day: string, hasRounds: boolean) =>
+    rasporedPill(nights[i], i === nextNightIndex(nights, day), i === nights.length - 1, day, hasRounds);
+  const pill = (i: number, hasRounds = false) => {
+    const p = at(i, today, hasRounds);
+    return p && RASPORED_PILL[p];
+  };
+  assert.equal(pill(0, true), "Odigrano");
+  // a past night without rounds (DECISIONS #28)
+  assert.equal(pill(1, false), "Nije odigrano");
+  assert.equal(pill(2), "Sljedeća");
+  // a future night between the next and the last has no pill
+  assert.equal(pill(3), null);
+  assert.equal(pill(4), "Zadnja");
+  // on the night itself the next night is tonight
+  assert.equal(RASPORED_PILL[at(2, "2026-10-13", true)!], "Večeras");
+  // the last night that is also the next one is the next one
+  assert.equal(at(4, "2026-10-21", false), "next");
+  // after the season every night is past
+  assert.equal(at(4, "2026-11-01", true), "played");
 });
 
 test("phone numbers are stored with the country code", () => {
