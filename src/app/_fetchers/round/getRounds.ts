@@ -1,3 +1,4 @@
+import {apiFetch, responseErrorMessage} from "@/app/_fetchers/errorMessage";
 import { RoundExtendedResponse } from "@/app/_interfaces/round";
 
 type RoundsQueryParams = {
@@ -41,13 +42,13 @@ export async function getRoundsAPI(params?: RoundsQueryParams): Promise<RoundExt
   const queryString = queryParams.toString();
   const url = `/api/rounds${queryString ? `?${queryString}` : ''}`;
   
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
   });
   
   if (!response.ok) {
-    throw new Error(`Failed to fetch rounds: ${response.statusText}`);
+    throw new Error(await responseErrorMessage(response, "Kola se nisu učitala."));
   }
   
   return await response.json();

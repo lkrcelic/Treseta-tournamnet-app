@@ -20,7 +20,7 @@ export async function PATCH(request: NextRequest, {params}: {params: {id: string
     if (body.active !== undefined && !(await setLeagueTeamActive(leagueId, teamId, body.active))) return notInLeague();
     return NextResponse.json({league_id: leagueId, team_id: teamId, ...body}, {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to update the team.");
+    return errorResponse(error, "Promjena ekipe nije spremljena.");
   }
 }
 
@@ -34,6 +34,6 @@ export async function DELETE(request: NextRequest, {params}: {params: {id: strin
     if (!removed) return NextResponse.json({error: "Ekipa nije u ovoj ligi."}, {status: STATUS.NotFound});
     return new NextResponse(null, {status: STATUS.NoContent});
   } catch (error) {
-    return errorResponse(error, "Failed to remove the team.");
+    return errorResponse(error, "Ekipa nije uklonjena iz lige.");
   }
 }

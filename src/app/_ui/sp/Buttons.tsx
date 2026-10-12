@@ -2,6 +2,7 @@ import {color, font, shadow} from "@/app/_styles/tokens";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import {Box, SxProps, Theme} from "@mui/material";
 import React from "react";
+import {loadMoreLabel, NounForms} from "@/app/_lib/ui/text";
 import {buttonBase, mergeSx} from "./base";
 import {Spinner} from "./States";
 
@@ -293,8 +294,8 @@ export function TextButton({children, sx, type = "button", ...rest}: NativeButto
   );
 }
 
-// "Load more · 7 teams left" under a list that shows its results a page at a time
-export function LoadMoreButton({left, noun, onClick, sx}: {left: number; noun: [string, string]; onClick: () => void; sx?: SxProps<Theme>}) {
+// "Učitaj još · još 7 ekipa" under a list that shows its results a page at a time; noun: NOUN.ekipa, NOUN.igrač…
+export function LoadMoreButton({left, noun, onClick, sx}: {left: number; noun: NounForms; onClick: () => void; sx?: SxProps<Theme>}) {
   return (
     <Box
       component="button"
@@ -321,7 +322,7 @@ export function LoadMoreButton({left, noun, onClick, sx}: {left: number; noun: [
       )}
     >
       <ExpandMoreRoundedIcon aria-hidden />
-      Load more · {left} {left === 1 ? noun[0] : noun[1]} left
+      {loadMoreLabel(left, noun)}
     </Box>
   );
 }

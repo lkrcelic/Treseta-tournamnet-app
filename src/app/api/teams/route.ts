@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(teams, {status: STATUS.OK});
   } catch (error) {
-    return NextResponse.json({error: "Failed to fetch teams."}, {status: STATUS.ServerError});
+    return NextResponse.json({error: "Ekipe se nisu učitale."}, {status: STATUS.ServerError});
   }
 }
 
@@ -57,8 +57,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(createdTeam, {status: STATUS.OK});
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json({error: "A team with this name already exists."}, {status: STATUS.BadRequest});
+      return NextResponse.json({error: "Ekipa s tim imenom već postoji."}, {status: STATUS.BadRequest});
     }
-    return errorResponse(error, "Failed to create the team.");
+    return errorResponse(error, "Ekipa nije napravljena.");
   }
 }

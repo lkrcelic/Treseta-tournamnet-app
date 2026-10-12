@@ -15,7 +15,7 @@ export async function GET(request: NextRequest, {params}: {params: {id: string}}
     if (!post) return NextResponse.json({error: "Oglas ne postoji."}, {status: STATUS.NotFound});
     return NextResponse.json(post, {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to fetch the ad.");
+    return errorResponse(error, "Oglas se nije učitao.");
   }
 }
 

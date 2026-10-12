@@ -10,7 +10,7 @@ import { lucia } from "@/app/_lib/luciaAuth";
 import {clearFailedLogins, isLoginLocked, loginLimitKey, recordFailedLogin} from "@/app/_lib/rateLimiting/loginLimiting";
 
 // A new response each time: a response body can only be sent once
-const notFoundResponse = () => NextResponse.json({error: "Incorrect username or password."}, {status: STATUS.NotFound});
+const notFoundResponse = () => NextResponse.json({error: "Pogrešno korisničko ime ili lozinka."}, {status: STATUS.NotFound});
 
 export async function POST(req: NextRequest) {
   try {
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     // checked, so parallel requests can't all get through; a correct password clears the count again.
     const limitKey = loginLimitKey(req, existingUser ? `player:${existingUser.id}` : `login:${login.toLowerCase()}`);
     if (isLoginLocked(limitKey)) {
-      return NextResponse.json({error: "Too many login attempts. Try again later."}, {status: STATUS.TooManyRequests});
+      return NextResponse.json({error: "Previše pokušaja prijave. Pokušaj kasnije."}, {status: STATUS.TooManyRequests});
     }
     recordFailedLogin(limitKey);
 
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     const cookie = lucia.createSessionCookie(session.id);
     signCookie(cookie);
 
-    const response = NextResponse.json({message: "Login successful."}, {status: STATUS.OK});
+    const response = NextResponse.json({message: "Prijava je uspjela."}, {status: STATUS.OK});
     response.cookies.set(cookie.name, cookie.value, {
       ...cookie.attributes,
     });
@@ -81,6 +81,6 @@ export async function POST(req: NextRequest) {
     return response;
   } catch (error) {
     console.error("Error: ", error);
-    return NextResponse.json({message: "Login unsuccessful."}, {status: STATUS.ServerError});
+    return NextResponse.json({message: "Prijava nije uspjela."}, {status: STATUS.ServerError});
   }
 }

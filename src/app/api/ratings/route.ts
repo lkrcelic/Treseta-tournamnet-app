@@ -14,6 +14,6 @@ export async function GET(request: NextRequest) {
   try {
     return NextResponse.json(await listRatings(auth.user.id), {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to load the ratings.");
+    return errorResponse(error, "Rejting se nije učitao.");
   }
 }

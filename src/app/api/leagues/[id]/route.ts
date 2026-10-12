@@ -13,9 +13,9 @@ export async function PATCH(request: NextRequest, {params}: {params: {id: string
   const leagueId = Number(params.id);
   try {
     const body = LeagueUpdateRequestValidation.parse(await request.json());
-    if (!(await updateLeague(leagueId, body))) return NextResponse.json({error: "League not found."}, {status: STATUS.NotFound});
+    if (!(await updateLeague(leagueId, body))) return NextResponse.json({error: "Liga ne postoji."}, {status: STATUS.NotFound});
     return NextResponse.json({league_id: leagueId, ...body}, {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to update the league.");
+    return errorResponse(error, "Promjene lige nisu spremljene.");
   }
 }

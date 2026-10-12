@@ -13,7 +13,7 @@ export async function GET() {
   try {
     return NextResponse.json(await listLeagues(), {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to fetch leagues.");
+    return errorResponse(error, "Lige se nisu učitale.");
   }
 }
 
@@ -26,6 +26,6 @@ export async function POST(request: NextRequest) {
     const body = LeagueCreateRequestValidation.parse(await request.json());
     return NextResponse.json(await createLeague(body), {status: STATUS.Created});
   } catch (error) {
-    return errorResponse(error, "Failed to create the league.");
+    return errorResponse(error, "Liga nije napravljena.");
   }
 }

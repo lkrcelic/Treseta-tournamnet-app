@@ -17,7 +17,7 @@ export async function PUT(request: NextRequest, {params}: Params) {
     await updateHand(kind, Number(params.resultId), hand);
     return NextResponse.json({ok: true}, {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to update the hand.");
+    return errorResponse(error, "Igra nije spremljena.");
   }
 }
 
@@ -28,6 +28,6 @@ export async function DELETE(request: NextRequest, {params}: Params) {
     await deleteHand(HandKindValidation.parse(params.kind), Number(params.resultId));
     return new NextResponse(null, {status: STATUS.NoContent});
   } catch (error) {
-    return errorResponse(error, "Failed to delete the hand.");
+    return errorResponse(error, "Igra nije obrisana.");
   }
 }

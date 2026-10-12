@@ -12,10 +12,10 @@ export async function DELETE(request: NextRequest, {params}: {params: {id: strin
   try {
     const removed = await removePlayerFromTeam(Number(params.id), Number(params.playerId));
     if (!removed) {
-      return NextResponse.json({error: "The player is not in this team."}, {status: STATUS.NotFound});
+      return NextResponse.json({error: "Igrač nije u ovoj ekipi."}, {status: STATUS.NotFound});
     }
     return new NextResponse(null, {status: STATUS.NoContent});
   } catch (error) {
-    return errorResponse(error, "Failed to remove the teammate.");
+    return errorResponse(error, "Igrač nije uklonjen iz ekipe.");
   }
 }

@@ -12,6 +12,6 @@ export async function GET(request: NextRequest, {params}: {params: {id: string}}
   try {
     return NextResponse.json(await smokingPlan(Number(params.id)), {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to fetch the smoking plan.");
+    return errorResponse(error, "Pušački raspored se nije učitao.");
   }
 }

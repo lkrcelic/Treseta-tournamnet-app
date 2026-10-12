@@ -14,6 +14,6 @@ export async function GET(request: NextRequest, {params}: {params: {playerId: st
   try {
     return NextResponse.json(await getPlayerRating(Number(params.playerId)), {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to load the player's rating.");
+    return errorResponse(error, "Rejting igrača se nije učitao.");
   }
 }

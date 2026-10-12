@@ -47,6 +47,6 @@ export async function POST(req: NextRequest) {
     return res;
   } catch (error) {
     console.error("Logout error:", error);
-    return NextResponse.json({error: "Could not signout user."}, {status: STATUS.ServerError});
+    return NextResponse.json({error: "Odjava nije uspjela."}, {status: STATUS.ServerError});
   }
 }

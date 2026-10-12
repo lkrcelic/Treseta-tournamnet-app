@@ -70,7 +70,7 @@ export default function SignUpForm({onSuccess, twoColumn = false}: {onSuccess: (
       const message = res.errors?.error;
       if (!Object.keys(serverErrors).length) setFormError(typeof message === "string" ? message : "Registracija nije uspjela.");
     } catch {
-      setFormError("Registracija trenutno nije moguća. Pokušaj ponovo.");
+      setFormError("Registracija trenutno nije moguća. Pokušaj ponovno.");
     }
     setSubmitting(false);
   };

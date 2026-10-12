@@ -12,7 +12,7 @@ export type AuthResult = {user: Player; response?: undefined} | {user?: undefine
 export async function requireUser(req: NextRequest): Promise<AuthResult> {
   const user = await getAuthorizedUser(req);
   if (!user) {
-    return {response: NextResponse.json({error: "You need to log in."}, {status: STATUS.Unauthorized})};
+    return {response: NextResponse.json({error: "Prijava je istekla. Prijavi se ponovno."}, {status: STATUS.Unauthorized})};
   }
   return {user};
 }
@@ -21,7 +21,7 @@ export async function requireAdmin(req: NextRequest): Promise<AuthResult> {
   const auth = await requireUser(req);
   if (auth.response) return auth;
   if (!isAdmin(auth.user)) {
-    return {response: NextResponse.json({error: "You are not authorized for this action."}, {status: STATUS.Forbidden})};
+    return {response: NextResponse.json({error: "Nemaš ovlasti za ovu radnju."}, {status: STATUS.Forbidden})};
   }
   return auth;
 }
@@ -49,5 +49,5 @@ export async function canPlayRound(user: Player, roundId: number | null | undefi
 }
 
 export function notYourRoundResponse(): NextResponse {
-  return NextResponse.json({error: "You are not playing in this round."}, {status: STATUS.Forbidden});
+  return NextResponse.json({error: "Ne igraš u ovoj rundi."}, {status: STATUS.Forbidden});
 }

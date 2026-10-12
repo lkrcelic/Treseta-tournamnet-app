@@ -6,7 +6,7 @@ import {MATCH_THRESHOLD} from "@/app/_lib/game/scoring";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {useCallback, useState} from "react";
 
-// "Start Game": opens the running match of the player's open round, or starts it (after the lineup, for a round
+// "Započni igru": opens the running match of the player's open round, or starts it (after the lineup, for a round
 // whose players aren't confirmed yet)
 export default function useStartGame() {
   const router = useTransitionRouter();

@@ -22,9 +22,9 @@ export async function teamExists(teamId: number): Promise<boolean> {
 // null when the team doesn't exist
 export async function renameTeam(teamId: number, name: string): Promise<Team | null> {
   if (!(await teamExists(teamId))) return null;
-  if (isByeTeam(teamId)) throw new InvalidResultError("The bye team can't be changed.");
+  if (isByeTeam(teamId)) throw new InvalidResultError("Slobodna runda se ne može mijenjati.");
   if (await teamNameTaken(name, teamId)) {
-    throw new InvalidResultError("A team with this name already exists.");
+    throw new InvalidResultError("Ekipa s tim imenom već postoji.");
   }
   return prisma.team.update({where: {team_id: teamId}, data: {team_name: name.trim()}});
 }

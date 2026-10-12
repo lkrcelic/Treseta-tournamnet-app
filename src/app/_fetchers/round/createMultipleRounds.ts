@@ -1,5 +1,5 @@
 import {REPEAT_MATCHUPS, RoundCreateRequest} from "@/app/_interfaces/round";
-import {responseErrorMessage} from "@/app/_fetchers/errorMessage";
+import {apiFetch, responseErrorMessage} from "@/app/_fetchers/errorMessage";
 
 // The rounds weren't created because some teams would meet twice today; repeats are their names, pair by pair
 export class RepeatMatchupsError extends Error {
@@ -18,7 +18,7 @@ export async function createMultipleRoundsAPI(
   smokingTables?: number[],
   withinConferences?: boolean,
 ): Promise<number> {
-  const response = await fetch("/api/rounds/generate-multiple", {
+  const response = await apiFetch("/api/rounds/generate-multiple", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify({
@@ -36,7 +36,7 @@ export async function createMultipleRoundsAPI(
     if (data?.code === REPEAT_MATCHUPS) throw new RepeatMatchupsError(data.error, data.repeats ?? []);
   }
   if (!response.ok) {
-    throw new Error(await responseErrorMessage(response, "Failed to create rounds"));
+    throw new Error(await responseErrorMessage(response, "Kolo nije napravljeno."));
   }
   const data = await response.json();
   return data.round_number;

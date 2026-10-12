@@ -1,6 +1,6 @@
 import {NextRequest, NextResponse} from "next/server";
 import {STATUS} from "@/app/_lib/statusCodes";
-import {matchTeams, TeamPair} from "@/app/_lib/matching/multipleRoundMatching";
+import {matchTeams} from "@/app/_lib/matching/multipleRoundMatching";
 import {getLeagueTeamsWithScores} from "@/app/_lib/helpers/query/leagueScores";
 import {RoundCreateRequestValidation} from "@/app/_interfaces/round";
 import {insertRoundBatch} from "@/app/_lib/service/round/insertPairRounds";
@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(rounds, {status: STATUS.OK});
   } catch (error) {
     console.error("Error fetching rounds:", error);
-    return NextResponse.json({error: "Failed to fetch rounds."}, {status: STATUS.BadRequest});
+    return NextResponse.json({error: "Kola se nisu učitala."}, {status: STATUS.BadRequest});
   }
 }
 
@@ -112,12 +112,8 @@ export async function POST(request: NextRequest) {
     const teamsWithScores = await getLeagueTeamsWithScores(league_id);
 
     const filteredTeams = teamsWithScores.filter((team) => present_teams.includes(team.id));
-    let matches: TeamPair[];
-    try {
-      matches = matchTeams(filteredTeams);
-    } catch (error) {
-      return NextResponse.json({error: (error as Error).message}, {status: STATUS.BadRequest});
-    }
+    // too few teams is an InvalidResultError from the pairing: a 400 with its sentence
+    const matches = matchTeams(filteredTeams);
 
     // one round, in the pairing's order (smoking tables come with Create Round's generate-multiple)
     const smokers = await teamSmokers(filteredTeams.map((t) => t.id));
@@ -128,6 +124,6 @@ export async function POST(request: NextRequest) {
       {status: alreadyCreated ? STATUS.OK : STATUS.Created}
     );
   } catch (error) {
-    return errorResponse(error, "Failed to create rounds.");
+    return errorResponse(error, "Kolo nije napravljeno.");
   }
 }

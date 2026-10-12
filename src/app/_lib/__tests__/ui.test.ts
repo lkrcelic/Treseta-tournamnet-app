@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {displayDate, initials, matchesQuery, plural, signed, weekdayDate} from "../ui/text";
+import {count, displayDate, initials, loadMoreLabel, matchesQuery, NOUN, plural, signed, weekdayDate} from "../ui/text";
 import {splitPodium, statsLine, toStandingsRows} from "../ui/standings";
 import {filterTables, liveCount, splitColumns, tableColumns, toTableRows} from "../ui/tables";
 
@@ -125,6 +125,39 @@ test("Croatian plural forms", () => {
   assert.equal(stol(12), "12 stolova");
   assert.equal(stol(21), "21 stol");
   assert.equal(stol(24), "24 stola");
+  // 0 and 11–14 take the many form; the last digit decides after that, also past 100
+  assert.equal(stol(0), "0 stolova");
+  assert.equal(stol(13), "13 stolova");
+  assert.equal(stol(14), "14 stolova");
+  assert.equal(stol(22), "22 stola");
+  assert.equal(stol(101), "101 stol");
+  assert.equal(stol(111), "111 stolova");
+  assert.equal(stol(112), "112 stolova");
+});
+
+test("count() puts the number before its noun in the right form", () => {
+  assert.deepEqual([1, 2, 5].map((n) => count(n, NOUN.ekipa)), ["1 ekipa", "2 ekipe", "5 ekipa"]);
+  assert.deepEqual([1, 2, 5, 21].map((n) => count(n, NOUN.igrač)), ["1 igrač", "2 igrača", "5 igrača", "21 igrač"]);
+  assert.deepEqual([1, 3, 12].map((n) => count(n, NOUN.bod)), ["1 bod", "3 boda", "12 bodova"]);
+  assert.deepEqual([1, 2, 5].map((n) => count(n, NOUN.pušačkiStol)), ["1 pušački stol", "2 pušačka stola", "5 pušačkih stolova"]);
+  assert.deepEqual([1, 2, 5].map((n) => `u ${count(n, NOUN.ekipaLoc)}`), ["u 1 ekipi", "u 2 ekipe", "u 5 ekipa"]);
+  assert.deepEqual([1, 4, 7].map((n) => count(n, NOUN.ekipaNeIgra)), ["1 ekipa ne igra", "4 ekipe ne igraju", "7 ekipa ne igra"]);
+  assert.equal(count(0, NOUN.pobjeda), "0 pobjeda");
+  assert.equal(count(3, NOUN.znak), "3 znaka");
+});
+
+test("the load-more button names how many are left, in the noun's form", () => {
+  assert.deepEqual([1, 2, 5].map((n) => loadMoreLabel(n, NOUN.ekipa)), [
+    "Učitaj još · još 1 ekipa",
+    "Učitaj još · još 2 ekipe",
+    "Učitaj još · još 5 ekipa",
+  ]);
+  assert.deepEqual([1, 2, 5, 21].map((n) => loadMoreLabel(n, NOUN.igrač)), [
+    "Učitaj još · još 1 igrač",
+    "Učitaj još · još 2 igrača",
+    "Učitaj još · još 5 igrača",
+    "Učitaj još · još 21 igrač",
+  ]);
 });
 
 import {combineDateAndTime} from "../dates";

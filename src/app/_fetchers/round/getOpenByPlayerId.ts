@@ -1,4 +1,4 @@
-import {responseErrorMessage} from "@/app/_fetchers/errorMessage";
+import {apiFetch, responseErrorMessage} from "@/app/_fetchers/errorMessage";
 import {LeagueConferences} from "@/app/_interfaces/league";
 
 type ConferenceRow = LeagueConferences["conferences"][number];
@@ -12,10 +12,10 @@ export async function getOpenRoundByPlayerIdAPI(): Promise<{
   ongoingScore: [number, number] | null;
   conferences: [ConferenceRow | null, ConferenceRow | null] | null;
 }> {
-  const response = await fetch(`/api/rounds/open`);
+  const response = await apiFetch(`/api/rounds/open`);
 
   if (!response.ok) {
-    throw new Error(await responseErrorMessage(response, "Failed to fetch round"));
+    throw new Error(await responseErrorMessage(response, "Otvorena runda se nije učitala."));
   }
 
   return response.json();

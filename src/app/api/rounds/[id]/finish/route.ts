@@ -12,8 +12,8 @@ export async function POST(request: NextRequest, {params}: { params: { id: strin
   try {
     await finishRound(Number(params.id));
 
-    return NextResponse.json("Round finished", {status: STATUS.OK});
+    return NextResponse.json("Runda je završena.", {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to finish the round.");
+    return errorResponse(error, "Runda nije završena.");
   }
 }

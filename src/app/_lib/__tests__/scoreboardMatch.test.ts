@@ -30,7 +30,7 @@ class Match {
   }
 
   play(plan: HandPlan) {
-    if (this.winner !== null) throw new InvalidResultError("This match is already over, finish it instead of adding a hand.");
+    if (this.winner !== null) throw new InvalidResultError("Meč je gotov – završi ga umjesto da dodaješ igru.");
     const sent = enterHand(this.id, plan);
     const saved = normalizeResult(sent);
     // what the phone showed is what the server stores
@@ -81,7 +81,7 @@ test("a whole match: the first team over 41 wins and no more hands are taken", (
   m.play({typedFor: 1, typed: "6"}); // 6 : 5
   assert.deepEqual(m.scores, [44, 28]);
   assert.equal(m.winner, 1);
-  assert.throws(() => m.play({typedFor: 2, typed: "9"}), /already over/);
+  assert.throws(() => m.play({typedFor: 2, typed: "9"}), /Meč je gotov/);
   assert.equal(m.hands.length, 6);
 });
 

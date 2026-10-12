@@ -21,6 +21,6 @@ export async function POST(request: NextRequest, {params}: {params: {leagueId: s
     const id = await addTable(Number(params.leagueId), new Date(t.date), t.round_number, t.team1_id, t.team2_id);
     return NextResponse.json({id}, {status: STATUS.Created});
   } catch (error) {
-    return errorResponse(error, "Failed to add the table.");
+    return errorResponse(error, "Stol nije dodan.");
   }
 }

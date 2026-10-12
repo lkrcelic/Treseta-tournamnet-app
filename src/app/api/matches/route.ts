@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(allMatches, {status: STATUS.OK});
   } catch (error) {
-    return NextResponse.json({error: "Failed to fetch matches."}, {status: STATUS.ServerError});
+    return NextResponse.json({error: "Mečevi se nisu učitali."}, {status: STATUS.ServerError});
   }
 }
 
@@ -48,6 +48,6 @@ export async function POST(request: NextRequest) {
     if (error instanceof MatchAlreadyFinishedError) {
       return NextResponse.json({error: error.message}, {status: STATUS.Conflict});
     }
-    return errorResponse(error, "Failed to finish the match.");
+    return errorResponse(error, "Meč nije završen.");
   }
 }

@@ -81,8 +81,11 @@ export function ErrorNote({
       sx={mergeSx(
         {
           display: "flex",
+          // on a narrow phone the retry button drops under the message instead of squeezing it to a word per line
+          flexWrap: "wrap",
           alignItems: "center",
-          gap: "10px",
+          columnGap: "10px",
+          rowGap: "4px",
           p: "12px 14px",
           borderRadius: "16px",
           background: tint.red[10],
@@ -96,15 +99,15 @@ export function ErrorNote({
       )}
     >
       <ErrorRoundedIcon />
-      <Box sx={{flex: 1}}>{children}</Box>
+      <Box sx={{flex: "1 1 140px", minWidth: 0}}>{children}</Box>
       {onRetry && (
         <Box
           component="button"
           type="button"
           onClick={onRetry}
-          sx={{...buttonBase, fontWeight: 700, color: color.navy, px: "8px", minHeight: 36, borderRadius: "8px"}}
+          sx={{...buttonBase, fontWeight: 700, color: color.navy, px: "8px", minHeight: 36, borderRadius: "8px", ml: "auto"}}
         >
-          Pokušaj ponovo
+          Pokušaj ponovno
         </Box>
       )}
     </Box>

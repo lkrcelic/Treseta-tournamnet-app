@@ -69,7 +69,7 @@ export default function DesktopHome() {
         <Panel
           title="Daily Standings"
           sub={dailySub}
-          badge={liveRound ? <LivePill /> : null}
+          badge={liveRound ? <LivePill size="sm" /> : null}
           onOpen={() => router.push(currentLeagueHref("daily-standings", leagueId))}
         >
           {daily.error ? (

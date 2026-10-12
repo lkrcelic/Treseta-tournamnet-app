@@ -7,7 +7,7 @@ import {combineDateAndTime} from "@/app/_lib/dates";
 
 export class MatchAlreadyFinishedError extends Error {
   constructor() {
-    super("This match was already finished.");
+    super("Ovaj meč je već završen.");
     this.name = "MatchAlreadyFinishedError";
   }
 }
@@ -37,7 +37,7 @@ export async function finishOngoingMatch(ongoingMatchId: number): Promise<Finish
     const threshold = ongoingMatch.score_threshold ?? MATCH_THRESHOLD;
     const {winner, target} = matchState(ongoingMatch.results, threshold);
     if (winner === null) {
-      throw new InvalidResultError(`Neither team has reached ${target} yet.`);
+      throw new InvalidResultError(`Nijedna ekipa još nije došla do ${target}.`);
     }
 
     await tx.match.create({

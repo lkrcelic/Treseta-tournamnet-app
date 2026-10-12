@@ -9,12 +9,12 @@ import {teamNameTaken} from "./update";
 // The first two players are recorded as its founders; a team may start without players and get them later.
 export async function createTeam(request: TeamCreateRequest, creatorId: number): Promise<Team> {
   if (await teamNameTaken(request.team_name)) {
-    throw new InvalidResultError("A team with this name already exists.");
+    throw new InvalidResultError("Ekipa s tim imenom već postoji.");
   }
 
   const found = await prisma.player.count({where: {id: {in: request.players}}});
   if (found !== request.players.length) {
-    throw new InvalidResultError("Every player must be an existing player.");
+    throw new InvalidResultError("Svi igrači moraju imati račun.");
   }
 
   // a team created without a league joins the one being played now

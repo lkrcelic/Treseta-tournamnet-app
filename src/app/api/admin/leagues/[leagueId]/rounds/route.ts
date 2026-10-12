@@ -14,7 +14,7 @@ export async function GET(request: NextRequest, {params}: Params) {
   try {
     return NextResponse.json(await listLeagueRounds(Number(params.leagueId)), {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to load the rounds.");
+    return errorResponse(error, "Kola se nisu učitala.");
   }
 }
 
@@ -33,6 +33,6 @@ export async function DELETE(request: NextRequest, {params}: Params) {
     const tables = await deleteLeagueRound(Number(params.leagueId), new Date(date), round_number);
     return NextResponse.json({tables}, {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to delete the round.");
+    return errorResponse(error, "Kolo nije obrisano.");
   }
 }

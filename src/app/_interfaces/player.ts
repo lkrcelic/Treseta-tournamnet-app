@@ -11,7 +11,7 @@ export const PlayerCreate = z.object({
   email: z.string().email(),
   first_name: z.string().min(3),
   last_name: z.string().min(3),
-  birth_date: z.string().regex(DATE_FORMAT, "Invalid date format."),
+  birth_date: z.string().regex(DATE_FORMAT, "Neispravan datum."),
   // "Pušiš li?", right after the birth date; a sign-up page from before the question leaves it out
   smoker: z.boolean().optional(),
   created_at: z.date().optional(),
@@ -25,8 +25,8 @@ export const PlayerProfileUpdate = z
   .object({
     birth_date: z
       .string()
-      .regex(DATE_FORMAT, "Invalid date format.")
-      .refine((d) => d >= "1900-01-01" && d <= new Date().toISOString().slice(0, 10), "Invalid birth date.")
+      .regex(DATE_FORMAT, "Neispravan datum.")
+      .refine((d) => d >= "1900-01-01" && d <= new Date().toISOString().slice(0, 10), "Neispravan datum rođenja.")
       .optional(),
     username: z
       .string()
@@ -45,7 +45,7 @@ export const PlayerProfileUpdate = z
       .optional(),
     smoker: z.boolean().optional(),
   })
-  .refine((o) => o.birth_date !== undefined || o.username !== undefined || o.phone !== undefined || o.smoker !== undefined, "Nothing to update.");
+  .refine((o) => o.birth_date !== undefined || o.username !== undefined || o.phone !== undefined || o.smoker !== undefined, "Nema promjena za spremanje.");
 
 export type PlayerCreateInterface = z.infer<typeof PlayerCreate>;
 

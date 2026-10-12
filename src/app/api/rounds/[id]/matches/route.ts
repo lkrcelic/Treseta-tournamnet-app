@@ -14,6 +14,6 @@ export async function GET(request: NextRequest, {params}: { params: { id: string
     return NextResponse.json(round, {status: STATUS.OK});
   } catch (error) {
     console.error(error);
-    return NextResponse.json({error: "Failed to round matches."}, {status: STATUS.BadRequest});
+    return NextResponse.json({error: "Mečevi se nisu učitali."}, {status: STATUS.BadRequest});
   }
 }

@@ -7,9 +7,9 @@ export async function addPlayerToTeam(team_id: number, player_id: number) {
     prisma.team.count({where: {team_id}}),
     prisma.player.count({where: {id: player_id}}),
   ]);
-  if (!team) throw new InvalidResultError("The team doesn't exist.");
-  if (isByeTeam(team_id)) throw new InvalidResultError("The bye team has no players.");
-  if (!player) throw new InvalidResultError("The player doesn't exist.");
+  if (!team) throw new InvalidResultError("Ekipa ne postoji.");
+  if (isByeTeam(team_id)) throw new InvalidResultError("Slobodna runda nema igrača.");
+  if (!player) throw new InvalidResultError("Igrač ne postoji.");
 
   // idempotent: adding a player who is already in the team changes nothing
   return prisma.teamPlayer.upsert({

@@ -9,7 +9,7 @@ export async function createOngoingMatch(createRequest: CreateOngoingMatchReques
         // The round lock makes simultaneous "Start Game" taps from several phones end up in the same match
         const round = await lockRound(tx, createRequest.round_id);
         if (!round) {
-            throw new InvalidResultError("Round not found.");
+            throw new InvalidResultError("Runda ne postoji.");
         }
 
         const existingOngoingMatch = await tx.ongoingMatch.findFirst({
@@ -21,11 +21,11 @@ export async function createOngoingMatch(createRequest: CreateOngoingMatchReques
         }
 
         if (!round.open) {
-            throw new InvalidResultError("This round is already finished.");
+            throw new InvalidResultError("Ova runda je već završena.");
         }
         const playedMatches = await tx.match.count({where: {round_id: createRequest.round_id}});
         if (playedMatches >= MATCHES_PER_ROUND) {
-            throw new InvalidResultError("Both matches of this round are already played.");
+            throw new InvalidResultError("Oba meča ove runde već su odigrana.");
         }
 
         // set here rather than by the columns' CURRENT_DATE / CURRENT_TIME defaults, which use the database's time

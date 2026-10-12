@@ -5,6 +5,7 @@ import {z} from "zod";
 import argon2 from "argon2";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {validateUniqueConstraintsPlayer, ValidationError} from "@/app/_lib/validation/playerUniqueConstraints";
+import {zodMessage} from "@/app/_lib/validation/zodMessage";
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,11 +30,11 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.log(error);
     if (error instanceof z.ZodError) {
-      return NextResponse.json({error: error.issues}, {status: STATUS.BadRequest});
+      return NextResponse.json({error: zodMessage(error, "Registracija nije uspjela."), issues: error.issues}, {status: STATUS.BadRequest});
     }
     if (error instanceof ValidationError) {
       return NextResponse.json(error.errors, {status: STATUS.BadRequest});
     }
-    return NextResponse.json({error: "Sign up failed."}, {status: STATUS.ServerError});
+    return NextResponse.json({error: "Registracija nije uspjela."}, {status: STATUS.ServerError});
   }
 }

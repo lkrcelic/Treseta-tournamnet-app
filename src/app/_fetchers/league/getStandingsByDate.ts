@@ -1,3 +1,5 @@
+import {apiFetch, responseErrorMessage} from "@/app/_fetchers/errorMessage";
+
 export async function getLeagueStandingsByDateAPI(leagueId: number, date?: string): Promise<unknown> {
   const url = new URL(`/api/leagues/${leagueId}/daily-standings`, window.location.origin);
   
@@ -5,10 +7,10 @@ export async function getLeagueStandingsByDateAPI(leagueId: number, date?: strin
     url.searchParams.append('date', date);
   }
   
-  const response = await fetch(url.toString());
+  const response = await apiFetch(url.toString());
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch league table: ${response.statusText}`);
+    throw new Error(await responseErrorMessage(response, "Poredak se nije učitao."));
   }
 
   return response.json();

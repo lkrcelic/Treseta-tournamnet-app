@@ -1,5 +1,6 @@
 // Formatting and chart geometry for the ratings page. Framework free so they can be unit tested.
 import {MU0} from "@/app/_lib/rating/glicko2";
+import {count, NOUN} from "@/app/_lib/ui/text";
 
 // +18, −12 (a real minus sign), 0
 export function formatChange(change: number | null | undefined): string {
@@ -14,7 +15,7 @@ export function changeTone(change: number | null | undefined): "up" | "down" | "
 
 // "1 kolo", "21 kolo", "2 kola", "11 kola", "0 kola"
 export function roundsLabel(n: number): string {
-  return `${n} ${n % 10 === 1 && n % 100 !== 11 ? "kolo" : "kola"}`;
+  return count(n, NOUN.kolo);
 }
 
 // "2026-02-17" -> "17.02."

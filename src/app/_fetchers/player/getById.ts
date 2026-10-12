@@ -1,3 +1,4 @@
+import {apiFetch, responseErrorMessage} from "@/app/_fetchers/errorMessage";
 import { PlayerResponseValidation } from "@/app/_interfaces/player";
 import { z } from "zod";
 
@@ -10,9 +11,9 @@ const PlayerByIdValidation = PlayerResponseValidation.extend({
 export type PlayerById = z.infer<typeof PlayerByIdValidation>;
 
 export async function getPlayerByIdAPI(id: number): Promise<PlayerById> {
-  const res = await fetch(`/api/players/${id}`);
+  const res = await apiFetch(`/api/players/${id}`);
   if (!res.ok) {
-    throw new Error(`Failed to fetch player ${id}: ${res.status} ${res.statusText}`);
+    throw new Error(await responseErrorMessage(res, "Igrač se nije učitao."));
   }
   const json = await res.json();
   return PlayerByIdValidation.parse(json);

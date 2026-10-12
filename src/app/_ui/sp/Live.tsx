@@ -27,8 +27,9 @@ export function LiveDot({size = 8, pulse = true, label, sx}: {size?: number; pul
   );
 }
 
-// "LIVE: 2" / "LIVE" filled pill
-export function LivePill({children, sx}: {children?: React.ReactNode; sx?: SxProps<Theme>}) {
+// "UŽIVO: 2" / "UŽIVO" filled pill; sm is the desktop size (12px text, 6px dot)
+export function LivePill({children, size = "md", sx}: {children?: React.ReactNode; size?: "sm" | "md"; sx?: SxProps<Theme>}) {
+  const sm = size === "sm";
   return (
     <Box
       component="span"
@@ -42,7 +43,7 @@ export function LivePill({children, sx}: {children?: React.ReactNode; sx?: SxPro
           borderRadius: "14px",
           background: color.red,
           color: color.white,
-          fontSize: 13,
+          fontSize: sm ? 12 : 13,
           fontWeight: 700,
           letterSpacing: ".04em",
           flex: "none",
@@ -50,13 +51,13 @@ export function LivePill({children, sx}: {children?: React.ReactNode; sx?: SxPro
         sx
       )}
     >
-      <Box component="span" sx={{width: 7, height: 7, borderRadius: "50%", background: color.white}} />
-      {children ?? "LIVE"}
+      <Box component="span" sx={{width: sm ? 6 : 7, height: sm ? 6 : 7, borderRadius: "50%", background: color.white}} />
+      {children ?? "UŽIVO"}
     </Box>
   );
 }
 
-// "● LIVE" red text label on a table card
+// "● UŽIVO" red text label on a table card
 export function LiveLabel({sx}: {sx?: SxProps<Theme>}) {
   return (
     <Box
@@ -64,7 +65,7 @@ export function LiveLabel({sx}: {sx?: SxProps<Theme>}) {
       sx={mergeSx({display: "inline-flex", alignItems: "center", gap: "6px", fontSize: 12, fontWeight: 700, letterSpacing: ".06em", color: color.red}, sx)}
     >
       <LiveDot />
-      LIVE
+      UŽIVO
     </Box>
   );
 }

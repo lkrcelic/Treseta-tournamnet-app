@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   try {
     const user = await getAuthorizedUser(req);
     if (!user || user.player_role !== "ADMIN") {
-      return NextResponse.json({error: "You are not authorized for this action."},
+      return NextResponse.json({error: "Nemaš ovlasti za ovu radnju."},
         {status: user ? STATUS.Forbidden : STATUS.Unauthorized});
     }
 
@@ -26,6 +26,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({luciaSessions, googleSessions}, {status: STATUS.OK});
   } catch (error) {
     console.log(error);
-    return NextResponse.json({error: "Error"}, {status: STATUS.ServerError});
+    return NextResponse.json({error: "Greška."}, {status: STATUS.ServerError});
   }
 }

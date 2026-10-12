@@ -12,10 +12,10 @@ export async function GET(request: NextRequest, {params}: {params: {id: string}}
 
   const leagueId = Number(params.id);
   try {
-    if (!(await leagueExists(leagueId))) return NextResponse.json({error: "League not found."}, {status: STATUS.NotFound});
+    if (!(await leagueExists(leagueId))) return NextResponse.json({error: "Liga ne postoji."}, {status: STATUS.NotFound});
     return NextResponse.json(await listLeagueTeams(leagueId), {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to fetch teams.");
+    return errorResponse(error, "Ekipe se nisu učitale.");
   }
 }
 
@@ -26,11 +26,11 @@ export async function POST(request: NextRequest, {params}: {params: {id: string}
 
   const leagueId = Number(params.id);
   try {
-    if (!(await leagueExists(leagueId))) return NextResponse.json({error: "League not found."}, {status: STATUS.NotFound});
+    if (!(await leagueExists(leagueId))) return NextResponse.json({error: "Liga ne postoji."}, {status: STATUS.NotFound});
     const {team_id} = LeagueTeamAddRequestValidation.parse(await request.json());
     await addTeamToLeague(leagueId, team_id);
     return NextResponse.json({league_id: leagueId, team_id, active: true}, {status: STATUS.Created});
   } catch (error) {
-    return errorResponse(error, "Failed to add the team.");
+    return errorResponse(error, "Ekipa nije dodana.");
   }
 }

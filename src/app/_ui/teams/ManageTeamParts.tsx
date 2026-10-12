@@ -2,6 +2,7 @@
 
 import {searchPlayersAPI} from "@/app/_fetchers/player/search";
 import {fullName, MTPlayer, MTTeam, playerCount, playerRole, teamSubtitle} from "@/app/_lib/ui/manageTeam";
+import {NOUN} from "@/app/_lib/ui/text";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {
   buttonBase,
@@ -144,7 +145,7 @@ export function TeamList({
           })}
           {left > 0 && (
             <Box component="li" sx={{pt: "6px"}}>
-              <LoadMoreButton left={left} noun={["team", "teams"]} onClick={() => setPages(Math.ceil(shown.length / 12) + 1)} sx={{borderRadius: "14px"}} />
+              <LoadMoreButton left={left} noun={NOUN.ekipa} onClick={() => setPages(Math.ceil(shown.length / 12) + 1)} sx={{borderRadius: "14px"}} />
             </Box>
           )}
         </Box>
@@ -436,7 +437,7 @@ function TeammateSearch({exclude, onAdd}: {exclude: number[]; onAdd: (p: MTPlaye
             })
           )}
           {!failed && left > 0 && (
-            <LoadMoreButton left={left} noun={["player", "players"]} onClick={() => setPages((n) => n + 1)} sx={{borderTop: `1px solid ${color.divider}`}} />
+            <LoadMoreButton left={left} noun={NOUN.igrač} onClick={() => setPages((n) => n + 1)} sx={{borderTop: `1px solid ${color.divider}`}} />
           )}
         </Box>
       )}

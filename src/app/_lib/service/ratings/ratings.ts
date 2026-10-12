@@ -63,7 +63,7 @@ export async function listRatings(viewerId: number | null): Promise<RatingsList>
 export async function getPlayerRating(playerId: number): Promise<PlayerRatingDetail> {
   const {players} = await listRatings(null);
   const player = players.find((p) => p.id === playerId);
-  if (!player) throw new NotFoundError("Player not found.");
+  if (!player) throw new NotFoundError("Igrač ne postoji.");
 
   const history = await prisma.playerRatingHistory.findMany({
     where: {player_id: playerId},

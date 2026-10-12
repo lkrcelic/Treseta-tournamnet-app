@@ -2,6 +2,7 @@ import {Prisma} from "@prisma/client";
 import {prisma} from "@/app/_lib/prisma";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {replayRatings} from "@/app/_lib/service/admin/recalc";
+import {count, NOUN} from "@/app/_lib/ui/text";
 
 // A round between two teams is two matches.
 export const MATCHES_PER_ROUND = 2;
@@ -39,7 +40,7 @@ export async function finishRound(round_id: number): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const round = await lockRound(tx, round_id);
     if (!round) {
-      throw new InvalidResultError("Round not found.");
+      throw new InvalidResultError("Runda ne postoji.");
     }
     if (!round.open) {
       return;
@@ -47,7 +48,7 @@ export async function finishRound(round_id: number): Promise<void> {
 
     const playedMatches = await tx.match.count({where: {round_id: round_id}});
     if (playedMatches < MATCHES_PER_ROUND) {
-      throw new InvalidResultError(`Only ${playedMatches} of ${MATCHES_PER_ROUND} matches of this round are played.`);
+      throw new InvalidResultError(`Odigrano je tek ${playedMatches} od ${count(MATCHES_PER_ROUND, NOUN.meč)} ove runde.`);
     }
 
     await closeRound(tx, round_id);

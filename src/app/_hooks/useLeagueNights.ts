@@ -19,7 +19,7 @@ export default function useLeagueNights(leagueId: number | null | undefined): {
     setError(null);
     getLeagueNightsAPI(leagueId)
       .then(setNights)
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to fetch the league nights."));
+      .catch((e) => setError(e instanceof Error ? e.message : "Večeri lige se nisu učitale."));
   }, [leagueId]);
 
   useEffect(() => {

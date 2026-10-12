@@ -1,9 +1,10 @@
+import {DATE_FORMAT_ERROR} from "@/app/_interfaces/league";
 import {isValidPhone, PHONE_ERROR} from "@/app/_lib/phone";
 import {z} from "zod";
 
 export type BurzaKind = "SUBSTITUTE" | "PARTNER" | "AVAILABLE";
 
-const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use the YYYY-MM-DD format.");
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, DATE_FORMAT_ERROR);
 const phone = z.string().trim().refine(isValidPhone, PHONE_ERROR);
 const note = (max: number) => z.string().trim().max(max, `Najviše ${max} znakova.`).default("");
 const savePhone = z.boolean().default(false);

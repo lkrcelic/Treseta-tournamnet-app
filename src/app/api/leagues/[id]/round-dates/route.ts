@@ -15,7 +15,7 @@ export async function GET(request: NextRequest, {params}: { params: { id: string
         return NextResponse.json(dates, {status: STATUS.OK});
       } catch (error) {
         console.log(error);
-        return NextResponse.json({error: "Failed to fetch round dates."}, {status: STATUS.ServerError});
+        return NextResponse.json({error: "Datumi kola se nisu učitali."}, {status: STATUS.ServerError});
       }
     
 }

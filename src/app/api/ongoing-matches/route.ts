@@ -19,8 +19,8 @@ export async function POST(request: NextRequest) {
 
         const ongoingMatch = await createOngoingMatch(createRequest);
 
-        return NextResponse.json({message: "Ongoing match successfully created", id: ongoingMatch.id}, {status: STATUS.OK});
+        return NextResponse.json({message: "Meč je pokrenut.", id: ongoingMatch.id}, {status: STATUS.OK});
     } catch (error) {
-        return errorResponse(error, "Failed to start the match.");
+        return errorResponse(error, "Meč nije pokrenut.");
     }
 }

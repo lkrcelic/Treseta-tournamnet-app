@@ -27,13 +27,13 @@ export async function GET(request: NextRequest, {params}: { params: { id: string
         });
 
         if (!dbTeam) {
-            return NextResponse.json({error: "Team not found."}, {status: STATUS.NotFound});
+            return NextResponse.json({error: "Ekipa ne postoji."}, {status: STATUS.NotFound});
         }
         const team = TeamExtendedResponseValidation.parse(dbTeam);
 
         return NextResponse.json(team, {status: STATUS.OK});
     } catch (error) {
-        return NextResponse.json({error: "Failed to fetch team."}, {status: STATUS.BadRequest});
+        return NextResponse.json({error: "Ekipa se nije učitala."}, {status: STATUS.BadRequest});
     }
 }
 
@@ -46,14 +46,14 @@ export async function PATCH(request: NextRequest, {params}: { params: { id: stri
     const {team_name} = TeamUpdateValidation.parse(await request.json());
     const team = await renameTeam(Number(params.id), team_name);
     if (!team) {
-      return NextResponse.json({error: "Team not found."}, {status: STATUS.NotFound});
+      return NextResponse.json({error: "Ekipa ne postoji."}, {status: STATUS.NotFound});
     }
     return NextResponse.json({team_id: team.team_id, team_name: team.team_name}, {status: STATUS.OK});
   } catch (error) {
     // two renames to the same name at once: the unique index catches the second
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json({error: "A team with this name already exists."}, {status: STATUS.BadRequest});
+      return NextResponse.json({error: "Ekipa s tim imenom već postoji."}, {status: STATUS.BadRequest});
     }
-    return errorResponse(error, "Failed to rename the team.");
+    return errorResponse(error, "Ime ekipe nije spremljeno.");
   }
 }

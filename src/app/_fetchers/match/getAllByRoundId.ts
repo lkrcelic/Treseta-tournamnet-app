@@ -1,7 +1,9 @@
+import {apiFetch, responseErrorMessage} from "@/app/_fetchers/errorMessage";
+
 export async function getAllMatchesByRoundIdAPI(roundId: number): Promise<unknown> {
-  const response = await fetch(`/api/rounds/${roundId}/matches`);
+  const response = await apiFetch(`/api/rounds/${roundId}/matches`);
   if (!response.ok) {
-    throw new Error(`Failed to fetch round matches: ${response.statusText}`);
+    throw new Error(await responseErrorMessage(response, "Mečevi se nisu učitali."));
   }
   return response.json();
 }

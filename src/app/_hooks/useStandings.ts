@@ -30,10 +30,10 @@ export function useRoundDates(leagueId: MaybeLeague) {
       .then((d) => {
         if (!cancelled) setDates(Array.isArray(d) ? [...d].sort() : []);
       })
-      .catch(() => {
+      .catch((e) => {
         if (!cancelled) {
           setDates([]);
-          setError("Datume nije moguće učitati.");
+          setError(e instanceof Error ? e.message : "Datumi se nisu učitali.");
         }
       });
     return () => {
@@ -77,10 +77,10 @@ export function useDailyData(leagueId: MaybeLeague, date: string | null) {
         setData({standings: withoutBye(standings), rounds, roundNumbers});
         hasData.current = true;
         setError(null);
-      } catch {
+      } catch (e) {
         if (id !== reqId.current) return;
         // a failed background refresh keeps the last data on screen (if there is any)
-        if (!quiet || !hasData.current) setError("Poredak nije moguće učitati.");
+        if (!quiet || !hasData.current) setError(e instanceof Error ? e.message : "Poredak se nije učitao.");
       } finally {
         // the latest request ends the loading state, also when it was a background refresh that overtook a load
         if (id === reqId.current) setLoading(false);
@@ -117,8 +117,8 @@ export function useLeagueStandings(leagueId: MaybeLeague) {
       .then((s) => {
         if (!cancelled) setStandings(withoutBye(s));
       })
-      .catch(() => {
-        if (!cancelled) setError("Poredak nije moguće učitati.");
+      .catch((e) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Poredak se nije učitao.");
       });
     return () => {
       cancelled = true;

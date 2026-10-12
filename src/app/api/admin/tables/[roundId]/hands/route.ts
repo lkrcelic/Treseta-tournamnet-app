@@ -14,6 +14,6 @@ export async function POST(request: NextRequest, {params}: {params: {roundId: st
     await addHand(Number(params.roundId), target as HandTarget, hand);
     return NextResponse.json({ok: true}, {status: STATUS.Created});
   } catch (error) {
-    return errorResponse(error, "Failed to save the hand.");
+    return errorResponse(error, "Igra nije spremljena.");
   }
 }

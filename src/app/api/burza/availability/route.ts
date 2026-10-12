@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   try {
     return NextResponse.json(await getAvailability(auth.user.id), {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to fetch the availability.");
+    return errorResponse(error, "Dostupnost se nije učitala.");
   }
 }
 

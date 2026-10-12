@@ -11,6 +11,6 @@ export async function GET(request: NextRequest, {params}: { params: { id: string
     return NextResponse.json(teamScores, {status: STATUS.OK});
   } catch (error) {
     console.log(error);
-    return NextResponse.json({error: "Failed to fetch league standings."}, {status: STATUS.ServerError});
+    return NextResponse.json({error: "Poredak se nije učitao."}, {status: STATUS.ServerError});
   }
 }

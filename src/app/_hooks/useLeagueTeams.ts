@@ -31,7 +31,7 @@ export default function useLeagueTeams(leagueId: number | null) {
         );
       })
       .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Ekipe nije moguće učitati.");
+        if (!cancelled) setError(e instanceof Error ? e.message : "Ekipe se nisu učitale.");
       });
     return () => {
       cancelled = true;

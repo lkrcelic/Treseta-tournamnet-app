@@ -37,11 +37,11 @@ export default function LogInForm({onSuccess, soft = false}: {onSuccess: () => v
           outcome === "wrong"
             ? "Korisničko ime ili lozinka su netočni."
             : outcome === "locked"
-              ? "Previše neuspjelih pokušaja. Pokušaj ponovo za nekoliko minuta."
-              : "Prijava trenutno nije moguća. Pokušaj ponovo.",
+              ? "Previše neuspjelih pokušaja. Pokušaj ponovno za nekoliko minuta."
+              : "Prijava trenutno nije moguća. Pokušaj ponovno.",
       });
     } catch {
-      setErrors({form: "Prijava trenutno nije moguća. Pokušaj ponovo."});
+      setErrors({form: "Prijava trenutno nije moguća. Pokušaj ponovno."});
     }
     setSubmitting(false);
   };

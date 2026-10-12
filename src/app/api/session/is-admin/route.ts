@@ -9,6 +9,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(user?.player_role === "ADMIN", {status: STATUS.OK});
   } catch (error) {
     console.log(error);
-    return NextResponse.json({error: "Error"}, {status: STATUS.ServerError});
+    return NextResponse.json({error: "Greška."}, {status: STATUS.ServerError});
   }
 }

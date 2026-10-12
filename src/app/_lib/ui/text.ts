@@ -52,3 +52,43 @@ export function plural(n: number, one: string, few: string, many: string): strin
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
   return many;
 }
+
+// The three forms of a noun after a number: one (1, 21, 101), few (2–4, 22–24) and many (0, 5–20, 25…)
+export type NounForms = readonly [one: string, few: string, many: string];
+
+// Nouns (and short phrases that agree with the number) the app counts, for count() and plural()
+export const NOUN = {
+  igrač: ["igrač", "igrača", "igrača"],
+  ekipa: ["ekipa", "ekipe", "ekipa"],
+  // after "u": "u 1 ekipi", "u 2 ekipe", "u 5 ekipa"
+  ekipaLoc: ["ekipi", "ekipe", "ekipa"],
+  kolo: ["kolo", "kola", "kola"],
+  večer: ["večer", "večeri", "večeri"],
+  bod: ["bod", "boda", "bodova"],
+  oglas: ["oglas", "oglasa", "oglasa"],
+  liga: ["liga", "lige", "liga"],
+  stol: ["stol", "stola", "stolova"],
+  pušačkiStol: ["pušački stol", "pušačka stola", "pušačkih stolova"],
+  runda: ["runda", "runde", "rundi"],
+  igra: ["igra", "igre", "igara"],
+  meč: ["meč", "meča", "mečeva"],
+  par: ["par", "para", "parova"],
+  pušač: ["pušač", "pušača", "pušača"],
+  pobjeda: ["pobjeda", "pobjede", "pobjeda"],
+  odigranoKolo: ["odigrano kolo", "odigrana kola", "odigranih kola"],
+  ekipaTraži: ["ekipa traži", "ekipe traže", "ekipa traži"],
+  ekipaNeIgra: ["ekipa ne igra", "ekipe ne igraju", "ekipa ne igra"],
+  neaktivna: ["neaktivna", "neaktivne", "neaktivnih"],
+  isključena: ["isključena", "isključene", "isključenih"],
+  znak: ["znak", "znaka", "znakova"],
+} as const satisfies Record<string, NounForms>;
+
+// A number with its noun in the right form: count(2, NOUN.ekipa) -> "2 ekipe", count(5, NOUN.igrač) -> "5 igrača"
+export function count(n: number, forms: NounForms): string {
+  return `${n} ${plural(n, ...forms)}`;
+}
+
+// The label of a list's "load more" button: loadMoreLabel(7, NOUN.ekipa) -> "Učitaj još · još 7 ekipa"
+export function loadMoreLabel(left: number, noun: NounForms): string {
+  return `Učitaj još · još ${count(left, noun)}`;
+}

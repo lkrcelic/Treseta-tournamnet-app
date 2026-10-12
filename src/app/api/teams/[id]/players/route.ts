@@ -15,6 +15,6 @@ export async function POST(request: NextRequest, {params}: {params: {id: string}
     const created = await addPlayerToTeam(Number(params.id), player_id);
     return NextResponse.json(created, {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to add the teammate.");
+    return errorResponse(error, "Igrač nije dodan u ekipu.");
   }
 }

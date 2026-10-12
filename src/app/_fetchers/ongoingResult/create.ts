@@ -1,4 +1,4 @@
-import {responseErrorMessage} from "@/app/_fetchers/errorMessage";
+import {apiFetch, responseErrorMessage} from "@/app/_fetchers/errorMessage";
 
 type CreateOngoingResultAPIProps = {
     result: unknown;
@@ -6,7 +6,7 @@ type CreateOngoingResultAPIProps = {
 
 // Saves a new hand; returns its id
 export async function createOngoingResultAPI({result}: CreateOngoingResultAPIProps): Promise<{result_id: number}> {
-    const response = await fetch(`/api/ongoing-result`, {
+    const response = await apiFetch(`/api/ongoing-result`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",

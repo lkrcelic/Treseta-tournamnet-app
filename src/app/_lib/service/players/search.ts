@@ -25,9 +25,5 @@ export async function searchPlayers(query: string): Promise<PlayerPartialRespons
     },
   });
 
-  if (!players) {
-    throw new Error("Player not found.");
-  }
-
   return PlayerPartialResponseArrayValidation.parse(players);
 }

@@ -11,10 +11,10 @@ export async function GET(request: NextRequest) {
     const leagueId = Number(request.nextUrl.searchParams.get("league_id")) || (await activeLeagueId());
     if (!leagueId) return NextResponse.json([], {status: STATUS.OK});
     const rounds = await getCurrentRoundMatchups(leagueId);
-    if (!rounds) return NextResponse.json({error: "There was an error fetching rounds."}, {status: STATUS.ServerError});
+    if (!rounds) return NextResponse.json({error: "Parovi se nisu učitali."}, {status: STATUS.ServerError});
 
     return NextResponse.json(rounds, {status: STATUS.OK});
   } catch (error) {
-    return NextResponse.json({error: "Failed to fetch rounds."}, {status: STATUS.BadRequest});
+    return NextResponse.json({error: "Parovi se nisu učitali."}, {status: STATUS.BadRequest});
   }
 }

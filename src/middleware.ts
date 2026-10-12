@@ -32,7 +32,7 @@ export async function middleware(req: NextRequest) {
 
   if (req.nextUrl.pathname.startsWith("/api")) {
     if (await isApiLimited(req)) {
-      return NextResponse.json({error: "Too many requests. Slow down!"}, {status: STATUS.TooManyRequests});
+      return NextResponse.json({error: "Previše zahtjeva. Pričekaj malo pa pokušaj ponovno."}, {status: STATUS.TooManyRequests});
     }
   }
 

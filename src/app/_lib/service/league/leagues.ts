@@ -56,7 +56,7 @@ export async function createLeague(req: LeagueCreateRequest): Promise<LeagueSumm
   const teamIds = Array.from(new Set(req.team_ids.filter((id) => id !== BYE_TEAM_ID)));
   if (teamIds.length) {
     const found = await prisma.team.count({where: {team_id: {in: teamIds}}});
-    if (found !== teamIds.length) throw new InvalidResultError("Some of the teams don't exist.");
+    if (found !== teamIds.length) throw new InvalidResultError("Neke od ekipa ne postoje.");
   }
   const conferencesInvalid = conferencesError(req.conferences);
   if (conferencesInvalid) throw new InvalidResultError(conferencesInvalid);
@@ -123,7 +123,7 @@ export async function updateLeague(leagueId: number, req: LeagueUpdateRequest): 
     const taken = await prisma.league.count({
       where: {league_id: {not: leagueId}, league_name: {equals: leagueName, mode: "insensitive"}},
     });
-    if (taken) throw new InvalidResultError("Another league already has this name.");
+    if (taken) throw new InvalidResultError("Druga liga već ima to ime.");
   }
   const start = req.start_date !== undefined ? req.start_date : dateString(league.start_date);
   const end = req.end_date !== undefined ? req.end_date : dateString(league.end_date);
@@ -158,7 +158,7 @@ export async function setLeagueNotes(leagueId: number, notes: string): Promise<b
 // Adds an existing team to a league (active). Adding a team that is already there is refused. A team that was in the
 // league before gets its season row back from its closed rounds.
 export async function addTeamToLeague(leagueId: number, teamId: number): Promise<void> {
-  if (teamId === BYE_TEAM_ID) throw new InvalidResultError("The bye team can't be added.");
+  if (teamId === BYE_TEAM_ID) throw new InvalidResultError("Slobodna runda se ne može dodati u ligu.");
   try {
     await prisma.$transaction(async (tx) => {
       await tx.leagueTeam.create({data: {league_id: leagueId, team_id: teamId}});
@@ -166,8 +166,8 @@ export async function addTeamToLeague(leagueId: number, teamId: number): Promise
     });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2002") throw new InvalidResultError("The team is already in this league.");
-      if (error.code === "P2003") throw new InvalidResultError("The team doesn't exist.");
+      if (error.code === "P2002") throw new InvalidResultError("Ekipa je već u ovoj ligi.");
+      if (error.code === "P2003") throw new InvalidResultError("Ekipa ne postoji.");
     }
     throw error;
   }
@@ -189,7 +189,7 @@ export async function removeTeamFromLeague(leagueId: number, teamId: number): Pr
     const open = await tx.round.count({
       where: {open: true, OR: [{team1_id: teamId}, {team2_id: teamId}], leagueRounds: {some: {league_id: leagueId}}},
     });
-    if (open) throw new InvalidResultError("The team has an unfinished round in this league. Finish or delete it first.");
+    if (open) throw new InvalidResultError("Ekipa ima nezavršeno kolo u ovoj ligi. Prvo ga završi ili obriši.");
     await tx.leagueTeam.delete({where: {league_id_team_id: {league_id: leagueId, team_id: teamId}}});
     await tx.teamScore.deleteMany({where: {league_id: leagueId, team_id: teamId}});
     return true;

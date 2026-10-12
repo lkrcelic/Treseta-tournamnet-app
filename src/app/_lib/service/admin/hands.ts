@@ -57,7 +57,7 @@ export async function getTablePad(roundId: number): Promise<TablePad> {
       _count: {select: {roundPlayers: true}},
     },
   });
-  if (!round) throw new NotFoundError("Table not found.");
+  if (!round) throw new NotFoundError("Stol ne postoji.");
 
   const matches: PadMatch[] = round.matches.map((m, i) => {
     const {target, winner} = matchState(m.results, m.score_threshold ?? MATCH_THRESHOLD);
@@ -104,8 +104,8 @@ export async function getTablePad(roundId: number): Promise<TablePad> {
 
 async function assertEditableTable(roundId: number) {
   const round = await prisma.round.findUnique({where: {id: roundId}, select: {team1_id: true, team2_id: true}});
-  if (!round) throw new NotFoundError("Table not found.");
-  if (isByeTeam(round.team1_id) || isByeTeam(round.team2_id)) throw new InvalidResultError("A bye table has no hands to edit.");
+  if (!round) throw new NotFoundError("Stol ne postoji.");
+  if (isByeTeam(round.team1_id) || isByeTeam(round.team2_id)) throw new InvalidResultError("Za stolom sa slobodnom rundom nema igara za uređivanje.");
 }
 
 // After a finished match's hands changed: its score and winner, the round's wins, and for a finished round the
@@ -156,7 +156,7 @@ async function recountFinishedMatch(tx: Tx, matchId: number) {
 async function changeFinishedMatch(matchId: number, change: (tx: Tx) => Promise<void>) {
   await prisma.$transaction(async (tx) => {
     const match = await tx.match.findUnique({where: {id: matchId}, select: {round_id: true}});
-    if (!match) throw new NotFoundError("Match not found.");
+    if (!match) throw new NotFoundError("Meč ne postoji.");
     if (match.round_id != null) await lockRound(tx, match.round_id);
     await change(tx);
     await recountFinishedMatch(tx, matchId);
@@ -178,7 +178,7 @@ export async function addHand(roundId: number, target: HandTarget, hand: AdminHa
   }
 
   const match = await prisma.match.findUnique({where: {id: target.matchId}, select: {round_id: true}});
-  if (!match || match.round_id !== roundId) throw new NotFoundError("Match not found at this table.");
+  if (!match || match.round_id !== roundId) throw new NotFoundError("Taj meč nije za ovim stolom.");
   const result = adminHandToResult(hand, target.matchId);
   await changeFinishedMatch(target.matchId, async (tx) => {
     await tx.result.create({data: transformResult(result)});
@@ -188,14 +188,14 @@ export async function addHand(roundId: number, target: HandTarget, hand: AdminHa
 export async function updateHand(kind: HandKind, resultId: number, hand: AdminHand): Promise<void> {
   if (kind === "ongoing") {
     const stored = await prisma.ongoingResult.findUnique({where: {result_id: resultId}, select: {match_id: true}});
-    if (!stored) throw new NotFoundError("Hand not found.");
+    if (!stored) throw new NotFoundError("Igra ne postoji.");
     const result = adminHandToResult(hand, stored.match_id);
     await updateOngoingResult({result_id: resultId, resultData: result, normalize: (r) => r});
     return;
   }
 
   const stored = await prisma.result.findUnique({where: {result_id: resultId}, select: {match_id: true}});
-  if (!stored) throw new NotFoundError("Hand not found.");
+  if (!stored) throw new NotFoundError("Igra ne postoji.");
   const result = adminHandToResult(hand, stored.match_id);
   await changeFinishedMatch(stored.match_id, async (tx) => {
     await tx.result.update({
@@ -216,7 +216,7 @@ export async function deleteHand(kind: HandKind, resultId: number): Promise<void
       const [hand] = await tx.$queryRaw<{match_id: number; team1_game_points: number; team2_game_points: number}[]>`
           SELECT match_id, team1_game_points, team2_game_points
           FROM "OngoingResult" WHERE result_id = ${resultId} FOR UPDATE`;
-      if (!hand) throw new NotFoundError("Hand not found.");
+      if (!hand) throw new NotFoundError("Igra ne postoji.");
       // the match row is locked by the update, so a hand saved at the same moment is applied before or after this
       const match = await tx.ongoingMatch.update({
         where: {id: hand.match_id},
@@ -233,7 +233,7 @@ export async function deleteHand(kind: HandKind, resultId: number): Promise<void
   }
 
   const stored = await prisma.result.findUnique({where: {result_id: resultId}, select: {match_id: true}});
-  if (!stored) throw new NotFoundError("Hand not found.");
+  if (!stored) throw new NotFoundError("Igra ne postoji.");
   await changeFinishedMatch(stored.match_id, async (tx) => {
     await tx.result.delete({where: {result_id: resultId}});
   });
@@ -242,6 +242,6 @@ export async function deleteHand(kind: HandKind, resultId: number): Promise<void
 // Finishes the table's match in progress (as "Završi meč" on the scoreboard)
 export async function finishTableMatch(roundId: number): Promise<FinishMatchOutcome> {
   const ongoing = await prisma.ongoingMatch.findFirst({where: {round_id: roundId}, orderBy: {id: "desc"}, select: {id: true}});
-  if (!ongoing) throw new NotFoundError("No match is being played at this table.");
+  if (!ongoing) throw new NotFoundError("Za ovim stolom se trenutno ne igra meč.");
   return finishOngoingMatch(ongoing.id);
 }

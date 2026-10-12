@@ -15,6 +15,6 @@ export async function POST(request: NextRequest, {params}: {params: {roundId: st
     if (error instanceof MatchAlreadyFinishedError) {
       return NextResponse.json({error: error.message}, {status: STATUS.Conflict});
     }
-    return errorResponse(error, "Failed to finish the match.");
+    return errorResponse(error, "Meč nije završen.");
   }
 }

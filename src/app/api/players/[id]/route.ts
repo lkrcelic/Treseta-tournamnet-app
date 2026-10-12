@@ -20,14 +20,14 @@ export async function GET(request: NextRequest, {params}: { params: { id: string
     const player = await getPlayerById(id);
 
     if (!player) {
-      return NextResponse.json({error: "Player not found."}, {status: STATUS.NotFound});
+      return NextResponse.json({error: "Igrač ne postoji."}, {status: STATUS.NotFound});
     }
 
     const canSeeDetails = auth.user.id === id || isAdmin(auth.user);
     return NextResponse.json(canSeeDetails ? player : PlayerPartialResponseValidation.parse(player), {status: STATUS.OK});
   } catch (error) {
     console.log(error);
-    return NextResponse.json({error: "Failed to fetch player."}, {status: STATUS.ServerError});
+    return NextResponse.json({error: "Igrač se nije učitao."}, {status: STATUS.ServerError});
   }
 }
 
@@ -38,7 +38,7 @@ export async function PATCH(request: NextRequest, {params}: { params: { id: stri
   if (auth.response) return auth.response;
   const id = Number(params.id);
   if (auth.user.id !== id && !isAdmin(auth.user)) {
-    return NextResponse.json({error: "You can only change your own profile."}, {status: STATUS.Forbidden});
+    return NextResponse.json({error: "Možeš mijenjati samo svoj profil."}, {status: STATUS.Forbidden});
   }
 
   try {
@@ -62,13 +62,13 @@ export async function PATCH(request: NextRequest, {params}: { params: { id: stri
       },
     });
     if (count === 0) {
-      return NextResponse.json({error: "Player not found."}, {status: STATUS.NotFound});
+      return NextResponse.json({error: "Igrač ne postoji."}, {status: STATUS.NotFound});
     }
     return NextResponse.json({birth_date, username, phone, smoker}, {status: STATUS.OK});
   } catch (error) {
     // two players taking the same username at once: the unique index catches the second
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return usernameTakenResponse();
-    return errorResponse(error, "Failed to update player.");
+    return errorResponse(error, "Promjena nije spremljena.");
   }
 }
 

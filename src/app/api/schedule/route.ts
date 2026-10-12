@@ -14,6 +14,6 @@ export async function GET(request: NextRequest) {
   try {
     return NextResponse.json(await mySchedule(auth.user.id), {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to fetch the schedule.");
+    return errorResponse(error, "Raspored se nije učitao.");
   }
 }

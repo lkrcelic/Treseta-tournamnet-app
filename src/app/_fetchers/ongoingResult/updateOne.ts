@@ -1,4 +1,4 @@
-import {responseErrorMessage} from "@/app/_fetchers/errorMessage";
+import {apiFetch, responseErrorMessage} from "@/app/_fetchers/errorMessage";
 
 type UpdateOngoingResultAPIProps = {
     resultId: string | string[];
@@ -6,7 +6,7 @@ type UpdateOngoingResultAPIProps = {
 }
 
 export async function updateOngoingResultAPI({resultId, result}: UpdateOngoingResultAPIProps): Promise<{message: string}> {
-    const response = await fetch(`/api/ongoing-result/${resultId}`, {
+    const response = await apiFetch(`/api/ongoing-result/${resultId}`, {
         method: "PUT",
         headers: {
             "Content-Type": "application/json",

@@ -15,7 +15,7 @@ export async function GET(request: NextRequest, {params}: {params: {id: string}}
 
     return NextResponse.json(await getLineup(roundId, auth.user.id), {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to load the lineup.");
+    return errorResponse(error, "Postava se nije učitala.");
   }
 }
 
@@ -29,8 +29,8 @@ export async function PUT(request: NextRequest, {params}: {params: {id: string}}
     if (!(await canPlayRound(auth.user, roundId))) return notYourRoundResponse();
 
     await saveLineup(roundId, LineupSaveValidation.parse(await request.json()));
-    return NextResponse.json({message: "Lineup saved"}, {status: STATUS.OK});
+    return NextResponse.json({message: "Postava je spremljena."}, {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to save the lineup.");
+    return errorResponse(error, "Postava nije spremljena.");
   }
 }

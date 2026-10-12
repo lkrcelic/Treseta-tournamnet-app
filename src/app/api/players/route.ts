@@ -21,13 +21,13 @@ export async function GET(req: NextRequest) {
     } else {
       // the full list includes emails, so only admins get it
       if (!isAdmin(auth.user)) {
-        return NextResponse.json({error: "You are not authorized for this action."}, {status: STATUS.Forbidden});
+        return NextResponse.json({error: "Nemaš ovlasti za ovu radnju."}, {status: STATUS.Forbidden});
       }
       players = await getAllPlayers();
     }
 
     return NextResponse.json(players, {status: STATUS.OK});
   } catch (error) {
-    return NextResponse.json({error: "Failed to fetch players."}, {status: STATUS.ServerError});
+    return NextResponse.json({error: "Igrači se nisu učitali."}, {status: STATUS.ServerError});
   }
 }

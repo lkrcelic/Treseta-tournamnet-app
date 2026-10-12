@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const viewer = await getAuthorizedUser(request);
     return NextResponse.json({posts: await listOpenPosts(viewer)}, {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to fetch the ads.");
+    return errorResponse(error, "Oglasi se nisu učitali.");
   }
 }
 

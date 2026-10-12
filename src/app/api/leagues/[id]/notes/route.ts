@@ -12,10 +12,10 @@ export async function GET(request: NextRequest, {params}: {params: {id: string}}
 
   try {
     const notes = await getLeagueNotes(Number(params.id));
-    if (notes == null) return NextResponse.json({error: "League not found."}, {status: STATUS.NotFound});
+    if (notes == null) return NextResponse.json({error: "Liga ne postoji."}, {status: STATUS.NotFound});
     return NextResponse.json({notes}, {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to fetch the notes.");
+    return errorResponse(error, "Bilješke se nisu učitale.");
   }
 }
 
@@ -25,9 +25,9 @@ export async function PUT(request: NextRequest, {params}: {params: {id: string}}
 
   try {
     const {notes} = LeagueNotesRequestValidation.parse(await request.json());
-    if (!(await setLeagueNotes(Number(params.id), notes))) return NextResponse.json({error: "League not found."}, {status: STATUS.NotFound});
+    if (!(await setLeagueNotes(Number(params.id), notes))) return NextResponse.json({error: "Liga ne postoji."}, {status: STATUS.NotFound});
     return NextResponse.json({notes}, {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to save the notes.");
+    return errorResponse(error, "Bilješke nisu spremljene.");
   }
 }

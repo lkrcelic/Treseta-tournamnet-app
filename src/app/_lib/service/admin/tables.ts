@@ -26,8 +26,8 @@ const tableSelect = {id: true, team1_id: true, team2_id: true, open: true, round
 async function loadTable(tx: Tx, roundId: number): Promise<{table: TableRound; leagueId: number}> {
   const link = await tx.leagueRound.findFirst({where: {round_id: roundId}, select: {league_id: true}});
   if (!link) {
-    if (await tx.round.count({where: {id: roundId}})) throw new InvalidResultError("This table isn't part of a league.");
-    throw new NotFoundError("Table not found.");
+    if (await tx.round.count({where: {id: roundId}})) throw new InvalidResultError("Ovaj stol nije dio lige.");
+    throw new NotFoundError("Stol ne postoji.");
   }
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(${link.league_id})`;
   // read after the lock, so a concurrent edit of the same round is seen
@@ -47,7 +47,7 @@ function sameRound(tx: Tx, leagueId: number, t: {round_number: number | null; ro
 async function assertLeagueTeams(tx: Tx, leagueId: number, teamIds: number[]) {
   const real = teamIds.filter((id) => !isByeTeam(id));
   const count = await tx.leagueTeam.count({where: {league_id: leagueId, team_id: {in: real}}});
-  if (count !== new Set(real).size) throw new InvalidResultError("Both teams must be teams of this league.");
+  if (count !== new Set(real).size) throw new InvalidResultError("Obje ekipe moraju biti iz ove lige.");
 }
 
 // Drops what was played at a table and seats the given teams. A table with the bye is settled right away (2:0).
@@ -107,13 +107,13 @@ export function planSeats(seats: Map<number, [number, number]>, tableId: number,
 // Seats two teams at a table. A team that sits at another table of the same round swaps places with the team it
 // replaces, so every team still plays once in the round. Returns the tables that changed.
 export async function editTablePair(roundId: number, team1Id: number, team2Id: number): Promise<PairChange[]> {
-  if (team1Id === team2Id) throw new InvalidResultError("A team can't play against itself.");
+  if (team1Id === team2Id) throw new InvalidResultError("Ekipa ne može igrati sama protiv sebe.");
   return prisma.$transaction(async (tx) => {
     const {table, leagueId} = await loadTable(tx, roundId);
     // the bye can stay at its table, but can't be seated anywhere new
     const byeHere = isByeTeam(table.team1_id) || isByeTeam(table.team2_id);
     if (!byeHere && (isByeTeam(team1Id) || isByeTeam(team2Id))) {
-      throw new InvalidResultError("The bye can't be seated at a table.");
+      throw new InvalidResultError("Slobodna runda ne može biti za stolom.");
     }
     await assertLeagueTeams(tx, leagueId, [team1Id, team2Id]);
 
@@ -126,7 +126,7 @@ export async function editTablePair(roundId: number, team1Id: number, team2Id: n
     });
     for (const t of changed) {
       const [a, b] = seats.get(t.id)!;
-      if (a === b) throw new InvalidResultError("A team can't play against itself.");
+      if (a === b) throw new InvalidResultError("Ekipa ne može igrati sama protiv sebe.");
       await reseat(tx, t.id, a, b);
     }
     const after = await tx.round.findMany({where: {id: {in: changed.map((t) => t.id)}}, select: tableSelect});
@@ -148,15 +148,15 @@ export async function removeTable(roundId: number): Promise<void> {
 
 // Adds a table to a round that exists on that night; both teams must not be playing in that round yet
 export async function addTable(leagueId: number, roundDate: Date, roundNumber: number, team1Id: number, team2Id: number): Promise<number> {
-  if (team1Id === team2Id) throw new InvalidResultError("A team can't play against itself.");
-  if (isByeTeam(team1Id) || isByeTeam(team2Id)) throw new InvalidResultError("The bye can't be seated at a table.");
+  if (team1Id === team2Id) throw new InvalidResultError("Ekipa ne može igrati sama protiv sebe.");
+  if (isByeTeam(team1Id) || isByeTeam(team2Id)) throw new InvalidResultError("Slobodna runda ne može biti za stolom.");
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(${leagueId})`;
     await assertLeagueTeams(tx, leagueId, [team1Id, team2Id]);
     const tables = await sameRound(tx, leagueId, {round_number: roundNumber, round_date: roundDate});
-    if (tables.length === 0) throw new NotFoundError("This round doesn't exist.");
+    if (tables.length === 0) throw new NotFoundError("To kolo ne postoji.");
     const seated = new Set(tables.flatMap((t) => [t.team1_id, t.team2_id]));
-    if (seated.has(team1Id) || seated.has(team2Id)) throw new InvalidResultError("A team already plays in this round.");
+    if (seated.has(team1Id) || seated.has(team2Id)) throw new InvalidResultError("Ekipa već igra u ovom kolu.");
 
     const tableNumber = Math.max(0, ...tables.map((t) => t.table_number ?? 0)) + 1;
     const smokers = await teamSmokers([team1Id, team2Id], tx);
@@ -216,7 +216,7 @@ export async function deleteLeagueRound(leagueId: number, roundDate: Date, round
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(${leagueId})`;
     const tables = await sameRound(tx, leagueId, {round_number: roundNumber, round_date: roundDate});
-    if (tables.length === 0) throw new NotFoundError("This round doesn't exist.");
+    if (tables.length === 0) throw new NotFoundError("To kolo ne postoji.");
     const ids = tables.map((t) => t.id);
     await tx.ongoingMatch.deleteMany({where: {round_id: {in: ids}}});
     await tx.match.deleteMany({where: {round_id: {in: ids}}});

@@ -199,7 +199,7 @@ export default function ScoreBoardPage() {
         await followFinishedMatch();
         return;
       }
-      setFinishError("Meč nije moguće završiti. Pokušaj ponovo.");
+      setFinishError("Meč nije moguće završiti. Pokušaj ponovno.");
       setFinishing(false);
     }
   };

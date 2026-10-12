@@ -1,4 +1,5 @@
 import {BYE_TEAM_ID} from "@/app/_lib/bye";
+import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {maxWeightMatching, WeightedEdge} from "./blossom";
 import {plural} from "@/app/_lib/ui/text";
 
@@ -273,14 +274,16 @@ class PairCounter {
 export function generateMultipleRoundPairings(teams: Team[], options: MultiRoundMatchingOptions): RoundsPlan {
   const {windowSize, numberOfRounds} = options;
 
+  // impossible settings: a 400 with this sentence (InvalidResultError) for the admin
+
   if (windowSize % 2 === 1) {
-    throw new Error("Invalid arguments, window size must be even!");
+    throw new InvalidResultError("Prozor mora biti paran broj.");
   }
   if (numberOfRounds >= windowSize) {
-    throw new Error("Invalid arguments, number of rounds can't be bigger or equal than window size!");
+    throw new InvalidResultError("Broj kola mora biti manji od prozora.");
   }
   if (numberOfRounds >= teams.length) {
-    throw new Error("Invalid arguments, number of rounds can't be bigger than number of teams!");
+    throw new InvalidResultError("Broj kola mora biti manji od broja ekipa.");
   }
 
   const deadline = Date.now() + (options.timeBudgetMs ?? DEFAULT_TIME_BUDGET_MS);
@@ -338,7 +341,7 @@ export function generateGroupedRoundPairings(groups: {name: string; teams: Team[
   const playing = groups.filter((g) => g.teams.length > 0);
   const small = playing.find((g) => g.teams.length <= options.numberOfRounds);
   if (small) {
-    throw new Error(
+    throw new InvalidResultError(
       `${small.name} večeras ima ${small.teams.length} ${plural(small.teams.length, "ekipu", "ekipe", "ekipa")}, premalo za ${options.numberOfRounds} ${plural(options.numberOfRounds, "kolo", "kola", "kola")} unutar konferencije.`
     );
   }

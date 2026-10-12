@@ -1,4 +1,4 @@
-import {LeagueNightRow} from "@/app/_interfaces/league";
+import {LeagueNightRow, MAX_NIGHTS_ERROR} from "@/app/_interfaces/league";
 import {MAX_NIGHTS} from "@/app/_lib/nights";
 import {prisma} from "@/app/_lib/prisma";
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
@@ -39,14 +39,14 @@ export async function listLeagueNights(leagueId: number): Promise<LeagueNightRow
 
 export async function addLeagueNight(leagueId: number, date: string): Promise<void> {
   if ((await prisma.leagueNight.count({where: {league_id: leagueId}})) >= MAX_NIGHTS) {
-    throw new InvalidResultError(`A league can have at most ${MAX_NIGHTS} nights.`);
+    throw new InvalidResultError(MAX_NIGHTS_ERROR);
   }
   try {
     await prisma.leagueNight.create({data: {league_id: leagueId, night: nightValue(date)}});
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2002") throw new InvalidResultError("This night is already on the list.");
-      if (error.code === "P2003") throw new NotFoundError("League not found.");
+      if (error.code === "P2002") throw new InvalidResultError("Ta je večer već na popisu.");
+      if (error.code === "P2003") throw new NotFoundError("Liga ne postoji.");
     }
     throw error;
   }
@@ -56,7 +56,7 @@ export async function addLeagueNight(leagueId: number, date: string): Promise<vo
 export async function removeLeagueNight(leagueId: number, date: string): Promise<boolean> {
   const night = nightValue(date);
   const rounds = await prisma.round.count({where: {round_date: night, leagueRounds: {some: {league_id: leagueId}}}});
-  if (rounds) throw new InvalidResultError("Played nights can't be removed here. Delete their rounds in the Rounds tab first.");
+  if (rounds) throw new InvalidResultError("Odigrane večeri ne mogu se ukloniti ovdje. Prvo obriši njihova kola na kartici Kola.");
   const {count} = await prisma.leagueNight.deleteMany({where: {league_id: leagueId, night}});
   return count > 0;
 }

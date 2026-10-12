@@ -15,7 +15,7 @@ export async function GET(request: NextRequest, {params}: Params) {
   try {
     return NextResponse.json(await getTablePad(Number(params.roundId)), {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to load the table.");
+    return errorResponse(error, "Stol se nije učitao.");
   }
 }
 
@@ -30,7 +30,7 @@ export async function PATCH(request: NextRequest, {params}: Params) {
     const changed = await editTablePair(Number(params.roundId), team1_id, team2_id);
     return NextResponse.json({changed}, {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to change the pair.");
+    return errorResponse(error, "Par nije spremljen.");
   }
 }
 
@@ -42,6 +42,6 @@ export async function DELETE(request: NextRequest, {params}: Params) {
     await removeTable(Number(params.roundId));
     return new NextResponse(null, {status: STATUS.NoContent});
   } catch (error) {
-    return errorResponse(error, "Failed to remove the table.");
+    return errorResponse(error, "Stol nije uklonjen.");
   }
 }

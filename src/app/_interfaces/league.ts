@@ -1,8 +1,12 @@
 import {isIsoDate, MAX_NIGHTS} from "@/app/_lib/nights";
+import {count, NOUN} from "@/app/_lib/ui/text";
 import {z} from "zod";
 import {CONFERENCE_NAME_MAX, MAX_CONFERENCES} from "@/app/_lib/conferences";
 
-const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use the YYYY-MM-DD format.");
+export const DATE_FORMAT_ERROR = "Datum mora biti u obliku GGGG-MM-DD.";
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, DATE_FORMAT_ERROR);
+const leagueName = z.string().trim().min(1, "Ime lige je obavezno.").max(100, "Ime lige može imati najviše 100 znakova.");
+const season = z.string().trim().max(20, "Sezona može imati najviše 20 znakova.");
 
 // A conference as Create League and Manage League send it. The rules for the whole list (none or 2–6, unique names and
 // colors from the palette) are checked by the service, which answers with a readable message.
@@ -11,14 +15,15 @@ const ConferenceInputValidation = z.object({
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
 });
 
-export const END_DATE_ERROR = "End date must be after the start date.";
+export const END_DATE_ERROR = "Kraj mora biti nakon početka.";
+export const MAX_NIGHTS_ERROR = `Liga može imati najviše ${count(MAX_NIGHTS, NOUN.večer)}.`;
 // ISO dates compare as strings; either date may be missing
 export const endsAfterStart = (start?: string | null, end?: string | null) => !start || !end || end > start;
 
 export const LeagueCreateRequestValidation = z
   .object({
-    league_name: z.string().trim().min(1).max(100),
-    season: z.string().trim().max(20).optional().nullable(),
+    league_name: leagueName,
+    season: season.optional().nullable(),
     start_date: isoDate.optional().nullable(),
     end_date: isoDate.optional().nullable(),
     // 0 = Monday ... 6 = Sunday
@@ -28,16 +33,16 @@ export const LeagueCreateRequestValidation = z
     conferences: z.array(ConferenceInputValidation).max(MAX_CONFERENCES).default([]),
     // the league nights; left out, they are filled in from the start date, end date and play day
     nights: z
-      .array(z.string().refine(isIsoDate, "Use the YYYY-MM-DD format."))
-      .max(MAX_NIGHTS, `A league can have at most ${MAX_NIGHTS} nights.`)
+      .array(z.string().refine(isIsoDate, DATE_FORMAT_ERROR))
+      .max(MAX_NIGHTS, MAX_NIGHTS_ERROR)
       .optional(),
   })
   .refine((l) => endsAfterStart(l.start_date, l.end_date), {message: END_DATE_ERROR, path: ["end_date"]});
 
 // Manage League · Details: any of the league's fields; the ones left out stay as they are
 export const LeagueUpdateRequestValidation = z.object({
-  league_name: z.string().trim().min(1, "League name is required.").max(100).optional(),
-  season: z.string().trim().max(20).nullable().optional(),
+  league_name: leagueName.optional(),
+  season: season.nullable().optional(),
   start_date: isoDate.nullable().optional(),
   end_date: isoDate.nullable().optional(),
   play_day: z.number().int().min(0).max(6).nullable().optional(),
@@ -45,12 +50,12 @@ export const LeagueUpdateRequestValidation = z.object({
 });
 
 export const LeagueNotesRequestValidation = z.object({
-  notes: z.string().max(5000, "Notes can be at most 5000 characters."),
+  notes: z.string().max(5000, "Bilješke mogu imati najviše 5000 znakova."),
 });
 
 // Manage League · Dates: add a night
 export const LeagueNightAddRequestValidation = z.object({
-  date: z.string().refine(isIsoDate, "Use the YYYY-MM-DD format."),
+  date: z.string().refine(isIsoDate, DATE_FORMAT_ERROR),
 });
 
 // A league night and whether it has rounds (a played night can't be removed)

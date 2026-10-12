@@ -1,7 +1,7 @@
 import {z} from "zod";
 import {PlayerPartialResponseValidation} from "@/app/_interfaces/player";
 
-const TeamName = z.string().trim().min(1, "Team name is required.").max(100, "Team name is too long.");
+const TeamName = z.string().trim().min(1, "Ime ekipe je obavezno.").max(100, "Ime ekipe je predugo.");
 
 // A new team: its name and any number of players (the first two are its founders).
 // founder_id1 / founder_id2 are the older form of the same request and still accepted.

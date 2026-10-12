@@ -15,7 +15,7 @@ export function PhoneRoundTables({title, rows}: {title: string; rows: TableRow[]
     <>
       <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", p: "2px 4px", minHeight: 28}}>
         <Eyebrow>{title}</Eyebrow>
-        {live > 0 && <LivePill>LIVE: {live}</LivePill>}
+        {live > 0 && <LivePill>UŽIVO: {live}</LivePill>}
       </Box>
       <Box component="ul" sx={{listStyle: "none", m: 0, p: 0, display: "flex", flexDirection: "column", gap: "10px"}}>
         {rows.map((t) => (
@@ -108,7 +108,7 @@ export function DesktopTableRow({
     height: TABLE_ROW_HEIGHT,
     display: "grid",
     gridTemplateColumns: dense
-      ? `32px minmax(0,1fr) 66px minmax(0,1fr) ${actions ? "72px" : "40px"}`
+      ? `32px minmax(0,1fr) 66px minmax(0,1fr) ${actions ? "72px" : "52px"}`
       : `40px minmax(0,1fr) 84px minmax(0,1fr) ${actions ? "76px" : "64px"}`,
     alignItems: "center",
     gap: dense ? "6px" : "10px",
@@ -156,7 +156,7 @@ export function DesktopTableRow({
       {t.live && (
         <>
           <LiveDot size={7} />
-          LIVE
+          UŽIVO
         </>
       )}
     </Box>

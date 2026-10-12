@@ -1,7 +1,11 @@
 import {RoundExtendedResponse, RoundExtendedResponseValidation} from "@/app/_interfaces/round";
 import {prisma} from "@/app/_lib/prisma";
+import {NotFoundError} from "@/app/_lib/service/admin/tables";
 
 export async function getRoundById(id: number): Promise<RoundExtendedResponse> {
+    // an id that isn't a whole number can't be a round
+    if (!Number.isInteger(id)) throw new NotFoundError("Runda ne postoji.");
+
     const dbRound = await prisma.round.findUnique({
         where: {
             id: Number(id),
@@ -43,7 +47,7 @@ export async function getRoundById(id: number): Promise<RoundExtendedResponse> {
     });
 
     if (!dbRound) {
-        throw new Error("Round not found.");
+        throw new NotFoundError("Runda ne postoji.");
     }
 
     return RoundExtendedResponseValidation.parse(dbRound);

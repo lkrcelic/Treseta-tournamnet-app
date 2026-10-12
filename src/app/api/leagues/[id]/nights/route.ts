@@ -11,10 +11,10 @@ export const dynamic = "force-dynamic";
 export async function GET(_request: NextRequest, {params}: {params: {id: string}}) {
   try {
     const nights = await listLeagueNights(Number(params.id));
-    if (!nights) return NextResponse.json({error: "League not found."}, {status: STATUS.NotFound});
+    if (!nights) return NextResponse.json({error: "Liga ne postoji."}, {status: STATUS.NotFound});
     return NextResponse.json(nights, {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to fetch the league nights.");
+    return errorResponse(error, "Večeri lige se nisu učitale.");
   }
 }
 
@@ -28,6 +28,6 @@ export async function POST(request: NextRequest, {params}: {params: {id: string}
     await addLeagueNight(Number(params.id), date);
     return NextResponse.json({date, played: false}, {status: STATUS.Created});
   } catch (error) {
-    return errorResponse(error, "Failed to add the night.");
+    return errorResponse(error, "Večer nije dodana.");
   }
 }

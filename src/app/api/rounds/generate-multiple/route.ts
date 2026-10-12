@@ -1,6 +1,6 @@
 import {NextRequest, NextResponse} from "next/server";
 import {STATUS} from "@/app/_lib/statusCodes";
-import {generateGroupedRoundPairings, generateMultipleRoundPairings, RoundsPlan} from "@/app/_lib/matching/multipleRoundMatching";
+import {generateGroupedRoundPairings, generateMultipleRoundPairings} from "@/app/_lib/matching/multipleRoundMatching";
 import {getLeagueTeamsWithScores} from "@/app/_lib/helpers/query/leagueScores";
 import {REPEAT_MATCHUPS, RoundCreateRequestValidation} from "@/app/_interfaces/round";
 import {requireAdmin} from "@/app/_lib/service/auth/requireUser";
@@ -32,23 +32,19 @@ export async function POST(request: NextRequest) {
     // "Only within conferences": every conference is paired on its own (a league without conferences ignores it)
     const conferences = parsed.withinConferences ? conferenceLookup(await getLeagueConferences(league_id)) : null;
 
-    let plan: RoundsPlan;
-    try {
-      const playedToday = await pairsPlayedToday(league_id);
-      const options = {windowSize, numberOfRounds, playedToday};
-      plan = conferences?.conferences.length
-        ? generateGroupedRoundPairings(conferenceGroups(filteredTeams, conferences), options)
-        : generateMultipleRoundPairings(filteredTeams, options);
-    } catch (error) {
-      // the pairing rejects impossible settings (odd window, more rounds than teams, ...)
-      return NextResponse.json({error: (error as Error).message}, {status: STATUS.BadRequest});
-    }
+    // the pairing rejects impossible settings (odd window, more rounds than teams, too few teams in a conference, ...)
+    // with an InvalidResultError: a 400
+    const playedToday = await pairsPlayedToday(league_id);
+    const options = {windowSize, numberOfRounds, playedToday};
+    const plan = conferences?.conferences.length
+      ? generateGroupedRoundPairings(conferenceGroups(filteredTeams, conferences), options)
+      : generateMultipleRoundPairings(filteredTeams, options);
 
     // the admin decides: create them anyway, or try again with a bigger window
     if (plan.repeats.length > 0 && !parsed.allowRepeats) {
       return NextResponse.json(
         {
-          error: "Some teams will play twice today",
+          error: "Neke ekipe bi se večeras srele dvaput.",
           code: REPEAT_MATCHUPS,
           repeats: plan.repeats.map((p) => [p.teamOne.name, p.teamTwo.name]),
         },
@@ -69,6 +65,6 @@ export async function POST(request: NextRequest) {
       {status: alreadyCreated ? STATUS.OK : STATUS.Created}
     );
   } catch (error) {
-    return errorResponse(error, "Failed to create rounds.");
+    return errorResponse(error, "Kolo nije napravljeno.");
   }
 }

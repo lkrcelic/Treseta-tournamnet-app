@@ -34,6 +34,6 @@ export async function GET(request: NextRequest) {
     }, {status: STATUS.OK});
   } catch (error) {
     console.error(error);
-    return NextResponse.json({error: 'Failed to get open round'}, {status: STATUS.ServerError});
+    return NextResponse.json({error: "Otvorena runda se nije učitala."}, {status: STATUS.ServerError});
   }
 }

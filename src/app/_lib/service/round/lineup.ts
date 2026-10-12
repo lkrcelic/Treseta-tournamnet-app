@@ -57,7 +57,7 @@ export async function getLineup(roundId: number, viewerId: number): Promise<Line
       roundPlayers: {select: {player_id: true, team_id: true}},
     },
   });
-  if (!round) throw new NotFoundError("Round not found.");
+  if (!round) throw new NotFoundError("Runda ne postoji.");
 
   const saved = round.roundPlayers.length > 0;
   const leagueId = round.leagueRounds[0]?.league_id ?? null;
@@ -120,8 +120,8 @@ export async function saveLineup(roundId: number, lineup: LineupSave): Promise<v
         team2: {select: {teamPlayers: {select: {player_id: true}}}},
       },
     });
-    if (!round) throw new NotFoundError("Round not found.");
-    if (!round.open) throw new InvalidResultError("This round is already finished.");
+    if (!round) throw new NotFoundError("Runda ne postoji.");
+    if (!round.open) throw new InvalidResultError("Ova runda je već završena.");
 
     const rosters = new Map([
       [round.team1_id, round.team1.teamPlayers.map((p) => p.player_id)],
@@ -129,7 +129,7 @@ export async function saveLineup(roundId: number, lineup: LineupSave): Promise<v
     ]);
     const teamIds = lineup.teams.map((t) => t.team_id);
     if (new Set(teamIds).size !== 2 || !teamIds.every((id) => rosters.has(id))) {
-      throw new InvalidResultError("The lineup has to be for this round's two teams.");
+      throw new InvalidResultError("Postava mora biti za dvije ekipe ove runde.");
     }
 
     const rows: {round_id: number; player_id: number; team_id: number}[] = [];
@@ -137,12 +137,12 @@ export async function saveLineup(roundId: number, lineup: LineupSave): Promise<v
       const roster = rosters.get(team_id)!;
       const ids = Array.from(new Set(player_ids));
       if (ids.length !== Math.min(PLAYERS_PER_TEAM, roster.length) || !ids.every((id) => roster.includes(id))) {
-        throw new InvalidResultError(`Pick ${Math.min(PLAYERS_PER_TEAM, roster.length)} players of each team.`);
+        throw new InvalidResultError(`Odaberi ${Math.min(PLAYERS_PER_TEAM, roster.length)} igrača iz svake ekipe.`);
       }
       ids.forEach((player_id) => rows.push({round_id: roundId, player_id, team_id}));
     }
     if (new Set(rows.map((r) => r.player_id)).size !== rows.length) {
-      throw new InvalidResultError("A player can't play for both teams.");
+      throw new InvalidResultError("Igrač ne može igrati za obje ekipe.");
     }
 
     await tx.roundPlayer.deleteMany({where: {round_id: roundId}});

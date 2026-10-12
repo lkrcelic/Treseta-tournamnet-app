@@ -61,7 +61,7 @@ export async function smokingPlan(leagueId: number): Promise<SmokingPlan> {
       leagueTeams: {where: {team_id: {not: BYE_TEAM_ID}}, select: {team: {select: {team_id: true, team_name: true}}}},
     },
   });
-  if (!league) throw new NotFoundError("League not found.");
+  if (!league) throw new NotFoundError("Liga ne postoji.");
 
   const today = leagueDateString();
   const teams = league.leagueTeams.map((lt) => lt.team);
@@ -77,7 +77,7 @@ export async function smokingPlan(leagueId: number): Promise<SmokingPlan> {
     const extra = await prisma.team.findMany({where: {team_id: {in: missing}}, select: {team_id: true, team_name: true}});
     extra.forEach((t) => names.set(t.team_id, t.team_name));
   }
-  const side = (id: number, smokers: number): SmokingPlanSide => ({id, name: names.get(id) ?? `Team ${id}`, smokers});
+  const side = (id: number, smokers: number): SmokingPlanSide => ({id, name: names.get(id) ?? `Ekipa ${id}`, smokers});
 
   const playedRounds = new Map<number, number>();
   rounds.forEach((r) => {
