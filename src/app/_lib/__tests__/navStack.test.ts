@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
 import {
+  arrivalKind,
   enter,
   labelNavEntry,
   NAV_STACK_MAX,
@@ -17,6 +18,7 @@ import {
   relabel,
   replaceTop,
   reset,
+  stackDepth,
   startNavStack,
   startOver,
   visit,
@@ -147,6 +149,20 @@ test("nextNavStack: Home and the nav drawer make roots, a load from outside star
   assert.deepEqual(nextNavStack(s, "/players/7", {...link, first: true, loadType: null}), startOver("/players/7"));
 });
 
+test("/league/current/… opened from outside: the league's page it lands on takes its place, with no Back", () => {
+  // a shared "/league/current/standings?team=29": the app starts there, then Next swaps it for the league's page
+  const shared = nextNavStack(push(startOver("/profile"), "/teams/29"), "/league/current/standings", {...link, first: true, loadType: "navigate"});
+  const landed = nextNavStack(shared, "/league/2/standings", link);
+  assert.deepEqual(paths(landed), ["/league/2/standings"]);
+  assert.equal(previous(landed), null);
+  // opened by a link in the app, the page before it stays the one Back returns to
+  const inApp = nextNavStack(push(push(startOver("/"), "/teams/29"), "/league/current/standings"), "/league/2/standings", link);
+  assert.deepEqual(paths(inApp), ["/", "/teams/29", "/league/2/standings"]);
+  assert.equal(previous(inApp)?.path, "/teams/29");
+  // an ordinary page before a link is still pushed over
+  assert.deepEqual(paths(nextNavStack(startOver("/league/2/standings"), "/teams/29", link)), ["/league/2/standings", "/teams/29"]);
+});
+
 test("a stored stack is read back, anything else is an empty stack", () => {
   const s = [{path: "/teams/29", label: "Puleni", root: true as const}, {path: "/players/7", label: null}];
   assert.deepEqual(parseNavStack(JSON.stringify(s)), s);
@@ -251,4 +267,32 @@ test("a label for a page that is no longer on top is ignored", () => {
     {path: "/teams/29", label: null, root: true},
     {path: "/players/7", label: null},
   ]);
+});
+
+test("a page knows it was reached by Back, and its place in the stack, before and after it is recorded", () => {
+  recordNavigation("/league/2/standings", true, "navigate");
+  // the first page of a document is a fresh start
+  assert.equal(arrivalKind("/league/2/standings"), "push");
+  assert.equal(stackDepth("/league/2/standings"), 1);
+  // a link to a team: asked while the team page renders, and again once it is recorded
+  assert.equal(arrivalKind("/teams/29"), "push");
+  assert.equal(stackDepth("/teams/29"), 2);
+  recordNavigation("/teams/29", false, null);
+  assert.equal(arrivalKind("/teams/29"), "push");
+  assert.equal(stackDepth("/teams/29"), 2);
+  // Back to the table: the same place it was left at, before and after recording
+  notePop("/league/2/standings");
+  assert.equal(arrivalKind("/league/2/standings"), "pop");
+  assert.equal(stackDepth("/league/2/standings"), 1);
+  recordNavigation("/league/2/standings", false, null);
+  assert.equal(arrivalKind("/league/2/standings"), "pop");
+  assert.equal(stackDepth("/league/2/standings"), 1);
+  // a replace, then a link: no longer Back
+  noteReplace("/league/3/standings");
+  assert.equal(arrivalKind("/league/3/standings"), "replace");
+  recordNavigation("/league/3/standings", false, null);
+  assert.equal(arrivalKind("/league/3/standings"), "replace");
+  recordNavigation("/teams/30", false, null);
+  assert.equal(arrivalKind("/teams/30"), "push");
+  assert.equal(arrivalKind("/league/3/standings"), "push");
 });

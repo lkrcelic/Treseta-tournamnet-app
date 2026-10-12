@@ -9,12 +9,6 @@ export function initials(name: string | null | undefined): string {
   return clean.slice(0, 2).toUpperCase();
 }
 
-// Point difference with an explicit sign: +612, -36, 0
-export function signed(n: number | null | undefined): string {
-  const v = Number(n ?? 0);
-  return v > 0 ? `+${v}` : String(v);
-}
-
 // "dd.mm.yyyy" from an ISO date ("2026-02-17" or a full timestamp), without time zone surprises
 export function displayDate(iso: string | null | undefined): string {
   if (!iso) return "";

@@ -1,11 +1,54 @@
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {statsLine, StandingsRow} from "@/app/_lib/ui/standings";
 import {count, NOUN, plural} from "@/app/_lib/ui/text";
+import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {Box, SxProps, Theme} from "@mui/material";
 import React from "react";
-import {mergeSx, tabular} from "./base";
+import {mergeSx, rowFocus, stretchedArea, tabular} from "./base";
 import {RankBadge} from "./Live";
 import {TeamLabel} from "./TeamDot";
+
+// Where a row (or podium card) leads: its team's page; null or no function = the row is not a link (the public
+// season table for a visitor who isn't logged in)
+export type RowHref = (row: StandingsRow) => string | null | undefined;
+
+// A linked row: the team's name is the link and covers the whole row (or card), so the row stays a table row for
+// screen readers and the name is what they announce. The row needs `position: relative` (linkedRow).
+// keepClear: in a list that scrolls under a pinned block (column labels, the pinned podium), how far the browser keeps
+// the link from the list's top and bottom edges when keyboard focus scrolls it into view, so the focused row and its
+// ring are never hidden under the pinned block: the block's height plus half a row (the name sits mid-row).
+type KeepClear = {top: number; bottom: number};
+
+function TeamName({row, href, keepClear}: {row: StandingsRow; href: string | null | undefined; keepClear?: KeepClear}) {
+  if (!href) return <>{row.name}</>;
+  return (
+    <Box
+      component={TransitionLink}
+      href={href}
+      sx={{
+        ...stretchedArea,
+        color: "inherit",
+        textDecoration: "none",
+        WebkitTapHighlightColor: "transparent",
+        outline: "none",
+        ...(keepClear ? {scrollMarginTop: `${keepClear.top}px`, scrollMarginBottom: `${keepClear.bottom}px`} : {}),
+      }}
+    >
+      {row.name}
+    </Box>
+  );
+}
+
+// The row of a linked name: its focus ring, and a little feedback under the pointer or finger (a tinted row darkens a
+// touch, a white one turns paper-2). A podium card's ring goes round its outside, so it doesn't read as the highlight.
+function linkedRow(tinted: boolean, card = false) {
+  return {
+    position: "relative",
+    "&:has(a:focus-visible)": card ? {...rowFocus, outlineOffset: "3px"} : rowFocus,
+    "@media (hover: hover)": {"&:hover": tinted ? {filter: "brightness(.98)"} : {background: color.paper2}},
+    "&:active": tinted ? {filter: "brightness(.96)"} : {background: color.lineFill},
+  } as const;
+}
 
 // Three medal cards. "compact" is the phone version (three narrow columns), otherwise the desktop one. showLive
 // turns a medal red and pulsing, and its points red, while that team is playing (as in the rows below the podium).
@@ -13,11 +56,13 @@ export function Podium({
   rows,
   compact = false,
   showLive = false,
+  rowHref,
   sx,
 }: {
   rows: StandingsRow[];
   compact?: boolean;
   showLive?: boolean;
+  rowHref?: RowHref;
   sx?: SxProps<Theme>;
 }) {
   if (rows.length < 3) return null;
@@ -32,11 +77,13 @@ export function Podium({
     >
       {rows.slice(0, 3).map((r, i) => {
         const live = showLive && r.live;
+        const href = rowHref?.(r);
         return (
           <Box
             component="li"
             key={r.key}
-            aria-current={r.mine ? "true" : undefined}
+            aria-current={r.highlight ? "true" : undefined}
+            data-highlight={r.highlight ? "" : undefined}
             sx={{
               background: color.medalBg[i],
               color: color.ink,
@@ -44,10 +91,11 @@ export function Podium({
               p: compact ? "12px 12px 14px" : "20px 22px",
               display: "flex",
               minWidth: 0,
-              boxShadow: [compact ? shadow.card : null, r.mine ? shadow.mineRing : null].filter(Boolean).join(", ") || "none",
+              boxShadow: [compact ? shadow.card : null, r.highlight ? shadow.mineRing : null].filter(Boolean).join(", ") || "none",
               ...(compact
                 ? {flexDirection: "column", gap: "10px"}
                 : {alignItems: "flex-end", justifyContent: "space-between", gap: "12px"}),
+              ...(href ? linkedRow(true, true) : {}),
             }}
           >
             {compact ? (
@@ -66,14 +114,14 @@ export function Podium({
                       {r.diff}
                     </Box>
                   </Box>
-                  <TeamLabel name={r.name} conference={r.conference} sx={{fontSize: 14, fontWeight: 600}} />
+                  <TeamLabel name={<TeamName row={r} href={href} />} conference={r.conference} sx={{fontSize: 14, fontWeight: 600}} />
                 </Box>
               </>
             ) : (
               <>
                 <Box sx={{display: "flex", flexDirection: "column", gap: "14px", minWidth: 0}}>
                   <Medal rank={r.rank} index={i} size={34} live={live} />
-                  <TeamLabel name={r.name} conference={r.conference} dotSize={10} sx={{gap: "10px", fontFamily: font.display, fontSize: 26, fontWeight: 700}} />
+                  <TeamLabel name={<TeamName row={r} href={href} />} conference={r.conference} dotSize={10} sx={{gap: "10px", fontFamily: font.display, fontSize: 26, fontWeight: 700}} />
                 </Box>
                 <Box sx={{display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px"}}>
                   <Box component="span" sx={{fontSize: 16, fontWeight: 700, color: color.navy, ...tabular}}>
@@ -135,37 +183,108 @@ export function VisuallyHidden({children}: {children: React.ReactNode}) {
 
 // Phone standings: two-line rows (name + stats), RAZ and BOD on the right, so nothing scrolls sideways. With
 // podium, the top three come first as medal rows that stay pinned while the rest scrolls under them (the parent
-// card is the scroller). The player's own team has a cream row with a navy bar.
-export function StandingsRows({rows, podium, withPlayed = false}: {rows: StandingsRow[]; podium?: StandingsRow[]; withPlayed?: boolean}) {
+// card is the scroller). The highlighted team (the player's own, or the one the page was opened for) has a cream row
+// with a navy bar, also on the podium. head: a labels row on top ("#  EKIPA … RAZ  BOD", 13d), pinned with the podium.
+// The pinned block (as the desktop grid's column labels) is marked data-pinned, rows data-highlight.
+export function StandingsRows({
+  rows,
+  podium,
+  withPlayed = false,
+  head = false,
+  rowHref,
+}: {
+  rows: StandingsRow[];
+  podium?: StandingsRow[];
+  withPlayed?: boolean;
+  head?: boolean;
+  rowHref?: RowHref;
+}) {
   const top = podium && podium.length >= 3 ? podium.slice(0, 3) : null;
+  // the pinned block (labels row and podium) hides the rows that scroll under it
+  const pinned = (head ? HEAD_HEIGHT : 0) + (top ? 3 * LINE_HEIGHT.podium : 0);
+  const keepClear = {top: pinned + LINE_HEIGHT.row / 2, bottom: LINE_HEIGHT.row / 2};
   return (
     <>
-      {top && (
-        <Box sx={{position: "sticky", top: 0, zIndex: 2, background: color.white, boxShadow: shadow.sticky}}>
-          <Box component="ol" aria-label="Prva tri mjesta" sx={{listStyle: "none", m: 0, p: 0}}>
-            {top.map((r, i) => (
-              <StandingsLine key={r.key} r={r} withPlayed={withPlayed} medal={i} />
-            ))}
-          </Box>
+      {(top || head) && (
+        <Box data-pinned="" sx={{position: "sticky", top: 0, zIndex: 2, background: color.white, boxShadow: top ? shadow.sticky : "none"}}>
+          {head && <RowsHead />}
+          {top && (
+            <Box component="ol" aria-label="Prva tri mjesta" sx={{listStyle: "none", m: 0, p: 0}}>
+              {top.map((r, i) => (
+                <StandingsLine key={r.key} r={r} withPlayed={withPlayed} medal={i} href={rowHref?.(r)} />
+              ))}
+            </Box>
+          )}
         </Box>
       )}
       <Box component="ol" start={top ? 4 : undefined} sx={{listStyle: "none", m: 0, p: 0}}>
         {rows.map((r) => (
-          <StandingsLine key={r.key} r={r} withPlayed={withPlayed} />
+          <StandingsLine key={r.key} r={r} withPlayed={withPlayed} href={rowHref?.(r)} keepClear={keepClear} />
         ))}
       </Box>
     </>
   );
 }
 
-function StandingsLine({r, withPlayed, medal}: {r: StandingsRow; withPlayed: boolean; medal?: number}) {
+// the phone rows' heights (border included): the labels row, a podium row, any other row
+const HEAD_HEIGHT = 34;
+const LINE_HEIGHT = {podium: 58, row: 62} as const;
+
+// "#  EKIPA" on the left, "RAZ" and "BOD" over their columns (Profiles P:119); the rows say the same to screen readers
+function RowsHead() {
+  return (
+    <Box
+      aria-hidden
+      sx={{
+        height: HEAD_HEIGHT,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        pl: "14px",
+        pr: "16px",
+        borderBottom: `1px solid ${tint.navy[10]}`,
+        fontSize: 11.5,
+        fontWeight: 700,
+        letterSpacing: ".08em",
+        textTransform: "uppercase",
+        color: color.muted,
+        whiteSpace: "nowrap",
+      }}
+    >
+      <span>#&nbsp;&nbsp;&nbsp;Ekipa</span>
+      <Box component="span" sx={{display: "flex", gap: "12px"}}>
+        <Box component="span" sx={{minWidth: 48, textAlign: "right"}}>
+          Raz
+        </Box>
+        <Box component="span" sx={{minWidth: 34, textAlign: "right"}}>
+          Bod
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
+function StandingsLine({
+  r,
+  withPlayed,
+  medal,
+  href,
+  keepClear,
+}: {
+  r: StandingsRow;
+  withPlayed: boolean;
+  medal?: number;
+  href?: string | null;
+  keepClear?: KeepClear;
+}) {
   const onPodium = medal != null;
   return (
     <Box
       component="li"
-      aria-current={r.mine ? "true" : undefined}
+      aria-current={r.highlight ? "true" : undefined}
+      data-highlight={r.highlight ? "" : undefined}
       sx={{
-        height: onPodium ? 58 : 62,
+        height: onPodium ? LINE_HEIGHT.podium : LINE_HEIGHT.row,
         display: "grid",
         gridTemplateColumns: "30px minmax(0,1fr) auto",
         alignItems: "center",
@@ -173,13 +292,14 @@ function StandingsLine({r, withPlayed, medal}: {r: StandingsRow; withPlayed: boo
         pl: "12px",
         pr: "16px",
         borderBottom: `1px solid ${color.line}`,
-        background: r.mine ? color.cream2 : onPodium ? color.medalBg[medal] : "transparent",
-        boxShadow: r.mine ? shadow.mineBar : "none",
+        background: r.highlight ? color.cream2 : onPodium ? color.medalBg[medal] : "transparent",
+        boxShadow: r.highlight ? shadow.mineBar : "none",
+        ...(href ? linkedRow(r.highlight || onPodium) : {}),
       }}
     >
       {onPodium ? <Medal rank={r.rank} index={medal} size={28} /> : <RankBadge rank={r.rank} live={r.live} />}
       <Box sx={{display: "flex", flexDirection: "column", gap: "2px", minWidth: 0}}>
-        <TeamLabel name={r.name} conference={r.conference} sx={{fontSize: 16, fontWeight: onPodium || r.mine ? 700 : 600}} />
+        <TeamLabel name={<TeamName row={r} href={href} keepClear={keepClear} />} conference={r.conference} sx={{fontSize: 16, fontWeight: onPodium || r.highlight ? 700 : 600}} />
         <Box sx={{fontSize: 12.5, color: onPodium ? color.ink2 : color.muted, whiteSpace: "nowrap", ...tabular}}>{statsLine(r, withPlayed)}</Box>
       </Box>
       <Box sx={{display: "flex", alignItems: "baseline", gap: "12px"}}>
@@ -215,6 +335,7 @@ export function StandingsGrid({
   caption,
   sx,
   showLive = true,
+  rowHref,
 }: {
   rows: StandingsRow[];
   columns?: GridColumn[];
@@ -222,6 +343,7 @@ export function StandingsGrid({
   caption: string;
   sx?: SxProps<Theme>;
   showLive?: boolean;
+  rowHref?: RowHref;
 }) {
   const head: Record<GridColumn, string> = {played: "OK", wins: "POB", draws: "NER", losses: "IZG"};
   const full: Record<GridColumn, string> = {played: "Odigrano kola", wins: "Pobjede", draws: "Neriješeno", losses: "Izgubljeno"};
@@ -229,18 +351,22 @@ export function StandingsGrid({
   const template = `${dense ? 36 : 44}px minmax(0,1fr) ${columns.map(() => `${countW}px`).join(" ")} ${dense ? 64 : columns.length > 3 ? 96 : 80}px ${dense ? 48 : columns.length > 3 ? 72 : 64}px`;
   const px = dense ? "20px" : columns.length > 3 ? "24px" : "20px";
   const cell = {display: "grid", gridTemplateColumns: template, gap: "8px", alignItems: "center", px};
+  const headHeight = dense ? 34 : 44;
+  const rowHeight = dense ? 46 : 56;
+  // the column labels stay on top while the rows scroll under them (the parent card is the scroller)
+  const keepClear = {top: headHeight + rowHeight / 2, bottom: rowHeight / 2};
   return (
     <Box component="table" role="table" sx={mergeSx({width: "100%", borderCollapse: "collapse", display: "block"}, sx)}>
       <Box component="caption" sx={{position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0,0,0,0)"}}>
         {caption}
       </Box>
-      <Box component="thead" role="rowgroup" sx={{display: "block", position: "sticky", top: 0, zIndex: 1}}>
+      <Box component="thead" role="rowgroup" data-pinned="" sx={{display: "block", position: "sticky", top: 0, zIndex: 1}}>
         <Box
           component="tr"
           role="row"
           sx={{
             ...cell,
-            height: dense ? 34 : 44,
+            height: headHeight,
             background: color.paper2,
             borderBottom: `1px solid ${tint.navy[10]}`,
             fontSize: dense ? 11 : 12,
@@ -275,27 +401,30 @@ export function StandingsGrid({
       <Box component="tbody" role="rowgroup" sx={{display: "block"}}>
         {rows.map((r) => {
           const live = showLive && r.live;
+          const href = rowHref?.(r);
           return (
             <Box
               component="tr"
               role="row"
               key={r.key}
-              aria-current={r.mine ? "true" : undefined}
+              aria-current={r.highlight ? "true" : undefined}
+              data-highlight={r.highlight ? "" : undefined}
               sx={{
                 ...cell,
-                height: dense ? 46 : 56,
+                height: rowHeight,
                 borderBottom: `1px solid ${color.divider}`,
-                background: r.mine ? color.cream2 : "transparent",
-                boxShadow: r.mine ? shadow.mineBar : "none",
+                background: r.highlight ? color.cream2 : "transparent",
+                boxShadow: r.highlight ? shadow.mineBar : "none",
                 ...tabular,
                 "& td": {p: 0},
+                ...(href ? linkedRow(r.highlight) : {}),
               }}
             >
               <Box component="td" role="cell">
                 <RankBadge rank={r.rank} live={live} size={dense ? 26 : 30} />
               </Box>
-              <Box component="td" role="cell" sx={{fontSize: dense ? 16 : 17, fontWeight: r.mine ? 700 : 600, minWidth: 0}}>
-                <TeamLabel name={r.name} conference={r.conference} />
+              <Box component="td" role="cell" sx={{fontSize: dense ? 16 : 17, fontWeight: r.highlight ? 700 : 600, minWidth: 0}}>
+                <TeamLabel name={<TeamName row={r} href={href} keepClear={keepClear} />} conference={r.conference} />
               </Box>
               {columns.map((c) => (
                 <Box component="td" role="cell" key={c} sx={{textAlign: "center", fontSize: dense ? 14 : 15, color: color.ink2}}>

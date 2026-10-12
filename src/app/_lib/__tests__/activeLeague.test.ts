@@ -1,6 +1,6 @@
 import {describe, it} from "node:test";
 import assert from "node:assert/strict";
-import {pickActiveLeague} from "@/app/_lib/league";
+import {pickActiveLeague, searchSuffix} from "@/app/_lib/league";
 
 describe("pickActiveLeague", () => {
   it("picks the league with the latest round night", () => {
@@ -34,5 +34,20 @@ describe("pickActiveLeague", () => {
 
   it("no leagues: null", () => {
     assert.equal(pickActiveLeague([]), null);
+  });
+});
+
+describe("searchSuffix", () => {
+  it("passes a page's query on (/league/current/standings?team=29)", () => {
+    assert.equal(searchSuffix({team: "29"}), "?team=29");
+    assert.equal(searchSuffix({date: "2026-02-17", round: "2"}), "?date=2026-02-17&round=2");
+    assert.equal(searchSuffix({a: ["1", "2"]}), "?a=1&a=2");
+    assert.equal(searchSuffix({q: "Đ & ž"}), "?q=%C4%90+%26+%C5%BE");
+  });
+
+  it("no query: nothing", () => {
+    assert.equal(searchSuffix({}), "");
+    assert.equal(searchSuffix(undefined), "");
+    assert.equal(searchSuffix({team: undefined}), "");
   });
 });

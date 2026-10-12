@@ -15,12 +15,15 @@ import {
   InitialsAvatar,
   mergeSx,
   MessageState,
+  type NavKey,
   PageSkeleton,
   ProvisionalTag,
+  rowFocus,
   Screen,
   ScrollArea,
   StackTopBar,
   StatTile,
+  stretchedArea,
   tabular,
 } from "@/app/_ui/sp";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
@@ -63,8 +66,20 @@ export function PhoneFrame({eyebrow, nav, children}: {eyebrow: string; nav: NavS
 // The desktop page (P:145-171): the back pill naming the page it returns to, then the page. Alone it sits in the
 // desktop frame under the eyebrow with the app's name (13f, 13g); embedded, the admin directory's frame holds it.
 // short (a short window, see useShortWindow): alone, the back pill moves up into the frame's header row next to the
-// menu button, so the columns get its height.
-export function DesktopFrame({embedded, short = false, nav, children}: {embedded: boolean; short?: boolean; nav: NavStackControls; children: React.ReactNode}) {
+// menu button, so the columns get its height. active: the nav drawer's item (a league's table opened from a team).
+export function DesktopFrame({
+  embedded,
+  short = false,
+  nav,
+  active,
+  children,
+}: {
+  embedded: boolean;
+  short?: boolean;
+  nav: NavStackControls;
+  active?: NavKey;
+  children: React.ReactNode;
+}) {
   const inHeader = short && !embedded;
   const page = (
     <Box sx={{flex: 1, minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column", gap: "16px", position: "relative"}}>
@@ -74,7 +89,7 @@ export function DesktopFrame({embedded, short = false, nav, children}: {embedded
   );
   if (embedded) return page;
   return (
-    <DesktopShell eyebrow={BRAND.name} lead={inHeader ? <BackPill nav={nav} sx={{alignSelf: "center", maxWidth: 320}} /> : undefined}>
+    <DesktopShell active={active} eyebrow={BRAND.name} lead={inHeader ? <BackPill nav={nav} sx={{alignSelf: "center", maxWidth: 320}} /> : undefined}>
       {page}
     </DesktopShell>
   );
@@ -239,9 +254,6 @@ export function HeaderRating({rating, provisional, href, short = false}: {rating
 
 // ---------- rows ----------
 
-// the keyboard focus ring of a list row: inside the row, so the next row and the card's edge don't cut it
-export const rowFocus = {outline: `3px solid ${color.navy}`, outlineOffset: "-3px"} as const;
-
 // A row that opens another page, with room for a control of its own (an admin's remove button): the link covers the
 // whole row, and a control given `position: relative; z-index: 1` sits above it. The link's focus ring goes round
 // the row.
@@ -252,10 +264,10 @@ export const stretchedRow = {
 
 export const stretchedLink = {
   ...buttonBase,
+  ...stretchedArea,
   textDecoration: "none",
   color: color.ink,
   textAlign: "left",
-  "&::after": {content: '""', position: "absolute", inset: 0},
   "&:focus-visible": {outline: "none"},
 } as const;
 

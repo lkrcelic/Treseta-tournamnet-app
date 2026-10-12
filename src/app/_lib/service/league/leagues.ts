@@ -13,13 +13,16 @@ import {recalcTeamScores} from "@/app/_lib/service/admin/recalc";
 const dateString = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 const dateValue = (d?: string | null) => (d ? new Date(`${d}T00:00:00.000Z`) : null);
 
-// Every league, newest first, with its number of teams (the bye team is not counted), its latest round night
-// and which one is being played now
+// Every league, newest first, with its number of teams (the bye team is not counted), its latest round night, its
+// last scheduled night and which one is being played now
 export async function listLeagues(): Promise<LeagueSummary[]> {
   const [leagues, played] = await Promise.all([
     prisma.league.findMany({
       orderBy: {league_id: "desc"},
-      include: {_count: {select: {leagueTeams: {where: {team_id: {not: BYE_TEAM_ID}}}}}},
+      include: {
+        _count: {select: {leagueTeams: {where: {team_id: {not: BYE_TEAM_ID}}}}},
+        nights: {select: {night: true}, orderBy: {night: "desc"}, take: 1},
+      },
     }),
     prisma.$queryRaw<{league_id: number; last_played: Date | null}[]>`
         SELECT lr.league_id, MAX(r.round_date) AS last_played
@@ -40,6 +43,7 @@ export async function listLeagues(): Promise<LeagueSummary[]> {
     smoking_tables: l.smoking_tables,
     team_count: l._count.leagueTeams,
     last_played: lastPlayed.get(l.league_id) ?? null,
+    last_night: dateString(l.nights[0]?.night ?? null),
   }));
   const activeId = pickActiveLeague(rows);
   return rows.map((l) => ({...l, active: l.league_id === activeId}));
@@ -97,6 +101,7 @@ export async function createLeague(req: LeagueCreateRequest): Promise<LeagueSumm
     smoking_tables: league.smoking_tables,
     team_count: teamIds.length,
     last_played: null,
+    last_night: nights.length ? nights[nights.length - 1] : null,
     active: false,
   };
 }

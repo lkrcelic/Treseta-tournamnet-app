@@ -17,6 +17,8 @@ export type LeagueOption = {
   season?: string | null;
   startDate?: string | null; // YYYY-MM-DD
   endDate?: string | null;
+  // the last scheduled night (YYYY-MM-DD): with endDate, whether the league is over (leagueEnded)
+  lastNight?: string | null;
   playDay?: number | null; // 0 = Monday ... 6 = Sunday
   teamCount?: number;
 };
@@ -47,6 +49,7 @@ function toOption(l: LeagueSummary): LeagueOption {
     season: l.season,
     startDate: l.start_date,
     endDate: l.end_date,
+    lastNight: l.last_night,
     playDay: l.play_day,
     teamCount: l.team_count,
     meta: leagueMeta(l.team_count, l.play_day, l.active),
@@ -65,7 +68,8 @@ function loadLeagues(): Promise<LeagueOption[]> {
   return inflight;
 }
 
-function useLeagueList(): {leagues: LeagueOption[] | null; error: boolean} {
+// The league list as it is: null until it has loaded (error: it didn't load), with no stand-in (see useLeagues)
+export function useLeagueList(): {leagues: LeagueOption[] | null; error: boolean} {
   const [leagues, setLeagues] = useState<LeagueOption[] | null>(cache);
   const [error, setError] = useState(false);
 

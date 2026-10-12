@@ -1,14 +1,18 @@
 "use client";
 
 import {getPlayerRatingAPI} from "@/app/_fetchers/ratings";
+import {useRestoredState, useScrollMemory} from "@/app/_hooks/useBackRestore";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
+import useNavStack from "@/app/_hooks/useNavStack";
 import useRatings from "@/app/_hooks/useRatings";
 import {PlayerRatingDetail, RatingRow} from "@/app/_interfaces/ratings";
+import type {NavStackControls} from "@/app/_lib/navStack";
 import {formatChange, RATING_COLUMNS, roundsLabel} from "@/app/_lib/ui/ratings";
 import {matchesQuery} from "@/app/_lib/ui/text";
 import {TransitionLink, useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, ease, font, shadow, tint} from "@/app/_styles/tokens";
 import {
+  BackPill,
   buttonBase,
   Card,
   CenteredSpinner,
@@ -22,11 +26,12 @@ import {
   PrimaryButton,
   ProvisionalTag,
   Screen,
+  scrollIntoMiddle,
   SearchInput,
   tabular,
 } from "@/app/_ui/sp";
+import {PhoneFrame, useShortWindow} from "@/app/_ui/profiles/PageParts";
 import {infoTitle, InfoView, LastNights, NoRoundsCard, PlayerCard, RankDot, RatingChartCard, RatingsInfo} from "./RatingParts";
-import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import HelpOutlineRoundedIcon from "@mui/icons-material/HelpOutlineRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
@@ -39,12 +44,15 @@ import React, {useCallback, useEffect, useId, useMemo, useRef, useState} from "r
 
 // Rejting igrača (Claude Design 8a–8m): one list across all leagues, highest rating first. On the phone a row opens
 // the player's detail (its own page); on the desktop the detail sits next to the list. The (i) button explains
-// every column, and on the desktop each column header has a tooltip too.
+// every column, and on the desktop each column header has a tooltip too. The detail's cream card opens the player's
+// page; a rating opened from a Player page goes back to it (the phone's Back, the desktop's back pill).
 
 const EYEBROW = "Svi igrači · sve lige";
 
 export default function RatingsScreen({playerId}: {playerId?: number}) {
   const isDesktop = useIsDesktop();
+  // a Player page opened from the rating card says "‹ Rejting"; a detail opened from outside the app goes back to the list
+  const nav = useNavStack("Rejting", "/ratings");
   const {list, error, reload} = useRatings();
   const [query, setQuery] = useState("");
   const players = useMemo(
@@ -53,8 +61,8 @@ export default function RatingsScreen({playerId}: {playerId?: number}) {
     [list, query]
   );
 
-  if (isDesktop) return <DesktopRatings list={list?.players ?? null} me={list?.me ?? null} players={players} error={error} reload={reload} query={query} setQuery={setQuery} initial={playerId} />;
-  if (playerId != null) return <PhoneDetail playerId={playerId} />;
+  if (isDesktop) return <DesktopRatings list={list?.players ?? null} me={list?.me ?? null} players={players} error={error} reload={reload} query={query} setQuery={setQuery} initial={playerId} nav={nav} />;
+  if (playerId != null) return <PhoneDetail playerId={playerId} nav={nav} />;
   return <PhoneList all={list?.players ?? null} me={list?.me ?? null} players={players} error={error} reload={reload} query={query} setQuery={setQuery} />;
 }
 
@@ -107,6 +115,8 @@ type ListProps = {
 function PhoneList({all, me, players, error, reload, query, setQuery}: ListProps & {all: RatingRow[] | null}) {
   const router = useTransitionRouter();
   const [info, setInfo] = useState<InfoView | null>(null);
+  // Back from a player's detail finds the list where it was left
+  const scroller = useScrollMemory("ratings");
 
   let body: React.ReactNode;
   if (error && !all) body = <ListMessage kind="error" onRetry={reload} />;
@@ -138,7 +148,7 @@ function PhoneList({all, me, players, error, reload, query, setQuery}: ListProps
         </IconCircleButton>
       </Box>
       <SearchInput height={48} placeholder="Traži igrača" aria-label="Traži igrača" value={query} onChange={(e) => setQuery(e.target.value)} />
-      <Card sx={{flex: 1, minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", borderRadius: "22px"}}>
+      <Card ref={all ? scroller.ref : undefined} sx={{flex: 1, minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", borderRadius: "22px"}}>
         <Box aria-hidden sx={{position: "sticky", top: 0, zIndex: 3, background: color.white, height: 34, display: "flex", alignItems: "center", justifyContent: "space-between", pl: "14px", pr: "16px", borderBottom: `1px solid ${tint.navy[10]}`, fontSize: 11.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: color.muted}}>
           <span>#&nbsp;&nbsp;&nbsp;Igrač</span>
           <span>Rejting</span>
@@ -237,27 +247,18 @@ function InfoSheet({view, onChange}: {view: InfoView | null; onChange: (view: In
   );
 }
 
-function PhoneDetail({playerId}: {playerId: number}) {
-  const router = useTransitionRouter();
+// The phone detail: Back to wherever it was opened from (the list, a Player page, Moj profil; the list itself when it
+// was opened from outside the app, so Back is always there), "REJTING" and Home
+function PhoneDetail({playerId, nav}: {playerId: number; nav: NavStackControls}) {
   const {detail, missing, error, reload} = usePlayerRating(playerId);
   let body: React.ReactNode;
   if (missing) body = <ListMessage kind="notFound" onCard={false} />;
   else if (error && !detail) body = <ListMessage kind="error" onRetry={reload} onCard={false} />;
   else body = detail ? <DetailBody detail={detail} chartWidth={318} /> : <CenteredSpinner />;
   return (
-    <Screen fill gap={8} sx={{px: 0}}>
-      <Box sx={{display: "flex", alignItems: "center", gap: "10px", px: "14px", pb: "8px"}}>
-        <IconCircleButton label="Natrag" size={44} onClick={() => router.push("/ratings", "back")}>
-          <ChevronLeftRoundedIcon sx={{fontSize: 26}} />
-        </IconCircleButton>
-        <Box component="span" sx={{fontSize: 13, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.navy}}>
-          Rejting
-        </Box>
-      </Box>
-      <Box sx={{flex: 1, minHeight: 0, overflowY: "auto", p: "6px 20px 12px", display: "flex", flexDirection: "column", gap: "14px"}}>
-        {body}
-      </Box>
-    </Screen>
+    <PhoneFrame eyebrow="Rejting" nav={{...nav, canGoBack: true}}>
+      {body}
+    </PhoneFrame>
   );
 }
 
@@ -289,10 +290,24 @@ const HEADS: {key: string; align: "start" | "end"}[] = [
   {key: "Kola", align: "end"},
 ];
 
-function DesktopRatings({list, me, players, error, reload, query, setQuery, initial}: ListProps & {list: RatingRow[] | null; initial?: number}) {
-  const [picked, setPicked] = useState<number | null>(initial ?? null);
+function DesktopRatings({list, me, players, error, reload, query, setQuery, initial, nav}: ListProps & {list: RatingRow[] | null; initial?: number; nav: NavStackControls}) {
+  // the player picked in the list; Back from a Player page opened from the detail's card comes back to that player
+  // (and the list as it was), not to the one in the URL
+  const [picked, setPicked] = useRestoredState<number | null>("ratings-pick", initial ?? null);
   const selected = picked ?? me ?? list?.[0]?.id ?? null;
   const {detail, missing, error: detailError, reload: reloadDetail} = usePlayerRating(selected);
+  const scroller = useScrollMemory("ratings");
+  // a short window: the back pill goes up into the header row (as on the Team and Player pages)
+  const short = useShortWindow();
+  // a player's rating opened from elsewhere (/ratings/<id>, the Player page's rating): their row in the middle of the list
+  const shownInitial = useRef<number | null>(null);
+  useEffect(() => {
+    const box = scroller.element();
+    const row = box?.querySelector<HTMLElement>('button[aria-pressed="true"]');
+    if (initial == null || !box || !row || shownInitial.current === initial) return;
+    shownInitial.current = initial;
+    if (!scroller.restored()) scrollIntoMiddle(row, box);
+  }, [initial, players, scroller]);
   const [infoAnchor, setInfoAnchor] = useState<HTMLElement | null>(null);
   const [infoView, setInfoView] = useState<InfoView>("cols");
   const infoId = useId();
@@ -356,7 +371,8 @@ function DesktopRatings({list, me, players, error, reload, query, setQuery, init
     );
 
   return (
-    <DesktopShell active="ratings" eyebrow={EYEBROW} title="Rejting igrača">
+    <DesktopShell active="ratings" eyebrow={EYEBROW} title="Rejting igrača" lead={short ? <BackPill nav={nav} sx={{alignSelf: "center", maxWidth: 320}} /> : undefined}>
+      {!short && <BackPill nav={nav} />}
       <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) 420px", gap: "20px"}}>
         <Card sx={{minHeight: 0, borderRadius: "24px", display: "flex", flexDirection: "column"}}>
           <Box sx={{flex: "none", display: "flex", alignItems: "center", gap: "12px", p: "16px 18px 12px"}}>
@@ -417,7 +433,9 @@ function DesktopRatings({list, me, players, error, reload, query, setQuery, init
               </Tooltip>
             ))}
           </Box>
-          <Box sx={{flex: 1, minHeight: 0, overflowY: "auto"}}>{rows}</Box>
+          <Box ref={list ? scroller.ref : undefined} sx={{flex: 1, minHeight: 0, overflowY: "auto"}}>
+            {rows}
+          </Box>
         </Card>
         <Box sx={{minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: "14px"}}>
           {missing ? (

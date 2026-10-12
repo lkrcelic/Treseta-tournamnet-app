@@ -141,9 +141,22 @@ export function playerTiles(rating: PlayerRatingSummary, teams: {team_name: stri
   ];
 }
 
-// A league row's second line on the Team page: "Jesen 2026 · U tijeku", "Završeno" for a league without a season
-export function leagueStatusLine(season: string | null, live: boolean): string {
-  return [season?.trim(), live ? "U tijeku" : "Završeno"].filter(Boolean).join(" · ");
+// A league's season as a label: only numbers (Nova liga suggests the year, "2026"; "2025/26") read "Sezona 2026", a
+// season with words in it ("Jesen 2026", "Sezona 2025") stays as written; null for none
+export function seasonLabel(season: string | null | undefined): string | null {
+  const s = season?.trim();
+  if (!s) return null;
+  return /^[\d\s./–-]+$/.test(s) ? `Sezona ${s}` : s;
+}
+
+// Whether a league is being played, after its season: "Sezona 2026 · U tijeku", "Jesen 2026 · Završeno", only
+// "Završeno" for a league without a season. The Team page's league rows, and (lower: the state in lower case after a
+// season, "Sezona 2025 · završeno", 13d) the line under a league's Ukupni poredak opened from a team.
+export function leagueStatusLine(season: string | null | undefined, live: boolean, {lower = false}: {lower?: boolean} = {}): string {
+  const label = seasonLabel(season);
+  const state = live ? "U tijeku" : "Završeno";
+  if (!label) return state;
+  return `${label} · ${lower ? state.toLowerCase() : state}`;
 }
 
 // The second line of a Team page's player: the username for an admin and the player themself (the server sends it

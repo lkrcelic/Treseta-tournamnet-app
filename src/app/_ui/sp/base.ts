@@ -39,6 +39,23 @@ export const cardSx = {
   boxShadow: shadow.card,
 } as const;
 
+// The keyboard focus ring of a list row (or a card) that is a link: inside it, so the next row and the card's edge
+// don't cut it. Spread it into the row's `&:has(a:focus-visible)` (or the link's own `&:focus-visible`).
+export const rowFocus = {outline: `3px solid ${color.navy}`, outlineOffset: "-3px"} as const;
+
+// A link stretched over its row or card (the row needs `position: relative`): the link's name is what a screen reader
+// announces, and the whole row takes the click
+export const stretchedArea = {"&::after": {content: '""', position: "absolute", inset: 0}} as const;
+
+// Scrolls `box` so that `row` (inside it) sits in the middle of what is visible of it; pinned = the height of a sticky
+// block at the top of the list (column labels, a pinned podium), which hides what is under it
+export function scrollIntoMiddle(row: HTMLElement, box: HTMLElement, pinned = 0) {
+  const r = row.getBoundingClientRect();
+  const b = box.getBoundingClientRect();
+  const top = b.top + pinned;
+  box.scrollTop += r.top - top - (b.bottom - top - r.height) / 2;
+}
+
 export const tabular = {fontVariantNumeric: "tabular-nums"} as const;
 
 export const ellipsis = {whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"} as const;

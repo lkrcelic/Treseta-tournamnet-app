@@ -20,6 +20,17 @@ export function leagueEnded(end: string | null, lastNight: string | null, today:
 
 export type LeaguePage = "daily-standings" | "standings" | "manage";
 
+// The query of a page's searchParams again ("?team=29", "?date=2026-02-17&round=2"; repeated keys kept), "" for none:
+// /league/current/<page> passes it on to the league's page
+export function searchSuffix(params: Record<string, string | string[] | undefined> | null | undefined): string {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params ?? {})) {
+    for (const v of Array.isArray(value) ? value : value == null ? [] : [value]) query.append(key, v);
+  }
+  const s = query.toString();
+  return s ? `?${s}` : "";
+}
+
 // A link to a page of the active league: straight to it once its id is known (useActiveLeagueId), otherwise through
 // /league/current, which finds it on the server (a full page load, so only a fallback)
 export const currentLeagueHref = (page: LeaguePage, activeId?: number | null) =>

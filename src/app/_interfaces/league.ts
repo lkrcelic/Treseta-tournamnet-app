@@ -112,6 +112,7 @@ export type LeagueSummary = {
   smoking_tables: number[];
   team_count: number;
   last_played: string | null; // the latest round night, YYYY-MM-DD
+  last_night: string | null; // the league's last scheduled night (Datumi), YYYY-MM-DD; with end_date it says whether the league is over (leagueEnded)
   active: boolean; // the league being played now (see pickActiveLeague)
 };
 

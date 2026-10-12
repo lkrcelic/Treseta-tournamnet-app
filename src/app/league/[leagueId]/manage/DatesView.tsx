@@ -2,6 +2,7 @@
 
 import {addLeagueNightAPI, removeLeagueNightAPI} from "@/app/_fetchers/league/nights";
 import useLeagueNights from "@/app/_hooks/useLeagueNights";
+import {updateCachedLeague} from "@/app/_hooks/useLeagues";
 import {NIGHT_TAKEN} from "@/app/_interfaces/league";
 import {leagueDateString} from "@/app/_lib/dates";
 import {isIsoDate, NIGHT_STATUS_LABEL, nextNightIndex, nightLabelLong, nightsSummaryLabel, nightStatus, NightStatus} from "@/app/_lib/nights";
@@ -13,7 +14,7 @@ import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import PersonSearchRoundedIcon from "@mui/icons-material/PersonSearchRounded";
 import SmartphoneRoundedIcon from "@mui/icons-material/SmartphoneRounded";
 import {Box} from "@mui/material";
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
 
 // Upravljanje ligom · Datumi (design 11b "Datumi lige"): the league's nights, adding a night and removing one that has
 // no rounds. Players see them in Raspored; Burza igrača offers only these nights to a team that needs a substitute.
@@ -38,6 +39,11 @@ export default function DatesView({leagueId, data}: {leagueId: number; data: Ret
   const [takenNight, setTakenNight] = useState<string | null>(null);
 
   const list = nights ?? [];
+  // the league's last night tells whether its season is over (the status under Ukupni poredak opened from a team)
+  const lastNight = nights ? nights.reduce<string | null>((last, n) => (last == null || n.date > last ? n.date : last), null) : undefined;
+  useEffect(() => {
+    if (lastNight !== undefined) updateCachedLeague(leagueId, {lastNight});
+  }, [leagueId, lastNight]);
   const nextIndex = nextNightIndex(list.map((n) => n.date), today);
   const played = list.filter((n) => n.played).length;
   const toGo = list.filter((n) => n.date >= today).length;

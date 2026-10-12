@@ -121,6 +121,13 @@ export type NavFacts = {
   loadType: string | null;
 };
 
+// /league/current/<page> only forwards to that page of the league being played now. Opened as a document (a bookmark, a
+// shared "…/current/standings?team=29"), the app shows it for a moment and Next then swaps it for the league's page in
+// the browser's history, so in the stack too the page it lands on takes its place.
+function forwardsOnly(path: string): boolean {
+  return path === "/league/current" || path.startsWith("/league/current/");
+}
+
 // The stack once the page at `path` is on screen. Home ("/") and a page opened from the nav drawer are roots: the
 // navigation is recorded as it happened (Back to Home pops, a link pushes, a replace swaps), and then the page is made a
 // root. The first page of a document keeps the stack only when it is the page the stack left off at (a reload, or Back
@@ -130,7 +137,9 @@ export function nextNavStack(stack: NavStack, path: string, facts: NavFacts): Na
     const keeps = (facts.loadType === "reload" || facts.loadType === "back_forward") && top(stack)?.path === path;
     return keeps ? stack : startOver(path);
   }
-  const next = visit(stack, path, facts.kind);
+  const from = top(stack);
+  const kind = facts.kind === "push" && from != null && forwardsOnly(from.path) ? "replace" : facts.kind;
+  const next = visit(stack, path, kind);
   return path === "/" || facts.fresh ? reset(next, path) : next;
 }
 
@@ -241,6 +250,9 @@ export function previewNavStack(stack: NavStack, path: string): NavStack {
   return top(stack)?.path === path ? stack : nextNavStack(stack, path, {...peekFacts(path), first: false, loadType: null});
 }
 
+// how the page on screen was reached, once recorded (the first page of a document counts as a push)
+let arrived: {path: string; kind: NavKind} | null = null;
+
 // The page at `path` came on screen; first = the first page of this document. Every note is used up, also one for a
 // navigation that never changed the path (a replace of ?tab=).
 export function recordNavigation(path: string, first: boolean, loadType: string | null) {
@@ -248,5 +260,19 @@ export function recordNavigation(path: string, first: boolean, loadType: string 
   popTo = null;
   replaceTo = null;
   freshNext = false;
+  arrived = {path, kind: first ? "push" : facts.kind};
   writeNavStack(nextNavStack(readNavStack(), path, facts));
+}
+
+// How the page at `path` was reached: "pop" for Back or Forward. A page asks before <RouteTransitions /> records its
+// navigation (while it renders) or after; both give the same answer.
+export function arrivalKind(path: string): NavKind {
+  if (popTo === path || replaceTo === path) return peekFacts(path).kind;
+  return arrived?.path === path ? arrived.kind : "push";
+}
+
+// The place of the page at `path` in the stack (1 = the first entry), before or after its navigation is recorded: with
+// the path, it names the page's entry in the tab's history (Back to a page lands on the depth it was left at)
+export function stackDepth(path: string): number {
+  return previewNavStack(readNavStack(), path).length;
 }

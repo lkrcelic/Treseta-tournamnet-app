@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {count, displayDate, initials, loadMoreLabel, matchesQuery, NOUN, plural, signed, weekdayDate} from "../ui/text";
-import {splitPodium, statsLine, toStandingsRows} from "../ui/standings";
+import {count, displayDate, initials, loadMoreLabel, matchesQuery, NOUN, plural, weekdayDate} from "../ui/text";
+import {highlightParam, splitPodium, standingsTeamHref, statsLine, toStandingsRows} from "../ui/standings";
 import {filterTables, liveCount, splitColumns, tableColumns, toTableRows} from "../ui/tables";
 
 test("initials from full names, usernames and empty values", () => {
@@ -11,12 +11,6 @@ test("initials from full names, usernames and empty values", () => {
   assert.equal(initials("tomo_k"), "TK");
   assert.equal(initials(""), "?");
   assert.equal(initials(undefined), "?");
-});
-
-test("signed point difference", () => {
-  assert.equal(signed(612), "+612");
-  assert.equal(signed(-36), "-36");
-  assert.equal(signed(0), "0");
 });
 
 test("dates are shown as dd.mm.yyyy with the Croatian weekday", () => {
@@ -41,15 +35,44 @@ const standings = [
 ];
 
 test("standings rows get rank, sign, live and my-team flags", () => {
-  const rows = toStandingsRows(standings, ["Zagorci"]);
+  const rows = toStandingsRows(standings, {myTeamNames: ["Zagorci"]});
   assert.equal(rows[0].rank, 1);
+  assert.equal(rows[0].teamId, 1);
+  // the point difference is signed with a real minus sign, as on the Team and Player pages
   assert.equal(rows[0].diff, "+612");
+  assert.equal(rows[2].diff, "\u22125");
+  assert.equal(rows[3].diff, "0");
   assert.equal(rows[0].live, true);
   assert.equal(rows[1].live, false);
-  assert.equal(rows[2].mine, true);
-  assert.equal(rows[2].diff, "-5");
+  assert.deepEqual(rows.map((r) => r.highlight), [false, false, true, false]);
   assert.equal(statsLine(rows[0], false), "5 POB · 0 NER · 1 IZG");
   assert.equal(statsLine(rows[0], true), "6 OK · 5 POB · 0 NER · 1 IZG");
+});
+
+test("a league opened from a Team page highlights that team by id, instead of the player's own", () => {
+  const rows = toStandingsRows(standings, {myTeamNames: ["Zagorci"], highlightTeamId: 2});
+  assert.deepEqual(rows.map((r) => r.highlight), [false, true, false, false]);
+  // a team that isn't in this league: nothing is highlighted, not even the player's own team
+  assert.deepEqual(toStandingsRows(standings, {myTeamNames: ["Zagorci"], highlightTeamId: 99}).map((r) => r.highlight), [false, false, false, false]);
+  // by id, not by name: a renamed or same-named team is still the right row
+  const renamed = standings.map((s) => (s.team_id === 4 ? {...s, team: {team_name: "Slavonci"}} : s));
+  assert.deepEqual(toStandingsRows(renamed, {highlightTeamId: 4}).map((r) => r.highlight), [false, false, false, true]);
+  // no highlight asked for: the player's own team, as before
+  assert.deepEqual(toStandingsRows(standings, {myTeamNames: ["Zagorci"], highlightTeamId: null}).map((r) => r.highlight), [false, false, true, false]);
+  // the daily standings' raw SQL rows may carry the id as a string
+  assert.equal(toStandingsRows([{...standings[0], team_id: "7" as unknown as number}], {highlightTeamId: 7})[0].highlight, true);
+});
+
+test("standings rows link to their team's page", () => {
+  const rows = toStandingsRows(standings);
+  assert.equal(standingsTeamHref(rows[1]), "/teams/2");
+  assert.equal(standingsTeamHref(toStandingsRows([{...standings[0], team_id: undefined}])[0]), null);
+});
+
+test("?team= is read as a team id, anything else is ignored", () => {
+  assert.equal(highlightParam("29"), 29);
+  assert.equal(highlightParam(" 29 "), 29);
+  for (const bad of [null, undefined, "", "0", "-3", "2.5", "abc", "29abc", "1e3", "9999999999"]) assert.equal(highlightParam(bad), null, String(bad));
 });
 
 test("podium takes the top three only when there are at least three teams", () => {

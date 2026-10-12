@@ -1,13 +1,15 @@
 "use client";
 
 import {getPlayerByIdAPI} from "@/app/_fetchers/player/getById";
+import {useScrollMemory} from "@/app/_hooks/useBackRestore";
 import useLeagues, {useSelectedLeagueId} from "@/app/_hooks/useLeagues";
 import useMyTeams from "@/app/_hooks/useMyTeams";
 import useConferences from "@/app/_hooks/useConferences";
+import useNavStack from "@/app/_hooks/useNavStack";
 import {useDailyData, useLeagueStandings, useRoundDates} from "@/app/_hooks/useStandings";
 import {leagueDateString} from "@/app/_lib/dates";
 import {currentLeagueHref} from "@/app/_lib/league";
-import {splitPodium, toStandingsRows} from "@/app/_lib/ui/standings";
+import {splitPodium, standingsTeamHref, toStandingsRows} from "@/app/_lib/ui/standings";
 import {displayDate, weekdayDate} from "@/app/_lib/ui/text";
 import useAuthStore from "@/app/_store/authStore";
 import {color, font, tint} from "@/app/_styles/tokens";
@@ -23,6 +25,11 @@ export default function DesktopHome() {
   const [firstName, setFirstName] = useState<string | null>(null);
   const {teams} = useMyTeams();
   const myTeamNames = useMemo(() => teams.map((t) => t.team_name), [teams]);
+  // the name a Team page opened from a row shows on its back pill
+  useNavStack("Početna");
+  // the two tables: Back from a team's page finds them where they were left
+  const dailyList = useScrollMemory("home-daily");
+  const leagueList = useScrollMemory("home-league");
   const leagues = useLeagues();
   // the league picked in the menu top right (shared with the other league screens), or the one being played now
   const leagueId = useSelectedLeagueId();
@@ -42,12 +49,12 @@ export default function DesktopHome() {
   const daily = useDailyData(leagueId, lastDate || null);
   // the dots of a league with conferences (the full tables; the conference views are on Daily and League Standings)
   const conferences = useConferences(leagueId);
-  const dailyRows = useMemo(() => toStandingsRows(daily.data?.standings, myTeamNames, conferences.of), [daily.data, myTeamNames, conferences]);
+  const dailyRows = useMemo(() => toStandingsRows(daily.data?.standings, {myTeamNames, conferenceOf: conferences.of}), [daily.data, myTeamNames, conferences]);
   const liveRounds = (daily.data?.rounds ?? []).filter((r) => r.active).map((r) => r.round_number);
   const liveRound = liveRounds.length ? Math.max(...liveRounds) : null;
 
   const league = useLeagueStandings(leagueId);
-  const leagueRows = useMemo(() => toStandingsRows(league.standings, myTeamNames, conferences.of), [league.standings, myTeamNames, conferences]);
+  const leagueRows = useMemo(() => toStandingsRows(league.standings, {myTeamNames, conferenceOf: conferences.of}), [league.standings, myTeamNames, conferences]);
   const {podium, rest} = splitPodium(leagueRows);
 
   const today = leagueDateString();
@@ -81,8 +88,8 @@ export default function DesktopHome() {
           ) : (daily.loading && !daily.data) || !conferences.ready ? (
             <LoadingRows rows={8} height={46} />
           ) : (
-            <Box sx={{flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable", borderTop: `1px solid ${color.line}`}}>
-              <StandingsGrid rows={dailyRows} dense caption={`Poredak okupljanja ${displayDate(lastDate)}`} />
+            <Box ref={dailyList.ref} sx={{flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable", borderTop: `1px solid ${color.line}`}}>
+              <StandingsGrid rows={dailyRows} dense caption={`Poredak okupljanja ${displayDate(lastDate)}`} rowHref={standingsTeamHref} />
             </Box>
           )}
         </Panel>
@@ -98,9 +105,9 @@ export default function DesktopHome() {
             <EmptyState>Još nema rezultata u ovoj ligi.</EmptyState>
           ) : (
             <>
-              <Podium rows={podium} compact sx={{px: "20px", pb: "14px"}} />
-              <Box sx={{flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable", borderTop: `1px solid ${tint.navy[10]}`}}>
-                <StandingsGrid rows={rest} columns={[]} dense showLive={false} caption="Ukupni poredak lige, od 4. mjesta" />
+              <Podium rows={podium} compact rowHref={standingsTeamHref} sx={{px: "20px", pb: "14px"}} />
+              <Box ref={leagueList.ref} sx={{flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable", borderTop: `1px solid ${tint.navy[10]}`}}>
+                <StandingsGrid rows={rest} columns={[]} dense showLive={false} caption="Ukupni poredak lige, od 4. mjesta" rowHref={standingsTeamHref} />
               </Box>
             </>
           )}

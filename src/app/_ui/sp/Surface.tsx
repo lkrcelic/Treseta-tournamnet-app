@@ -23,13 +23,13 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(function Card({c
 });
 
 // White card whose content scrolls inside it (lists that fill the rest of the screen)
-export function ScrollCard({children, sx, ...rest}: CardProps) {
+export const ScrollCard = React.forwardRef<HTMLDivElement, CardProps>(function ScrollCard({children, sx, ...rest}, ref) {
   return (
-    <Card sx={mergeSx({flex: 1, minHeight: 0, overflowY: "auto", overscrollBehavior: "contain"}, sx)} {...rest}>
+    <Card ref={ref} sx={mergeSx({flex: 1, minHeight: 0, overflowY: "auto", overscrollBehavior: "contain"}, sx)} {...rest}>
       {children}
     </Card>
   );
-}
+});
 
 const AVATAR = {
   cream: {background: color.cream, color: color.navy},

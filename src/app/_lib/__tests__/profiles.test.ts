@@ -10,6 +10,7 @@ import {
   playerTeamLeagues,
   playerTiles,
   rosterSubline,
+  seasonLabel,
   TeamLeagueFacts,
   TeamNightRound,
   teamInitial,
@@ -239,6 +240,26 @@ test("a league row says its season and whether it is still running", () => {
   assert.equal(leagueStatusLine("Sezona 2025", false), "Sezona 2025 · Završeno");
   assert.equal(leagueStatusLine(null, false), "Završeno");
   assert.equal(leagueStatusLine("  ", true), "U tijeku");
+  // the app stores a bare year (Nova liga suggests it): it reads as a season
+  assert.equal(leagueStatusLine("2026", true), "Sezona 2026 · U tijeku");
+  assert.equal(leagueStatusLine(" 2025/26 ", false), "Sezona 2025/26 · Završeno");
+});
+
+test("the line under a league's Ukupni poredak opened from a team (13d): the state in lower case after a season", () => {
+  assert.equal(leagueStatusLine("Sezona 2025", false, {lower: true}), "Sezona 2025 · završeno");
+  assert.equal(leagueStatusLine("2025", false, {lower: true}), "Sezona 2025 · završeno");
+  assert.equal(leagueStatusLine("Jesen 2026", true, {lower: true}), "Jesen 2026 · u tijeku");
+  assert.equal(leagueStatusLine(null, false, {lower: true}), "Završeno");
+  assert.equal(leagueStatusLine("  ", true, {lower: true}), "U tijeku");
+});
+
+test("a season label: numbers only get \"Sezona\", words stay", () => {
+  assert.equal(seasonLabel("2026"), "Sezona 2026");
+  assert.equal(seasonLabel("2025–2026"), "Sezona 2025–2026");
+  assert.equal(seasonLabel("Jesen 2026"), "Jesen 2026");
+  assert.equal(seasonLabel("Proljeće"), "Proljeće");
+  assert.equal(seasonLabel(""), null);
+  assert.equal(seasonLabel(null), null);
 });
 
 test("a Team page's player shows the username only when the server sent it, else the team's name", () => {

@@ -4,7 +4,7 @@ import {PlayerRatingDetail} from "@/app/_interfaces/ratings";
 import {formatChange, RATING_COLUMNS, RATING_HOW, ratingChart, roundsLabel, shortDate} from "@/app/_lib/ui/ratings";
 import {NOUN, plural} from "@/app/_lib/ui/text";
 import {color, font, tint} from "@/app/_styles/tokens";
-import {buttonBase, Card, changeInk, ellipsis, ProvisionalTag, ResultPill, tabular} from "@/app/_ui/sp";
+import {buttonBase, Card, changeInk, ChipLink, ellipsis, ProvisionalTag, ResultPill, rowFocus, stretchedArea, tabular} from "@/app/_ui/sp";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import StyleRoundedIcon from "@mui/icons-material/StyleRounded";
@@ -24,16 +24,48 @@ export function RankDot({rank, size = 28}: {rank: number; size?: number}) {
   );
 }
 
-// The cream card on top of a player's detail: name, team, rounds, the big rating, the last change and the place
+// The cream card on top of a player's detail: name, team, rounds, the big rating, the last change and the place. The
+// whole card opens the player's page (handoff §6/§7): "Profil ›" on the phone, "Profil igrača ›" on the desktop is the
+// link, stretched over the card, so the card's text still reads as text.
 export function PlayerCard({detail, desktop = false}: {detail: PlayerRatingDetail; desktop?: boolean}) {
   const {player, total} = detail;
   return (
-    <Box component="section" aria-label="Rejting igrača" sx={{background: color.cream, borderRadius: "24px", p: desktop ? "22px" : "20px", display: "flex", flexDirection: "column", gap: "14px", flex: "none"}}>
+    <Box
+      component="section"
+      aria-label="Rejting igrača"
+      sx={{
+        position: "relative",
+        background: color.cream,
+        borderRadius: "24px",
+        p: desktop ? "22px" : "20px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "14px",
+        flex: "none",
+        transition: "filter 150ms ease, transform 150ms ease",
+        // inside the card: the desktop's detail column scrolls and would cut a ring outside it
+        "&:has(a:focus-visible)": rowFocus,
+        "@media (hover: hover)": {"&:has(a:hover)": {filter: "brightness(.98)"}},
+        "&:has(a:active)": {transform: "scale(.99)"},
+      }}
+    >
       <Box sx={{display: "flex", flexDirection: "column", gap: "3px"}}>
         <Box component="h2" sx={{m: 0, fontFamily: font.display, fontSize: 28, fontWeight: 800, lineHeight: 1.05, letterSpacing: "-.01em", textWrap: "pretty"}}>
           {player.name}
         </Box>
-        <Box sx={{fontSize: 15, color: color.ink2}}>{[player.team, roundsLabel(player.rounds)].filter(Boolean).join(" · ")}</Box>
+        <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px"}}>
+          <Box sx={{minWidth: 0, fontSize: 15, color: color.ink2}}>{[player.team, roundsLabel(player.rounds)].filter(Boolean).join(" · ")}</Box>
+          <ChipLink
+            href={`/players/${player.id}`}
+            height={desktop ? 32 : 30}
+            tone="white"
+            title="Otvori profil igrača"
+            aria-label={`Profil igrača ${player.name}`}
+            sx={{"&::after": {...stretchedArea["&::after"], borderRadius: "24px"}, "&:focus-visible": {outline: "none"}}}
+          >
+            {desktop ? "Profil igrača" : "Profil"}
+          </ChipLink>
+        </Box>
       </Box>
       <Box sx={{display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "12px"}}>
         <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>

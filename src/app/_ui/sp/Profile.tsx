@@ -197,6 +197,7 @@ export function ChipLink({
   height = 36,
   tone = "paper",
   "aria-label": ariaLabel,
+  title,
   sx,
 }: {
   href?: string;
@@ -205,6 +206,8 @@ export function ChipLink({
   tone?: "paper" | "white";
   // a fuller name for screen readers when several pills read the same ("Stranica ekipe Puleni")
   "aria-label"?: string;
+  // the pointer's tooltip ("Otvori profil igrača")
+  title?: string;
   sx?: SxProps<Theme>;
 }) {
   const c = CHIP[height];
@@ -227,7 +230,8 @@ export function ChipLink({
       textDecoration: "none",
       "& svg": {fontSize: c.icon},
     },
-    href ? {"&:hover": {background: tone === "white" ? color.white : color.lineFill}} : undefined,
+    // only under a pointer: a phone keeps :hover after a tap, which would leave the pill lit on the next page
+    href ? {"@media (hover: hover)": {"&:hover": {background: tone === "white" ? color.white : color.lineFill}}} : undefined,
     sx
   );
   const content = (
@@ -244,7 +248,7 @@ export function ChipLink({
     );
   }
   return (
-    <Box component={TransitionLink} href={href} aria-label={ariaLabel} sx={look}>
+    <Box component={TransitionLink} href={href} aria-label={ariaLabel} title={title} sx={look}>
       {content}
     </Box>
   );

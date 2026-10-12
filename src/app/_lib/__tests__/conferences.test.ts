@@ -107,7 +107,7 @@ const standings = [
 ];
 
 test("a conference's table is the same table with only its teams, ranked from 1", () => {
-  const rows = toStandingsRows(standings, [], lookup.of);
+  const rows = toStandingsRows(standings, {conferenceOf: lookup.of});
   assert.equal(rows[0].conference?.name, "Sjever");
   assert.equal(rows[4].conference, null);
   assert.equal(toStandingsRows(standings)[0].conference, undefined);
