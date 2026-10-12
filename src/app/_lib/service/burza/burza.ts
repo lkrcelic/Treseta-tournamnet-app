@@ -7,11 +7,13 @@ import {
   repostError,
   StatusContext,
   StatusPost,
+  stillUpIds,
   SubstituteFacts,
   substituteError,
   TwinAd,
   twinFields,
 } from "@/app/_lib/burzaStatus";
+import {ACCOUNT_DEACTIVATED} from "@/app/_interfaces/login";
 import {BYE_TEAM_ID} from "@/app/_lib/bye";
 import {leagueDateString} from "@/app/_lib/dates";
 import {normalizePhone, PHONE_ERROR} from "@/app/_lib/phone";
@@ -27,9 +29,26 @@ import {Player, Prisma} from "@prisma/client";
 // Burza igrača: the ads teams and players publish. The open ones are public; publishing and closing need a login.
 
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);
-// pg_advisory_xact_lock(PLAYER_LOCK, playerId): one ad change at a time per player, so a double tap doesn't publish twice
+// pg_advisory_xact_lock(PLAYER_LOCK, playerId): one ad change at a time per player, so a double tap doesn't publish
+// twice (lockPlayerAds; also taken when an admin deactivates or deletes the player)
 const PLAYER_LOCK = 7101;
 const KIND_ORDER: Record<BurzaKind, number> = {SUBSTITUTE: 0, PARTNER: 1, AVAILABLE: 2};
+
+type Tx = Prisma.TransactionClient;
+
+// Takes the player's ad lock (PLAYER_LOCK) for the rest of the transaction. Take it before writing the player's row:
+// publishing writes the row after it (save_phone), so the other order could deadlock.
+export async function lockPlayerAds(tx: Tx, playerId: number) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${PLAYER_LOCK}::int, ${playerId}::int)`;
+}
+
+// The ad lock for an author publishing, and a check that an admin hasn't deactivated or deleted them meanwhile
+// (that holds the same lock while it closes or deletes their ads)
+async function lockAuthor(tx: Tx, playerId: number) {
+  await lockPlayerAds(tx, playerId);
+  const author = await tx.player.findUnique({where: {id: playerId}, select: {active: true}});
+  if (!author?.active) throw new InvalidResultError(ACCOUNT_DEACTIVATED);
+}
 
 const postInclude = {
   player: {
@@ -50,14 +69,20 @@ type ViewContext = StatusContext & {
   busy: Map<string, string>;
 };
 
-async function viewContext(viewer: Player | null, posts: PostRow[]): Promise<ViewContext> {
+// today and the nights from today on of the substitute ads' leagues: what postStatus needs
+async function statusContext(db: Tx, posts: {kind: BurzaKind; league_id: number | null}[]): Promise<StatusContext> {
   const today = leagueDateString();
-  const from = nightValue(today);
   const leagueIds = Array.from(new Set(posts.filter((p) => p.kind === "SUBSTITUTE" && p.league_id != null).map((p) => p.league_id!)));
-  const [nightRows, teams] = await Promise.all([
-    leagueIds.length
-      ? prisma.leagueNight.findMany({where: {league_id: {in: leagueIds}, night: {gte: from}}, select: {league_id: true, night: true}})
-      : Promise.resolve([]),
+  const nightRows = leagueIds.length
+    ? await db.leagueNight.findMany({where: {league_id: {in: leagueIds}, night: {gte: nightValue(today)}}, select: {league_id: true, night: true}})
+    : [];
+  return {today, nights: new Set(nightRows.map((n) => `${n.league_id}|${isoDate(n.night)}`))};
+}
+
+async function viewContext(viewer: Player | null, posts: PostRow[]): Promise<ViewContext> {
+  const from = nightValue(leagueDateString());
+  const [status, teams] = await Promise.all([
+    statusContext(prisma, posts),
     viewer
       ? prisma.team.findMany({
           where: {team_id: {not: BYE_TEAM_ID}, teamPlayers: {some: {player_id: viewer.id}}},
@@ -80,9 +105,8 @@ async function viewContext(viewer: Player | null, posts: PostRow[]): Promise<Vie
     }
   }
   return {
+    ...status,
     viewer,
-    today,
-    nights: new Set(nightRows.map((n) => `${n.league_id}|${isoDate(n.night)}`)),
     myTeams: new Set(teams.map((t) => t.team_id)),
     busy,
   };
@@ -196,7 +220,7 @@ async function getMyPostView(id: number, user: Player): Promise<MyBurzaPost> {
 // Returns "forbidden" for someone else's ad.
 export async function repostPost(user: Player, id: number, night?: string): Promise<MyBurzaPost | "forbidden"> {
   const result = await prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${PLAYER_LOCK}::int, ${user.id}::int)`;
+    await lockAuthor(tx, user.id);
     const p = await tx.marketPost.findUnique({where: {id}, include: {league: {select: {end_date: true}}}});
     if (!p) throw new NotFoundError("Oglas ne postoji.");
     if (p.player_id !== user.id) return "forbidden" as const;
@@ -240,7 +264,7 @@ export async function createPost(user: Player, req: BurzaCreate): Promise<BurzaP
   const phone = normalizePhone(req.phone);
   if (!phone) throw new InvalidResultError(PHONE_ERROR);
   const id = await prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${PLAYER_LOCK}::int, ${user.id}::int)`;
+    await lockAuthor(tx, user.id);
     if (req.save_phone) await tx.player.update({where: {id: user.id}, data: {phone}});
     if (req.kind === "SUBSTITUTE") return createSubstitute(tx, user, req, phone);
     if (req.kind === "PARTNER") return createPartner(tx, user, req, phone);
@@ -249,7 +273,6 @@ export async function createPost(user: Player, req: BurzaCreate): Promise<BurzaP
   return (await getPostView(id, user))!;
 }
 
-type Tx = Prisma.TransactionClient;
 type Req<K extends BurzaKind> = Extract<BurzaCreate, {kind: K}>;
 
 // What the substitute checks (_lib/burzaStatus.ts) need to know about the team and the night; null when the team
@@ -370,9 +393,20 @@ export async function setAvailability(
   req: {available: boolean; as_substitute: boolean; as_partner: boolean}
 ): Promise<BurzaAvailability> {
   await prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${PLAYER_LOCK}::int, ${playerId}::int)`;
+    await lockAuthor(tx, playerId);
     if (req.available) await saveAvailable(tx, playerId, {as_substitute: req.as_substitute, as_partner: req.as_partner});
     else await tx.marketPost.updateMany({where: {kind: "AVAILABLE", closed_at: null, player_id: playerId}, data: {closed_at: new Date()}});
   });
   return getAvailability(playerId);
+}
+
+// Deaktiviraj račun (admin): closes the player's ads that are still up. An ad that already expired stays as it is, so
+// Moji oglasi keeps showing it as Istekao on its own date (stillUpIds). Call it after lockPlayerAds(tx, playerId).
+export async function closeActivePosts(tx: Tx, playerId: number): Promise<void> {
+  const open = await tx.marketPost.findMany({
+    where: {player_id: playerId, closed_at: null},
+    select: {id: true, kind: true, closed_at: true, league_id: true, night: true, league: {select: {end_date: true}}},
+  });
+  const ids = stillUpIds(open.map((p) => ({...statusOf(p), id: p.id})), await statusContext(tx, open));
+  if (ids.length) await tx.marketPost.updateMany({where: {id: {in: ids}}, data: {closed_at: new Date()}});
 }

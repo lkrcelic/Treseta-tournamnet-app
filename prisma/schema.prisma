@@ -307,7 +307,9 @@ model PlayerRatingHistory {
   @@id([player_id, night])
 }
 
-// The two players of each team who play a round (picked on Start Game); their ratings change with its result
+// The two players of each team who play a round (picked on Start Game); their ratings change with its result.
+// A finished round without one gets the team's roster saved here before the roster changes (freezeLineups.ts), and
+// an old round's two rosters can share a player, so the key has the team too (a picked lineup never does that).
 model RoundPlayer {
   round_id  Int
   player_id Int
@@ -317,7 +319,7 @@ model RoundPlayer {
   player Player @relation(fields: [player_id], references: [id], onDelete: Cascade)
   team   Team   @relation(fields: [team_id], references: [team_id], onDelete: Cascade)
 
-  @@id([round_id, player_id])
+  @@id([round_id, team_id, player_id])
   @@index([team_id])
 }
 

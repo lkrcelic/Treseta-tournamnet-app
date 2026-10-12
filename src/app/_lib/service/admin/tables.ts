@@ -51,10 +51,12 @@ async function assertLeagueTeams(tx: Tx, leagueId: number, teamIds: number[]) {
 }
 
 // Drops what was played at a table and seats the given teams. A table with the bye is settled right away (2:0).
-// A smoking table stays one; the smokers it counts are the new teams'.
+// A smoking table stays one; the smokers it counts are the new teams'. Who played goes too (a lineup picked on Start
+// Game, or a roster saved by freezeRosterLineups): the table is played again, and its new lineup is picked then.
 async function reseat(tx: Tx, roundId: number, team1Id: number, team2Id: number) {
   await tx.ongoingMatch.deleteMany({where: {round_id: roundId}});
   await tx.match.deleteMany({where: {round_id: roundId}});
+  await tx.roundPlayer.deleteMany({where: {round_id: roundId}});
   const bye = isByeTeam(team1Id) || isByeTeam(team2Id);
   const smokers = await teamSmokers([team1Id, team2Id], tx);
   await tx.round.update({

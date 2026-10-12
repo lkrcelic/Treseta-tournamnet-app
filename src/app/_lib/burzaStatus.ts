@@ -32,6 +32,12 @@ export function postStatus(p: StatusPost, ctx: StatusContext): BurzaStatus {
   return "ACTIVE";
 }
 
+// The ads among these that are still up. Deaktiviraj račun closes only those: an ad that already expired keeps its
+// own end, so Moji oglasi still says Istekao with its night or league end, not Zatvoren on the day of deactivation.
+export function stillUpIds(posts: (StatusPost & {id: number})[], ctx: StatusContext): number[] {
+  return posts.filter((p) => postStatus(p, ctx) === "ACTIVE").map((p) => p.id);
+}
+
 // The day the ad closes by itself: a substitute ad's night, a partner ad's league end; null when only its author closes it
 export function endsOn(p: StatusPost): string | null {
   if (p.kind === "SUBSTITUTE") return p.night;

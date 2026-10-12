@@ -8,6 +8,10 @@ import {zodMessage} from "@/app/_lib/validation/zodMessage";
 // Turns errors thrown by validation into a 400 with a readable message; anything else is logged and becomes a 500.
 // The message is always a string in `error` (Croatian); a zod error also lists its issues.
 export function errorResponse(error: unknown, fallbackMessage: string): NextResponse {
+  // a body that isn't JSON (request.json() throws a SyntaxError): the request is wrong, not the server
+  if (error instanceof SyntaxError) {
+    return NextResponse.json({error: "Neispravan zahtjev."}, {status: STATUS.BadRequest});
+  }
   if (error instanceof z.ZodError) {
     return NextResponse.json({error: zodMessage(error, fallbackMessage), issues: error.issues}, {status: STATUS.BadRequest});
   }

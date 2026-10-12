@@ -1,4 +1,4 @@
-import {PlayerCreateValidation} from "@/app/_interfaces/player";
+import {EMAIL_TAKEN, PlayerCreateValidation} from "@/app/_interfaces/player";
 import {z} from "zod";
 import {prisma} from "@/app/_lib/prisma";
 import {USERNAME_TAKEN} from "@/app/_lib/validation/username";
@@ -30,7 +30,7 @@ export async function validateUniqueConstraintsPlayer(player: z.infer<typeof Pla
   const errors: any = {};
   if (data.find((p) => p.username.toLowerCase() === player.username.toLowerCase()))
     errors["username"] = USERNAME_TAKEN;
-  if (data.find((p) => p.email.toLowerCase() === player.email.toLowerCase())) errors["email"] = "Taj email se već koristi.";
+  if (data.find((p) => p.email.toLowerCase() === player.email.toLowerCase())) errors["email"] = EMAIL_TAKEN;
 
   if (Object.keys(errors).length > 0) {
     throw new ValidationError(errors);

@@ -16,6 +16,14 @@ test("players who left the team are replaced from the roster", () => {
   assert.deepEqual(defaultLineup([5, 6], null, [null, 9]), [5, 6]);
 });
 
+test("a roster saved by the rating freeze isn't a pick: the founders go first", () => {
+  // lineupFreezeRows saves the whole roster (three players) as an old round's lineup
+  assert.deepEqual(defaultLineup([1, 2, 3, 4], [4, 3, 2], [1, 2]), [1, 2]);
+  assert.deepEqual(defaultLineup([1, 2, 3], [3, 2, 1], [null, null]), [1, 2]);
+  // a real lineup of two still leads
+  assert.deepEqual(defaultLineup([1, 2, 3, 4], [4, 3], [1, 2]), [4, 3]);
+});
+
 test("a team with fewer than two players plays with what it has", () => {
   assert.deepEqual(defaultLineup([7], null, [7, null]), [7]);
   assert.deepEqual(defaultLineup([], [1, 2], [1, 2]), []);

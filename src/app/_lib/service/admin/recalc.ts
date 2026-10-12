@@ -28,8 +28,9 @@ export async function recalcTeamScores(tx: Prisma.TransactionClient, leagueId: n
 
 // Ratings from scratch (Glicko-2, see rating/glicko2.ts): every player starts at the default and every rated round
 // (closed, no bye, since RATINGS_FROM) is replayed, one rating period per league night, each match a game. A round
-// counts for its lineup (the players picked on Start Game); a round without one counts for today's rosters, as
-// older rounds don't keep who played. Also rewrites the per-night history the ratings page shows.
+// counts for its lineup: the players picked on Start Game or, for an older round, the team's roster saved before it
+// changed (team/freezeLineups.ts). A round without one counts for today's roster, which is then still the roster it
+// was rated with. Also rewrites the per-night history the ratings page shows.
 // Runs whenever a round closes or a counted result changes, so tonight's rounds always form one period.
 export async function replayRatings(tx: Prisma.TransactionClient) {
   await lockRatings(tx);

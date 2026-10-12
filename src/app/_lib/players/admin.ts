@@ -1,4 +1,5 @@
-import {PLAYER_NOT_FOUND} from "@/app/_interfaces/player";
+import {AdminPlayerRow, PLAYER_NOT_FOUND} from "@/app/_interfaces/player";
+import {displayName} from "./names";
 
 // The admin rules the server enforces (handoff §6 "Admin checks"). requireAdmin answers with adminCheck, and the
 // admin player endpoints refuse with adminActionError. Framework free so it can be unit tested.
@@ -50,4 +51,58 @@ export function adminActionError(
   const removesAdmin = action === "demote" || action === "deactivate" || action === "delete";
   if (removesAdmin && isAdminRole(target) && target.active && adminCount <= 1) return ADMIN_ACTION_ERROR.lastAdmin;
   return null;
+}
+
+// --- Delete (anonymise) -------------------------------------------------------------------------------------------
+
+// What a deleted player is called everywhere their name still shows: lineups, Burza ("umjesto: Obrisani igrač")
+const DELETED_PLAYER_NAME = {first_name: "Obrisani", last_name: "igrač"} as const;
+
+/**
+ * The update that turns a deleted player's row into "Obrisani igrač" (DELETE /api/admin/players/[id]). The row stays,
+ * so the rounds they played, their lineups and rating history keep their player and everyone else's rating stays the
+ * same; nothing personal is left and nobody can log in with it (no password, inactive). The username and email stay
+ * unique: `attempt` > 1 only when someone already took the plain one. The rating columns are left as they are.
+ */
+export function anonymisedPlayerData(id: number, now: Date, attempt = 1) {
+  const again = attempt > 1 ? attempt : null;
+  return {
+    ...DELETED_PLAYER_NAME,
+    // a-z, digits and "_", so it follows the username rules (validation/username.ts) like any other
+    username: again ? `obrisani_${id}_${again}` : `obrisani_${id}`,
+    // .invalid never receives mail
+    email: again ? `obrisani-${id}-${again}@deleted.invalid` : `obrisani-${id}@deleted.invalid`,
+    password_hash: "",
+    phone: null,
+    birth_date: null,
+    // NextAuth's copies of the Google profile
+    image: null,
+    name: null,
+    emailVerified: null,
+    smoker: false,
+    smoker_answered: true,
+    player_role: "PLAYER" as const,
+    active: false,
+    deleted_at: now,
+  };
+}
+
+// --- The admin directory ------------------------------------------------------------------------------------------
+
+type DirectoryPlayer = {
+  id: number;
+  first_name: string;
+  last_name: string;
+  username: string;
+  active: boolean;
+  teams: {team_id: number; team_name: string}[];
+};
+
+// The Igrači directory rows (GET /api/admin/players): by name in Croatian order (the database's collation puts "Č"
+// after "Z"), each with their teams in the same order
+export function adminPlayerRows(players: DirectoryPlayer[]): AdminPlayerRow[] {
+  const hr = (a: string, b: string) => a.localeCompare(b, "hr");
+  return players
+    .map((p) => ({...p, name: displayName(p), teams: [...p.teams].sort((a, b) => hr(a.team_name, b.team_name))}))
+    .sort((a, b) => hr(a.name, b.name) || a.id - b.id);
 }

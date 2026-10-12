@@ -1,8 +1,8 @@
 import {apiFetch, responseErrorMessage} from "@/app/_fetchers/errorMessage";
 
-// A new team with its players (the first two become its founders) in a league (default: the current league);
-// returns the new team's id
-export async function createTeamAPI(team_name: string, players: number[], league_id?: number): Promise<number> {
+// A new team with its players (the first two become its founders) in a league: null = none, left out = the current
+// league; returns the new team's id
+export async function createTeamAPI(team_name: string, players: number[], league_id?: number | null): Promise<number> {
   const response = await apiFetch("/api/teams", {
     method: "POST",
     headers: {"Content-Type": "application/json"},

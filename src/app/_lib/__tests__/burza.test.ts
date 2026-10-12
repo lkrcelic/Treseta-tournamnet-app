@@ -10,6 +10,7 @@ import {
   RepostFacts,
   repostError,
   StatusPost,
+  stillUpIds,
   SubstituteFacts,
   substituteError,
   twinFields,
@@ -292,6 +293,19 @@ test("an ad is up until it is closed, its night has passed or been removed, or i
   const available: StatusPost = {kind: "AVAILABLE", closed: false, league_id: null, night: null, league_end: null};
   assert.equal(postStatus(available, {today: "2030-01-01", nights: new Set()}), "ACTIVE");
   assert.equal(postStatus({...available, closed: true}, ctx), "CLOSED");
+});
+
+test("deactivating a player closes only their ads that are still up, not the ones already expired", () => {
+  const ads: (StatusPost & {id: number})[] = [
+    {...substitute, id: 1},
+    // its night has passed, or was taken off the league's nights: expired, never closed by hand
+    {...substitute, id: 2, night: "2026-10-06"},
+    {...substitute, id: 3, night: "2026-10-27"},
+    {kind: "PARTNER", closed: false, league_id: 2, night: null, league_end: "2026-12-15", id: 4},
+    {kind: "PARTNER", closed: false, league_id: 2, night: null, league_end: "2026-10-12", id: 5},
+    {kind: "AVAILABLE", closed: false, league_id: null, night: null, league_end: null, id: 6},
+  ];
+  assert.deepEqual(stillUpIds(ads, ctx), [1, 4, 6]);
 });
 
 test("an ad closes by itself on its night or its league's end, and only a substitute ad's night can be gone", () => {

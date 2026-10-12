@@ -10,8 +10,8 @@ export const TeamRequestValidation = z
     players: z.array(z.number().int()).optional(),
     founder_id1: z.number().int().optional(),
     founder_id2: z.number().int().optional(),
-    // the league the team joins; defaults to the current league
-    league_id: z.number().int().optional(),
+    // the league the team joins: null = none yet (the admin's "Nova ekipa"); left out = the current league
+    league_id: z.number().int().nullable().optional(),
   })
   .transform(({team_name, players, founder_id1, founder_id2, league_id}) => ({
     team_name,
