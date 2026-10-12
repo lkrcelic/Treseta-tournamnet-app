@@ -4,10 +4,10 @@ import {BurzaKind, BurzaPost} from "@/app/_interfaces/burza";
 import {nightLabel} from "@/app/_lib/nights";
 import {isValidPhone, normalizePhone, phoneInput, PHONE_ERROR, PHONE_HINT} from "@/app/_lib/phone";
 import {busyLine, KIND_TAG, postBody, postSub, postTitle, timeAgo} from "@/app/_lib/ui/burza";
-import {initials} from "@/app/_lib/ui/text";
+import {initials, plural} from "@/app/_lib/ui/text";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
-import {buttonBase, Card, ellipsis, mergeSx, tabular} from "@/app/_ui/sp";
+import {BottomSheet, buttonBase, Card, ellipsis, mergeSx, tabular} from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import BackHandRoundedIcon from "@mui/icons-material/BackHandRounded";
 import CallRoundedIcon from "@mui/icons-material/CallRounded";
@@ -16,19 +16,29 @@ import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import EventBusyRoundedIcon from "@mui/icons-material/EventBusyRounded";
 import HandshakeRoundedIcon from "@mui/icons-material/HandshakeRounded";
+import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import PersonSearchRoundedIcon from "@mui/icons-material/PersonSearchRounded";
 import PublicRoundedIcon from "@mui/icons-material/PublicRounded";
-import {Box, SxProps, Theme} from "@mui/material";
+import {Box, Popover, Skeleton, SxProps, Theme} from "@mui/material";
 import React, {useId} from "react";
 
 // Pieces of Burza igrača (Claude Design "Burza igrača · spojeno"), shared by the list, the ad and the forms
 
-// The list as it was last shown (its tab and night), where an ad and a form go back to
+// The list as it was last shown (its tab and night, or Moji oglasi), where an ad and a form go back to; and the last
+// Burza list itself, where Moji oglasi goes back to
 let lastList = "/burza";
+let lastFeed = "/burza";
 export function rememberBurzaList(href: string) {
   lastList = href;
+  if (!href.startsWith("/burza/moji")) lastFeed = href;
 }
 export const burzaListHref = () => lastList;
+export const burzaFeedHref = () => lastFeed;
+// the desktop back pill to burzaListHref()
+export const burzaListLabel = () => (lastList.startsWith("/burza/moji") ? "Moji oglasi" : "Burza");
+
+// A phone narrower than 340 px (an iPhone SE is 320): headers and buttons drop what doesn't fit
+export const narrowPhone = "@media (max-width: 339.98px)";
 
 // The three kinds of ad, as "Što objavljuješ?" offers them; href is the form
 export const KINDS: {kind: BurzaKind; title: string; sub: string; href: string; icon: React.ReactNode}[] = [
@@ -37,10 +47,14 @@ export const KINDS: {kind: BurzaKind; title: string; sub: string; href: string; 
   {kind: "AVAILABLE", title: "Dostupan sam", sub: "Kao zamjena, novi partner ili oboje.", href: "/burza/novi/dostupan", icon: <BackHandRoundedIcon />},
 ];
 
-export function KindTag({kind}: {kind: BurzaKind}) {
+// large: the slightly bigger tag of Moji oglasi
+export function KindTag({kind, large = false}: {kind: BurzaKind; large?: boolean}) {
   const tag = KIND_TAG[kind];
   return (
-    <Box component="span" sx={{alignSelf: "flex-start", height: 24, display: "inline-flex", alignItems: "center", px: "9px", borderRadius: "8px", background: tag.bg, color: tag.ink, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap"}}>
+    <Box
+      component="span"
+      sx={{alignSelf: "flex-start", height: large ? 26 : 24, display: "inline-flex", alignItems: "center", px: large ? "10px" : "9px", borderRadius: large ? "9px" : "8px", background: tag.bg, color: tag.ink, fontSize: large ? 12.5 : 12, fontWeight: 700, whiteSpace: "nowrap"}}
+    >
       {tag.label}
     </Box>
   );
@@ -133,6 +147,97 @@ export function PostCard({post, href, ago, footer}: {post: BurzaPost; href?: str
       sx={{...buttonBase, ...cardSx, transition: "transform 120ms ease", "&:active": {transform: "scale(.99)"}, "&:hover": {boxShadow: shadow.cardHover}}}
     >
       {body}
+    </Box>
+  );
+}
+
+// Skeleton cards while the ads load
+export function LoadingCards() {
+  return (
+    <Box role="status" aria-label="Učitavanje" sx={{display: "contents"}}>
+      {[0, 1, 2].map((i) => (
+        <Card key={i} sx={{p: "14px 16px", display: "flex", flexDirection: "column", gap: "10px"}}>
+          <Skeleton variant="rounded" width={110} height={24} sx={{borderRadius: "8px"}} />
+          <Box sx={{display: "flex", alignItems: "center", gap: "12px"}}>
+            <Skeleton variant="circular" width={44} height={44} />
+            <Box sx={{flex: 1}}>
+              <Skeleton variant="text" width="50%" height={24} />
+              <Skeleton variant="text" width="70%" height={18} />
+            </Box>
+          </Box>
+          <Skeleton variant="text" width="85%" height={20} />
+        </Card>
+      ))}
+    </Box>
+  );
+}
+
+// The navy 52 px action in the desktop header (Objavi, Novi oglas); it opens "Što objavljuješ?"
+export const HeaderAction = React.forwardRef<HTMLButtonElement, {icon: React.ReactNode; onClick: () => void; open: boolean; children: React.ReactNode}>(
+  function HeaderAction({icon, onClick, open, children}, ref) {
+    return (
+      <Box
+        component="button"
+        type="button"
+        ref={ref}
+        onClick={onClick}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        sx={{...buttonBase, height: 52, flex: "none", pl: "16px", pr: "22px", borderRadius: "26px", background: color.navy, color: color.white, display: "flex", alignItems: "center", gap: "8px", fontSize: 17, fontWeight: 600, whiteSpace: "nowrap", boxShadow: shadow.action, "& svg": {fontSize: 26}}}
+      >
+        {icon}
+        {children}
+      </Box>
+    );
+  }
+);
+
+// "Moji oglasi" with the number of the player's open ads, in the Burza header (44 px on the phone, 52 on the desktop;
+// on a narrow phone only the icon and the number, so the title keeps its room)
+export function MyAdsButton({count, height = 44}: {count: number; height?: number}) {
+  const big = height > 44;
+  return (
+    <Box
+      component={TransitionLink}
+      href="/burza/moji"
+      aria-label={count > 0 ? `Moji oglasi · ${count} ${plural(count, "aktivan", "aktivna", "aktivnih")}` : "Moji oglasi"}
+      sx={{
+        ...buttonBase,
+        textDecoration: "none",
+        boxSizing: "border-box",
+        height,
+        flex: "none",
+        display: "flex",
+        alignItems: "center",
+        gap: "6px",
+        pl: big ? "16px" : "12px",
+        pr: count > 0 ? (big ? "12px" : "8px") : big ? "20px" : "14px",
+        borderRadius: `${height / 2}px`,
+        background: color.white,
+        color: color.navy,
+        fontSize: big ? 16 : 14,
+        fontWeight: 600,
+        whiteSpace: "nowrap",
+        boxShadow: shadow.raised,
+        transition: "box-shadow 160ms ease",
+        "&:hover": {boxShadow: shadow.cardHover},
+        "& > svg": {fontSize: big ? 22 : 20},
+        [narrowPhone]: {pl: "10px", pr: count > 0 ? "8px" : "10px", gap: "4px"},
+      }}
+    >
+      <PersonRoundedIcon aria-hidden />
+      <Box component="span" sx={{[narrowPhone]: {display: "none"}}}>
+        Moji oglasi
+      </Box>
+      {count > 0 && (
+        <Box
+          component="span"
+          aria-hidden
+          sx={{minWidth: big ? 26 : 24, height: big ? 26 : 24, px: "6px", boxSizing: "border-box", borderRadius: big ? "13px" : "12px", background: color.navy, color: color.white, fontSize: 12.5, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", ...tabular}}
+        >
+          {count}
+        </Box>
+      )}
     </Box>
   );
 }
@@ -448,7 +553,7 @@ export function TextArea({id, value, onChange, placeholder, height, maxLength, l
 }
 
 // "Što objavljuješ?": the three kinds of ad
-export function KindList({onPick}: {onPick: (href: string) => void}) {
+function KindList({onPick}: {onPick: (href: string) => void}) {
   return (
     <Card component="ul" sx={{listStyle: "none", m: 0, p: 0, overflow: "hidden"}}>
       {KINDS.map((k, i) => (
@@ -488,6 +593,32 @@ export function KindList({onPick}: {onPick: (href: string) => void}) {
         </Box>
       ))}
     </Card>
+  );
+}
+
+// "Što objavljuješ?" over Burza and Moji oglasi: a bottom sheet on the phone, a popover under its button on the desktop
+export function KindPicker({open, onClose, onPick, desktop, anchor}: {open: boolean; onClose: () => void; onPick: (href: string) => void; desktop: boolean; anchor: HTMLElement | null}) {
+  if (!desktop) {
+    return (
+      <BottomSheet open={open} onClose={onClose} title="Što objavljuješ?" paper>
+        <KindList onPick={onPick} />
+      </BottomSheet>
+    );
+  }
+  return (
+    <Popover
+      open={open}
+      anchorEl={anchor}
+      onClose={onClose}
+      anchorOrigin={{vertical: "bottom", horizontal: "right"}}
+      transformOrigin={{vertical: "top", horizontal: "right"}}
+      slotProps={{paper: {sx: {mt: "10px", width: 400, borderRadius: "24px", background: color.paper, p: "16px", boxShadow: shadow.popover}}}}
+    >
+      <Box component="h2" sx={{m: "0 0 12px", px: "4px", fontSize: 18, fontWeight: 700}}>
+        Što objavljuješ?
+      </Box>
+      <KindList onPick={onPick} />
+    </Popover>
   );
 }
 

@@ -6,14 +6,15 @@ import {BurzaKind} from "@/app/_interfaces/burza";
 import {nightLabel} from "@/app/_lib/nights";
 import {adCount, substituteNights, teamsLooking} from "@/app/_lib/ui/burza";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
+import useAuthStore from "@/app/_store/authStore";
 import {color, shadow} from "@/app/_styles/tokens";
-import {BottomSheet, buttonBase, Card, DesktopShell, EmptyState, ErrorNote, Screen, Segmented, tabPanelProps, TopBar} from "@/app/_ui/sp";
+import {buttonBase, Card, DesktopShell, EmptyState, ErrorNote, Screen, Segmented, tabPanelProps, TopBar} from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
-import {Box, Popover, Skeleton} from "@mui/material";
+import {Box} from "@mui/material";
 import {useSearchParams} from "next/navigation";
 import React, {useEffect, useMemo, useRef, useState} from "react";
-import {DateArrows, KindList, PostCard, rememberBurzaList} from "./ui/BurzaParts";
+import {DateArrows, HeaderAction, KindPicker, LoadingCards, MyAdsButton, PostCard, rememberBurzaList} from "./ui/BurzaParts";
 
 // Burza igrača (Claude Design "Burza igrača · spojeno"): every open ad, filtered by kind; substitute ads also by night.
 // Public: anyone can read the ads and call. ?tab=zamjene|partneri|dostupni, &date=YYYY-MM-DD (Zamjene).
@@ -37,6 +38,7 @@ export default function BurzaPage() {
   const isDesktop = useIsDesktop();
   const params = useSearchParams();
   const {posts, error, reload} = useBurza();
+  const loggedIn = useAuthStore((s) => s.user != null);
   const [picking, setPicking] = useState(false);
   const publishRef = useRef<HTMLButtonElement>(null);
 
@@ -105,6 +107,9 @@ export default function BurzaPage() {
     setPicking(false);
     router.push(href);
   };
+  const picker = <KindPicker open={picking} onClose={() => setPicking(false)} onPick={choose} desktop={isDesktop} anchor={publishRef.current} />;
+  // the player's open ads (the list has them all, marked mine); Burza is public, so only for a logged-in player
+  const myAds = loggedIn && <MyAdsButton count={(posts ?? []).filter((p) => p.mine).length} height={isDesktop ? 52 : 44} />;
 
   if (isDesktop) {
     return (
@@ -113,17 +118,12 @@ export default function BurzaPage() {
         eyebrow={posts ? `Sve lige · ${adCount(posts.length)}` : "Sve lige"}
         title="Burza igrača"
         right={
-          <Box
-            component="button"
-            type="button"
-            ref={publishRef}
-            onClick={() => setPicking(true)}
-            aria-haspopup="dialog"
-            sx={{...buttonBase, height: 52, pl: "16px", pr: "22px", borderRadius: "26px", background: color.navy, color: color.white, display: "flex", alignItems: "center", gap: "8px", fontSize: 17, fontWeight: 600, boxShadow: shadow.action, "& svg": {fontSize: 26}}}
-          >
-            <AddRoundedIcon />
-            Objavi
-          </Box>
+          <>
+            {myAds}
+            <HeaderAction ref={publishRef} icon={<AddRoundedIcon />} onClick={() => setPicking(true)} open={picking}>
+              Objavi
+            </HeaderAction>
+          </>
         }
       >
         <Box sx={{flex: "none", display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap"}}>
@@ -136,26 +136,14 @@ export default function BurzaPage() {
         >
           {list}
         </Box>
-        <Popover
-          open={picking}
-          anchorEl={publishRef.current}
-          onClose={() => setPicking(false)}
-          anchorOrigin={{vertical: "bottom", horizontal: "right"}}
-          transformOrigin={{vertical: "top", horizontal: "right"}}
-          slotProps={{paper: {sx: {mt: "10px", width: 400, borderRadius: "24px", background: color.paper, p: "16px", boxShadow: shadow.popover}}}}
-        >
-          <Box component="h2" sx={{m: "0 0 12px", px: "4px", fontSize: 18, fontWeight: 700}}>
-            Što objavljuješ?
-          </Box>
-          <KindList onPick={choose} />
-        </Popover>
+        {picker}
       </DesktopShell>
     );
   }
 
   return (
     <Screen fill>
-      <TopBar eyebrow="Sve lige" title="Burza" onBack={() => router.push("/", "back")} backLabel="Početna" backIcon={<HomeRoundedIcon />} />
+      <TopBar eyebrow="Sve lige" title="Burza" onBack={() => router.push("/", "back")} backLabel="Početna" backIcon={<HomeRoundedIcon />} right={myAds} />
       {tabs}
       {dateArrows}
       <Box
@@ -195,30 +183,7 @@ export default function BurzaPage() {
         <AddRoundedIcon />
         Objavi
       </Box>
-      <BottomSheet open={picking} onClose={() => setPicking(false)} title="Što objavljuješ?" paper>
-        <KindList onPick={choose} />
-      </BottomSheet>
+      {picker}
     </Screen>
   );
 }
-
-function LoadingCards() {
-  return (
-    <Box role="status" aria-label="Učitavanje" sx={{display: "contents"}}>
-      {[0, 1, 2].map((i) => (
-        <Card key={i} sx={{p: "14px 16px", display: "flex", flexDirection: "column", gap: "10px"}}>
-          <Skeleton variant="rounded" width={110} height={24} sx={{borderRadius: "8px"}} />
-          <Box sx={{display: "flex", alignItems: "center", gap: "12px"}}>
-            <Skeleton variant="circular" width={44} height={44} />
-            <Box sx={{flex: 1}}>
-              <Skeleton variant="text" width="50%" height={24} />
-              <Skeleton variant="text" width="70%" height={18} />
-            </Box>
-          </Box>
-          <Skeleton variant="text" width="85%" height={20} />
-        </Card>
-      ))}
-    </Box>
-  );
-}
-

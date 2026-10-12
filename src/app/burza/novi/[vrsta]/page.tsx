@@ -1,7 +1,8 @@
 "use client";
 
-import {getAvailabilityAPI, publishBurzaPostAPI} from "@/app/_fetchers/burza";
+import {getAvailabilityAPI, getBurzaPostAPI, publishBurzaPostAPI} from "@/app/_fetchers/burza";
 import {invalidateBurza} from "@/app/_hooks/useBurza";
+import {invalidateMyBurza} from "@/app/_hooks/useMyBurza";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useLeagues from "@/app/_hooks/useLeagues";
 import useMySchedule from "@/app/_hooks/useMySchedule";
@@ -15,10 +16,13 @@ import {Box} from "@mui/material";
 import {useParams, useSearchParams} from "next/navigation";
 import React, {useCallback, useEffect, useState} from "react";
 import {AvailableForm, PartnerForm, PhoneState, Published, SubstituteForm} from "../../ui/BurzaForms";
-import {burzaListHref} from "../../ui/BurzaParts";
+import {burzaListHref, burzaListLabel} from "../../ui/BurzaParts";
 
 // Novi oglas: /burza/novi/zamjena | partner | dostupan. ?from=home (Početna · Nađi zamjenu) goes back Home;
-// &league= and &night= pick the league and night. After publishing it shows "Oglas je objavljen".
+// &league= and &night= pick the league and night. Moji oglasi · Objavi ponovno, for a substitute ad whose night is
+// gone or an availability ad without a phone number: &team=, &out= and &note= fill in the substitute ad again, and
+// repost=<id> is the ad, whose phone number (and an availability ad's choices) the form starts from. After
+// publishing it shows "Oglas je objavljen".
 
 const FORMS: Record<string, {kind: BurzaKind; title: string; tab: string}> = {
   zamjena: {kind: "SUBSTITUTE", title: "Trebam zamjenu", tab: "zamjene"},
@@ -32,7 +36,14 @@ export default function NewBurzaPost() {
   const params = useSearchParams();
   const form = FORMS[useParams<{vrsta: string}>().vrsta];
   const fromHome = params.get("from") === "home";
-  const preset = {league: Number(params.get("league")) || undefined, night: params.get("night") ?? undefined};
+  const preset = {
+    league: Number(params.get("league")) || undefined,
+    team: Number(params.get("team")) || undefined,
+    night: params.get("night") ?? undefined,
+    out: Number(params.get("out")) || undefined,
+    note: params.get("note") ?? undefined,
+  };
+  const repostId = Number(params.get("repost")) || null;
 
   const user = useAuthStore((s) => s.user);
   const {schedule, error: scheduleError, reload: reloadSchedule} = useMySchedule();
@@ -44,20 +55,32 @@ export default function NewBurzaPost() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [published, setPublished] = useState<{post: BurzaPost; savedPhone: boolean} | null>(null);
+  // the player's ad being published again (repost=); undefined while it loads, null without one
+  const [repostAd, setRepostAd] = useState<BurzaPost | null | undefined>(repostId ? undefined : null);
 
   const loadAvailability = useCallback(() => {
     setLoadError(null);
     getAvailabilityAPI()
-      .then((a) => {
-        setAvailability(a);
-        // the profile's number is filled in, and saving a new one is offered
-        setPhone((p) => p ?? {value: a.phone ?? "", save: true, profile: a.phone});
-      })
+      .then(setAvailability)
       .catch((e) => setLoadError(e instanceof Error ? e.message : "Podaci se nisu učitali."));
   }, []);
   useEffect(() => {
     loadAvailability();
   }, [loadAvailability]);
+  useEffect(() => {
+    if (!repostId) return;
+    // without it the form starts as a new one
+    getBurzaPostAPI(repostId)
+      .then((p) => setRepostAd(p?.mine ? p : null))
+      .catch(() => setRepostAd(null));
+  }, [repostId]);
+  // the ad's number or the profile's is filled in, and saving a new one is offered (but not over the profile's own
+  // number when the ad had another)
+  useEffect(() => {
+    if (!availability || repostAd === undefined) return;
+    const own = repostAd?.phone ?? null;
+    setPhone((p) => p ?? {value: own ?? availability.phone ?? "", save: !own || !availability.phone || normalizePhone(own) === availability.phone, profile: availability.phone});
+  }, [availability, repostAd]);
 
   const back = () => router.push(fromHome ? "/" : burzaListHref(), "back");
   const publish = async (req: BurzaCreateRequest) => {
@@ -67,6 +90,7 @@ export default function NewBurzaPost() {
     try {
       const post = await publishBurzaPostAPI(req);
       invalidateBurza();
+      invalidateMyBurza();
       setPublished({post, savedPhone: !!req.save_phone});
       if (req.save_phone && phone) setPhone({...phone, profile: normalizePhone(phone.value)});
     } catch (e) {
@@ -135,14 +159,17 @@ export default function NewBurzaPost() {
           me={{name: me?.name ?? user?.username ?? "", rating: me && me.rounds > 0 ? me.rating : null}}
         />
       ) : (
-        <AvailableForm {...common} initial={availability.available} />
+        <AvailableForm
+          {...common}
+          initial={availability.available ?? (repostAd?.kind === "AVAILABLE" ? {as_substitute: repostAd.as_substitute, as_partner: repostAd.as_partner, note: repostAd.note} : null)}
+        />
       );
   }
 
   const title = published ? "Objavljeno" : form?.title ?? "Novi oglas";
   if (isDesktop) {
     return (
-      <DesktopShell active="burza" back={{label: fromHome ? "Početna" : "Burza", href: fromHome ? "/" : burzaListHref()}} eyebrow="Novi oglas" title={title}>
+      <DesktopShell active="burza" back={{label: fromHome ? "Početna" : burzaListLabel(), href: fromHome ? "/" : burzaListHref()}} eyebrow="Novi oglas" title={title}>
         {content}
       </DesktopShell>
     );
@@ -150,7 +177,8 @@ export default function NewBurzaPost() {
 
   return (
     <Screen fill gap={14}>
-      {!published && <TopBar eyebrow="Novi oglas" title={title} onBack={back} />}
+      {/* "Oglas je objavljen" has only the way back above it */}
+      {published ? <TopBar onBack={back} /> : <TopBar eyebrow="Novi oglas" title={title} onBack={back} />}
       {content}
     </Screen>
   );

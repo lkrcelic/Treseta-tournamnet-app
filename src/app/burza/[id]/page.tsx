@@ -2,6 +2,7 @@
 
 import {closeBurzaPostAPI, getBurzaPostAPI} from "@/app/_fetchers/burza";
 import {invalidateBurza} from "@/app/_hooks/useBurza";
+import {invalidateMyBurza} from "@/app/_hooks/useMyBurza";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import {BurzaPost} from "@/app/_interfaces/burza";
 import {telHref, whatsappHref} from "@/app/_lib/phone";
@@ -18,7 +19,7 @@ import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
 import {Box} from "@mui/material";
 import {useParams} from "next/navigation";
 import React, {useCallback, useEffect, useState} from "react";
-import {AdAvatar, burzaListHref, Callout, KindTag, OutlineAction, shareLink, shareText} from "../ui/BurzaParts";
+import {AdAvatar, burzaListHref, burzaListLabel, Callout, KindTag, OutlineAction, shareLink, shareText} from "../ui/BurzaParts";
 
 // Oglas (Claude Design "Burza igrača · spojeno", "Oglas · kontakt"): one ad with its details and the number to call.
 // Public, so a shared link works for anyone.
@@ -55,6 +56,7 @@ export default function BurzaPostPage() {
     try {
       setPost(await closeBurzaPostAPI(post.id));
       invalidateBurza();
+      invalidateMyBurza();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Oglas nije zatvoren.");
     }
@@ -90,7 +92,7 @@ export default function BurzaPostPage() {
 
   if (isDesktop) {
     return (
-      <DesktopShell active="burza" back={{label: "Burza", href: burzaListHref()}} eyebrow={eyebrow} title="Oglas" right={shareButton}>
+      <DesktopShell active="burza" back={{label: burzaListLabel(), href: burzaListHref()}} eyebrow={eyebrow} title="Oglas" right={shareButton}>
         <Box sx={{flex: 1, minHeight: 0, overflowY: "auto"}}>
           <Box sx={{maxWidth: 640, display: "flex", flexDirection: "column", gap: "14px"}}>
             {content}

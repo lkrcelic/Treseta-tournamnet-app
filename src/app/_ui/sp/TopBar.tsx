@@ -6,7 +6,7 @@ import {ellipsis, mergeSx} from "./base";
 import {IconCircleButton} from "./Buttons";
 
 // Compact phone header (Burza, Oglas, Raspored): a 44 px round back button, a navy eyebrow and a 28 px title,
-// with an optional button on the right
+// with an optional button on the right. Without eyebrow and title it is only the way back ("Oglas je objavljen").
 export function TopBar({
   eyebrow,
   title,
@@ -17,7 +17,7 @@ export function TopBar({
   sx,
 }: {
   eyebrow?: React.ReactNode;
-  title: React.ReactNode;
+  title?: React.ReactNode;
   onBack?: () => void;
   backLabel?: string;
   // the chevron unless given (Burza goes Home with a house)
@@ -34,9 +34,11 @@ export function TopBar({
       )}
       <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "4px"}}>
         {eyebrow && <Box sx={{fontSize: 12.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.navy, ...ellipsis}}>{eyebrow}</Box>}
-        <Box component="h1" sx={{m: 0, fontFamily: font.display, fontSize: 28, fontWeight: 800, lineHeight: 1, letterSpacing: "-.02em"}}>
-          {title}
-        </Box>
+        {title != null && (
+          <Box component="h1" sx={{m: 0, fontFamily: font.display, fontSize: 28, fontWeight: 800, lineHeight: 1, letterSpacing: "-.02em"}}>
+            {title}
+          </Box>
+        )}
       </Box>
       {right}
     </Box>

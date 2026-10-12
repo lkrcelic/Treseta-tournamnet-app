@@ -8,13 +8,18 @@ export const MAX_NIGHTS = 120;
 const DAY_MS = 86_400_000;
 const WEEKDAYS_SHORT = ["ned", "pon", "uto", "sri", "čet", "pet", "sub"];
 
-export const isIsoDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`));
+const isoOf = (time: number) => new Date(time).toISOString().slice(0, 10);
+
+// A real day as YYYY-MM-DD ("2026-02-31" isn't one, though Date.parse rolls it over to March)
+export const isIsoDate = (v: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const time = Date.parse(`${v}T00:00:00Z`);
+  return !Number.isNaN(time) && isoOf(time) === v;
+};
 
 function utcTime(iso: string): number | null {
   return isIsoDate(iso) ? Date.parse(`${iso}T00:00:00Z`) : null;
 }
-
-const isoOf = (time: number) => new Date(time).toISOString().slice(0, 10);
 
 // Every play day from the start date to the end date, both included. playDay: 0 = Monday ... 6 = Sunday, as
 // League.play_day. Empty when any of the three is missing or the end is before the start.

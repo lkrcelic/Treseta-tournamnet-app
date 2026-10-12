@@ -1,5 +1,5 @@
 import {apiFetch, responseErrorMessage} from "@/app/_fetchers/errorMessage";
-import {AvailabilityRequest, BurzaAvailability, BurzaCreateRequest, BurzaList, BurzaPost, MySchedule} from "@/app/_interfaces/burza";
+import {AvailabilityRequest, BurzaAvailability, BurzaCreateRequest, BurzaList, BurzaPost, MyBurzaList, MyBurzaPost, MySchedule} from "@/app/_interfaces/burza";
 
 // The open ads (public)
 export async function getBurzaAPI(): Promise<BurzaPost[]> {
@@ -33,6 +33,24 @@ export async function closeBurzaPostAPI(id: number): Promise<BurzaPost> {
     body: JSON.stringify({closed: true}),
   });
   if (!response.ok) throw new Error(await responseErrorMessage(response, "Oglas nije zatvoren."));
+  return response.json();
+}
+
+// Moji oglasi: the logged-in player's own ads
+export async function getMyBurzaAPI(): Promise<MyBurzaList> {
+  const response = await apiFetch("/api/burza/mine", {cache: "no-store"});
+  if (!response.ok) throw new Error(await responseErrorMessage(response, "Oglasi se nisu učitali."));
+  return response.json();
+}
+
+// Objavi ponovno; night: a new night for a substitute ad. Resolves to the ad that is up now.
+export async function repostBurzaPostAPI(id: number, night?: string): Promise<MyBurzaPost> {
+  const response = await apiFetch(`/api/burza/${id}/repost`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(night ? {night} : {}),
+  });
+  if (!response.ok) throw new Error(await responseErrorMessage(response, "Oglas nije ponovno objavljen."));
   return response.json();
 }
 

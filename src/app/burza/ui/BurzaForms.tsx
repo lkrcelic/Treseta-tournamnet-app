@@ -2,6 +2,7 @@
 
 import {closeBurzaPostAPI} from "@/app/_fetchers/burza";
 import {invalidateBurza} from "@/app/_hooks/useBurza";
+import {invalidateMyBurza} from "@/app/_hooks/useMyBurza";
 import {LeagueOption} from "@/app/_hooks/useLeagues";
 import {BurzaCreateRequest, BurzaKind, BurzaPost, MyLeague} from "@/app/_interfaces/burza";
 import {leagueDateString} from "@/app/_lib/dates";
@@ -63,18 +64,26 @@ function PublishButton({disabled, submitting, onClick}: {disabled: boolean; subm
 }
 
 // Trebam zamjenu: league → one of its next nights → who can't play → phone → note
-export function SubstituteForm({leagues, preset, ...props}: FormProps & {leagues: MyLeague[]; preset: {league?: number; night?: string}}) {
+export function SubstituteForm({
+  leagues,
+  preset,
+  ...props
+}: FormProps & {leagues: MyLeague[]; preset: {league?: number; team?: number; night?: string; out?: number; note?: string}}) {
   const today = leagueDateString();
   // the leagues where the player's team is active and has nights left
   const options = leagues.filter((l) => l.active && nextNightIndex(l.nights, today) >= 0);
-  const [pick, setPick] = useState(() => Math.max(0, options.findIndex((l) => l.league_id === preset.league)));
+  // the given league (and team, when the player's two teams play in it), else the first
+  const [pick, setPick] = useState(() => {
+    const exact = options.findIndex((l) => l.league_id === preset.league && l.team_id === preset.team);
+    return exact >= 0 ? exact : Math.max(0, options.findIndex((l) => l.league_id === preset.league));
+  });
   const league = options[pick] ?? null;
   const nights = league ? league.nights.slice(nextNightIndex(league.nights, today)).slice(0, NIGHT_CHOICES) : [];
   const [night, setNight] = useState<string | null>(() => (preset.night && nights.includes(preset.night) ? preset.night : nights[0] ?? null));
   // teammates first, the player last ("Ja · ...")
   const players = league ? [...league.players].sort((a, b) => Number(a.me) - Number(b.me)) : [];
-  const [out, setOut] = useState<number | null>(players[0]?.id ?? null);
-  const [note, setNote] = useState("");
+  const [out, setOut] = useState<number | null>(() => (players.some((p) => p.id === preset.out) ? preset.out! : players[0]?.id ?? null));
+  const [note, setNote] = useState(preset.note ?? "");
 
   if (!league) {
     return props.layout(
@@ -265,7 +274,7 @@ export function AvailableForm({initial, ...props}: FormProps & {initial: {as_sub
       <Phone phone={props.phone} setPhone={props.setPhone} />
       <NoteField value={note} onChange={setNote} placeholder="Npr. mogu bilo koji dan" />
       <Callout icon={<PersonOutlineRoundedIcon aria-hidden />} tone="plain">
-        Isto možeš uključiti i u profilu. Dok si dostupan, oglas stoji u Burzi.
+        Dok si dostupan, oglas stoji u Burzi. Zatvori ga u Mojim oglasima.
       </Callout>
       <PublicNote />
       {props.error && <ErrorNote>{props.error}</ErrorNote>}
@@ -276,7 +285,8 @@ export function AvailableForm({initial, ...props}: FormProps & {initial: {as_sub
 
 const CLOSES: Record<BurzaKind, string> = {
   SUBSTITUTE: "Ovako ga vide drugi. Zatvori ga kad nađeš igrača, a sam se zatvara kad prođe ta večer.",
-  PARTNER: "Ovako ga vide drugi. Zatvori ga kad nađeš partnera, a sam se zatvara kad liga završi.",
+  // the design's words: a league may have no end date, and then the ad doesn't close by itself
+  PARTNER: "Ovako ga vide drugi. Zatvori ga kad nađeš partnera.",
   AVAILABLE: "Ovako ga vide drugi. Zatvori ga kad više nisi dostupan.",
 };
 
@@ -303,6 +313,7 @@ export function Published({
     try {
       setCurrent(await closeBurzaPostAPI(current.id));
       invalidateBurza();
+      invalidateMyBurza();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Oglas nije zatvoren.");
     }

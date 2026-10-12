@@ -1,9 +1,22 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import type {BurzaPost} from "../../_interfaces/burza";
-import {BurzaCreateRequestValidation} from "../../_interfaces/burza";
+import type {BurzaPost, MyBurzaPost} from "../../_interfaces/burza";
+import {BurzaCreateRequestValidation, BurzaRepostRequestValidation} from "../../_interfaces/burza";
+import {
+  endsOn,
+  nightGone,
+  partnerError,
+  postStatus,
+  RepostFacts,
+  repostError,
+  StatusPost,
+  SubstituteFacts,
+  substituteError,
+  twinFields,
+} from "../burzaStatus";
 import {
   generateNights,
+  isIsoDate,
   MAX_NIGHTS,
   nextNightIndex,
   NIGHT_STATUS_LABEL,
@@ -22,12 +35,21 @@ import {
   adCount,
   availableAs,
   busyLine,
+  dayMonth,
+  expiryLine,
+  myPostSub,
+  myPostTitle,
+  myTabLabel,
   namesAndMore,
   postBody,
   postDetails,
   postHeadline,
   postSub,
   ratingInTens,
+  repostBlocked,
+  repostFormHref,
+  repostOpensForm,
+  STATUS_PILL,
   substituteNights,
   teamsLooking,
   timeAgo,
@@ -243,4 +265,183 @@ test("a new ad is checked before it's sent", () => {
   assert.ok(!BurzaCreateRequestValidation.safeParse({kind: "AVAILABLE", as_substitute: false, as_partner: false, phone: "091 234 5678"}).success);
   assert.ok(BurzaCreateRequestValidation.safeParse({kind: "AVAILABLE", as_substitute: false, as_partner: true, phone: "091 234 5678"}).success);
   assert.ok(!BurzaCreateRequestValidation.safeParse({kind: "SUBSTITUTE", league_id: 2, team_id: 3, night: "15.10.2026", out_player_id: 4, phone: "091 234 5678"}).success);
+});
+
+// Moji oglasi
+
+const ctx = {today: "2026-10-13", nights: new Set(["2|2026-10-13", "2|2026-10-20"])};
+const substitute: StatusPost = {kind: "SUBSTITUTE", closed: false, league_id: 2, night: "2026-10-20", league_end: null};
+
+test("an ad is up until it is closed, its night has passed or been removed, or its league has ended", () => {
+  assert.equal(postStatus(substitute, ctx), "ACTIVE");
+  // on the night itself it is still up
+  assert.equal(postStatus({...substitute, night: "2026-10-13"}, ctx), "ACTIVE");
+  assert.equal(postStatus({...substitute, night: "2026-10-06"}, ctx), "EXPIRED");
+  // a night taken off the league's nights
+  assert.equal(postStatus({...substitute, night: "2026-10-27"}, ctx), "EXPIRED");
+  // closed by hand beats expired
+  assert.equal(postStatus({...substitute, night: "2026-10-06", closed: true}, ctx), "CLOSED");
+
+  const partner: StatusPost = {kind: "PARTNER", closed: false, league_id: 2, night: null, league_end: "2026-12-15"};
+  assert.equal(postStatus(partner, ctx), "ACTIVE");
+  assert.equal(postStatus({...partner, league_end: "2026-10-13"}, ctx), "ACTIVE");
+  assert.equal(postStatus({...partner, league_end: "2026-10-12"}, ctx), "EXPIRED");
+  assert.equal(postStatus({...partner, league_end: null}, ctx), "ACTIVE");
+
+  // an availability ad never expires
+  const available: StatusPost = {kind: "AVAILABLE", closed: false, league_id: null, night: null, league_end: null};
+  assert.equal(postStatus(available, {today: "2030-01-01", nights: new Set()}), "ACTIVE");
+  assert.equal(postStatus({...available, closed: true}, ctx), "CLOSED");
+});
+
+test("an ad closes by itself on its night or its league's end, and only a substitute ad's night can be gone", () => {
+  assert.equal(endsOn(substitute), "2026-10-20");
+  assert.equal(endsOn({kind: "PARTNER", closed: false, league_id: 2, night: null, league_end: "2026-12-15"}), "2026-12-15");
+  assert.equal(endsOn({kind: "AVAILABLE", closed: false, league_id: null, night: null, league_end: null}), null);
+  assert.ok(!nightGone(substitute, ctx));
+  // closed by hand and its night passed since: publishing it again needs a new night
+  assert.ok(nightGone({...substitute, closed: true, night: "2026-10-06"}, ctx));
+  assert.ok(nightGone({...substitute, night: "2026-10-27"}, ctx));
+  assert.ok(!nightGone({kind: "PARTNER", closed: false, league_id: 2, night: null, league_end: "2026-10-01"}, ctx));
+});
+
+const team: SubstituteFacts = {admin: false, onTeam: true, teamInLeague: true, outOnTeam: true, night: "2026-10-20", leagueNight: true, today: "2026-10-13"};
+
+test("a substitute ad, new or published again, is for the author's team, its player and a league night still ahead", () => {
+  assert.equal(substituteError(team, "create"), null);
+  assert.equal(substituteError(team, "repost"), null);
+  // tonight is still ahead
+  assert.equal(substituteError({...team, night: "2026-10-13"}, "create"), null);
+  const cases: [Partial<SubstituteFacts>, string, string][] = [
+    [{onTeam: false}, "Zamjenu možeš tražiti samo za svoju ekipu.", "Više nisi u toj ekipi."],
+    [{teamInLeague: false}, "Ekipa ne igra u ovoj ligi.", "Ekipa više ne igra u toj ligi."],
+    [{outOnTeam: false}, "Igrač koji ne može mora biti u ekipi.", "Igrač kojeg mijenjaš više nije u ekipi."],
+    [{night: "2026-10-06"}, "Ta večer je već prošla.", "Odaberi novu večer."],
+    [{leagueNight: false}, "Liga te večeri ne igra.", "Odaberi novu večer."],
+  ];
+  for (const [change, create, repost] of cases) {
+    assert.equal(substituteError({...team, ...change}, "create"), create);
+    assert.equal(substituteError({...team, ...change}, "repost"), repost);
+  }
+  assert.equal(substituteError({...team, night: null}, "repost"), "Odaberi novu večer.");
+  // an admin may post for any team
+  assert.equal(substituteError({...team, onTeam: false, admin: true}, "create"), null);
+  assert.equal(partnerError("2026-10-13", "2026-10-13"), null);
+  assert.equal(partnerError(null, "2026-10-13"), null);
+  assert.equal(partnerError("2026-10-12", "2026-10-13"), "Ova liga je završila.");
+});
+
+const facts: RepostFacts = {post: {...substitute, closed: true, player_id: 7}, userId: 7, today: "2026-10-13", substitute: team, phone: true};
+
+test("only the author publishes an ad again, and it has to be able to go up", () => {
+  assert.equal(repostError(facts), null);
+  assert.deepEqual(repostError({...facts, userId: 8}), {status: 403, message: "Možeš ponovno objaviti samo svoj oglas."});
+  // an admin can't publish someone else's ad again either
+  assert.equal(repostError({...facts, userId: 8, substitute: {...team, admin: true}})?.status, 403);
+  assert.deepEqual(repostError({...facts, substitute: {...team, night: "2026-10-06"}}), {status: 400, message: "Odaberi novu večer."});
+  // its team is gone
+  assert.equal(repostError({...facts, substitute: null})?.message, "Više nisi u toj ekipi.");
+
+  const partner: RepostFacts = {...facts, post: {kind: "PARTNER", closed: true, league_id: 2, night: null, league_end: "2026-12-15", player_id: 7}, substitute: null};
+  assert.equal(repostError(partner), null);
+  assert.deepEqual(repostError({...partner, post: {...partner.post, league_end: "2026-10-12"}}), {status: 400, message: "Ova liga je završila."});
+
+  // an availability ad goes up only with a phone number, its own or the profile's (Burza lists no other)
+  const available: RepostFacts = {...partner, post: {kind: "AVAILABLE", closed: true, league_id: null, night: null, league_end: null, player_id: 7}};
+  assert.equal(repostError(available), null);
+  assert.equal(repostError({...available, phone: false})?.message, "Oglas nema broja mobitela. Upiši ga u obrascu Dostupan sam.");
+});
+
+test("a new or published-again ad that copies an open one is matched on what makes it the same", () => {
+  const ad = {team_id: 3, league_id: 2, night: "2026-10-20", out_player_id: 4};
+  assert.deepEqual(twinFields({kind: "SUBSTITUTE", ...ad}), {kind: "SUBSTITUTE", team_id: 3, night: "2026-10-20", out_player_id: 4});
+  assert.deepEqual(twinFields({kind: "PARTNER", ...ad}), {kind: "PARTNER", league_id: 2});
+  // a player has one open availability ad
+  assert.deepEqual(twinFields({kind: "AVAILABLE", ...ad}), {kind: "AVAILABLE"});
+  assert.ok(BurzaRepostRequestValidation.safeParse({}).success);
+  assert.ok(BurzaRepostRequestValidation.safeParse({night: "2026-10-20"}).success);
+  assert.ok(!BurzaRepostRequestValidation.safeParse({night: "20.10.2026"}).success);
+  // a day that doesn't exist
+  assert.ok(!BurzaRepostRequestValidation.safeParse({night: "2026-13-45"}).success);
+  assert.ok(!isIsoDate("2026-02-31"));
+  assert.ok(isIsoDate("2028-02-29"));
+});
+
+const mine: MyBurzaPost = {
+  ...base,
+  author: {id: 7, name: "Marko Marković"},
+  team: {id: 3, name: "Dalmatinci"},
+  league: {id: 2, name: "Liga Utorak"},
+  night: "2026-10-13",
+  out_player: "Ivan Perić",
+  mine: true,
+  can_close: true,
+  status: "ACTIVE",
+  ends_on: "2026-10-13",
+  closed_at: null,
+  night_gone: false,
+  out_player_id: 4,
+};
+const minePartner: MyBurzaPost = {...mine, kind: "PARTNER", team: null, night: null, out_player: null, out_player_id: null, ends_on: "2026-12-15", league: {id: 4, name: "Liga Četvrtak"}};
+const mineAvailable: MyBurzaPost = {...minePartner, kind: "AVAILABLE", league: null, ends_on: null, as_substitute: true, as_partner: true};
+
+test("Moji oglasi says what each ad is and when it closes", () => {
+  assert.equal(myPostTitle(mine), "Ekipa Dalmatinci traži zamjenu");
+  assert.equal(myPostSub(mine), "Liga Utorak · uto 13. 10. · umjesto: Ivan Perić");
+  assert.equal(myPostTitle(minePartner), "Tražim partnera");
+  assert.equal(myPostSub(minePartner), "Liga Četvrtak");
+  assert.equal(myPostTitle(mineAvailable), "Dostupan sam");
+  assert.equal(myPostSub(mineAvailable), "Za zamjenu i novog partnera");
+
+  const today = "2026-10-12";
+  assert.equal(expiryLine(mine, today), "Zatvara se sam nakon večeri, uto 13. 10.");
+  assert.equal(expiryLine(minePartner, today), "Zatvara se sam kad liga završi, 15. 12.");
+  assert.equal(expiryLine({...minePartner, ends_on: null}, today), "Aktivan dok ga ne zatvoriš");
+  assert.equal(expiryLine(mineAvailable, today), "Aktivan dok ga ne zatvoriš");
+
+  const expired = {...mine, status: "EXPIRED" as const, night: "2026-09-29", ends_on: "2026-09-29", night_gone: true};
+  assert.equal(expiryLine(expired, today), "Istekao nakon večeri 29. 9.");
+  assert.equal(expiryLine({...expired, night: "2026-10-20"}, today), "Istekao: večer je uklonjena iz rasporeda");
+  assert.equal(expiryLine({...minePartner, status: "EXPIRED", ends_on: "2026-10-01"}, today), "Istekao kad je liga završila 1. 10.");
+
+  // closed by hand, on its day in league time: 22:30 UTC on the 2nd is already the 3rd in Zagreb
+  assert.equal(expiryLine({...mine, status: "CLOSED", closed_at: "2026-10-02T12:00:00.000Z"}, today), "Zatvoren 2. 10.");
+  assert.equal(expiryLine({...mineAvailable, status: "CLOSED", closed_at: "2026-10-02T22:30:00.000Z"}, today), "Zatvoren 3. 10.");
+  assert.equal(expiryLine({...expired, status: "CLOSED", closed_at: "2026-09-20T10:00:00.000Z"}, today), "Zatvoren 20. 9.");
+
+  // right after a change on the page, while the ad's status agrees with it
+  assert.equal(expiryLine({...mine, status: "CLOSED", closed_at: "2026-10-12T10:00:00.000Z"}, today, "closed"), "Zatvoren upravo");
+  assert.equal(expiryLine(mine, today, "reposted"), "Objavljeno ponovno");
+  assert.equal(expiryLine(mine, today, "already"), "Već imaš ovakav oglas");
+  assert.equal(expiryLine(mine, today, "closed"), "Zatvara se sam nakon večeri, uto 13. 10.");
+  assert.equal(expiryLine({...mine, status: "CLOSED", closed_at: "2026-10-02T12:00:00.000Z"}, today, "reposted"), "Zatvoren 2. 10.");
+
+  assert.equal(dayMonth("2026-09-29"), "29. 9.");
+  assert.equal(dayMonth("2026-12-05"), "5. 12.");
+  assert.deepEqual(
+    (["ACTIVE", "EXPIRED", "CLOSED"] as const).map((s) => STATUS_PILL[s].label),
+    ["Aktivan", "Istekao", "Zatvoren"]
+  );
+  assert.equal(myTabLabel("active", 2), "Aktivni · 2");
+  assert.equal(myTabLabel("past", 0), "Prošli · 0");
+});
+
+test("Objavi ponovno opens the form for a substitute ad whose night is gone or an availability ad without a number", () => {
+  assert.ok(!repostOpensForm({...mine, status: "CLOSED"}));
+  assert.ok(repostOpensForm({...mine, status: "EXPIRED", night_gone: true}));
+  assert.ok(!repostOpensForm({...mineAvailable, status: "CLOSED", phone: "+385911234567"}));
+  assert.ok(repostOpensForm({...mineAvailable, status: "CLOSED", phone: null}));
+  // filled in from the ad; the phone number comes from the ad (repost=), not the address
+  assert.equal(repostFormHref({...mine, id: 9, note: "Počinjemo u 19 h"}), "/burza/novi/zamjena?repost=9&league=2&team=3&out=4&note=Po%C4%8Dinjemo+u+19+h");
+  assert.equal(repostFormHref({...mine, id: 9}), "/burza/novi/zamjena?repost=9&league=2&team=3&out=4");
+  assert.equal(repostFormHref({...mineAvailable, id: 12, phone: null}), "/burza/novi/dostupan?repost=12");
+});
+
+test("a partner ad whose league has ended can't go up again", () => {
+  const today = "2026-10-12";
+  assert.equal(repostBlocked({...minePartner, status: "EXPIRED", ends_on: "2026-10-01"}, today), "Liga je završila");
+  assert.equal(repostBlocked({...minePartner, status: "CLOSED", ends_on: "2026-10-01"}, today), "Liga je završila");
+  assert.equal(repostBlocked({...minePartner, status: "CLOSED", ends_on: "2026-12-15"}, today), null);
+  assert.equal(repostBlocked({...minePartner, status: "CLOSED", ends_on: null}, today), null);
+  assert.equal(repostBlocked({...mine, status: "EXPIRED", ends_on: "2026-09-29"}, today), null);
 });

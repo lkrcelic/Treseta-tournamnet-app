@@ -1,4 +1,17 @@
-import {BurzaAvailability, BurzaCreate, BurzaKind, BurzaPost} from "@/app/_interfaces/burza";
+import {BurzaAvailability, BurzaCreate, BurzaKind, BurzaPost, MyBurzaList, MyBurzaPost} from "@/app/_interfaces/burza";
+import {
+  endsOn,
+  nightGone,
+  partnerError,
+  postStatus,
+  repostError,
+  StatusContext,
+  StatusPost,
+  SubstituteFacts,
+  substituteError,
+  TwinAd,
+  twinFields,
+} from "@/app/_lib/burzaStatus";
 import {BYE_TEAM_ID} from "@/app/_lib/bye";
 import {leagueDateString} from "@/app/_lib/dates";
 import {normalizePhone, PHONE_ERROR} from "@/app/_lib/phone";
@@ -29,12 +42,10 @@ const postInclude = {
 
 type PostRow = Prisma.MarketPostGetPayload<{include: typeof postInclude}>;
 
-type ViewContext = {
+// today and the league nights from today on (StatusContext), the viewer, their teams, and the team they play for on
+// each upcoming night
+type ViewContext = StatusContext & {
   viewer: Player | null;
-  today: string;
-  // "leagueId|YYYY-MM-DD" of the league nights from today on (a substitute ad whose night was removed is over)
-  nights: Set<string>;
-  // the viewer's teams, and the team they play for on each upcoming night
   myTeams: Set<number>;
   busy: Map<string, string>;
 };
@@ -77,20 +88,21 @@ async function viewContext(viewer: Player | null, posts: PostRow[]): Promise<Vie
   };
 }
 
-// Closed by its author, its night has passed (or was taken off the league's nights), or its league has ended
-function isOver(p: PostRow, ctx: ViewContext): boolean {
-  if (p.closed_at) return true;
-  if (p.kind === "SUBSTITUTE") {
-    const night = isoDate(p.night!);
-    return night < ctx.today || !ctx.nights.has(`${p.league_id}|${night}`);
-  }
-  if (p.kind === "PARTNER") return p.league?.end_date != null && isoDate(p.league.end_date) < ctx.today;
-  return false;
+// What an ad's status depends on (_lib/burzaStatus.ts)
+function statusOf(p: {kind: BurzaKind; closed_at: Date | null; league_id: number | null; night: Date | null; league: {end_date: Date | null} | null}): StatusPost {
+  return {
+    kind: p.kind,
+    closed: p.closed_at != null,
+    league_id: p.league_id,
+    night: p.night ? isoDate(p.night) : null,
+    league_end: p.league?.end_date ? isoDate(p.league.end_date) : null,
+  };
 }
 
 function toView(p: PostRow, ctx: ViewContext): BurzaPost {
   const mine = ctx.viewer?.id === p.player_id;
-  const closed = isOver(p, ctx);
+  // closed by its author, its night has passed (or was taken off the league's nights), or its league has ended
+  const closed = postStatus(statusOf(p), ctx) !== "ACTIVE";
   const night = p.night ? isoDate(p.night) : null;
   // an availability ad without its own number shows the profile's
   const phone = p.phone ?? (p.kind === "AVAILABLE" ? p.player.phone : null);
@@ -140,6 +152,81 @@ export async function listOpenPosts(viewer: Player | null): Promise<BurzaPost[]>
     .sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind]);
 }
 
+// One of the viewer's own ads, with its status for Moji oglasi
+function toMyView(p: PostRow, ctx: ViewContext): MyBurzaPost {
+  const status = statusOf(p);
+  return {
+    ...toView(p, ctx),
+    status: postStatus(status, ctx),
+    ends_on: endsOn(status),
+    closed_at: p.closed_at?.toISOString() ?? null,
+    night_gone: nightGone(status, ctx),
+    out_player_id: p.out_player_id,
+  };
+}
+
+// how many past ads Moji oglasi lists
+const PAST_LIMIT = 50;
+
+// Moji oglasi: the player's own ads. Aktivni newest first; Prošli (expired or closed) by when they ended, the latest
+// first.
+export async function listMyPosts(user: Player): Promise<MyBurzaList> {
+  const rows = await prisma.marketPost.findMany({where: {player_id: user.id}, include: postInclude, orderBy: [{created_at: "desc"}, {id: "desc"}]});
+  const ctx = await viewContext(user, rows);
+  const posts = rows.map((p) => toMyView(p, ctx));
+  // closed by hand: that moment; expired: its night or the league's end
+  const ended = (p: MyBurzaPost) => p.closed_at ?? p.ends_on ?? "";
+  return {
+    active: posts.filter((p) => p.status === "ACTIVE"),
+    past: posts
+      .filter((p) => p.status !== "ACTIVE")
+      .sort((a, b) => ended(b).localeCompare(ended(a)) || b.id - a.id)
+      .slice(0, PAST_LIMIT),
+  };
+}
+
+async function getMyPostView(id: number, user: Player): Promise<MyBurzaPost> {
+  const row = await prisma.marketPost.findUniqueOrThrow({where: {id}, include: postInclude});
+  return toMyView(row, await viewContext(user, [row]));
+}
+
+// Moji oglasi · Objavi ponovno: the author puts a closed or expired ad up again, in place (it is published anew:
+// created_at moves to now). A substitute ad goes up on the given night, or its own while that is still ahead. An ad
+// that is still up is returned as it is, and so is an open ad that is the same as this one (no second copy).
+// Returns "forbidden" for someone else's ad.
+export async function repostPost(user: Player, id: number, night?: string): Promise<MyBurzaPost | "forbidden"> {
+  const result = await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${PLAYER_LOCK}::int, ${user.id}::int)`;
+    const p = await tx.marketPost.findUnique({where: {id}, include: {league: {select: {end_date: true}}}});
+    if (!p) throw new NotFoundError("Oglas ne postoji.");
+    if (p.player_id !== user.id) return "forbidden" as const;
+
+    const own = p.night ? isoDate(p.night) : null;
+    const target = p.kind === "SUBSTITUTE" ? night ?? own : null;
+    const error = repostError({
+      post: {...statusOf(p), player_id: p.player_id},
+      userId: user.id,
+      today: leagueDateString(),
+      substitute: p.kind === "SUBSTITUTE" ? await substituteFacts(tx, user, {team_id: p.team_id, league_id: p.league_id, out_player_id: p.out_player_id, night: target}) : null,
+      phone: (p.phone ?? user.phone) != null,
+    });
+    if (error) throw new InvalidResultError(error.message);
+
+    // still up (the checks above passed, so an open ad on the same night isn't over)
+    if (!p.closed_at && target === own) return p.id;
+    const twin = await findTwin(tx, user.id, {kind: p.kind, team_id: p.team_id, league_id: p.league_id, night: target, out_player_id: p.out_player_id}, p.id);
+    if (twin != null) return twin;
+
+    await tx.marketPost.update({
+      where: {id: p.id},
+      data: {closed_at: null, created_at: new Date(), ...(target ? {night: nightValue(target)} : {})},
+    });
+    return p.id;
+  });
+  if (result === "forbidden") return result;
+  return getMyPostView(result, user);
+}
+
 // One ad, also a closed one (its page then says so, without the phone number); null when it doesn't exist
 export async function getPostView(id: number, viewer: Player | null): Promise<BurzaPost | null> {
   const row = await prisma.marketPost.findUnique({where: {id}, include: postInclude});
@@ -165,32 +252,62 @@ export async function createPost(user: Player, req: BurzaCreate): Promise<BurzaP
 type Tx = Prisma.TransactionClient;
 type Req<K extends BurzaKind> = Extract<BurzaCreate, {kind: K}>;
 
-async function createSubstitute(tx: Tx, user: Player, req: Req<"SUBSTITUTE">, phone: string): Promise<number> {
+// What the substitute checks (_lib/burzaStatus.ts) need to know about the team and the night; null when the team
+// doesn't exist
+async function substituteFacts(
+  tx: Tx,
+  user: Player,
+  ad: {team_id: number | null; league_id: number | null; out_player_id: number | null; night: string | null}
+): Promise<SubstituteFacts | null> {
+  if (ad.team_id == null || ad.team_id === BYE_TEAM_ID || ad.league_id == null) return null;
   const team = await tx.team.findUnique({
-    where: {team_id: req.team_id},
-    select: {teamPlayers: {select: {player_id: true}}, leagueTeams: {where: {league_id: req.league_id}, select: {active: true}}},
+    where: {team_id: ad.team_id},
+    select: {teamPlayers: {select: {player_id: true}}, leagueTeams: {where: {league_id: ad.league_id}, select: {league_id: true}}},
   });
-  if (!team || req.team_id === BYE_TEAM_ID) throw new NotFoundError("Ekipa ne postoji.");
+  if (!team) return null;
   const players = team.teamPlayers.map((tp) => tp.player_id);
-  if (!players.includes(user.id) && !isAdmin(user)) throw new InvalidResultError("Zamjenu možeš tražiti samo za svoju ekipu.");
-  if (!team.leagueTeams.length) throw new InvalidResultError("Ekipa ne igra u ovoj ligi.");
-  if (!players.includes(req.out_player_id)) throw new InvalidResultError("Igrač koji ne može mora biti u ekipi.");
-  if (req.night < leagueDateString()) throw new InvalidResultError("Ta večer je već prošla.");
-  const night = nightValue(req.night);
-  if (!(await tx.leagueNight.count({where: {league_id: req.league_id, night}}))) {
-    throw new InvalidResultError("Liga te večeri ne igra.");
-  }
+  const leagueNight = ad.night != null && (await tx.leagueNight.count({where: {league_id: ad.league_id, night: nightValue(ad.night)}})) > 0;
+  return {
+    admin: isAdmin(user),
+    onTeam: players.includes(user.id),
+    teamInLeague: team.leagueTeams.length > 0,
+    outOnTeam: ad.out_player_id != null && players.includes(ad.out_player_id),
+    night: ad.night,
+    leagueNight,
+    today: leagueDateString(),
+  };
+}
 
-  const same = await tx.marketPost.findFirst({
-    where: {kind: "SUBSTITUTE", closed_at: null, player_id: user.id, team_id: req.team_id, night, out_player_id: req.out_player_id},
+// The player's open ad that this one would copy (_lib/burzaStatus.ts twinFields), except the ad itself
+async function findTwin(tx: Tx, playerId: number, ad: TwinAd, except?: number): Promise<number | null> {
+  const {night, ...fields} = twinFields(ad);
+  const twin = await tx.marketPost.findFirst({
+    where: {
+      ...fields,
+      ...(night !== undefined ? {night: night ? nightValue(night) : null} : {}),
+      player_id: playerId,
+      closed_at: null,
+      ...(except != null ? {id: {not: except}} : {}),
+    },
     select: {id: true},
+    orderBy: {id: "desc"},
   });
-  if (same) {
-    await tx.marketPost.update({where: {id: same.id}, data: {phone, note: req.note}});
-    return same.id;
+  return twin?.id ?? null;
+}
+
+async function createSubstitute(tx: Tx, user: Player, req: Req<"SUBSTITUTE">, phone: string): Promise<number> {
+  const facts = await substituteFacts(tx, user, {team_id: req.team_id, league_id: req.league_id, out_player_id: req.out_player_id, night: req.night});
+  if (!facts) throw new NotFoundError("Ekipa ne postoji.");
+  const error = substituteError(facts, "create");
+  if (error) throw new InvalidResultError(error);
+
+  const same = await findTwin(tx, user.id, {kind: "SUBSTITUTE", team_id: req.team_id, league_id: req.league_id, night: req.night, out_player_id: req.out_player_id});
+  if (same != null) {
+    await tx.marketPost.update({where: {id: same}, data: {phone, note: req.note}});
+    return same;
   }
   const post = await tx.marketPost.create({
-    data: {kind: "SUBSTITUTE", player_id: user.id, league_id: req.league_id, team_id: req.team_id, night, out_player_id: req.out_player_id, phone, note: req.note},
+    data: {kind: "SUBSTITUTE", player_id: user.id, league_id: req.league_id, team_id: req.team_id, night: nightValue(req.night), out_player_id: req.out_player_id, phone, note: req.note},
   });
   return post.id;
 }
@@ -198,12 +315,13 @@ async function createSubstitute(tx: Tx, user: Player, req: Req<"SUBSTITUTE">, ph
 async function createPartner(tx: Tx, user: Player, req: Req<"PARTNER">, phone: string): Promise<number> {
   const league = await tx.league.findUnique({where: {league_id: req.league_id}, select: {end_date: true}});
   if (!league) throw new NotFoundError("Liga ne postoji.");
-  if (league.end_date && isoDate(league.end_date) < leagueDateString()) throw new InvalidResultError("Ova liga je završila.");
+  const error = partnerError(league.end_date ? isoDate(league.end_date) : null, leagueDateString());
+  if (error) throw new InvalidResultError(error);
 
-  const same = await tx.marketPost.findFirst({where: {kind: "PARTNER", closed_at: null, player_id: user.id, league_id: req.league_id}, select: {id: true}});
-  if (same) {
-    await tx.marketPost.update({where: {id: same.id}, data: {phone, note: req.note}});
-    return same.id;
+  const same = await findTwin(tx, user.id, {kind: "PARTNER", team_id: null, league_id: req.league_id, night: null, out_player_id: null});
+  if (same != null) {
+    await tx.marketPost.update({where: {id: same}, data: {phone, note: req.note}});
+    return same;
   }
   const post = await tx.marketPost.create({data: {kind: "PARTNER", player_id: user.id, league_id: req.league_id, phone, note: req.note}});
   return post.id;
@@ -215,10 +333,10 @@ async function saveAvailable(
   playerId: number,
   data: {as_substitute: boolean; as_partner: boolean; note?: string; phone?: string | null}
 ): Promise<number> {
-  const open = await tx.marketPost.findFirst({where: {kind: "AVAILABLE", closed_at: null, player_id: playerId}, select: {id: true}});
-  if (open) {
-    await tx.marketPost.update({where: {id: open.id}, data});
-    return open.id;
+  const open = await findTwin(tx, playerId, {kind: "AVAILABLE", team_id: null, league_id: null, night: null, out_player_id: null});
+  if (open != null) {
+    await tx.marketPost.update({where: {id: open}, data});
+    return open;
   }
   const post = await tx.marketPost.create({data: {kind: "AVAILABLE", player_id: playerId, ...data}});
   return post.id;

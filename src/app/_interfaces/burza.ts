@@ -1,10 +1,12 @@
 import {DATE_FORMAT_ERROR} from "@/app/_interfaces/league";
+import {isIsoDate} from "@/app/_lib/nights";
 import {isValidPhone, PHONE_ERROR} from "@/app/_lib/phone";
 import {z} from "zod";
 
 export type BurzaKind = "SUBSTITUTE" | "PARTNER" | "AVAILABLE";
 
-const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, DATE_FORMAT_ERROR);
+// a real day: "2026-13-45" is refused here, not by the database
+const isoDate = z.string().refine(isIsoDate, DATE_FORMAT_ERROR);
 const phone = z.string().trim().refine(isValidPhone, PHONE_ERROR);
 const note = (max: number) => z.string().trim().max(max, `Najviše ${max} znakova.`).default("");
 const savePhone = z.boolean().default(false);
@@ -41,6 +43,10 @@ type WithOptionalNote<T> = T extends unknown ? Omit<T, "note" | "save_phone"> & 
 export type BurzaCreateRequest = WithOptionalNote<BurzaCreate>;
 
 export const BurzaUpdateRequestValidation = z.object({closed: z.literal(true)});
+
+// Moji oglasi · Objavi ponovno: a substitute ad whose night is gone goes up on a new night
+export const BurzaRepostRequestValidation = z.object({night: isoDate.optional()});
+export type BurzaRepostRequest = {night?: string};
 
 // Profile · Dostupan sam
 export const AvailabilityRequestValidation = z
@@ -80,6 +86,24 @@ export type BurzaPost = {
 };
 
 export type BurzaList = {posts: BurzaPost[]};
+
+// Moji oglasi: Aktivan, Istekao (its night passed or its league ended), Zatvoren (closed by hand)
+export type BurzaStatus = "ACTIVE" | "EXPIRED" | "CLOSED";
+
+// One of the player's own ads
+export type MyBurzaPost = BurzaPost & {
+  status: BurzaStatus;
+  // YYYY-MM-DD it closes by itself: a substitute ad's night, a partner ad's league end; null for an availability ad
+  ends_on: string | null;
+  closed_at: string | null; // ISO timestamp, when it was closed by hand
+  // a substitute ad whose night has passed or was removed: publishing it again needs a new night
+  night_gone: boolean;
+  // SUBSTITUTE: the player who can't come, to fill in the form again for a new night
+  out_player_id: number | null;
+};
+
+// Aktivni newest first; Prošli by when they ended, the latest first (at most 50)
+export type MyBurzaList = {active: MyBurzaPost[]; past: MyBurzaPost[]};
 
 // The viewer's "Dostupan sam" and profile phone
 export type BurzaAvailability = {
