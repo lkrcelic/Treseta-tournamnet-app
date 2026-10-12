@@ -18,10 +18,12 @@ function GoogleMark() {
   );
 }
 
-export default function GoogleLoginButton({pill = false, callbackUrl = "/"}: {pill?: boolean; callbackUrl?: string}) {
+// onStart: the player pressed it (Prijava hides an older error)
+export default function GoogleLoginButton({pill = false, callbackUrl = "/", onStart}: {pill?: boolean; callbackUrl?: string; onStart?: () => void}) {
   const [redirecting, setRedirecting] = useState(false);
 
   const handleGoogleLogin = () => {
+    onStart?.();
     setRedirecting(true);
     // NextAuth redirects to Google and back to the home page (or the page that sent the player to log in)
     signIn("google", {callbackUrl}).catch(() => setRedirecting(false));

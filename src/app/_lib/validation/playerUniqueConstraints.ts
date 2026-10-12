@@ -2,6 +2,7 @@ import {PlayerCreateValidation} from "@/app/_interfaces/player";
 import {z} from "zod";
 import {prisma} from "@/app/_lib/prisma";
 import {USERNAME_TAKEN} from "@/app/_lib/validation/username";
+import {anyCase} from "@/app/_lib/helpers/query/anyCase";
 
 // TODO: Move this to a more appropriate location?
 export class ValidationError extends Error {
@@ -18,10 +19,7 @@ export class ValidationError extends Error {
 export async function validateUniqueConstraintsPlayer(player: z.infer<typeof PlayerCreateValidation>): Promise<void> {
   const data = await prisma.player.findMany({
     where: {
-      OR: [
-        {username: {equals: player.username, mode: "insensitive"}},
-        {email: {equals: player.email, mode: "insensitive"}},
-      ],
+      OR: [{username: anyCase(player.username)}, {email: anyCase(player.email)}],
     },
   });
 

@@ -4,12 +4,9 @@ import {leagueDateString} from "@/app/_lib/dates";
 import {nextNightIndex} from "@/app/_lib/nights";
 import {prisma} from "@/app/_lib/prisma";
 import {playedNightKeys} from "@/app/_lib/service/league/nights";
+import {displayName} from "@/app/_lib/players/names";
 
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);
-
-export function playerName(p: {first_name: string; last_name: string; username: string}): string {
-  return `${p.first_name} ${p.last_name}`.trim() || p.username;
-}
 
 // The leagues the player plays in through their teams, each with the team, its players and the league's nights
 // (Početna · Sljedeća večer, Raspored, Burza · Trebam zamjenu). The league with the soonest night comes first;
@@ -21,7 +18,7 @@ export async function mySchedule(playerId: number): Promise<MySchedule> {
     select: {
       team_id: true,
       team_name: true,
-      teamPlayers: {select: {player: {select: {id: true, first_name: true, last_name: true, username: true, rating: true}}}},
+      teamPlayers: {select: {player: {select: {id: true, first_name: true, last_name: true, rating: true}}}},
       leagueTeams: {
         select: {
           active: true,
@@ -44,7 +41,7 @@ export async function mySchedule(playerId: number): Promise<MySchedule> {
         team_name: t.team_name,
         active,
         players: t.teamPlayers
-          .map(({player}) => ({id: player.id, name: playerName(player), rating: player.rating, me: player.id === playerId}))
+          .map(({player}) => ({id: player.id, name: displayName(player), rating: player.rating, me: player.id === playerId}))
           // the player first, as "(ti)" on Početna
           .sort((a, b) => Number(b.me) - Number(a.me) || a.name.localeCompare(b.name, "hr")),
         nights,

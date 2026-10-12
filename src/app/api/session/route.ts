@@ -1,17 +1,14 @@
-import {getAuthorizedUser} from "@/app/_lib/service/auth/getAuthorizedUser";
+import {requireAdmin} from "@/app/_lib/service/auth/requireUser";
 import {GoogleSessionsOut, LuciaSessionsOut} from "@/app/_interfaces/session";
 import {prisma} from "@/app/_lib/prisma";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {NextRequest, NextResponse} from "next/server";
 
+// Every open login (admin)
 export async function GET(req: NextRequest) {
+  const auth = await requireAdmin(req);
+  if (auth.response) return auth.response;
   try {
-    const user = await getAuthorizedUser(req);
-    if (!user || user.player_role !== "ADMIN") {
-      return NextResponse.json({error: "Nemaš ovlasti za ovu radnju."},
-        {status: user ? STATUS.Forbidden : STATUS.Unauthorized});
-    }
-
     const luciaSessions = LuciaSessionsOut.parse(await prisma.luciaSession.findMany({
       include: {
         player: true

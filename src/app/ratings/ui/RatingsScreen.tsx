@@ -17,6 +17,7 @@ import HelpOutlineRoundedIcon from "@mui/icons-material/HelpOutlineRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import LeaderboardRoundedIcon from "@mui/icons-material/LeaderboardRounded";
+import PersonOffRoundedIcon from "@mui/icons-material/PersonOffRounded";
 import PersonSearchRoundedIcon from "@mui/icons-material/PersonSearchRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import {Box, Drawer, Popover, Tooltip} from "@mui/material";
@@ -33,7 +34,8 @@ export default function RatingsScreen({playerId}: {playerId?: number}) {
   const {list, error, reload} = useRatings();
   const [query, setQuery] = useState("");
   const players = useMemo(
-    () => (list?.players ?? []).filter((p) => matchesQuery(p.name, query) || matchesQuery(p.username, query)),
+    // by name only: usernames are private
+    () => (list?.players ?? []).filter((p) => matchesQuery(p.name, query)),
     [list, query]
   );
 
@@ -44,12 +46,16 @@ export default function RatingsScreen({playerId}: {playerId?: number}) {
 
 function usePlayerRating(playerId: number | null) {
   const [detail, setDetail] = useState<PlayerRatingDetail | null>(null);
+  // the id that answered "no such player" (a deleted player, or a wrong link)
+  const [missing, setMissing] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const load = useCallback(async () => {
     if (playerId == null) return;
     setError(null);
     try {
-      setDetail(await getPlayerRatingAPI(playerId));
+      const found = await getPlayerRatingAPI(playerId);
+      if (found) setDetail(found);
+      else setMissing(playerId);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Rejting igrača nije moguće učitati.");
     }
@@ -58,15 +64,17 @@ function usePlayerRating(playerId: number | null) {
     load();
   }, [load]);
   // the detail of another player stays on screen until the new one arrives, but never shows under the wrong name
-  return {detail: detail && detail.player.id === playerId ? detail : null, error, reload: load};
+  return {detail: detail && detail.player.id === playerId ? detail : null, missing: playerId != null && missing === playerId, error, reload: load};
 }
 
-// Empty list, no search match, or the list didn't load (8g, 8h)
-function ListMessage({kind, onRetry}: {kind: "empty" | "noMatch" | "error"; onRetry?: () => void}) {
+// Empty list, no search match, the list didn't load (8g, 8h), or a rating link to a player who isn't there (a deleted
+// player: Q9, DECISIONS #40)
+function ListMessage({kind, onRetry}: {kind: "empty" | "noMatch" | "error" | "notFound"; onRetry?: () => void}) {
   const m = {
     empty: {icon: <LeaderboardRoundedIcon />, title: "Još nema rejtinga", text: "Rejting se pojavi kad se odigra prvo kolo."},
     noMatch: {icon: <PersonSearchRoundedIcon />, title: "Nema takvog igrača", text: "Provjeri kako si napisao ime."},
     error: {icon: <CloudOffRoundedIcon />, title: "Rejting se nije učitao", text: "Provjeri vezu i pokušaj ponovno."},
+    notFound: {icon: <PersonOffRoundedIcon />, title: "Igrač ne postoji", text: "Možda je obrisan ili je poveznica pogrešna."},
   }[kind];
   return (
     <Box role={kind === "error" ? "alert" : "status"} sx={{p: "56px 28px", display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", textAlign: "center"}}>
@@ -231,7 +239,11 @@ function InfoSheet({view, onChange}: {view: InfoView | null; onChange: (view: In
 
 function PhoneDetail({playerId}: {playerId: number}) {
   const router = useTransitionRouter();
-  const {detail, error, reload} = usePlayerRating(playerId);
+  const {detail, missing, error, reload} = usePlayerRating(playerId);
+  let body: React.ReactNode;
+  if (missing) body = <ListMessage kind="notFound" />;
+  else if (error && !detail) body = <ListMessage kind="error" onRetry={reload} />;
+  else body = detail ? <DetailBody detail={detail} chartWidth={318} /> : <CenteredSpinner />;
   return (
     <Screen fill gap={8} sx={{px: 0}}>
       <Box sx={{display: "flex", alignItems: "center", gap: "10px", px: "14px", pb: "8px"}}>
@@ -243,7 +255,7 @@ function PhoneDetail({playerId}: {playerId: number}) {
         </Box>
       </Box>
       <Box sx={{flex: 1, minHeight: 0, overflowY: "auto", p: "6px 20px 12px", display: "flex", flexDirection: "column", gap: "14px"}}>
-        {error && !detail ? <ListMessage kind="error" onRetry={reload} /> : !detail ? <CenteredSpinner /> : <DetailBody detail={detail} chartWidth={318} />}
+        {body}
       </Box>
     </Screen>
   );
@@ -280,7 +292,7 @@ const HEADS: {key: string; align: "start" | "end"}[] = [
 function DesktopRatings({list, me, players, error, reload, query, setQuery, initial}: ListProps & {list: RatingRow[] | null; initial?: number}) {
   const [picked, setPicked] = useState<number | null>(initial ?? null);
   const selected = picked ?? me ?? list?.[0]?.id ?? null;
-  const {detail, error: detailError, reload: reloadDetail} = usePlayerRating(selected);
+  const {detail, missing, error: detailError, reload: reloadDetail} = usePlayerRating(selected);
   const [infoAnchor, setInfoAnchor] = useState<HTMLElement | null>(null);
   const [infoView, setInfoView] = useState<InfoView>("cols");
   const infoId = useId();
@@ -408,7 +420,11 @@ function DesktopRatings({list, me, players, error, reload, query, setQuery, init
           <Box sx={{flex: 1, minHeight: 0, overflowY: "auto"}}>{rows}</Box>
         </Card>
         <Box sx={{minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: "14px"}}>
-          {detailError && !detail ? (
+          {missing ? (
+            <Card>
+              <ListMessage kind="notFound" />
+            </Card>
+          ) : detailError && !detail ? (
             <Card>
               <ListMessage kind="error" onRetry={reloadDetail} />
             </Card>

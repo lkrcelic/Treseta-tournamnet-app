@@ -3,9 +3,13 @@ import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {z} from "zod";
 import {defaultLineup, PLAYERS_PER_TEAM} from "@/app/_lib/lineup";
+import {displayName, fullName} from "@/app/_lib/players/names";
 
 // Who plays a round: two players from each team, picked on Start Game before the scoreboard opens. Ratings of the
-// round go to these players (rounds without a lineup rate the whole roster).
+// round go to these players (rounds without a lineup rate the whole roster). A deactivated player isn't offered or
+// picked: when a lineup saved before the deactivation names them, the open round's screen puts an active teammate in
+// their place, so it can be confirmed again (a finished round keeps what was saved). The members' usernames go to the
+// players of the round (design 7c shows them under the names).
 
 export type LineupMember = {id: number; name: string; username: string};
 
@@ -41,7 +45,7 @@ const teamSelect = {
   team_name: true,
   founder_id1: true,
   founder_id2: true,
-  teamPlayers: {select: {player: {select: {id: true, first_name: true, last_name: true, username: true}}}},
+  teamPlayers: {select: {player: {select: {id: true, first_name: true, last_name: true, username: true, active: true}}}},
 } as const;
 
 export async function getLineup(roundId: number, viewerId: number): Promise<Lineup> {
@@ -49,6 +53,7 @@ export async function getLineup(roundId: number, viewerId: number): Promise<Line
     where: {id: roundId},
     select: {
       id: true,
+      open: true,
       table_number: true,
       round_number: true,
       team1: {select: teamSelect},
@@ -63,17 +68,27 @@ export async function getLineup(roundId: number, viewerId: number): Promise<Line
   const leagueId = round.leagueRounds[0]?.league_id ?? null;
 
   const team = async (t: typeof round.team1): Promise<LineupTeam> => {
+    const savedIds = round.roundPlayers.filter((p) => p.team_id === t.team_id).map((p) => p.player_id);
+    const roster = activeRoster(t.teamPlayers.map((tp) => tp.player));
+    // a finished round can't be changed: it shows who played, deactivated or not
+    const shown = (p: {id: number; active: boolean}) => p.active || (!round.open && savedIds.includes(p.id));
     const members = t.teamPlayers
-      .map(({player: p}) => ({id: p.id, name: `${p.first_name} ${p.last_name}`.trim(), username: p.username}))
+      .map(({player: p}) => p)
+      .filter(shown)
+      .map((p) => ({id: p.id, name: fullName(p), username: p.username}))
       .sort((a, b) => a.name.localeCompare(b.name, "hr"));
-    const roster = members.map((m) => m.id);
-    const selected = saved
-      ? round.roundPlayers.filter((p) => p.team_id === t.team_id).map((p) => p.player_id)
-      : defaultLineup(roster, await lastLineup(t.team_id, leagueId, roundId), [t.founder_id1, t.founder_id2]);
+    const founders = [t.founder_id1, t.founder_id2];
+    // an open round's saved lineup keeps its active players and is topped up from the roster (saveLineup accepts
+    // only active players, as many as `needed`)
+    const selected = !saved
+      ? defaultLineup(roster, await lastLineup(t.team_id, leagueId, roundId), founders)
+      : round.open
+        ? defaultLineup(roster, savedIds, founders)
+        : savedIds;
     return {
       id: t.team_id,
       name: t.team_name,
-      mine: roster.includes(viewerId),
+      mine: t.teamPlayers.some((tp) => tp.player.id === viewerId),
       members,
       selected,
       needed: Math.min(PLAYERS_PER_TEAM, roster.length),
@@ -87,6 +102,11 @@ export async function getLineup(roundId: number, viewerId: number): Promise<Line
     saved,
     teams: [await team(round.team1), await team(round.team2)],
   };
+}
+
+// The roster a lineup is picked from: the players an admin hasn't deactivated
+function activeRoster(players: {id: number; active: boolean}[]): number[] {
+  return players.filter((p) => p.active).map((p) => p.id);
 }
 
 // The players of the team's most recent round in the league that has a lineup
@@ -107,7 +127,10 @@ export async function hasLineup(roundId: number): Promise<boolean> {
   return (await prisma.roundPlayer.count({where: {round_id: roundId}})) > 0;
 }
 
-// Saves (or replaces) the round's lineup: each team's players must be on its roster, two of them or the whole roster
+const savePlayerSelect = {id: true, active: true, first_name: true, last_name: true} as const;
+
+// Saves (or replaces) the round's lineup: each team's players must be on its roster and active, two of them or the
+// whole (active) roster
 export async function saveLineup(roundId: number, lineup: LineupSave): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const round = await tx.round.findUnique({
@@ -116,16 +139,24 @@ export async function saveLineup(roundId: number, lineup: LineupSave): Promise<v
         open: true,
         team1_id: true,
         team2_id: true,
-        team1: {select: {teamPlayers: {select: {player_id: true}}}},
-        team2: {select: {teamPlayers: {select: {player_id: true}}}},
+        team1: {select: {teamPlayers: {select: {player: {select: savePlayerSelect}}}}},
+        team2: {select: {teamPlayers: {select: {player: {select: savePlayerSelect}}}}},
       },
     });
     if (!round) throw new NotFoundError("Runda ne postoji.");
     if (!round.open) throw new InvalidResultError("Ova runda je već završena.");
 
+    // a player deactivated while the screen was open: say who, instead of the count below
+    const inactive = [...round.team1.teamPlayers, ...round.team2.teamPlayers]
+      .map((tp) => tp.player)
+      .find((p) => !p.active && lineup.teams.some((t) => t.player_ids.includes(p.id)));
+    if (inactive) {
+      throw new InvalidResultError(`${displayName(inactive)} ima deaktiviran račun. Odaberi drugog igrača.`);
+    }
+
     const rosters = new Map([
-      [round.team1_id, round.team1.teamPlayers.map((p) => p.player_id)],
-      [round.team2_id, round.team2.teamPlayers.map((p) => p.player_id)],
+      [round.team1_id, activeRoster(round.team1.teamPlayers.map((tp) => tp.player))],
+      [round.team2_id, activeRoster(round.team2.teamPlayers.map((tp) => tp.player))],
     ]);
     const teamIds = lineup.teams.map((t) => t.team_id);
     if (new Set(teamIds).size !== 2 || !teamIds.every((id) => rosters.has(id))) {

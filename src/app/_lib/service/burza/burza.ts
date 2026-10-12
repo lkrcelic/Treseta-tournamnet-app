@@ -19,7 +19,7 @@ import {prisma} from "@/app/_lib/prisma";
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {isAdmin} from "@/app/_lib/service/auth/requireUser";
 import {nightValue} from "@/app/_lib/service/league/nights";
-import {playerName} from "@/app/_lib/service/league/schedule";
+import {displayName} from "@/app/_lib/players/names";
 import {ratingInTens} from "@/app/_lib/ui/burza";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {Player, Prisma} from "@prisma/client";
@@ -33,9 +33,9 @@ const KIND_ORDER: Record<BurzaKind, number> = {SUBSTITUTE: 0, PARTNER: 1, AVAILA
 
 const postInclude = {
   player: {
-    select: {id: true, first_name: true, last_name: true, username: true, rating: true, phone: true, _count: {select: {ratingHistory: true}}},
+    select: {id: true, first_name: true, last_name: true, rating: true, phone: true, _count: {select: {ratingHistory: true}}},
   },
-  outPlayer: {select: {first_name: true, last_name: true, username: true}},
+  outPlayer: {select: {first_name: true, last_name: true}},
   league: {select: {league_id: true, league_name: true, end_date: true}},
   team: {select: {team_id: true, team_name: true, teamPlayers: {select: {player: {select: {rating: true}}}}}},
 } satisfies Prisma.MarketPostInclude;
@@ -112,11 +112,11 @@ function toView(p: PostRow, ctx: ViewContext): BurzaPost {
     kind: p.kind,
     created_at: p.created_at.toISOString(),
     closed,
-    author: {id: p.player.id, name: playerName(p.player)},
+    author: {id: p.player.id, name: displayName(p.player)},
     team: p.team ? {id: p.team.team_id, name: p.team.team_name} : null,
     league: p.league ? {id: p.league.league_id, name: p.league.league_name} : null,
     night,
-    out_player: p.outPlayer ? playerName(p.outPlayer) : null,
+    out_player: p.outPlayer ? displayName(p.outPlayer) : null,
     team_rating: p.team ? ratingInTens(p.team.teamPlayers.map((tp) => tp.player.rating)) : null,
     rating: p.player._count.ratingHistory > 0 ? p.player.rating : null,
     as_substitute: p.as_substitute,

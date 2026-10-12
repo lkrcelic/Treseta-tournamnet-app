@@ -3,14 +3,16 @@ import {NextRequest, NextResponse} from "next/server";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {getPlayerById} from "@/app/_lib/service/players/getById";
 import {isAdmin, requireUser} from "@/app/_lib/service/auth/requireUser";
-import {PlayerPartialResponseValidation, PlayerProfileUpdate} from "@/app/_interfaces/player";
+import {PLAYER_NOT_FOUND, PlayerProfileUpdate, PlayerPublicResponseValidation} from "@/app/_interfaces/player";
 import {prisma} from "@/app/_lib/prisma";
 import {errorResponse} from "@/app/_lib/apiErrors";
 import {USERNAME_TAKEN} from "@/app/_lib/validation/username";
+import {anyCase} from "@/app/_lib/helpers/query/anyCase";
+import {fullAccess} from "@/app/_lib/players/privacy";
 import {Prisma} from "@prisma/client";
 
-// Handle GET request to fetch a single player by ID.
-// Email and role are only shown to the player themselves and to admins.
+// One player. The player themselves and admins get every field; anyone else only the name and whether the account is
+// active (handoff §6 "Privacy"). A deleted player doesn't exist any more (404).
 export async function GET(request: NextRequest, {params}: { params: { id: string } }) {
   const auth = await requireUser(request);
   if (auth.response) return auth.response;
@@ -20,11 +22,10 @@ export async function GET(request: NextRequest, {params}: { params: { id: string
     const player = await getPlayerById(id);
 
     if (!player) {
-      return NextResponse.json({error: "Igrač ne postoji."}, {status: STATUS.NotFound});
+      return NextResponse.json({error: PLAYER_NOT_FOUND}, {status: STATUS.NotFound});
     }
 
-    const canSeeDetails = auth.user.id === id || isAdmin(auth.user);
-    return NextResponse.json(canSeeDetails ? player : PlayerPartialResponseValidation.parse(player), {status: STATUS.OK});
+    return NextResponse.json(fullAccess(auth.user, id) ? player : PlayerPublicResponseValidation.parse(player), {status: STATUS.OK});
   } catch (error) {
     console.log(error);
     return NextResponse.json({error: "Igrač se nije učitao."}, {status: STATUS.ServerError});
@@ -45,14 +46,15 @@ export async function PATCH(request: NextRequest, {params}: { params: { id: stri
     const {birth_date, username, phone, smoker} = PlayerProfileUpdate.parse(await request.json());
     if (username !== undefined) {
       const taken = await prisma.player.findFirst({
-        where: {username: {equals: username, mode: "insensitive"}, id: {not: id}},
+        where: {username: anyCase(username), id: {not: id}},
         select: {id: true},
       });
       if (taken) return usernameTakenResponse();
     }
 
     const {count} = await prisma.player.updateMany({
-      where: {id},
+      // a deleted player's anonymised row is not edited
+      where: {id, deleted_at: null},
       data: {
         ...(birth_date !== undefined && {birth_date: new Date(birth_date)}),
         ...(username !== undefined && {username}),
@@ -62,7 +64,7 @@ export async function PATCH(request: NextRequest, {params}: { params: { id: stri
       },
     });
     if (count === 0) {
-      return NextResponse.json({error: "Igrač ne postoji."}, {status: STATUS.NotFound});
+      return NextResponse.json({error: PLAYER_NOT_FOUND}, {status: STATUS.NotFound});
     }
     return NextResponse.json({birth_date, username, phone, smoker}, {status: STATUS.OK});
   } catch (error) {

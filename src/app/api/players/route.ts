@@ -1,33 +1,22 @@
 // src/app/api/players/route.ts
 
 import {NextRequest, NextResponse} from "next/server";
-import {isAdmin, requireUser} from "@/app/_lib/service/auth/requireUser";
+import {requireAdmin} from "@/app/_lib/service/auth/requireUser";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {getAllPlayers} from "@/app/_lib/service/players/getAll";
 import {searchPlayers} from "@/app/_lib/service/players/search";
 
+// Admin only: the players with their usernames and emails. ?query= finds the active players to add to a team.
 export async function GET(req: NextRequest) {
-  const {searchParams} = new URL(req.url);
-  const query = searchParams.get("query");
-
-  const auth = await requireUser(req);
+  const auth = await requireAdmin(req);
   if (auth.response) return auth.response;
 
+  const query = new URL(req.url).searchParams.get("query");
   try {
-    let players;
-
-    if (query) {
-      players = await searchPlayers(query)
-    } else {
-      // the full list includes emails, so only admins get it
-      if (!isAdmin(auth.user)) {
-        return NextResponse.json({error: "Nemaš ovlasti za ovu radnju."}, {status: STATUS.Forbidden});
-      }
-      players = await getAllPlayers();
-    }
-
+    const players = query ? await searchPlayers(query) : await getAllPlayers();
     return NextResponse.json(players, {status: STATUS.OK});
   } catch (error) {
+    console.error(error);
     return NextResponse.json({error: "Igrači se nisu učitali."}, {status: STATUS.ServerError});
   }
 }

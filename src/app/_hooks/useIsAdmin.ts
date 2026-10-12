@@ -1,25 +1,10 @@
 "use client";
 
-import {useEffect, useState} from "react";
+import useAuthStore from "@/app/_store/authStore";
 
-// Whether the logged-in player is an admin. Starts false so admin-only UI never flashes for players.
+// Whether the logged-in player is an admin, from the stored user (/api/auth/me fills it on every app load), so admin
+// layouts show right away instead of after a request. False when logged out. Only hides or shows UI: every admin
+// endpoint checks the role on the server.
 export default function useIsAdmin(): boolean {
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/session/is-admin")
-      .then((res) => (res.ok ? res.json() : false))
-      .then((data) => {
-        if (!cancelled) setIsAdmin(data === true);
-      })
-      .catch(() => {
-        // treated as not an admin
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return isAdmin;
+  return useAuthStore((s) => s.user?.is_admin === true);
 }

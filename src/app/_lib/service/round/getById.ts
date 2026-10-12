@@ -16,9 +16,9 @@ export async function getRoundById(id: number): Promise<RoundExtendedResponse> {
                     teamPlayers: {
                         include: {
                             player: {
+                                // no usernames: they are private (handoff §6), and any logged-in player reads this
                                 select: {
                                     id: true,
-                                    username: true,
                                     first_name: true,
                                     last_name: true,
                                 },
@@ -32,9 +32,9 @@ export async function getRoundById(id: number): Promise<RoundExtendedResponse> {
                     teamPlayers: {
                         include: {
                             player: {
+                                // no usernames: they are private (handoff §6), and any logged-in player reads this
                                 select: {
                                     id: true,
-                                    username: true,
                                     first_name: true,
                                     last_name: true,
                                 },

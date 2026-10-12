@@ -1,3 +1,4 @@
+import {fullName} from "@/app/_lib/players/names";
 import {matchesQuery} from "./text";
 
 // Manage Teams: what the screen shows for a team, kept free of React so it can be tested
@@ -25,9 +26,7 @@ export function toMTTeam(t: ApiTeam): MTTeam {
   };
 }
 
-export function fullName(p: MTPlayer): string {
-  return `${p.first_name} ${p.last_name}`.trim();
-}
+export {fullName};
 
 // The list's search looks at the team name and its players' usernames and names
 export function filterTeams(teams: MTTeam[], query: string): MTTeam[] {

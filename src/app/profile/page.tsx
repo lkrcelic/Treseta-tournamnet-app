@@ -8,6 +8,7 @@ import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useLogout from "@/app/_hooks/useLogout";
 import useMyTeams from "@/app/_hooks/useMyTeams";
 import {useMyRating} from "@/app/_hooks/useRatings";
+import {fullName} from "@/app/_lib/players/names";
 import {formatChange} from "@/app/_lib/ui/ratings";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {leagueDateString} from "@/app/_lib/dates";
@@ -66,7 +67,7 @@ export default function ProfilePage() {
     load();
   }, [load]);
 
-  const fullName = player ? `${player.first_name} ${player.last_name}`.trim() : "";
+  const name = player ? fullName(player) : "";
   const details = [
     {k: "Email", v: player?.email},
     {k: "Ime", v: player?.first_name},
@@ -89,12 +90,12 @@ export default function ProfilePage() {
       }}
     >
       <Box sx={{display: "flex", flexDirection: desktop ? "column" : "row", alignItems: desktop ? "flex-start" : "center", gap: desktop ? "22px" : "14px"}}>
-        <InitialsAvatar name={fullName || user?.username || ""} size={desktop ? 96 : 64} variant="navy" />
+        <InitialsAvatar name={name || user?.username || ""} size={desktop ? 96 : 64} variant="navy" />
         <Box sx={{display: "flex", flexDirection: "column", gap: desktop ? "4px" : "2px", minWidth: 0}}>
           <Box component="h1" sx={{m: 0, fontFamily: font.display, fontSize: desktop ? 34 : 28, fontWeight: 800, lineHeight: 1, letterSpacing: "-.02em", ...ellipsis}}>
             {player?.username ?? user?.username ?? <Skeleton width={160} />}
           </Box>
-          <Box sx={{fontSize: desktop ? 17 : 16, color: color.ink2}}>{player ? fullName : <Skeleton width={120} />}</Box>
+          <Box sx={{fontSize: desktop ? 17 : 16, color: color.ink2}}>{player ? name : <Skeleton width={120} />}</Box>
         </Box>
       </Box>
       {/* my rating: the last change and my place, opening my rating's detail */}
@@ -202,7 +203,8 @@ export default function ProfilePage() {
             <Box component="ul" aria-label="Igrači" sx={{listStyle: "none", m: 0, p: 0, display: "flex", flexWrap: "wrap", gap: "8px"}}>
               {t.teamPlayers?.map((tp) => (
                 <Box component="li" key={tp.player.id}>
-                  <PlayerChip name={tp.player.username} />
+                  {/* first names: usernames are private (handoff §6) */}
+                  <PlayerChip name={tp.player.first_name || tp.player.last_name} fullName={fullName(tp.player)} />
                 </Box>
               ))}
             </Box>

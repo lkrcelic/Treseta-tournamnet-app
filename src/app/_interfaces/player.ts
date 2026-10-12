@@ -71,6 +71,29 @@ export const PlayerPartialResponseValidation = z.object({
   last_name: z.string(),
 });
 
+// Another player as a regular user sees them (GET /api/players/[id]): the name and whether the account is active.
+// The username, email, phone, birth date and smoker flag are only for the player themselves and admins.
+export const PlayerPublicResponseValidation = z.object({
+  id: z.number().int(),
+  first_name: z.string(),
+  last_name: z.string(),
+  active: z.boolean(),
+});
+
+// A missing or deleted player (404): GET/PATCH /api/players/[id], the rating detail, the admin player actions
+export const PLAYER_NOT_FOUND = "Igrač ne postoji.";
+
+// A player on a page (privacy filter in _lib/players/privacy.ts): everyone gets the first five fields; the personal
+// keys are ABSENT (not null) unless the viewer is the player or an admin
+export type PlayerView = {id: number; first_name: string; last_name: string; name: string; active: boolean} & Partial<{
+  username: string;
+  email: string;
+  phone: string | null;
+  birth_date: string | null; // YYYY-MM-DD
+  smoker: boolean;
+  is_admin: boolean;
+}>;
+
 export const PlayerResponseValidation = PlayerPartialResponseValidation.extend({
   email: z.string(),
   player_role: z.string(),
@@ -87,6 +110,8 @@ export const PlayerSelfResponseValidation = PlayerResponseValidation.extend({
     .transform((d) => (d ? d.toISOString().slice(0, 10) : null)),
   phone: z.string().nullable().optional(),
   smoker: z.boolean().optional(),
+  // false = deactivated by an admin
+  active: z.boolean().optional(),
 });
 export type PlayerSelfResponse = z.infer<typeof PlayerSelfResponseValidation>;
 

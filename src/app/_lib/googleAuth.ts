@@ -4,7 +4,9 @@ import {prisma} from "@/app/_lib/prisma";
 import {Adapter} from "@auth/core/adapters";
 import Google from "next-auth/providers/google";
 import {googleSessionCookieOptions, SESSION_MAX_AGE_SECONDS} from "@/app/_lib/sessionConfig";
- 
+import {anyCase} from "@/app/_lib/helpers/query/anyCase";
+import {ACCOUNT_DEACTIVATED_CODE} from "@/app/_interfaces/login";
+
 // Usernames are unique, so "ivan" from ivan@gmail.com becomes "ivan2" when "ivan" is already taken
 async function availableUsername(base: string): Promise<string> {
   const taken = new Set(
@@ -64,7 +66,7 @@ function CustomPrismaAdapter() {
       // Ignoring case: Google reports "marko@gmail.com" for a player who signed up as "Marko@Gmail.com"
       getUserByEmail: async (email) => {
         const user = await prisma.player.findFirst({
-          where: {email: {equals: email, mode: "insensitive"}},
+          where: {email: anyCase(email)},
           orderBy: {id: "asc"},
         });
         if (!user) return null;
@@ -153,6 +155,23 @@ function CustomPrismaAdapter() {
   
   const customAdapter = CustomPrismaAdapter();
 
+// Whether the player this Google login opens may log in: the one linked to this Google account, else the one NextAuth
+// links by email (ignoring case, the oldest first, as getUserByEmail). A new email makes a new player, which may.
+// A deleted player's email was replaced and their Google link removed, so their Google login starts a new account.
+// A database error is thrown: NextAuth turns it into AccessDenied, which Prijava shows as a failed Google login.
+async function googleLoginAllowed(account: {provider: string; providerAccountId: string} | null, email: string | null | undefined) {
+  const linked = account
+    ? await prisma.account.findUnique({
+        where: {provider_providerAccountId: {provider: account.provider, providerAccountId: account.providerAccountId}},
+        select: {user: {select: {active: true}}},
+      })
+    : null;
+  const player =
+    linked?.user ??
+    (email ? await prisma.player.findFirst({where: {email: anyCase(email)}, orderBy: {id: "asc"}, select: {active: true}}) : null);
+  return player?.active !== false;
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: customAdapter as Adapter,
   providers: [Google({
@@ -173,6 +192,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       options: googleSessionCookieOptions,
     },
   },
+  callbacks: {
+    // a deactivated player can't log in with Google either: back to Prijava with its own code (not AccessDenied, which
+    // NextAuth also gives for any error in this callback), which shows "Račun je deaktiviran…"
+    signIn: async ({account, user}) =>
+      (await googleLoginAllowed(account, user.email)) || `/login?error=${ACCOUNT_DEACTIVATED_CODE}`,
+  },
+  // failed or refused Google logins come back to the app's own login page with ?error= (not NextAuth's pages)
+  pages: {signIn: "/login", error: "/login"},
   //debug: true,
 })
 

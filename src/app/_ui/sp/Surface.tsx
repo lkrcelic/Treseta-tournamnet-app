@@ -71,8 +71,9 @@ export function InitialsAvatar({
   );
 }
 
-// Player chip: small avatar + username (profile "My Teams", manage league)
-export function PlayerChip({name, size = "md"}: {name: string; size?: "sm" | "md"}) {
+// Player chip: small avatar + a name (Moj profil's teams, Upravljanje ligom). `fullName` gives the avatar both
+// initials when the chip shows only the first name (design 13c/13e: "IP Ivan").
+export function PlayerChip({name, fullName, size = "md"}: {name: string; fullName?: string; size?: "sm" | "md"}) {
   const sm = size === "sm";
   return (
     <Box
@@ -91,7 +92,7 @@ export function PlayerChip({name, size = "md"}: {name: string; size?: "sm" | "md
         whiteSpace: "nowrap",
       }}
     >
-      <InitialsAvatar name={name} size={sm ? 26 : 28} />
+      <InitialsAvatar name={fullName || name} size={sm ? 26 : 28} />
       {name}
     </Box>
   );

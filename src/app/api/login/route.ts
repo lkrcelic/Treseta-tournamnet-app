@@ -8,6 +8,8 @@ import {STATUS} from "@/app/_lib/statusCodes";
 import {extractCookieWithoutSignature, signCookie} from "@/app/_lib/service/auth/signCookie";
 import { lucia } from "@/app/_lib/luciaAuth";
 import {clearFailedLogins, isLoginLocked, loginLimitKey, recordFailedLogin} from "@/app/_lib/rateLimiting/loginLimiting";
+import {anyCase} from "@/app/_lib/helpers/query/anyCase";
+import {ACCOUNT_DEACTIVATED} from "@/app/_interfaces/login";
 
 // A new response each time: a response body can only be sent once
 const notFoundResponse = () => NextResponse.json({error: "Pogrešno korisničko ime ili lozinka."}, {status: STATUS.NotFound});
@@ -24,10 +26,7 @@ export async function POST(req: NextRequest) {
       await prisma.player.findFirst({where: {OR: [{username: login}, {email: login}]}}) ??
       await prisma.player.findFirst({
         where: {
-          OR: [
-            {username: {equals: login, mode: "insensitive"}},
-            {email: {equals: login, mode: "insensitive"}},
-          ],
+          OR: [{username: anyCase(login)}, {email: anyCase(login)}],
         },
         orderBy: {id: "asc"},
       });
@@ -49,6 +48,10 @@ export async function POST(req: NextRequest) {
       return notFoundResponse();
     }
     clearFailedLogins(limitKey);
+    // deactivated by an admin (a deleted player has no password, so they never get this far)
+    if (!existingUser.active) {
+      return NextResponse.json({error: ACCOUNT_DEACTIVATED}, {status: STATUS.Forbidden});
+    }
 
     /*
       It is neccessary to provide sessionId because lucia implements a different kind of id generator

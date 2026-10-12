@@ -8,13 +8,26 @@ export function networkError(error: unknown): unknown {
   return new Error(NETWORK_ERROR);
 }
 
-// fetch() for the fetchers: a request that fails before any response throws NETWORK_ERROR
+// What the app does when a request answers 401 (the login ended: expired, or an admin deactivated the account).
+// UserBootstrapper sets it to checkSession, which sends the player to Prijava; kept as a hook so the fetchers don't
+// depend on the app's stores.
+let onUnauthorized: (() => void) | null = null;
+
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  onUnauthorized = handler;
+}
+
+// fetch() for the fetchers: a request that fails before any response throws NETWORK_ERROR, and a 401 also starts the
+// session check (the screen still gets the response and shows its error until the page changes)
 export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  let response: Response;
   try {
-    return await fetch(input, init);
+    response = await fetch(input, init);
   } catch (error) {
     throw networkError(error);
   }
+  if (response.status === 401) onUnauthorized?.();
+  return response;
 }
 
 // Reads the {error} message an API route sends back (Croatian), falling back to the fetcher's own sentence.

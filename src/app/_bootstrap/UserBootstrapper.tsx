@@ -1,39 +1,32 @@
 "use client";
 
-import {isPublicBurzaPath} from "@/app/_lib/publicPaths";
+import {setUnauthorizedHandler} from "@/app/_fetchers/errorMessage";
 import {useEffect} from "react";
-import {refreshUser} from "./refreshUser";
+import {checkSession} from "./sessionCheck";
 
 // Keeps the stored user in sync with the session cookie. The stored user is used right away, then checked against
 // the server, so logging in as someone else (or a session expiring) doesn't leave the previous player's data behind.
-// The check also renews the login, so it runs again when a phone brings a long-open tab back.
+// The check also renews the login, so it runs again when a phone brings a long-open tab back, and whenever a request
+// answers 401 (an admin deactivated the account, or the login ended on another device).
 const RECHECK_AFTER_MS = 15 * 60 * 1000;
-
-// pages that work without logging in
-function isPublicPath(path: string): boolean {
-  return path.startsWith("/login") || path.startsWith("/signup") || /^\/league\/\d+\/standings\/?$/.test(path) || isPublicBurzaPath(path);
-}
 
 export default function UserBootstrapper() {
   useEffect(() => {
-    let cancelled = false;
     let lastCheck = 0;
-    const run = async () => {
+    // The middleware can only check that a session cookie is there and signed. When the login has ended,
+    // /api/auth/me removes the dead cookie and checkSession sends the player to Prijava (public pages stay).
+    const run = () => {
       lastCheck = Date.now();
-      const status = await refreshUser();
-      // The middleware can only check that a session cookie is there and signed. /api/auth/me has removed the dead
-      // cookie by now; send the player to the login page (the season table stays public).
-      if (!cancelled && status === 401 && !isPublicPath(window.location.pathname)) {
-        window.location.replace("/login");
-      }
+      checkSession();
     };
     run();
+    setUnauthorizedHandler(run);
     const onVisible = () => {
       if (document.visibilityState === "visible" && Date.now() - lastCheck > RECHECK_AFTER_MS) run();
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
-      cancelled = true;
+      setUnauthorizedHandler(null);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);

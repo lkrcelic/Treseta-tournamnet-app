@@ -7,6 +7,7 @@ import {STATUS} from "@/app/_lib/statusCodes";
 import {errorResponse} from "@/app/_lib/apiErrors";
 import {TeamExtendedResponseValidation, TeamUpdateValidation} from "@/app/_interfaces/team";
 import {renameTeam} from "@/app/_lib/service/team/update";
+import {rosterView} from "@/app/_lib/players/privacy";
 
 // Handle GET request to fetch a single team by ID
 export async function GET(request: NextRequest, {params}: { params: { id: string } }) {
@@ -19,9 +20,10 @@ export async function GET(request: NextRequest, {params}: { params: { id: string
             where: {
                 team_id: Number(id),
             },
-            // the response includes the players, so load them (without this every request failed validation)
+            // the response includes the players, so load them (without this every request failed validation);
+            // rosterView below drops the usernames others may not see and puts the players in Croatian name order
             include: {
-                teamPlayers: {include: {player: {select: {id: true, username: true, first_name: true, last_name: true}}}},
+                teamPlayers: {select: {player: {select: {id: true, first_name: true, last_name: true, username: true}}}},
                 leagueTeams: {select: {active: true, league: {select: {league_id: true, league_name: true}}}},
             },
         });
@@ -29,7 +31,10 @@ export async function GET(request: NextRequest, {params}: { params: { id: string
         if (!dbTeam) {
             return NextResponse.json({error: "Ekipa ne postoji."}, {status: STATUS.NotFound});
         }
-        const team = TeamExtendedResponseValidation.parse(dbTeam);
+        const team = TeamExtendedResponseValidation.parse({
+            ...dbTeam,
+            teamPlayers: rosterView(auth.user, dbTeam.teamPlayers.map((tp) => tp.player)).map((player) => ({player})),
+        });
 
         return NextResponse.json(team, {status: STATUS.OK});
     } catch (error) {

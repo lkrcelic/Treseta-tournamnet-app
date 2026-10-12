@@ -1,5 +1,4 @@
 import {z} from "zod";
-import {PlayerPartialResponseValidation} from "@/app/_interfaces/player";
 
 const TeamName = z.string().trim().min(1, "Ime ekipe je obavezno.").max(100, "Ime ekipe je predugo.");
 
@@ -34,6 +33,15 @@ export const AddTeammateRequestValidation = z.object({
   player_id: z.number().int(),
 });
 
+// A player on a team's roster; the username is only sent to admins and the player themselves (handoff §6 "Privacy",
+// _lib/players/privacy.ts rosterView)
+const TeamMemberValidation = z.object({
+  id: z.number().int(),
+  first_name: z.string(),
+  last_name: z.string(),
+  username: z.string().optional(),
+});
+
 export const TeamExtendedResponseValidation = z.object({
   team_id: z.number().int(),
   team_name: z.string(),
@@ -42,7 +50,7 @@ export const TeamExtendedResponseValidation = z.object({
   founder_id2: z.number().int().nullable().optional(),
   teamPlayers: z.array(
     z.object({
-      player: PlayerPartialResponseValidation,
+      player: TeamMemberValidation,
     })
   ),
   leagueTeams: z

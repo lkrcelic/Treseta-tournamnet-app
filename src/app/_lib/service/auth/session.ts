@@ -9,9 +9,17 @@ export type ResolvedSession =
   | {user: Player; kind: "google"; token: string}
   | {user: Player; kind: "password"; sessionId: string};
 
-// The session behind the request's cookies, or null. Database errors are thrown, so a caller can tell
-// "not logged in" from "could not check".
+// The session behind the request's cookies, or null. A deactivated (or deleted) player has no session: every API
+// answers 401 and /api/auth/me removes the cookies. Database errors are thrown, so a caller can tell "not logged in"
+// from "could not check".
 export async function resolveSession(req: NextRequest): Promise<ResolvedSession | null> {
+  const session = await findSession(req);
+  return session?.user.active ? session : null;
+}
+
+// The session behind the request's cookies whether or not its player is still active (/api/auth/me tells a
+// deactivated account from a logged-out one); everything else uses resolveSession.
+export async function findSession(req: NextRequest): Promise<ResolvedSession | null> {
   const googleToken = req.cookies.get(process.env.GOOGLE_AUTH_COOKIE)?.value;
   if (googleToken) {
     const session = await prisma.session.findUnique({

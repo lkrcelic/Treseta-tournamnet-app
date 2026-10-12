@@ -32,6 +32,10 @@ model Player {
   smoker          Boolean   @default(false)
   // the player has answered it (at sign-up, on the profile, or when the app asks the players who signed up before)
   smoker_answered Boolean   @default(false)
+  // false = deactivated by an admin: can't log in, isn't offered for teams or lineups; results and rating stay
+  active          Boolean   @default(true)
+  // set when an admin deleted the player; the row stays anonymised ("Obrisani igrač"). CHECK: deleted ⇒ inactive
+  deleted_at      DateTime?
   created_at      DateTime  @default(now())
   last_updated_at DateTime? @updatedAt
 

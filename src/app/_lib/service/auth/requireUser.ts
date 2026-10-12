@@ -1,7 +1,8 @@
-import {Player, RoleEnum} from "@prisma/client";
+import {Player} from "@prisma/client";
 import {NextRequest, NextResponse} from "next/server";
 import {prisma} from "@/app/_lib/prisma";
 import {STATUS} from "@/app/_lib/statusCodes";
+import {adminCheck, isAdminRole} from "@/app/_lib/players/admin";
 import {getAuthorizedUser} from "./getAuthorizedUser";
 
 // The middleware lets every /api request through, so each route checks the session itself with these helpers:
@@ -9,30 +10,34 @@ import {getAuthorizedUser} from "./getAuthorizedUser";
 //   if (auth.response) return auth.response;
 export type AuthResult = {user: Player; response?: undefined} | {user?: undefined; response: NextResponse};
 
+// A deactivated player has no session (resolveSession), so they get the 401 too and the app sends them to /login
 export async function requireUser(req: NextRequest): Promise<AuthResult> {
   const user = await getAuthorizedUser(req);
-  if (!user) {
-    return {response: NextResponse.json({error: "Prijava je istekla. Prijavi se ponovno."}, {status: STATUS.Unauthorized})};
+  if (!user) return {response: unauthorizedResponse()};
+  return {user};
+}
+
+// Every admin endpoint starts with this (checked by __tests__/adminGuards.test.ts)
+export async function requireAdmin(req: NextRequest): Promise<AuthResult> {
+  const user = await getAuthorizedUser(req);
+  const check = adminCheck(user);
+  if (check === "unauthorized") return {response: unauthorizedResponse()};
+  if (check === "forbidden") {
+    return {response: NextResponse.json({error: "Nemaš ovlasti za ovu radnju."}, {status: STATUS.Forbidden})};
   }
   return {user};
 }
 
-export async function requireAdmin(req: NextRequest): Promise<AuthResult> {
-  const auth = await requireUser(req);
-  if (auth.response) return auth;
-  if (!isAdmin(auth.user)) {
-    return {response: NextResponse.json({error: "Nemaš ovlasti za ovu radnju."}, {status: STATUS.Forbidden})};
-  }
-  return auth;
-}
+// the same rule under the name the routes use
+export {isAdminRole as isAdmin};
 
-export function isAdmin(user: Player): boolean {
-  return user.player_role === RoleEnum.ADMIN;
+function unauthorizedResponse(): NextResponse {
+  return NextResponse.json({error: "Prijava je istekla. Prijavi se ponovno."}, {status: STATUS.Unauthorized});
 }
 
 // Only the players of the two teams in a round (or an admin) may enter or change its results.
 export async function canPlayRound(user: Player, roundId: number | null | undefined): Promise<boolean> {
-  if (isAdmin(user)) return true;
+  if (isAdminRole(user)) return true;
   if (roundId == null) return false;
 
   const round = await prisma.round.findFirst({

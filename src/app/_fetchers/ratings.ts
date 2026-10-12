@@ -7,8 +7,10 @@ export async function getRatingsAPI(): Promise<RatingsList> {
   return response.json();
 }
 
-export async function getPlayerRatingAPI(playerId: number): Promise<PlayerRatingDetail> {
+// One player's rating; null when there is no such player (never existed, deleted, or never on a team)
+export async function getPlayerRatingAPI(playerId: number): Promise<PlayerRatingDetail | null> {
   const response = await apiFetch(`/api/ratings/${playerId}`);
+  if (response.status === 404) return null;
   if (!response.ok) throw new Error(await responseErrorMessage(response, "Rejting igrača se nije učitao."));
   return response.json();
 }

@@ -1,14 +1,23 @@
 "use client";
 
 import {refreshUser} from "@/app/_bootstrap/refreshUser";
-import {loginUser} from "@/app/_fetchers/authentication/login";
+import {loginUser, LoginOutcome} from "@/app/_fetchers/authentication/login";
+import {ACCOUNT_DEACTIVATED} from "@/app/_interfaces/login";
 import {ErrorNote, PasswordField, PrimaryButton, TextField} from "@/app/_ui/sp";
 import {Box} from "@mui/material";
 import React, {useState} from "react";
 
 type Errors = {username?: string; password?: string; form?: string};
 
-export default function LogInForm({onSuccess, soft = false}: {onSuccess: () => void; soft?: boolean}) {
+const OUTCOME_ERROR: Record<Exclude<LoginOutcome, "ok">, string> = {
+  wrong: "Korisničko ime ili lozinka su netočni.",
+  locked: "Previše neuspjelih pokušaja. Pokušaj ponovno za nekoliko minuta.",
+  inactive: ACCOUNT_DEACTIVATED,
+  error: "Prijava trenutno nije moguća. Pokušaj ponovno.",
+};
+
+// onSubmit: the player tries again (Prijava then hides an older error, e.g. a failed Google login)
+export default function LogInForm({onSuccess, onSubmit, soft = false}: {onSuccess: () => void; onSubmit?: () => void; soft?: boolean}) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Errors>({});
@@ -17,6 +26,7 @@ export default function LogInForm({onSuccess, soft = false}: {onSuccess: () => v
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submitting) return;
+    onSubmit?.();
     const next: Errors = {};
     if (!username.trim()) next.username = "Upiši korisničko ime ili email.";
     if (!password) next.password = "Upiši lozinku.";
@@ -32,16 +42,9 @@ export default function LogInForm({onSuccess, soft = false}: {onSuccess: () => v
         onSuccess();
         return;
       }
-      setErrors({
-        form:
-          outcome === "wrong"
-            ? "Korisničko ime ili lozinka su netočni."
-            : outcome === "locked"
-              ? "Previše neuspjelih pokušaja. Pokušaj ponovno za nekoliko minuta."
-              : "Prijava trenutno nije moguća. Pokušaj ponovno.",
-      });
+      setErrors({form: OUTCOME_ERROR[outcome]});
     } catch {
-      setErrors({form: "Prijava trenutno nije moguća. Pokušaj ponovno."});
+      setErrors({form: OUTCOME_ERROR.error});
     }
     setSubmitting(false);
   };

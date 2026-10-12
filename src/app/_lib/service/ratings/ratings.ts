@@ -7,14 +7,17 @@ import {ratedMatch} from "@/app/_lib/game/scoring";
 import {RATINGS_FROM} from "@/app/_lib/service/admin/recalc";
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {PlayerRatingDetail, RatingNight, RatingRow, RatingsList} from "@/app/_interfaces/ratings";
+import {PLAYER_NOT_FOUND} from "@/app/_interfaces/player";
+import {displayName} from "@/app/_lib/players/names";
 
-// Player ratings across all leagues: everyone on a team or with a rated round, highest rating first
+// Player ratings across all leagues: everyone on a team or with a rated round, highest rating first. Deleted players
+// aren't listed (their rounds still count for everyone else's rating); usernames are private, so they aren't sent.
 
-type Row = {id: number; first_name: string; last_name: string; username: string; rating: number; team: string | null; rounds: number; change: number | null};
+type Row = {id: number; first_name: string; last_name: string; rating: number; team: string | null; rounds: number; change: number | null};
 
 export async function listRatings(viewerId: number | null): Promise<RatingsList> {
   const rows = await prisma.$queryRaw<Row[]>`
-      SELECT p.id, p.first_name, p.last_name, p.username, p.rating,
+      SELECT p.id, p.first_name, p.last_name, p.rating,
              team.team_name                AS team,
              COALESCE(h.rounds, 0)::int    AS rounds,
              h.change
@@ -34,11 +37,12 @@ export async function listRatings(viewerId: number | null): Promise<RatingsList>
           ORDER BY (SELECT MAX(r.round_date) FROM "Round" r WHERE r.team1_id = t.team_id OR r.team2_id = t.team_id) DESC NULLS LAST,
                    t.team_name
           LIMIT 1) team ON true
-      WHERE h.player_id IS NOT NULL
-         OR EXISTS (SELECT 1 FROM "TeamPlayer" tp WHERE tp.player_id = p.id AND tp.team_id <> ${BYE_TEAM_ID})`;
+      WHERE p.deleted_at IS NULL
+        AND (h.player_id IS NOT NULL
+         OR EXISTS (SELECT 1 FROM "TeamPlayer" tp WHERE tp.player_id = p.id AND tp.team_id <> ${BYE_TEAM_ID}))`;
 
   const players = rows
-    .map((r) => ({...r, name: `${r.first_name} ${r.last_name}`.trim() || r.username}))
+    .map((r) => ({...r, name: displayName(r)}))
     .sort((a, b) => b.rating - a.rating || a.name.localeCompare(b.name, "hr"));
 
   let rank = 0;
@@ -48,7 +52,6 @@ export async function listRatings(viewerId: number | null): Promise<RatingsList>
       id: p.id,
       rank,
       name: p.name,
-      username: p.username,
       team: p.team,
       rating: p.rating,
       change: p.change,
@@ -60,10 +63,11 @@ export async function listRatings(viewerId: number | null): Promise<RatingsList>
   return {players: list, me: viewerId != null && list.some((p) => p.id === viewerId) ? viewerId : null};
 }
 
+// A deleted player (or one never on a team) isn't on the list: 404 "Igrač ne postoji."
 export async function getPlayerRating(playerId: number): Promise<PlayerRatingDetail> {
   const {players} = await listRatings(null);
   const player = players.find((p) => p.id === playerId);
-  if (!player) throw new NotFoundError("Igrač ne postoji.");
+  if (!player) throw new NotFoundError(PLAYER_NOT_FOUND);
 
   const history = await prisma.playerRatingHistory.findMany({
     where: {player_id: playerId},
