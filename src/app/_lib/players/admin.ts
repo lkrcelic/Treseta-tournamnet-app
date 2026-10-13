@@ -55,7 +55,7 @@ export function adminActionError(
 
 // --- Delete (anonymise) -------------------------------------------------------------------------------------------
 
-// What a deleted player is called everywhere their name still shows: lineups, Burza ("umjesto: Obrisani igrač")
+// What a deleted player is called everywhere their name still shows: lineups, Burza ("igra s: Obrisani igrač")
 const DELETED_PLAYER_NAME = {first_name: "Obrisani", last_name: "igrač"} as const;
 
 /**

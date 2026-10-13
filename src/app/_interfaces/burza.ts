@@ -14,13 +14,13 @@ const savePhone = z.boolean().default(false);
 // A new ad. save_phone also saves the number on the player's profile.
 export const BurzaCreateRequestValidation = z
   .discriminatedUnion("kind", [
-    // Trebam zamjenu: the team, its league night and who can't play
+    // Trebam zamjenu: the team, its league night and the player the substitute plays with (who asks for one)
     z.object({
       kind: z.literal("SUBSTITUTE"),
       league_id: z.number().int(),
       team_id: z.number().int(),
       night: isoDate,
-      out_player_id: z.number().int(),
+      with_player_id: z.number().int(),
       phone,
       note: note(500),
       save_phone: savePhone,
@@ -34,7 +34,7 @@ export const BurzaCreateRequestValidation = z
 
 // spelled out: without strict mode zod infers every field as optional
 export type BurzaCreate =
-  | {kind: "SUBSTITUTE"; league_id: number; team_id: number; night: string; out_player_id: number; phone: string; note: string; save_phone: boolean}
+  | {kind: "SUBSTITUTE"; league_id: number; team_id: number; night: string; with_player_id: number; phone: string; note: string; save_phone: boolean}
   | {kind: "PARTNER"; league_id: number; phone: string; note: string; save_phone: boolean}
   | {kind: "AVAILABLE"; as_substitute: boolean; as_partner: boolean; phone: string; note: string; save_phone: boolean};
 
@@ -61,7 +61,8 @@ export type BurzaPost = {
   team: {id: number; name: string} | null;
   league: {id: number; name: string} | null;
   night: string | null; // YYYY-MM-DD
-  out_player: string | null;
+  // SUBSTITUTE: the player the substitute plays with ("igra s: ...")
+  with_player: string | null;
   // SUBSTITUTE: the team players' average rating, in tens
   team_rating: number | null;
   // PARTNER / AVAILABLE: the author's rating, null before their first rated round
@@ -91,8 +92,8 @@ export type MyBurzaPost = BurzaPost & {
   closed_at: string | null; // ISO timestamp, when it was closed by hand
   // a substitute ad whose night has passed or was removed: publishing it again needs a new night
   night_gone: boolean;
-  // SUBSTITUTE: the player who can't come, to fill in the form again for a new night
-  out_player_id: number | null;
+  // SUBSTITUTE: the player the substitute plays with, to fill in the form again for a new night
+  with_player_id: number | null;
 };
 
 // Aktivni newest first; Prošli by when they ended, the latest first (at most 50)
@@ -112,7 +113,8 @@ export type MyLeague = {
   team_name: string;
   // the team is active in the league (inactive teams aren't signed in for rounds)
   active: boolean;
-  players: {id: number; name: string; rating: number; me: boolean}[];
+  // active: false for a deactivated player (still on the roster, but not offered in Trebam zamjenu)
+  players: {id: number; name: string; rating: number; me: boolean; active: boolean}[];
   nights: string[]; // YYYY-MM-DD, in date order
   played: string[]; // the nights that have rounds
 };

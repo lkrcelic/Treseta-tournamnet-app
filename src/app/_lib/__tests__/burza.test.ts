@@ -52,6 +52,7 @@ import {
   repostOpensForm,
   STATUS_PILL,
   substituteNights,
+  substituteRoster,
   teamsAsking,
   teamsLooking,
   timeAgo,
@@ -223,7 +224,7 @@ const base: BurzaPost = {
   team: {id: 3, name: "Slavonci"},
   league: {id: 2, name: "Liga Četvrtak"},
   night: "2026-10-15",
-  out_player: "Ante Kovač",
+  with_player: "Ante Kovač",
   team_rating: 1550,
   rating: null,
   as_substitute: false,
@@ -237,14 +238,14 @@ const base: BurzaPost = {
 
 test("ad cards and pages say what each kind needs", () => {
   assert.equal(postSub(base), "Liga Četvrtak · rejting 1550");
-  assert.equal(postBody(base), "Umjesto: Ante Kovač · rejting ekipe oko 1550");
+  assert.equal(postBody(base), "Igra s: Ante Kovač · rejting ekipe oko 1550");
   assert.equal(postHeadline(base), "Ekipa Slavonci traži zamjenu");
   assert.deepEqual(
     postDetails(base).map((d) => `${d.label}: ${d.value}`),
-    ["Liga: Liga Četvrtak", "Večer: čet 15. 10.", "Umjesto: Ante Kovač", "Rejting ekipe: oko 1550"]
+    ["Liga: Liga Četvrtak", "Večer: čet 15. 10.", "Igra s: Ante Kovač", "Rejting ekipe: oko 1550"]
   );
 
-  const partner: BurzaPost = {...base, kind: "PARTNER", team: null, night: null, out_player: null, team_rating: null, author: {id: 8, name: "Antonio Jurić"}};
+  const partner: BurzaPost = {...base, kind: "PARTNER", team: null, night: null, with_player: null, team_rating: null, author: {id: 8, name: "Antonio Jurić"}};
   assert.equal(postSub(partner), "Liga Četvrtak");
   assert.equal(postBody(partner), "Javi se ako i ti tražiš partnera.");
   assert.equal(postHeadline(partner), "Antonio Jurić");
@@ -292,7 +293,7 @@ test("a new ad is checked before it's sent", () => {
   assert.ok(!BurzaCreateRequestValidation.safeParse({kind: "PARTNER", league_id: 2, phone: "091 23"}).success);
   assert.ok(!BurzaCreateRequestValidation.safeParse({kind: "AVAILABLE", as_substitute: false, as_partner: false, phone: "091 234 5678"}).success);
   assert.ok(BurzaCreateRequestValidation.safeParse({kind: "AVAILABLE", as_substitute: false, as_partner: true, phone: "091 234 5678"}).success);
-  assert.ok(!BurzaCreateRequestValidation.safeParse({kind: "SUBSTITUTE", league_id: 2, team_id: 3, night: "15.10.2026", out_player_id: 4, phone: "091 234 5678"}).success);
+  assert.ok(!BurzaCreateRequestValidation.safeParse({kind: "SUBSTITUTE", league_id: 2, team_id: 3, night: "15.10.2026", with_player_id: 4, phone: "091 234 5678"}).success);
 });
 
 // Moji oglasi
@@ -346,7 +347,7 @@ test("an ad closes by itself on its night or its league's end, and only a substi
   assert.ok(!nightGone({kind: "PARTNER", closed: false, league_id: 2, night: null, league_end: "2026-10-01"}, ctx));
 });
 
-const team: SubstituteFacts = {admin: false, onTeam: true, teamInLeague: true, outOnTeam: true, night: "2026-10-20", leagueNight: true, today: "2026-10-13"};
+const team: SubstituteFacts = {admin: false, onTeam: true, teamInLeague: true, withOnTeam: true, night: "2026-10-20", leagueNight: true, today: "2026-10-13"};
 
 test("a substitute ad, new or published again, is for the author's team, its player and a league night still ahead", () => {
   assert.equal(substituteError(team, "create"), null);
@@ -356,7 +357,7 @@ test("a substitute ad, new or published again, is for the author's team, its pla
   const cases: [Partial<SubstituteFacts>, string, string][] = [
     [{onTeam: false}, "Zamjenu možeš tražiti samo za svoju ekipu.", "Više nisi u toj ekipi."],
     [{teamInLeague: false}, "Ekipa ne igra u ovoj ligi.", "Ekipa više ne igra u toj ligi."],
-    [{outOnTeam: false}, "Igrač koji ne može mora biti u ekipi.", "Igrač kojeg mijenjaš više nije u ekipi."],
+    [{withOnTeam: false}, "Igrač s kojim zamjena igra mora biti u ekipi.", "Igrač s kojim zamjena igra više nije u ekipi."],
     [{night: "2026-10-06"}, "Ta večer je već prošla.", "Odaberi novu večer."],
     [{leagueNight: false}, "Liga te večeri ne igra.", "Odaberi novu večer."],
   ];
@@ -394,8 +395,8 @@ test("only the author publishes an ad again, and it has to be able to go up", ()
 });
 
 test("a new or published-again ad that copies an open one is matched on what makes it the same", () => {
-  const ad = {team_id: 3, league_id: 2, night: "2026-10-20", out_player_id: 4};
-  assert.deepEqual(twinFields({kind: "SUBSTITUTE", ...ad}), {kind: "SUBSTITUTE", team_id: 3, night: "2026-10-20", out_player_id: 4});
+  const ad = {team_id: 3, league_id: 2, night: "2026-10-20", with_player_id: 4};
+  assert.deepEqual(twinFields({kind: "SUBSTITUTE", ...ad}), {kind: "SUBSTITUTE", team_id: 3, night: "2026-10-20", with_player_id: 4});
   assert.deepEqual(twinFields({kind: "PARTNER", ...ad}), {kind: "PARTNER", league_id: 2});
   // a player has one open availability ad
   assert.deepEqual(twinFields({kind: "AVAILABLE", ...ad}), {kind: "AVAILABLE"});
@@ -414,21 +415,21 @@ const mine: MyBurzaPost = {
   team: {id: 3, name: "Dalmatinci"},
   league: {id: 2, name: "Liga Utorak"},
   night: "2026-10-13",
-  out_player: "Ivan Perić",
+  with_player: "Ivan Perić",
   mine: true,
   can_close: true,
   status: "ACTIVE",
   ends_on: "2026-10-13",
   closed_at: null,
   night_gone: false,
-  out_player_id: 4,
+  with_player_id: 4,
 };
-const minePartner: MyBurzaPost = {...mine, kind: "PARTNER", team: null, night: null, out_player: null, out_player_id: null, ends_on: "2026-12-15", league: {id: 4, name: "Liga Četvrtak"}};
+const minePartner: MyBurzaPost = {...mine, kind: "PARTNER", team: null, night: null, with_player: null, with_player_id: null, ends_on: "2026-12-15", league: {id: 4, name: "Liga Četvrtak"}};
 const mineAvailable: MyBurzaPost = {...minePartner, kind: "AVAILABLE", league: null, ends_on: null, as_substitute: true, as_partner: true};
 
 test("Moji oglasi says what each ad is and when it closes", () => {
   assert.equal(myPostTitle(mine), "Ekipa Dalmatinci traži zamjenu");
-  assert.equal(myPostSub(mine), "Liga Utorak · uto 13. 10. · umjesto: Ivan Perić");
+  assert.equal(myPostSub(mine), "Liga Utorak · uto 13. 10. · igra s: Ivan Perić");
   assert.equal(myPostTitle(minePartner), "Tražim partnera");
   assert.equal(myPostSub(minePartner), "Liga Četvrtak");
   assert.equal(myPostTitle(mineAvailable), "Dostupan sam");
@@ -467,14 +468,20 @@ test("Moji oglasi says what each ad is and when it closes", () => {
   assert.equal(myTabLabel("past", 0), "Prošli · 0");
 });
 
+test("Tko traži zamjenu? lists the player first, then the active teammates", () => {
+  const p = (id: number, me = false, active = true) => ({id, name: `Igrač ${id}`, rating: 1500, me, active});
+  assert.deepEqual(substituteRoster([p(1), p(2, false, false), p(3, true), p(4)]).map((x) => x.id), [3, 1, 4]);
+  assert.deepEqual(substituteRoster([]), []);
+});
+
 test("Objavi ponovno opens the form for a substitute ad whose night is gone or an availability ad without a number", () => {
   assert.ok(!repostOpensForm({...mine, status: "CLOSED"}));
   assert.ok(repostOpensForm({...mine, status: "EXPIRED", night_gone: true}));
   assert.ok(!repostOpensForm({...mineAvailable, status: "CLOSED", phone: "+385911234567"}));
   assert.ok(repostOpensForm({...mineAvailable, status: "CLOSED", phone: null}));
   // filled in from the ad; the phone number comes from the ad (repost=), not the address
-  assert.equal(repostFormHref({...mine, id: 9, note: "Počinjemo u 19 h"}), "/burza/novi/zamjena?repost=9&league=2&team=3&out=4&note=Po%C4%8Dinjemo+u+19+h");
-  assert.equal(repostFormHref({...mine, id: 9}), "/burza/novi/zamjena?repost=9&league=2&team=3&out=4");
+  assert.equal(repostFormHref({...mine, id: 9, note: "Počinjemo u 19 h"}), "/burza/novi/zamjena?repost=9&league=2&team=3&with=4&note=Po%C4%8Dinjemo+u+19+h");
+  assert.equal(repostFormHref({...mine, id: 9}), "/burza/novi/zamjena?repost=9&league=2&team=3&with=4");
   assert.equal(repostFormHref({...mineAvailable, id: 12, phone: null}), "/burza/novi/dostupan?repost=12");
 });
 

@@ -1,6 +1,6 @@
 // Burza igrača text: the ad cards, the Home card and how long ago an ad was published. Framework free so it can be
 // unit tested.
-import type {BurzaKind, BurzaPost, BurzaStatus, MyBurzaPost} from "@/app/_interfaces/burza";
+import type {BurzaKind, BurzaPost, BurzaStatus, MyBurzaPost, MyLeague} from "@/app/_interfaces/burza";
 import {leagueDateString} from "@/app/_lib/dates";
 import {nightLabel} from "@/app/_lib/nights";
 import {count, NOUN, plural} from "./text";
@@ -83,7 +83,7 @@ export function postSub(p: BurzaPost): string {
 // The ad's text in the list
 export function postBody(p: BurzaPost): string {
   if (p.kind === "SUBSTITUTE") {
-    return [p.out_player && `Umjesto: ${p.out_player}`, p.team_rating != null && `rejting ekipe oko ${p.team_rating}`].filter(Boolean).join(" · ");
+    return [p.with_player && `Igra s: ${p.with_player}`, p.team_rating != null && `rejting ekipe oko ${p.team_rating}`].filter(Boolean).join(" · ");
   }
   if (p.kind === "PARTNER") return p.note || "Javi se ako i ti tražiš partnera.";
   return [p.note || "Javi se ako trebate igrača.", p.rating != null && `rejting ${p.rating}`].filter(Boolean).join(" · ");
@@ -102,12 +102,18 @@ export function postDetails(p: BurzaPost): {label: string; value: string}[] {
     return [
       {label: "Liga", value: p.league?.name ?? "—"},
       {label: "Večer", value: p.night ? nightLabel(p.night) : "—"},
-      {label: "Umjesto", value: p.out_player ?? "—"},
+      {label: "Igra s", value: p.with_player ?? "—"},
       {label: "Rejting ekipe", value: p.team_rating != null ? `oko ${p.team_rating}` : "—"},
     ];
   }
   if (p.kind === "PARTNER") return [{label: "Liga", value: p.league?.name ?? "—"}, {label: "Rejting", value: rating}];
   return [{label: "Dostupan za", value: availableAs(p.as_substitute, p.as_partner)}, {label: "Rejting", value: rating}];
+}
+
+// Trebam zamjenu · Tko traži zamjenu?: the team's players the substitute can play with, the logged-in player first
+// (picked at first: mostly they ask for themselves), then the teammates who aren't deactivated
+export function substituteRoster<P extends MyLeague["players"][number]>(players: P[]): P[] {
+  return players.filter((p) => p.me || p.active).sort((a, b) => Number(b.me) - Number(a.me));
 }
 
 // Who to call: "Hrvoje Lovrić · Slavonci"
@@ -147,10 +153,10 @@ export function myPostTitle(p: BurzaPost): string {
   return p.kind === "PARTNER" ? "Tražim partnera" : "Dostupan sam";
 }
 
-// The line under it: "Liga Utorak · uto 13. 10. · umjesto: Ivan Perić", "Liga Četvrtak", "Za zamjenu i novog partnera"
+// The line under it: "Liga Utorak · uto 13. 10. · igra s: Ivan Perić", "Liga Četvrtak", "Za zamjenu i novog partnera"
 export function myPostSub(p: BurzaPost): string {
   if (p.kind === "SUBSTITUTE") {
-    return [p.league?.name, p.night && nightLabel(p.night), p.out_player && `umjesto: ${p.out_player}`].filter(Boolean).join(" · ");
+    return [p.league?.name, p.night && nightLabel(p.night), p.with_player && `igra s: ${p.with_player}`].filter(Boolean).join(" · ");
   }
   if (p.kind === "PARTNER") return p.league?.name ?? "";
   return `Za ${availableAs(p.as_substitute, p.as_partner)}`;
@@ -203,7 +209,7 @@ export function repostFormHref(p: MyBurzaPost): string {
   if (p.kind === "AVAILABLE") return `/burza/novi/dostupan?${q.toString()}`;
   if (p.league) q.set("league", String(p.league.id));
   if (p.team) q.set("team", String(p.team.id));
-  if (p.out_player_id != null) q.set("out", String(p.out_player_id));
+  if (p.with_player_id != null) q.set("with", String(p.with_player_id));
   if (p.note) q.set("note", p.note);
   return `/burza/novi/zamjena?${q.toString()}`;
 }

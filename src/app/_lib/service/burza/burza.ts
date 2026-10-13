@@ -54,7 +54,7 @@ const postInclude = {
   player: {
     select: {id: true, first_name: true, last_name: true, rating: true, phone: true, _count: {select: {ratingHistory: true}}},
   },
-  outPlayer: {select: {first_name: true, last_name: true}},
+  withPlayer: {select: {first_name: true, last_name: true}},
   league: {select: {league_id: true, league_name: true, end_date: true}},
   team: {select: {team_id: true, team_name: true, teamPlayers: {select: {player: {select: {rating: true}}}}}},
 } satisfies Prisma.MarketPostInclude;
@@ -140,7 +140,7 @@ function toView(p: PostRow, ctx: ViewContext): BurzaPost {
     team: p.team ? {id: p.team.team_id, name: p.team.team_name} : null,
     league: p.league ? {id: p.league.league_id, name: p.league.league_name} : null,
     night,
-    out_player: p.outPlayer ? displayName(p.outPlayer) : null,
+    with_player: p.withPlayer ? displayName(p.withPlayer) : null,
     team_rating: p.team ? ratingInTens(p.team.teamPlayers.map((tp) => tp.player.rating)) : null,
     rating: p.player._count.ratingHistory > 0 ? p.player.rating : null,
     as_substitute: p.as_substitute,
@@ -185,7 +185,7 @@ function toMyView(p: PostRow, ctx: ViewContext): MyBurzaPost {
     ends_on: endsOn(status),
     closed_at: p.closed_at?.toISOString() ?? null,
     night_gone: nightGone(status, ctx),
-    out_player_id: p.out_player_id,
+    with_player_id: p.with_player_id,
   };
 }
 
@@ -231,14 +231,14 @@ export async function repostPost(user: Player, id: number, night?: string): Prom
       post: {...statusOf(p), player_id: p.player_id},
       userId: user.id,
       today: leagueDateString(),
-      substitute: p.kind === "SUBSTITUTE" ? await substituteFacts(tx, user, {team_id: p.team_id, league_id: p.league_id, out_player_id: p.out_player_id, night: target}) : null,
+      substitute: p.kind === "SUBSTITUTE" ? await substituteFacts(tx, user, {team_id: p.team_id, league_id: p.league_id, with_player_id: p.with_player_id, night: target}) : null,
       phone: (p.phone ?? user.phone) != null,
     });
     if (error) throw new InvalidResultError(error.message);
 
     // still up (the checks above passed, so an open ad on the same night isn't over)
     if (!p.closed_at && target === own) return p.id;
-    const twin = await findTwin(tx, user.id, {kind: p.kind, team_id: p.team_id, league_id: p.league_id, night: target, out_player_id: p.out_player_id}, p.id);
+    const twin = await findTwin(tx, user.id, {kind: p.kind, team_id: p.team_id, league_id: p.league_id, night: target, with_player_id: p.with_player_id}, p.id);
     if (twin != null) return twin;
 
     await tx.marketPost.update({
@@ -280,12 +280,12 @@ type Req<K extends BurzaKind> = Extract<BurzaCreate, {kind: K}>;
 async function substituteFacts(
   tx: Tx,
   user: Player,
-  ad: {team_id: number | null; league_id: number | null; out_player_id: number | null; night: string | null}
+  ad: {team_id: number | null; league_id: number | null; with_player_id: number | null; night: string | null}
 ): Promise<SubstituteFacts | null> {
   if (ad.team_id == null || ad.team_id === BYE_TEAM_ID || ad.league_id == null) return null;
   const team = await tx.team.findUnique({
     where: {team_id: ad.team_id},
-    select: {teamPlayers: {select: {player_id: true}}, leagueTeams: {where: {league_id: ad.league_id}, select: {league_id: true}}},
+    select: {teamPlayers: {select: {player_id: true, player: {select: {active: true}}}}, leagueTeams: {where: {league_id: ad.league_id}, select: {league_id: true}}},
   });
   if (!team) return null;
   const players = team.teamPlayers.map((tp) => tp.player_id);
@@ -294,7 +294,8 @@ async function substituteFacts(
     admin: isAdmin(user),
     onTeam: players.includes(user.id),
     teamInLeague: team.leagueTeams.length > 0,
-    outOnTeam: ad.out_player_id != null && players.includes(ad.out_player_id),
+    // a deactivated (or deleted) teammate can't play with the substitute
+    withOnTeam: team.teamPlayers.some((tp) => tp.player_id === ad.with_player_id && tp.player.active),
     night: ad.night,
     leagueNight,
     today: leagueDateString(),
@@ -319,18 +320,18 @@ async function findTwin(tx: Tx, playerId: number, ad: TwinAd, except?: number): 
 }
 
 async function createSubstitute(tx: Tx, user: Player, req: Req<"SUBSTITUTE">, phone: string): Promise<number> {
-  const facts = await substituteFacts(tx, user, {team_id: req.team_id, league_id: req.league_id, out_player_id: req.out_player_id, night: req.night});
+  const facts = await substituteFacts(tx, user, {team_id: req.team_id, league_id: req.league_id, with_player_id: req.with_player_id, night: req.night});
   if (!facts) throw new NotFoundError("Ekipa ne postoji.");
   const error = substituteError(facts, "create");
   if (error) throw new InvalidResultError(error);
 
-  const same = await findTwin(tx, user.id, {kind: "SUBSTITUTE", team_id: req.team_id, league_id: req.league_id, night: req.night, out_player_id: req.out_player_id});
+  const same = await findTwin(tx, user.id, {kind: "SUBSTITUTE", team_id: req.team_id, league_id: req.league_id, night: req.night, with_player_id: req.with_player_id});
   if (same != null) {
     await tx.marketPost.update({where: {id: same}, data: {phone, note: req.note}});
     return same;
   }
   const post = await tx.marketPost.create({
-    data: {kind: "SUBSTITUTE", player_id: user.id, league_id: req.league_id, team_id: req.team_id, night: nightValue(req.night), out_player_id: req.out_player_id, phone, note: req.note},
+    data: {kind: "SUBSTITUTE", player_id: user.id, league_id: req.league_id, team_id: req.team_id, night: nightValue(req.night), with_player_id: req.with_player_id, phone, note: req.note},
   });
   return post.id;
 }
@@ -341,7 +342,7 @@ async function createPartner(tx: Tx, user: Player, req: Req<"PARTNER">, phone: s
   const error = partnerError(league.end_date ? isoDate(league.end_date) : null, leagueDateString());
   if (error) throw new InvalidResultError(error);
 
-  const same = await findTwin(tx, user.id, {kind: "PARTNER", team_id: null, league_id: req.league_id, night: null, out_player_id: null});
+  const same = await findTwin(tx, user.id, {kind: "PARTNER", team_id: null, league_id: req.league_id, night: null, with_player_id: null});
   if (same != null) {
     await tx.marketPost.update({where: {id: same}, data: {phone, note: req.note}});
     return same;
@@ -356,7 +357,7 @@ async function saveAvailable(
   playerId: number,
   data: {as_substitute: boolean; as_partner: boolean; note?: string; phone?: string | null}
 ): Promise<number> {
-  const open = await findTwin(tx, playerId, {kind: "AVAILABLE", team_id: null, league_id: null, night: null, out_player_id: null});
+  const open = await findTwin(tx, playerId, {kind: "AVAILABLE", team_id: null, league_id: null, night: null, with_player_id: null});
   if (open != null) {
     await tx.marketPost.update({where: {id: open}, data});
     return open;

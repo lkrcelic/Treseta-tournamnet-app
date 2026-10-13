@@ -104,7 +104,7 @@ export async function setPlayerActive(viewer: Viewer, id: number, active: boolea
  * "Obriši igrača": the player leaves every team, their ads are deleted (they hold a phone number and a note), they are
  * logged out and their Google login is unlinked, and the row becomes "Obrisani igrač" (anonymisedPlayerData). The
  * rounds they played stay, with them in the lineups (freezeRosterLineups first), so nobody's rating changes; a
- * teammate's substitute ad that names them reads "umjesto: Obrisani igrač".
+ * teammate's substitute ad that names them reads "igra s: Obrisani igrač".
  */
 export async function anonymisePlayer(viewer: Viewer, id: number): Promise<void> {
   await prisma.$transaction(

@@ -50,7 +50,7 @@ export type SubstituteFacts = {
   admin: boolean; // an admin may post for any team
   onTeam: boolean; // the author plays for the team
   teamInLeague: boolean; // the team plays in the ad's league
-  outOnTeam: boolean; // the player who can't come is in the team
+  withOnTeam: boolean; // the player the substitute plays with is an active player of the team
   night: string | null; // the night the ad goes up on
   leagueNight: boolean; // the league plays that night
   today: string;
@@ -61,14 +61,14 @@ const SUBSTITUTE_COPY = {
   create: {
     team: "Zamjenu možeš tražiti samo za svoju ekipu.",
     league: "Ekipa ne igra u ovoj ligi.",
-    out: "Igrač koji ne može mora biti u ekipi.",
+    with: "Igrač s kojim zamjena igra mora biti u ekipi.",
     past: "Ta večer je već prošla.",
     night: "Liga te večeri ne igra.",
   },
   repost: {
     team: "Više nisi u toj ekipi.",
     league: "Ekipa više ne igra u toj ligi.",
-    out: "Igrač kojeg mijenjaš više nije u ekipi.",
+    with: "Igrač s kojim zamjena igra više nije u ekipi.",
     past: "Odaberi novu večer.",
     night: "Odaberi novu večer.",
   },
@@ -79,7 +79,7 @@ export function substituteError(f: SubstituteFacts, mode: "create" | "repost"): 
   const copy = SUBSTITUTE_COPY[mode];
   if (!f.onTeam && !f.admin) return copy.team;
   if (!f.teamInLeague) return copy.league;
-  if (!f.outOnTeam) return copy.out;
+  if (!f.withOnTeam) return copy.with;
   if (!f.night || f.night < f.today) return copy.past;
   if (!f.leagueNight) return copy.night;
   return null;
@@ -123,10 +123,10 @@ function kindError(f: RepostFacts): string | null {
 // The open ad of the player's that a new or published-again ad would copy; it is updated or returned instead of a
 // second one. These fields must match: the team, night and player for a substitute ad, the league for a partner ad,
 // and only the kind for an availability ad (a player has one).
-export type TwinAd = {kind: BurzaKind; team_id: number | null; league_id: number | null; night: string | null; out_player_id: number | null};
+export type TwinAd = {kind: BurzaKind; team_id: number | null; league_id: number | null; night: string | null; with_player_id: number | null};
 
 export function twinFields(ad: TwinAd): Partial<TwinAd> & {kind: BurzaKind} {
-  if (ad.kind === "SUBSTITUTE") return {kind: ad.kind, team_id: ad.team_id, night: ad.night, out_player_id: ad.out_player_id};
+  if (ad.kind === "SUBSTITUTE") return {kind: ad.kind, team_id: ad.team_id, night: ad.night, with_player_id: ad.with_player_id};
   if (ad.kind === "PARTNER") return {kind: ad.kind, league_id: ad.league_id};
   return {kind: ad.kind};
 }

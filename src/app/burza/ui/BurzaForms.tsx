@@ -8,6 +8,7 @@ import {BurzaCreateRequest, BurzaKind, BurzaPost, MyLeague} from "@/app/_interfa
 import {leagueDateString} from "@/app/_lib/dates";
 import {nextNightIndex, nightLabel} from "@/app/_lib/nights";
 import {isValidPhone, savesToProfile} from "@/app/_lib/phone";
+import {substituteRoster} from "@/app/_lib/ui/burza";
 import {color, font, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, cardSx, EmptyState, ErrorNote, InitialsAvatar, PrimaryButton} from "@/app/_ui/sp";
 import CallRoundedIcon from "@mui/icons-material/CallRounded";
@@ -63,12 +64,12 @@ function PublishButton({disabled, submitting, onClick}: {disabled: boolean; subm
   );
 }
 
-// Trebam zamjenu: league → one of its next nights → who can't play → phone → note
+// Trebam zamjenu: league → one of its next nights → who asks for the substitute (who they play with) → phone → note
 export function SubstituteForm({
   leagues,
   preset,
   ...props
-}: FormProps & {leagues: MyLeague[]; preset: {league?: number; team?: number; night?: string; out?: number; note?: string}}) {
+}: FormProps & {leagues: MyLeague[]; preset: {league?: number; team?: number; night?: string; with?: number; note?: string}}) {
   const today = leagueDateString();
   // the leagues where the player's team is active and has nights left
   const options = leagues.filter((l) => l.active && nextNightIndex(l.nights, today) >= 0);
@@ -80,9 +81,9 @@ export function SubstituteForm({
   const league = options[pick] ?? null;
   const nights = league ? league.nights.slice(nextNightIndex(league.nights, today)).slice(0, NIGHT_CHOICES) : [];
   const [night, setNight] = useState<string | null>(() => (preset.night && nights.includes(preset.night) ? preset.night : nights[0] ?? null));
-  // teammates first, the player last ("Ja · ...")
-  const players = league ? [...league.players].sort((a, b) => Number(a.me) - Number(b.me)) : [];
-  const [out, setOut] = useState<number | null>(() => (players.some((p) => p.id === preset.out) ? preset.out! : players[0]?.id ?? null));
+  // the team's active players, the player first ("Ja · ...") and picked: mostly they ask for themselves
+  const players = league ? substituteRoster(league.players) : [];
+  const [withId, setWithId] = useState<number | null>(() => (players.some((p) => p.id === preset.with) ? preset.with! : players[0]?.id ?? null));
   const [note, setNote] = useState(preset.note ?? "");
 
   if (!league) {
@@ -98,10 +99,10 @@ export function SubstituteForm({
     setPick(i);
     const first = l.nights[nextNightIndex(l.nights, today)] ?? null;
     setNight(first);
-    setOut([...l.players].sort((a, b) => Number(a.me) - Number(b.me))[0]?.id ?? null);
+    setWithId(substituteRoster(l.players)[0]?.id ?? null);
   };
   const sameLeagueTwice = (l: MyLeague) => options.filter((o) => o.league_id === l.league_id).length > 1;
-  const valid = night != null && out != null && isValidPhone(props.phone.value);
+  const valid = night != null && withId != null && isValidPhone(props.phone.value);
   const publish = () =>
     valid &&
     props.onPublish({
@@ -109,7 +110,7 @@ export function SubstituteForm({
       league_id: league.league_id,
       team_id: league.team_id,
       night: night!,
-      out_player_id: out!,
+      with_player_id: withId!,
       phone: props.phone.value,
       note: note.trim(),
       save_phone: savePhone(props.phone),
@@ -137,12 +138,13 @@ export function SubstituteForm({
           </ChoicePill>
         ))}
       </Box>
-      <Step n={3} id="step-out">
-        Tko ne može?
+      <Step n={3} id="step-with">
+        Tko traži zamjenu?
       </Step>
-      <Box role="radiogroup" aria-labelledby="step-out" sx={{...cardSx, overflow: "hidden"}}>
+      <StepHint id="step-with-hint">Zamjena igra s tim igračem.</StepHint>
+      <Box role="radiogroup" aria-labelledby="step-with" aria-describedby="step-with-hint" sx={{...cardSx, overflow: "hidden"}}>
         {players.map((p, i) => {
-          const on = p.id === out;
+          const on = p.id === withId;
           return (
             <Box
               key={p.id}
@@ -150,7 +152,7 @@ export function SubstituteForm({
               type="button"
               role="radio"
               aria-checked={on}
-              onClick={() => setOut(p.id)}
+              onClick={() => setWithId(p.id)}
               sx={{...buttonBase, width: "100%", minHeight: 68, display: "flex", alignItems: "center", gap: "12px", p: "10px 14px", borderBottom: i < players.length - 1 ? `1px solid ${color.line}` : "none", background: on ? color.cream2 : color.white, textAlign: "left", transition: "background 160ms ease"}}
             >
               <InitialsAvatar name={p.name} size={40} variant={p.me ? "navy" : "cream"} sx={{fontSize: 14, ...(p.me ? {color: color.white} : {})}} />
@@ -174,6 +176,15 @@ export function SubstituteForm({
       {props.error && <ErrorNote>{props.error}</ErrorNote>}
     </>,
     <PublishButton disabled={!valid} submitting={props.submitting} onClick={publish} />
+  );
+}
+
+// A short line under a step's title, lined up with the title's text (the steps sit 12 px apart)
+function StepHint({id, children}: {id: string; children: React.ReactNode}) {
+  return (
+    <Box id={id} sx={{mt: "-8px", pl: "38px", pr: "2px", fontSize: 13.5, lineHeight: 1.4, color: color.muted}}>
+      {children}
+    </Box>
   );
 }
 

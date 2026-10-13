@@ -57,7 +57,7 @@ model Player {
   roundPlayers                   RoundPlayer[]
   ratingHistory                  PlayerRatingHistory[]
   marketPosts                    MarketPost[]                    @relation("MarketPostAuthor")
-  marketPostsOut                 MarketPost[]                    @relation("MarketPostOut")
+  marketPostsWith                MarketPost[]                    @relation("MarketPostWith")
   sessions                       Session[]
   luciaSessions                  LuciaSession[]
   accounts                       Account[]
@@ -171,30 +171,30 @@ enum MarketPostKind {
 // author (or an admin) closes any ad. A player has at most one open AVAILABLE ad (the profile's "Dostupan sam").
 // What each kind needs is checked in the migration script.
 model MarketPost {
-  id            Int            @id @default(autoincrement())
-  kind          MarketPostKind
+  id             Int            @id @default(autoincrement())
+  kind           MarketPostKind
   // who published it
-  player_id     Int
+  player_id      Int
   // SUBSTITUTE and PARTNER
-  league_id     Int?
-  // SUBSTITUTE: the team that needs a player, the night and who can't play
-  team_id       Int?
-  night         DateTime?      @db.Date
-  out_player_id Int?
+  league_id      Int?
+  // SUBSTITUTE: the team that needs a player, the night and the player the substitute plays with (who asks for one)
+  team_id        Int?
+  night          DateTime?      @db.Date
+  with_player_id Int?
   // AVAILABLE: as what
-  as_substitute Boolean        @default(false)
-  as_partner    Boolean        @default(false)
+  as_substitute  Boolean        @default(false)
+  as_partner     Boolean        @default(false)
   // the note, or the partner ad's text
-  note          String         @default("")
+  note           String         @default("")
   // null on an AVAILABLE ad means the profile's phone number
-  phone         String?        @db.VarChar(30)
-  created_at    DateTime       @default(now())
-  closed_at     DateTime?
+  phone          String?        @db.VarChar(30)
+  created_at     DateTime       @default(now())
+  closed_at      DateTime?
 
-  player    Player  @relation("MarketPostAuthor", fields: [player_id], references: [id], onDelete: Cascade)
-  outPlayer Player? @relation("MarketPostOut", fields: [out_player_id], references: [id], onDelete: SetNull)
-  league    League? @relation(fields: [league_id], references: [league_id], onDelete: Cascade)
-  team      Team?   @relation(fields: [team_id], references: [team_id], onDelete: Cascade)
+  player     Player  @relation("MarketPostAuthor", fields: [player_id], references: [id], onDelete: Cascade)
+  withPlayer Player? @relation("MarketPostWith", fields: [with_player_id], references: [id], onDelete: SetNull)
+  league     League? @relation(fields: [league_id], references: [league_id], onDelete: Cascade)
+  team       Team?   @relation(fields: [team_id], references: [team_id], onDelete: Cascade)
 
   @@index([closed_at, kind])
 }

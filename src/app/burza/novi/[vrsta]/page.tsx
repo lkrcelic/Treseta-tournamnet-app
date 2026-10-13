@@ -20,7 +20,7 @@ import {burzaListHref, burzaListLabel} from "../../ui/BurzaParts";
 
 // Novi oglas: /burza/novi/zamjena | partner | dostupan. ?from=home (Početna · Nađi zamjenu) goes back Home;
 // &league= and &night= pick the league and night. Moji oglasi · Objavi ponovno, for a substitute ad whose night is
-// gone or an availability ad without a phone number: &team=, &out= and &note= fill in the substitute ad again, and
+// gone or an availability ad without a phone number: &team=, &with= and &note= fill in the substitute ad again, and
 // repost=<id> is the ad, whose phone number (and an availability ad's choices) the form starts from. After
 // publishing it shows "Oglas je objavljen".
 
@@ -40,7 +40,7 @@ export default function NewBurzaPost() {
     league: Number(params.get("league")) || undefined,
     team: Number(params.get("team")) || undefined,
     night: params.get("night") ?? undefined,
-    out: Number(params.get("out")) || undefined,
+    with: Number(params.get("with")) || undefined,
     note: params.get("note") ?? undefined,
   };
   const repostId = Number(params.get("repost")) || null;
