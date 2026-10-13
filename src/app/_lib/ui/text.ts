@@ -63,7 +63,6 @@ export const NOUN = {
   liga: ["liga", "lige", "liga"],
   stol: ["stol", "stola", "stolova"],
   pušačkiStol: ["pušački stol", "pušačka stola", "pušačkih stolova"],
-  runda: ["runda", "runde", "rundi"],
   igra: ["igra", "igre", "igara"],
   meč: ["meč", "meča", "mečeva"],
   par: ["par", "para", "parova"],

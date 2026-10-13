@@ -433,7 +433,7 @@ function UsernameRow({value, desktop, onSave}: {value: string | null; desktop: b
             />
           </Box>
           <Box id="username-hint" aria-live="polite" sx={{fontSize: 12.5, color: error ? color.red : color.muted}}>
-            {error ?? "Po ovom imenu te suigrači pronalaze kad te dodaju u ekipu."}
+            {error ?? "Po ovom imenu te administrator pronalazi kad te dodaje u ekipu."}
           </Box>
           <Box sx={{display: "flex", gap: "8px"}}>
             <Box

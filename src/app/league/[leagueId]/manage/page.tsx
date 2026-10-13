@@ -47,8 +47,8 @@ import DatesView from "./DatesView";
 import RoundsView, {useLeagueRounds} from "./RoundsView";
 import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
-import EventNoteRoundedIcon from "@mui/icons-material/EventNoteRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
+import ViewListRoundedIcon from "@mui/icons-material/ViewListRounded";
 import {CreateRoundView} from "@/app/_ui/round/CreateRound";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
@@ -642,7 +642,7 @@ function ViewSwitch({
   const items: {key: View; label: string; icon: ReactNode; count: number | null}[] = [
     {key: "create", label: "Novo kolo", icon: <AddCircleRoundedIcon />, count: null},
     {key: "teams", label: "Ekipe", icon: <GroupsRoundedIcon />, count: teams},
-    {key: "rounds", label: "Kola", icon: <EventNoteRoundedIcon />, count: rounds},
+    {key: "rounds", label: "Kola", icon: <ViewListRoundedIcon />, count: rounds},
     {key: "dates", label: "Datumi", icon: <CalendarMonthRoundedIcon />, count: nights},
     {key: "details", label: "Podaci", icon: <TuneRoundedIcon />, count: null},
   ];

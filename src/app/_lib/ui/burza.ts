@@ -3,7 +3,7 @@
 import type {BurzaKind, BurzaPost, BurzaStatus, MyBurzaPost} from "@/app/_interfaces/burza";
 import {leagueDateString} from "@/app/_lib/dates";
 import {nightLabel} from "@/app/_lib/nights";
-import {plural} from "./text";
+import {count, NOUN, plural} from "./text";
 import {color, tint} from "@/app/_styles/tokens";
 
 // The tag on each ad: label, background, text color
@@ -15,12 +15,24 @@ export const KIND_TAG: Record<BurzaKind, {label: string; bg: string; ink: string
 
 // "4 ekipe traže igrača", "1 ekipa traži igrača", "5 ekipa traži igrača"
 export function teamsLooking(n: number): string {
-  return `${n} ${plural(n, "ekipa traži", "ekipe traže", "ekipa traži")} igrača`;
+  return `${count(n, NOUN.ekipaTraži)} igrača`;
 }
 
 // "8 oglasa", "1 oglas"
 export function adCount(n: number): string {
-  return `${n} ${plural(n, "oglas", "oglasa", "oglasa")}`;
+  return count(n, NOUN.oglas);
+}
+
+// The teams looking for a substitute, as Početna's Burza card and Burza's Zamjene count them (DECISIONS #29): other
+// teams only (not the viewer's own ads), each team once however many nights it asks for, in the order of the list.
+// With a night, only the teams asking for that night.
+export function teamsAsking(posts: BurzaPost[], night: string | null = null): {id: number; name: string}[] {
+  const teams = new Map<number, string>();
+  for (const p of posts) {
+    if (p.kind !== "SUBSTITUTE" || p.mine || !p.team || (night != null && p.night !== night)) continue;
+    if (!teams.has(p.team.id)) teams.set(p.team.id, p.team.name);
+  }
+  return Array.from(teams, ([id, name]) => ({id, name}));
 }
 
 // "Slavonci, Kvarnerci i još 2", "Slavonci i Kvarnerci", "Slavonci"

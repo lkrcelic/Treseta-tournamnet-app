@@ -2,7 +2,7 @@
 
 import {BurzaPost, MyLeague, MySchedule} from "@/app/_interfaces/burza";
 import {nextNightIndex, nightLabel} from "@/app/_lib/nights";
-import {adCount, namesAndMore, teamsLooking} from "@/app/_lib/ui/burza";
+import {adCount, namesAndMore, teamsAsking, teamsLooking} from "@/app/_lib/ui/burza";
 import {initials} from "@/app/_lib/ui/text";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
@@ -112,7 +112,7 @@ export function NextNightPlaceholder() {
 // Burza igrača: how many teams need a player (opening Burza on Zamjene), and how many ads there are in all
 export function BurzaHomeCard({posts}: {posts: BurzaPost[] | null}) {
   // other teams' requests, one per team
-  const teams = Array.from(new Set((posts ?? []).filter((p) => p.kind === "SUBSTITUTE" && !p.mine && p.team).map((p) => p.team!.name)));
+  const teams = teamsAsking(posts ?? []).map((t) => t.name);
   const asking = teams.length > 0;
   const shown = teams.slice(0, 2);
   const more = teams.length - shown.length;

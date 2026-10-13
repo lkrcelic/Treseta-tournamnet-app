@@ -29,6 +29,17 @@ type Shown = {
   canAsk: boolean;
 };
 
+// A league tab's name: up to two lines, centred, then "…" (the whole name is its title)
+const TAB_LABEL_SX = {
+  display: "-webkit-box",
+  WebkitBoxOrient: "vertical",
+  WebkitLineClamp: 2,
+  overflow: "hidden",
+  overflowWrap: "break-word",
+  textAlign: "center",
+  lineHeight: 1.2,
+} as const;
+
 // The pill colours: the next night navy, the season's last one cream, past nights plain
 const PILL: Record<RasporedPill, {bg: string; ink: string}> = {
   played: {bg: "transparent", ink: color.muted},
@@ -83,17 +94,30 @@ export default function RasporedPage() {
   }
 
   const pick = (id: number) => router.router.replace(`/raspored?league=${id}`, {scroll: false});
+  // League names often differ only at their end ("… Proljeće 25/26", "… Jesen 25/26"), so a name wraps onto a second
+  // line instead of being cut short (DECISIONS #44): on the phone the tabs share the width, on the desktop the strip is
+  // as wide as its names and gives way to the title
   const tabs =
     mine.length > 1 ? (
       <Segmented<number>
-        items={mine.map((l) => ({key: l.league_id, label: <Box component="span" sx={ellipsis}>{l.league_name}</Box>}))}
+        items={mine.map((l) => ({
+          key: l.league_id,
+          label: (
+            <Box component="span" title={l.league_name} sx={TAB_LABEL_SX}>
+              {l.league_name}
+            </Box>
+          ),
+        }))}
         value={current!.league_id}
         onChange={pick}
         label="Liga"
         variant="track"
         size={44}
         idPrefix="raspored"
-        sx={{"& [role=tab]": {fontSize: 15}, ...(isDesktop ? {width: Math.min(560, mine.length * 200)} : {})}}
+        sx={{
+          "& [role=tab]": {fontSize: 15, height: "auto", minHeight: 44, whiteSpace: "normal", py: "5px", px: isDesktop ? "16px" : "8px"},
+          ...(isDesktop ? {width: "auto", maxWidth: "60vw", flex: "0 1 auto", minWidth: 0} : {}),
+        }}
       />
     ) : null;
 
@@ -110,7 +134,8 @@ export default function RasporedPage() {
     );
   else body = <Schedule shown={shown} today={today} desktop={isDesktop} />;
 
-  const eyebrow = shown ? [shown.leagueName, shown.team].filter(Boolean).join(" · ") : "Liga";
+  // with the league in the tabs, the eyebrow names only the team, so a long league name can't push it out
+  const eyebrow = !shown ? "Liga" : tabs && shown.team ? shown.team : [shown.leagueName, shown.team].filter(Boolean).join(" · ");
 
   if (isDesktop) {
     return (

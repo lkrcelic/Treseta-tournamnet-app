@@ -52,6 +52,7 @@ import {
   repostOpensForm,
   STATUS_PILL,
   substituteNights,
+  teamsAsking,
   teamsLooking,
   timeAgo,
 } from "../ui/burza";
@@ -255,6 +256,32 @@ test("ad cards and pages say what each kind needs", () => {
   assert.deepEqual(postDetails(available).map((d) => d.value), ["zamjenu", "1524"]);
 
   assert.deepEqual(substituteNights([base, {...base, night: "2026-10-13"}, partner, {...base, night: "2026-10-15"}]), ["2026-10-13", "2026-10-15"]);
+});
+
+test("Burza counts the other teams looking for a player, each once, as Početna does", () => {
+  const partner: BurzaPost = {...base, id: 2, kind: "PARTNER", team: null, night: null};
+  const posts: BurzaPost[] = [
+    base,
+    // the same team on another night
+    {...base, id: 3, night: "2026-10-22"},
+    {...base, id: 4, team: {id: 5, name: "Kvarnerci"}, night: "2026-10-22"},
+    // the viewer's own team
+    {...base, id: 5, team: {id: 9, name: "Puleni"}, mine: true},
+    // teams are told apart by id, not by name
+    {...base, id: 6, team: {id: 6, name: "Slavonci"}, night: "2026-10-22"},
+    partner,
+  ];
+  assert.deepEqual(teamsAsking(posts), [
+    {id: 3, name: "Slavonci"},
+    {id: 5, name: "Kvarnerci"},
+    {id: 6, name: "Slavonci"},
+  ]);
+  assert.equal(teamsLooking(teamsAsking(posts).length), "3 ekipe traže igrača");
+  assert.deepEqual(teamsAsking(posts, "2026-10-15").map((t) => t.id), [3]);
+  assert.deepEqual(teamsAsking(posts, "2026-10-22").map((t) => t.id), [3, 5, 6]);
+  // only the viewer's own ad on a night: nobody else asks
+  assert.deepEqual(teamsAsking([{...base, mine: true}], "2026-10-15"), []);
+  assert.deepEqual(teamsAsking([]), []);
 });
 
 test("a new ad is checked before it's sent", () => {

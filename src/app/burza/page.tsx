@@ -4,7 +4,7 @@ import useBurza from "@/app/_hooks/useBurza";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import {BurzaKind} from "@/app/_interfaces/burza";
 import {nightLabel} from "@/app/_lib/nights";
-import {adCount, substituteNights, teamsLooking} from "@/app/_lib/ui/burza";
+import {adCount, substituteNights, teamsAsking, teamsLooking} from "@/app/_lib/ui/burza";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import useAuthStore from "@/app/_store/authStore";
 import {color, shadow} from "@/app/_styles/tokens";
@@ -71,7 +71,7 @@ export default function BurzaPage() {
   const dateArrows = tab === "zamjene" && (
     <DateArrows
       label={date ? nightLabel(date) : "Svi datumi"}
-      count={teamsLooking(date ? substitutes.filter((p) => p.night === date).length : substitutes.length)}
+      count={teamsLooking(teamsAsking(substitutes, date).length)}
       onPrev={at > 0 ? () => go("zamjene", steps[at - 1]) : null}
       onNext={at < steps.length - 1 ? () => go("zamjene", steps[at + 1]) : null}
       sx={isDesktop ? {width: 380} : undefined}
