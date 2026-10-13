@@ -53,7 +53,8 @@ function CreateLeagueDesktop() {
   const [season, setSeason] = useState(String(new Date().getFullYear()));
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [playDay, setPlayDay] = useState(1);
+  // optional: with a play day the nights fill in from the dates, without one they're added one by one
+  const [playDay, setPlayDay] = useState<number | null>(null);
   const [roundsPerNight, setRoundsPerNight] = useState(3);
   // the nights filled in from the dates and the play day, minus the removed ones, plus the added ones
   const [removedNights, setRemovedNights] = useState<string[]>([]);
@@ -141,10 +142,16 @@ function CreateLeagueDesktop() {
       });
       // the new league shows in the pickers at once, and its name counts as taken here
       void reloadLeagues();
-      const confText = conferences.length ? `, ${count(conferences.length, ["konferencija", "konferencije", "konferencija"])}` : "";
       setCreated({
         id: league.league_id,
-        text: `„${league.league_name}“ je napravljena (${count(league.team_count, NOUN.ekipa)}${confText}, ${DAY_NAMES[playDay]}, ${count(nights.length, NOUN.večer)}).`,
+        text: `„${league.league_name}“ je napravljena (${[
+          count(league.team_count, NOUN.ekipa),
+          conferences.length ? count(conferences.length, ["konferencija", "konferencije", "konferencija"]) : null,
+          playDay != null ? DAY_NAMES[playDay] : null,
+          count(nights.length, NOUN.večer),
+        ]
+          .filter(Boolean)
+          .join(", ")}).`,
         conferences: conferences.length > 0,
       });
       setName("");
@@ -208,7 +215,7 @@ function CreateLeagueDesktop() {
       </Box>
       <Box role="radiogroup" aria-labelledby="play-day" sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
         <Box id="play-day" sx={{fontSize: 14, fontWeight: 600, color: color.ink2, pl: "4px"}}>
-          Dan igranja
+          Dan igranja · neobavezno
         </Box>
         <Box sx={{display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))", gap: "6px"}}>
           {DAYS.map((d, i) => (
@@ -219,7 +226,7 @@ function CreateLeagueDesktop() {
               role="radio"
               aria-checked={playDay === i}
               aria-label={DAY_NAMES[i]}
-              onClick={() => setPlayDay(i)}
+              onClick={() => setPlayDay(playDay === i ? null : i)}
               sx={{
                 ...buttonBase,
                 height: 48,
@@ -246,7 +253,9 @@ function CreateLeagueDesktop() {
           </Box>
         </Box>
         <Box sx={{fontSize: 13, lineHeight: 1.45, color: color.muted, px: "4px"}}>
-          Popunjeno iz početka, kraja i dana igranja. Ukloni večer koja se ne igra (praznik) ili dodaj dodatnu.
+          {playDay != null
+            ? "Popunjeno iz početka, kraja i dana igranja. Ukloni večer koja se ne igra (praznik) ili dodaj dodatnu."
+            : "Dodaj točne datume večeri, ili odaberi dan igranja da se popune iz početka i kraja."}
         </Box>
         {nights.length > 0 && (
           <Box component="ul" sx={{listStyle: "none", m: 0, p: 0, display: "flex", flexWrap: "wrap", gap: "6px"}}>

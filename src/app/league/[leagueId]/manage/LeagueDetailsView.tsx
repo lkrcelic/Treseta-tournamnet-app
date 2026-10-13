@@ -103,7 +103,7 @@ export default function LeagueDetailsView({leagueId, leagues, aside}: {leagueId:
           </Box>
           <Box role="radiogroup" aria-labelledby="ld-day" sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
             <Box id="ld-day" sx={{fontSize: 14, fontWeight: 600, color: color.ink2, pl: "4px"}}>
-              Dan igranja
+              Dan igranja · neobavezno
             </Box>
             <Box sx={{display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))", gap: "6px"}}>
               {DAYS.map((label, i) => (
@@ -114,7 +114,7 @@ export default function LeagueDetailsView({leagueId, leagues, aside}: {leagueId:
                   role="radio"
                   aria-checked={d.day === i}
                   aria-label={DAY_NAMES[i]}
-                  onClick={() => set("day", i)}
+                  onClick={() => set("day", d.day === i ? null : i)}
                   sx={{
                     ...buttonBase,
                     height: 48,
