@@ -111,6 +111,7 @@ test("the player-facing reads of rounds filter out the unpublished ones", () => 
     "_lib/service/league/getRoundDatesById.ts": "Dnevni poredak's nights, the +/− nights",
     "_lib/service/league/nights.ts": "Raspored's played nights",
     "_lib/service/league/leagues.ts": "which league is being played",
+    "_lib/service/league/getStandings.ts": "the +/− table after the previous night",
     "_lib/service/team/overview.ts": "a team's last nights",
   };
   const marker = /PUBLISHED_ROUND|visibleRounds\(|status = 'PUBLISHED'/;

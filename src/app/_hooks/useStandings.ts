@@ -6,7 +6,7 @@ import {getLeagueStandingsByDateAPI} from "@/app/_fetchers/league/getStandingsBy
 import {getRoundsAPI} from "@/app/_fetchers/round/getRounds";
 import {RoundExtendedResponse} from "@/app/_interfaces/round";
 import {isByeTeam} from "@/app/_lib/bye";
-import {StandingsItem} from "@/app/_lib/ui/standings";
+import {NO_MOVEMENT, readLeagueStandings, StandingsItem, StandingsMovement} from "@/app/_lib/ui/standings";
 import {useCallback, useEffect, useRef, useState} from "react";
 
 const withoutBye = (items: unknown): StandingsItem[] =>
@@ -102,20 +102,26 @@ export function useDailyData(leagueId: MaybeLeague, date: string | null) {
   return {data, loading: loading || !date, error, reload: () => load(false), refresh: () => load(true)};
 }
 
-// Season table of a league
+// Season table of a league, with its +/− since the league's previous night (movement: whether it is shown and from
+// which night)
 export function useLeagueStandings(leagueId: MaybeLeague) {
   const [standings, setStandings] = useState<StandingsItem[] | null>(null);
+  const [movement, setMovement] = useState<StandingsMovement>(NO_MOVEMENT);
   const [error, setError] = useState<string | null>(null);
   const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     setStandings(null);
+    setMovement(NO_MOVEMENT);
     setError(null);
     if (leagueId == null) return;
     getLeagueStandingsAPI(leagueId)
-      .then((s) => {
-        if (!cancelled) setStandings(withoutBye(s));
+      .then((data) => {
+        if (cancelled) return;
+        const {items, movement} = readLeagueStandings(data);
+        setStandings(withoutBye(items));
+        setMovement(movement);
       })
       .catch((e) => {
         if (!cancelled) setError(e instanceof Error ? e.message : "Poredak se nije učitao.");
@@ -125,5 +131,5 @@ export function useLeagueStandings(leagueId: MaybeLeague) {
     };
   }, [leagueId, nonce]);
 
-  return {standings, loading: standings == null && !error, error, reload: () => setNonce((n) => n + 1)};
+  return {standings, movement, loading: standings == null && !error, error, reload: () => setNonce((n) => n + 1)};
 }

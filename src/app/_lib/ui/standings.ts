@@ -1,5 +1,6 @@
 import {Conference, ConferenceOf} from "@/app/_lib/conferences";
 import {formatChange} from "./ratings";
+import {displayDate} from "./text";
 
 // One team's line in the league or daily standings, as returned by the standings APIs
 export type StandingsItem = {
@@ -13,6 +14,9 @@ export type StandingsItem = {
   point_difference: number;
   score: number;
   active_round_count?: number;
+  // Ukupni poredak: places gained (+) or lost (−) since the league's previous night; null when the team wasn't in
+  // that night's table
+  movement?: number | null;
 };
 
 export type StandingsRow = {
@@ -33,6 +37,8 @@ export type StandingsRow = {
   highlight: boolean;
   // the team's conference (its dot): undefined when the league has none, null when the team has none
   conference?: Conference | null;
+  // places gained (+) or lost (−) since the league's previous night (Ukupni poredak's +/−); null: no change to show
+  movement: number | null;
 };
 
 type StandingsHighlight = {
@@ -62,6 +68,7 @@ export function toStandingsRows(items: StandingsItem[] | null | undefined, {myTe
       live: Number(s.active_round_count ?? 0) > 0,
       highlight: highlightTeamId != null ? teamId === highlightTeamId : mine.has(s.team?.team_name),
       conference: conferenceOf && teamId != null ? conferenceOf(teamId) : undefined,
+      movement: typeof s.movement === "number" ? s.movement : null,
     };
   });
 }
@@ -102,4 +109,36 @@ export function statsParts(row: StandingsRow, withPlayed: boolean): {played: str
 export function splitPodium(rows: StandingsRow[]): {podium: StandingsRow[]; rest: StandingsRow[]} {
   if (rows.length < 3 || rows.every((r) => r.played === 0)) return {podium: [], rest: rows};
   return {podium: rows.slice(0, 3), rest: rows.slice(3)};
+}
+
+// Ukupni poredak's +/− (handoff "promjena mjesta"): whether it is shown and the previous night it counts from
+export type StandingsMovement = {show: boolean; since: string | null};
+
+export const NO_MOVEMENT: StandingsMovement = {show: false, since: null};
+
+// The standings API's answer: {standings, showMovement, movementSince} (a bare list, as before the +/−, has none)
+export function readLeagueStandings(data: unknown): {items: StandingsItem[]; movement: StandingsMovement} {
+  if (Array.isArray(data)) return {items: data as StandingsItem[], movement: NO_MOVEMENT};
+  const d = (data ?? {}) as {standings?: unknown; showMovement?: unknown; movementSince?: unknown};
+  const items = Array.isArray(d.standings) ? (d.standings as StandingsItem[]) : [];
+  const since = typeof d.movementSince === "string" ? d.movementSince : null;
+  return {items, movement: d.showMovement === true && since ? {show: true, since} : NO_MOVEMENT};
+}
+
+export type MovementKind = "up" | "down" | "same" | "none";
+
+// How a row shows its +/−: an arrow and the places (▲2, ▼1), or "–" for the same place or a team that wasn't in the
+// previous night's table; label is the tooltip and what a screen reader says
+export function movementView(movement: number | null): {kind: MovementKind; text: string; label: string} {
+  if (movement == null) return {kind: "none", text: "–", label: "Prošle večeri još nije bila u poretku"};
+  if (movement > 0) return {kind: "up", text: String(movement), label: `Gore ${movement} od prošle večeri`};
+  if (movement < 0) return {kind: "down", text: String(-movement), label: `Dolje ${-movement} od prošle večeri`};
+  return {kind: "same", text: "–", label: "Isto mjesto kao prošle večeri"};
+}
+
+// The header's tooltip and the note under the desktop table
+export const MOVEMENT_HEADER = "Promjena mjesta od prošle večeri lige";
+
+export function movementNote(since: string): string {
+  return `+/− pokazuje koliko je mjesta ekipa dobila ili izgubila od prošle večeri lige (${displayDate(since)}).`;
 }

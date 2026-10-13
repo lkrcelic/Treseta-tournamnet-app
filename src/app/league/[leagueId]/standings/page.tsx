@@ -24,6 +24,7 @@ import {
   LeagueEyebrowButton,
   LeagueMenuButton,
   LoadingRows,
+  MovementNote,
   Podium,
   PrimaryButton,
   Screen,
@@ -65,7 +66,7 @@ function LeagueStandings() {
   const leagues = useLeagues(leagueId);
   const {teams} = useMyTeams();
   const myTeamNames = useMemo(() => teams.map((t) => t.team_name), [teams]);
-  const {standings, loading, error, reload} = useLeagueStandings(leagueId);
+  const {standings, movement: leagueMovement, loading, error, reload} = useLeagueStandings(leagueId);
   const conferences = useConferences(leagueId);
   const [conf, setConf] = useConferenceFilter(leagueId, conferences.conferences);
   const confName = conferences.conferences.find((c) => c.id === conf)?.name;
@@ -74,15 +75,17 @@ function LeagueStandings() {
     [standings, myTeamNames, highlightTeamId, conferences]
   );
   const rows = useMemo(() => inConference(allRows, conf), [allRows, conf]);
+  // the +/− is the whole league's change of place: a conference's view (ranked from 1) doesn't show it
+  const movement = conf == null ? leagueMovement : {...leagueMovement, show: false};
   const {podium, rest} = splitPodium(rows);
   const leagueName = leagues.find((l) => l.id === leagueId)?.name ?? "";
   const tableName = confName ? `${leagueName} · ${confName}` : leagueName;
   const filter = !error && <ConferenceFilter conferences={conferences.conferences} value={conf} onChange={setConf} sx={{flex: "none"}} />;
-  // the list itself (useLeagues has a stand-in "Bela Liga" for the picker until it is in, and when it didn't load)
+  // the list itself (useLeagues has a stand-in with the app's name for the picker until it is in, and when it didn't load)
   const list = useLeagueList();
   const league = list.leagues?.find((l) => l.id === leagueId) ?? null;
   const settled = list.leagues != null || list.error;
-  // the name a Team page opened from a row shows on its back pill ("‹ Pitanik Bela Liga Jesen 25/26")
+  // the name a Team page opened from a row shows on its back pill
   const nav = useNavStack(settled ? leagueName || null : null);
   const changeLeague = (id: number) => router.router.push(`/league/${id}/standings`);
   // the season table is public; visitors who are not logged in get a login button instead of "home", and rows that
@@ -133,24 +136,39 @@ function LeagueStandings() {
       );
     }
     if (desktop) {
+      // the +/− (since the league's previous night) is a column after "#", a pill on the podium and a note under the
+      // table, which stays put while the rows scroll
+      const grid = (
+        <StandingsGrid
+          rows={podium.length ? rest : rows}
+          columns={["played", "wins", "draws", "losses"]}
+          showLive={false}
+          showMovement={movement.show}
+          caption={`Ukupni poredak: ${tableName}`}
+          rowHref={rowHref}
+        />
+      );
       return (
         <>
-          <Podium rows={podium} rowHref={rowHref} />
-          <Card ref={scroller.ref} sx={{flex: 1, minHeight: 0, overflowY: "auto", borderRadius: "24px"}}>
-            <StandingsGrid
-              rows={podium.length ? rest : rows}
-              columns={["played", "wins", "draws", "losses"]}
-              showLive={false}
-              caption={`Ukupni poredak: ${tableName}`}
-              rowHref={rowHref}
-            />
-          </Card>
+          <Podium rows={podium} showMovement={movement.show} rowHref={rowHref} />
+          {movement.show && movement.since ? (
+            <Card sx={{flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderRadius: "24px"}}>
+              <Box ref={scroller.ref} sx={{flex: 1, minHeight: 0, overflowY: "auto"}}>
+                {grid}
+              </Box>
+              <MovementNote since={movement.since} />
+            </Card>
+          ) : (
+            <Card ref={scroller.ref} sx={{flex: 1, minHeight: 0, overflowY: "auto", borderRadius: "24px"}}>
+              {grid}
+            </Card>
+          )}
         </>
       );
     }
     return (
       <ScrollCard ref={scroller.ref} aria-label={`Ukupni poredak: ${tableName}`}>
-        <StandingsRows rows={podium.length ? rest : rows} podium={podium} withPlayed head rowHref={rowHref} />
+        <StandingsRows rows={podium.length ? rest : rows} podium={podium} withPlayed head showMovement={movement.show} rowHref={rowHref} />
       </ScrollCard>
     );
   };

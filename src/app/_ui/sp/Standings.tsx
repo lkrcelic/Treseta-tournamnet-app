@@ -1,7 +1,10 @@
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
-import {statsParts, StandingsRow} from "@/app/_lib/ui/standings";
+import {MOVEMENT_HEADER, MovementKind, movementNote, movementView, statsParts, StandingsRow} from "@/app/_lib/ui/standings";
 import {count, NOUN, plural} from "@/app/_lib/ui/text";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
+import SwapVertRoundedIcon from "@mui/icons-material/SwapVertRounded";
 import {Box, SxProps, Theme} from "@mui/material";
 import React from "react";
 import {ellipsis, mergeSx, rowFocus, stretchedArea, tabular, visuallyHidden} from "./base";
@@ -50,18 +53,104 @@ function linkedRow(tinted: boolean, card = false) {
   } as const;
 }
 
+const MOVEMENT_INK: Record<MovementKind, string> = {up: color.green, down: color.red, same: color.faint, none: color.faint};
+
+// The three looks of the +/− (design is.league): a desktop table cell; a pill next to a desktop podium medal; a chip
+// after a team's name on the phone. The pill and the chip are as wide as their text, narrower when there's no arrow.
+const MOVEMENT_LOOK = {
+  cell: {fontSize: 15, icon: 26, iconWidth: 24, iconGap: "-3px", shape: null},
+  pill: {fontSize: 14, icon: 24, iconWidth: 24, iconGap: "0px", shape: {height: 28, minWidth: 28, padArrow: "3px", pad: "9px", background: tint.white[70]}},
+  chip: {fontSize: 13, icon: 22, iconWidth: 22, iconGap: "0px", shape: {height: 20, minWidth: 22, padArrow: "2px", pad: "6px", background: color.paper2}},
+} as const;
+
+// A row's +/− since the league's previous night: a green ▲ or red ▼ with the places, or a grey "–" (same place, or a
+// team that wasn't in that night's table). The cell and the pill sit over the row's link so the pointer gets their
+// tooltip; a click on them still opens the team. A screen reader hears the tooltip's words. The arrows are the filled
+// icons: the Rounded ones draw a third smaller triangle than the design's arrow_drop_up.
+export function MovementMark({movement, look}: {movement: number | null; look: keyof typeof MOVEMENT_LOOK}) {
+  const v = movementView(movement);
+  const {fontSize, icon, iconWidth, iconGap, shape} = MOVEMENT_LOOK[look];
+  const Arrow = v.kind === "up" ? ArrowDropUpIcon : v.kind === "down" ? ArrowDropDownIcon : null;
+  const raised = look !== "chip";
+  return (
+    <Box
+      component="span"
+      title={raised ? v.label : undefined}
+      onClick={raised ? openRowLink : undefined}
+      sx={{
+        flex: "none",
+        display: "flex",
+        alignItems: "center",
+        fontSize,
+        fontWeight: 700,
+        lineHeight: 1,
+        color: MOVEMENT_INK[v.kind],
+        ...tabular,
+        ...(shape && {
+          height: shape.height,
+          minWidth: shape.minWidth,
+          justifyContent: "center",
+          boxSizing: "border-box",
+          pl: Arrow ? shape.padArrow : shape.pad,
+          pr: shape.pad,
+          borderRadius: `${shape.height / 2}px`,
+          background: shape.background,
+        }),
+        ...(raised && {position: "relative", zIndex: 1}),
+      }}
+    >
+      <Box component="span" aria-hidden sx={{display: "flex", alignItems: "center"}}>
+        {Arrow && <Arrow sx={{fontSize: icon, width: iconWidth, mr: iconGap, flex: "none"}} />}
+        {v.text}
+      </Box>
+      <VisuallyHidden>{v.label}</VisuallyHidden>
+    </Box>
+  );
+}
+
+// The +/− and its tooltip are over the row's link: a click on them opens the row's team as the rest of the row does
+function openRowLink(e: React.MouseEvent<HTMLElement>) {
+  e.currentTarget.closest("tr, li")?.querySelector<HTMLAnchorElement>("a[href]")?.click();
+}
+
+// Under the desktop Ukupni poredak table: what +/− means and the night it counts from
+export function MovementNote({since}: {since: string}) {
+  return (
+    <Box
+      sx={{
+        flex: "none",
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        p: "10px 24px",
+        borderTop: `1px solid ${color.line}`,
+        background: color.paper2,
+        fontSize: 13,
+        color: color.muted,
+        "& > svg": {fontSize: 18, color: color.navy, flex: "none"},
+      }}
+    >
+      <SwapVertRoundedIcon aria-hidden />
+      <span>{movementNote(since)}</span>
+    </Box>
+  );
+}
+
 // Three medal cards. "compact" is the phone version (three narrow columns), otherwise the desktop one. showLive
 // turns a medal red and pulsing, and its points red, while that team is playing (as in the rows below the podium).
+// showMovement: the +/− pill next to a desktop medal (Ukupni poredak).
 export function Podium({
   rows,
   compact = false,
   showLive = false,
+  showMovement = false,
   rowHref,
   sx,
 }: {
   rows: StandingsRow[];
   compact?: boolean;
   showLive?: boolean;
+  showMovement?: boolean;
   rowHref?: RowHref;
   sx?: SxProps<Theme>;
 }) {
@@ -120,7 +209,14 @@ export function Podium({
             ) : (
               <>
                 <Box sx={{display: "flex", flexDirection: "column", gap: "14px", minWidth: 0}}>
-                  <Medal rank={r.rank} index={i} size={34} live={live} />
+                  {showMovement ? (
+                    <Box sx={{display: "flex", alignItems: "center", gap: "8px"}}>
+                      <Medal rank={r.rank} index={i} size={34} live={live} />
+                      <MovementMark movement={r.movement} look="pill" />
+                    </Box>
+                  ) : (
+                    <Medal rank={r.rank} index={i} size={34} live={live} />
+                  )}
                   <TeamLabel name={<TeamName row={r} href={href} />} conference={r.conference} dotSize={10} sx={{gap: "10px", fontFamily: font.display, fontSize: 26, fontWeight: 700}} />
                 </Box>
                 <Box sx={{display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px"}}>
@@ -186,17 +282,20 @@ export function VisuallyHidden({children}: {children: React.ReactNode}) {
 // card is the scroller). The highlighted team (the player's own, or the one the page was opened for) has a cream row
 // with a navy bar, also on the podium. head: a labels row on top ("#  EKIPA … RAZ  BOD", 13d), pinned with the podium.
 // The pinned block (as the desktop grid's column labels) is marked data-pinned, rows data-highlight.
+// showMovement: Ukupni poredak's +/− chip after each team's name, on the podium rows too.
 export function StandingsRows({
   rows,
   podium,
   withPlayed = false,
   head = false,
+  showMovement = false,
   rowHref,
 }: {
   rows: StandingsRow[];
   podium?: StandingsRow[];
   withPlayed?: boolean;
   head?: boolean;
+  showMovement?: boolean;
   rowHref?: RowHref;
 }) {
   const top = podium && podium.length >= 3 ? podium.slice(0, 3) : null;
@@ -211,7 +310,7 @@ export function StandingsRows({
           {top && (
             <Box component="ol" aria-label="Prva tri mjesta" sx={{listStyle: "none", m: 0, p: 0}}>
               {top.map((r, i) => (
-                <StandingsLine key={r.key} r={r} withPlayed={withPlayed} medal={i} href={rowHref?.(r)} />
+                <StandingsLine key={r.key} r={r} withPlayed={withPlayed} showMovement={showMovement} medal={i} href={rowHref?.(r)} />
               ))}
             </Box>
           )}
@@ -219,7 +318,7 @@ export function StandingsRows({
       )}
       <Box component="ol" start={top ? 4 : undefined} sx={{listStyle: "none", m: 0, p: 0}}>
         {rows.map((r) => (
-          <StandingsLine key={r.key} r={r} withPlayed={withPlayed} href={rowHref?.(r)} keepClear={keepClear} />
+          <StandingsLine key={r.key} r={r} withPlayed={withPlayed} showMovement={showMovement} href={rowHref?.(r)} keepClear={keepClear} />
         ))}
       </Box>
     </>
@@ -278,12 +377,14 @@ function RowsHead() {
 function StandingsLine({
   r,
   withPlayed,
+  showMovement = false,
   medal,
   href,
   keepClear,
 }: {
   r: StandingsRow;
   withPlayed: boolean;
+  showMovement?: boolean;
   medal?: number;
   href?: string | null;
   keepClear?: KeepClear;
@@ -311,7 +412,14 @@ function StandingsLine({
     >
       {onPodium ? <Medal rank={r.rank} index={medal} size={28} /> : <RankBadge rank={r.rank} live={r.live} />}
       <Box sx={{display: "flex", flexDirection: "column", gap: "2px", minWidth: 0}}>
-        <TeamLabel name={<TeamName row={r} href={href} keepClear={keepClear} />} conference={r.conference} sx={{fontSize: 16, fontWeight: onPodium || r.highlight ? 700 : 600}} />
+        {showMovement ? (
+          <Box sx={{display: "flex", alignItems: "center", gap: "6px", minWidth: 0}}>
+            <TeamLabel name={<TeamName row={r} href={href} keepClear={keepClear} />} conference={r.conference} sx={{fontSize: 16, fontWeight: onPodium || r.highlight ? 700 : 600}} />
+            <MovementMark movement={r.movement} look="chip" />
+          </Box>
+        ) : (
+          <TeamLabel name={<TeamName row={r} href={href} keepClear={keepClear} />} conference={r.conference} sx={{fontSize: 16, fontWeight: onPodium || r.highlight ? 700 : 600}} />
+        )}
         <Box sx={{fontSize: 12.5, [SMALL_PHONE]: {fontSize: 11.5}, color: onPodium ? color.ink2 : color.muted, ...ellipsis, ...tabular}}>
           {stats.played && (
             <Box component="span" sx={{[NARROW_PHONE]: visuallyHidden}}>
@@ -351,7 +459,7 @@ type GridColumn = "played" | "wins" | "draws" | "losses";
 
 // Desktop standings table with real columns; RAZ and BOD larger than the counts. head={false}: no column labels row
 // on screen (Početna's Ukupni poredak card, 3a: the rows follow the podium straight away); screen readers still get
-// the column names.
+// the column names. showMovement: Ukupni poredak's "+/−" column right after "#".
 export function StandingsGrid({
   rows,
   columns = ["wins", "draws", "losses"],
@@ -360,6 +468,7 @@ export function StandingsGrid({
   caption,
   sx,
   showLive = true,
+  showMovement = false,
   rowHref,
 }: {
   rows: StandingsRow[];
@@ -369,12 +478,13 @@ export function StandingsGrid({
   caption: string;
   sx?: SxProps<Theme>;
   showLive?: boolean;
+  showMovement?: boolean;
   rowHref?: RowHref;
 }) {
   const short: Record<GridColumn, string> = {played: "OK", wins: "POB", draws: "NER", losses: "IZG"};
   const full: Record<GridColumn, string> = {played: "Odigrano kola", wins: "Pobjede", draws: "Neriješeno", losses: "Izgubljeno"};
   const countW = dense ? 40 : columns.length > 3 ? 64 : 56;
-  const template = `${dense ? 36 : 44}px minmax(0,1fr) ${columns.map(() => `${countW}px`).join(" ")} ${dense ? 64 : columns.length > 3 ? 96 : 80}px ${dense ? 48 : columns.length > 3 ? 72 : 64}px`;
+  const template = `${dense ? 36 : 44}px ${showMovement ? "56px " : ""}minmax(0,1fr) ${columns.map(() => `${countW}px`).join(" ")} ${dense ? 64 : columns.length > 3 ? 96 : 80}px ${dense ? 48 : columns.length > 3 ? 72 : 64}px`;
   const px = dense ? "20px" : columns.length > 3 ? "24px" : "20px";
   const cell = {display: "grid", gridTemplateColumns: template, gap: "8px", alignItems: "center", px};
   const headHeight = dense ? 34 : 44;
@@ -411,6 +521,13 @@ export function StandingsGrid({
           <Box component="th" role="columnheader" scope="col" sx={{textAlign: "left"}}>
             <abbr title="Mjesto" style={{textDecoration: "none"}}>#</abbr>
           </Box>
+          {showMovement && (
+            <Box component="th" role="columnheader" scope="col" sx={{textAlign: "center"}}>
+              <abbr title={MOVEMENT_HEADER} style={{textDecoration: "none", cursor: "help"}}>
+                +/−
+              </abbr>
+            </Box>
+          )}
           <Box component="th" role="columnheader" scope="col" sx={{textAlign: "left"}}>
             Ime ekipe
           </Box>
@@ -454,6 +571,11 @@ export function StandingsGrid({
               <Box component="td" role="cell">
                 <RankBadge rank={r.rank} live={live} size={dense ? 26 : 30} />
               </Box>
+              {showMovement && (
+                <Box component="td" role="cell" sx={{display: "flex", justifyContent: "center"}}>
+                  <MovementMark movement={r.movement} look="cell" />
+                </Box>
+              )}
               <Box component="td" role="cell" sx={{fontSize: dense ? 16 : 17, fontWeight: r.highlight ? 700 : 600, minWidth: 0}}>
                 <TeamLabel name={<TeamName row={r} href={href} keepClear={keepClear} />} conference={r.conference} />
               </Box>
