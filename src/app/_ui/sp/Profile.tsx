@@ -9,7 +9,7 @@ import BlockRoundedIcon from "@mui/icons-material/BlockRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import {Box, keyframes, SxProps, Theme} from "@mui/material";
-import React, {useEffect, useId, useRef, useState} from "react";
+import React, {useContext, useEffect, useId, useRef, useState} from "react";
 import {buttonBase, ellipsis, mergeSx, tabular} from "./base";
 import {IconCircleButton} from "./Buttons";
 
@@ -324,11 +324,16 @@ export function ColumnHead({grid, children, sx}: {grid: string; children: React.
   );
 }
 
+// True inside a column that scrolls as a whole (two cards sharing one column of a desktop page, PageColumns): a
+// ColumnCard there is as high as all it holds, and its list doesn't scroll on its own.
+export const WholeColumnContext = React.createContext(false);
+
 // One column of a desktop Team or Player page (P:205): a white card filling the grid row, with its title (and a count or
 // a button on the right), an optional search-and-add field, an optional labels row (ColumnHead), and a list that scrolls
 // on its own. empty replaces the list (the labels stay, 13o). The title row is 66 px high whatever is on its right (a
 // count or a 38 px button), so the three columns' rows line up. While the add field lists its hits, the field takes the
-// height it needs and the list below gives way.
+// height it needs and the list below gives way. In a column that scrolls as a whole (WholeColumnContext) nothing gives
+// way: the card grows by the hits, and the column scrolls.
 export function ColumnCard({
   title,
   right,
@@ -347,6 +352,7 @@ export function ColumnCard({
   sx?: SxProps<Theme>;
 }) {
   const titleId = useId();
+  const whole = useContext(WholeColumnContext);
   return (
     <Box
       component="section"
@@ -376,7 +382,12 @@ export function ColumnCard({
       {addField && <Box sx={{flex: "0 1 auto", minHeight: 0, display: "flex", flexDirection: "column", p: "0 20px 14px"}}>{addField}</Box>}
       {header}
       <Box
-        sx={{flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable", overscrollBehavior: "contain", borderTop: header ? undefined : `1px solid ${color.line}`}}
+        sx={{
+          // (hidden, not visible, in a whole column: the same scrollbar gutter as the labels row above)
+          ...(whole ? {flex: "1 0 auto", overflowY: "hidden"} : {flex: 1, minHeight: 0, overflowY: "auto", overscrollBehavior: "contain"}),
+          scrollbarGutter: "stable",
+          borderTop: header ? undefined : `1px solid ${color.line}`,
+        }}
       >
         {empty || children}
       </Box>

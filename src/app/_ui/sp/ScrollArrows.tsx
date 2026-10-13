@@ -10,9 +10,13 @@ type Place = {x: number; upY: number; downY: number; upOn: boolean; downOn: bool
 
 const ARROW = 40;
 
+// a list covered by an overlay that made it inert (Pušački raspored over Novo kolo) has no arrows
+const covered = (el: Element) => el.closest("[inert]") != null;
+
 // the nearest list or panel under the mouse that can scroll (inside the desktop frame); none in an area marked
-// data-no-scroll-arrows (the admin's side panel)
+// data-no-scroll-arrows (the admin's side panel) or in an inert one
 function scrollableAt(target: EventTarget | null, root: HTMLElement): HTMLElement | null {
+  if (target instanceof HTMLElement && covered(target)) return null;
   for (let el = target instanceof HTMLElement ? target : null; el && el !== root; el = el.parentElement) {
     if (el.dataset.noScrollArrows != null) return null;
     if (el.scrollHeight - el.clientHeight > 4) {
@@ -91,13 +95,20 @@ export function useScrollArrows(rootRef: React.RefObject<HTMLElement>) {
     };
   }, [update, stop]);
 
-  // ...and its size; a list that goes away under a still pointer (a side panel closed with Escape) takes them along
+  // ...and its size; a list that goes away under a still pointer (a side panel closed with Escape) takes them along,
+  // and so does one that an overlay opened with a click makes inert (the arrow stayed over the overlay)
   useEffect(() => {
     const el = target.current;
-    if (!place || !el || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => update(el.isConnected ? el : null));
-    observer.observe(el);
-    return () => observer.disconnect();
+    if (!place || !el) return;
+    const check = () => update(el.isConnected && !covered(el) ? el : null);
+    const resize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(check);
+    resize?.observe(el);
+    const inert = new MutationObserver(check);
+    inert.observe(document.body, {attributes: true, attributeFilter: ["inert"], subtree: true});
+    return () => {
+      resize?.disconnect();
+      inert.disconnect();
+    };
   }, [place, update]);
 
   const onMouseMove = (e: React.MouseEvent) => {
@@ -115,7 +126,7 @@ export function useScrollArrows(rootRef: React.RefObject<HTMLElement>) {
 
   const start = (dir: 1 | -1) => {
     const el = target.current;
-    if (!el) return;
+    if (!el || covered(el)) return;
     stop();
     el.scrollBy({top: dir * el.clientHeight * 0.6, behavior: "smooth"});
     hold.current.timer = window.setTimeout(() => {

@@ -3,7 +3,7 @@
 import type {Overview} from "@/app/_hooks/useOverview";
 import {BRAND} from "@/app/_lib/brand";
 import type {NavStackControls} from "@/app/_lib/navStack";
-import type {HeroTile} from "@/app/_lib/ui/profiles";
+import {type HeroTile, longestWord} from "@/app/_lib/ui/profiles";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {color, font, tint} from "@/app/_styles/tokens";
 import {
@@ -26,6 +26,7 @@ import {
   stretchedArea,
   tabular,
   visuallyHidden,
+  WholeColumnContext,
 } from "@/app/_ui/sp";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
@@ -114,9 +115,9 @@ export function DesktopFrame({
 
 // The three columns of a desktop page under its header card, each scrolling on its own (P:204). Stacked (in a narrow
 // directory frame, see DirectoryFrame) the first keeps a column of its own and the other two share the second column,
-// each still scrolling on its own: the upper card takes the height it needs up to 60% of the column, the lower one the
-// rest, so both titles are always in view. While the upper card's add field is in use, the lower one gives way down to
-// its title row.
+// which scrolls as a whole: both cards are as high as all they hold (WholeColumnContext), one under the other, and the
+// lower one reaches down to the column's end when there is room. (Two scrolling cards in one column left each a window
+// smaller than a row in a short window.)
 export function PageColumns({
   template,
   stackedTemplate,
@@ -131,28 +132,29 @@ export function PageColumns({
   return (
     <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: stacked ? stackedTemplate : template, gridTemplateRows: "minmax(0,1fr)", gap: "18px"}}>
       {first}
-      {/* the same element either way, so a column's state (an open add field) stays when the window crosses 1360 px */}
-      <Box
-        sx={
-          stacked
-            ? {
-                minHeight: 0,
-                minWidth: 0,
-                display: "flex",
-                flexDirection: "column",
-                gap: "18px",
-                // (two cards: the upper one is the one that isn't last)
-                "& > :not(:last-child)": {flex: "0 1 auto", minHeight: 0, maxHeight: "calc(60% - 9px)"},
-                // the lower card's title row (66 px) and the gap stay
-                "& > :not(:last-child):focus-within": {maxHeight: "calc(100% - 84px)"},
-                "& > :last-child": {flex: "1 1 0", minHeight: 0},
-              }
-            : {display: "contents"}
-        }
-      >
-        {second}
-        {third}
-      </Box>
+      {/* the same elements either way, so a column's state (an open add field) stays when the window crosses 1360 px */}
+      <WholeColumnContext.Provider value={stacked}>
+        <Box
+          sx={
+            stacked
+              ? {
+                  minHeight: 0,
+                  minWidth: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "18px",
+                  overflowY: "auto",
+                  overscrollBehavior: "contain",
+                  "& > *": {flex: "none"},
+                  "& > :last-child": {flexGrow: 1},
+                }
+              : {display: "contents"}
+          }
+        >
+          {second}
+          {third}
+        </Box>
+      </WholeColumnContext.Provider>
     </Box>
   );
 }
@@ -194,6 +196,11 @@ export function PageStatus<T>({
 }
 
 // ---------- the cream header card ----------
+
+// The phone name's size: 32 px, or smaller (down to 22 px) when its longest word would be wider than the name's box
+// (100cqi; it happens on a phone under about 380 px wide), so a team name breaks only between words (DECISIONS #44). A
+// letter of the display face is at most about .56 em wide ("VuglecBrežani" 6.7 em at 32 px); a longer word still breaks.
+const phoneTitleSize = (title: string) => `clamp(22px, calc(100cqi / ${Math.max(1, 0.56 * longestWord(title)).toFixed(2)}), 32px)`;
 
 // The header card of a Team page (13a/13f) and of a desktop Player page (13g): the initials, the name (and "Neaktivan"
 // after it), "Tvoja ekipa" in the top right corner, an optional block on the right (the player's rating) and the
@@ -251,8 +258,11 @@ export function HeroCard({
       {phoneTag && <Box sx={{display: "flex", justifyContent: "flex-end", mr: "-6px", mb: "-12px"}}>{cornerTag}</Box>}
       <Box sx={{display: "flex", alignItems: "center", gap: desktop ? (short ? "14px" : "18px") : "14px", minWidth: 0}}>
         <InitialsAvatar name={avatarName} letters={avatarLetters} size={avatar} variant="navy" sx={desktop ? {fontSize: short ? 20 : 28} : undefined} />
-        {/* the field (and a note under it) and its ✓ line up at the top; the ✓ centres itself on the field */}
-        <Box sx={{flex: 1, minWidth: 0, display: "flex", alignItems: titleEditor ? "flex-start" : "center", gap: "10px"}}>
+        {/* the field (and a note under it) and its ✓ line up at the top; the ✓ centres itself on the field. On the phone
+            the box is the name's size container (phoneTitleSize) */}
+        <Box
+          sx={{flex: 1, minWidth: 0, display: "flex", alignItems: titleEditor ? "flex-start" : "center", gap: "10px", containerType: desktop ? undefined : "inline-size"}}
+        >
           {titleEditor ? (
             <>
               <Box component={heading} id={titleId} sx={visuallyHidden}>
@@ -272,8 +282,15 @@ export function HeroCard({
                 fontWeight: 800,
                 ...(desktop
                   ? {fontSize: short ? 32 : 44, lineHeight: 1.05, letterSpacing: "-.025em", ...ellipsis}
-                  : // only a word longer than the whole line breaks
-                    {fontSize: 32, lineHeight: 1.02, letterSpacing: "-.02em", textWrap: "pretty", overflowWrap: "break-word"}),
+                  : // only a word longer than the whole line at the smallest size breaks
+                    {
+                      fontSize: 32,
+                      "@supports (width: 1cqi)": {fontSize: phoneTitleSize(title)},
+                      lineHeight: 1.02,
+                      letterSpacing: "-.02em",
+                      textWrap: "pretty",
+                      overflowWrap: "break-word",
+                    }),
               }}
             >
               {title}

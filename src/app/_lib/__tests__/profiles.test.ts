@@ -5,6 +5,8 @@ import {
   bestRank,
   inRatingOrder,
   leagueStatusLine,
+  leagueStatusParts,
+  longestWord,
   nightParts,
   personalRows,
   playerTeamLeagues,
@@ -163,6 +165,15 @@ test("a team's avatar is the first letter of its name", () => {
   assert.equal(teamInitial(null), "?");
 });
 
+test("a name's longest word counts letters, not bytes, and a hyphen ends a part", () => {
+  assert.equal(longestWord("VuglecBrežani"), 13);
+  assert.equal(longestWord("Ante Pleša i prijatelji"), 10);
+  assert.equal(longestWord("Štrumpfovi"), 10);
+  assert.equal(longestWord("Lopate-stare"), 7);
+  assert.equal(longestWord("  Puleni  "), 6);
+  assert.equal(longestWord(""), 0);
+});
+
 const row = (id: number, rank: number, rating: number, rounds: number): RatingRow => ({id, rank, name: `Igrač ${id}`, team: null, rating, change: 12, rounds, provisional: rounds < 8});
 
 test("a rating summary is the player's Rejting row; a player who isn't listed is unranked and provisional", () => {
@@ -251,6 +262,12 @@ test("the line under a league's Ukupni poredak opened from a team (13d): the sta
   assert.equal(leagueStatusLine("Jesen 2026", true, {lower: true}), "Jesen 2026 · u tijeku");
   assert.equal(leagueStatusLine(null, false, {lower: true}), "Završeno");
   assert.equal(leagueStatusLine("  ", true, {lower: true}), "U tijeku");
+});
+
+test("the status line comes in its two parts too, the season (or null) and the state", () => {
+  assert.deepEqual(leagueStatusParts("2025", false), {season: "Sezona 2025", state: "Završeno"});
+  assert.deepEqual(leagueStatusParts("Jesen 2026", true, {lower: true}), {season: "Jesen 2026", state: "u tijeku"});
+  assert.deepEqual(leagueStatusParts(null, true, {lower: true}), {season: null, state: "U tijeku"});
 });
 
 test("a season label: numbers only get \"Sezona\", words stay", () => {

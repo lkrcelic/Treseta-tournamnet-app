@@ -8,7 +8,7 @@ import useTeamOverview from "@/app/_hooks/useTeamOverview";
 import type {TeamNight, TeamOverview, TeamOverviewLeague, TeamOverviewPlayer} from "@/app/_interfaces/profiles";
 import {leagueDateString} from "@/app/_lib/dates";
 import {leagueAddOptions, playerAddOptions} from "@/app/_lib/ui/directory";
-import {leagueStatusLine, nightParts, rosterSubline, teamInitial, teamTiles} from "@/app/_lib/ui/profiles";
+import {leagueStatusParts, nightParts, rosterSubline, teamInitial, teamTiles} from "@/app/_lib/ui/profiles";
 import {formatChange, shortDate} from "@/app/_lib/ui/ratings";
 import {count, NOUN} from "@/app/_lib/ui/text";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
@@ -251,14 +251,22 @@ function PhoneNights({nights}: {nights: TeamNight[]}) {
   );
 }
 
-// "● Jesen 2026 · U tijeku": the dot green while the league runs; the line wraps in a narrow column
+// "● Jesen 2026 · U tijeku": the dot green while the league runs; in a narrow column the line breaks before the
+// separator ("Sezona 2025" / "· Završeno"), never after it
 function LeagueStatus({league: l, phone = false}: {league: TeamOverviewLeague; phone?: boolean}) {
+  const {season, state} = leagueStatusParts(l.season, l.live);
   return (
     <Box component="span" sx={{display: "flex", alignItems: "baseline", gap: "6px", minWidth: 0, fontSize: phone ? 13 : 12.5, lineHeight: 1.3, color: color.muted}}>
       <Box component="span" sx={{flex: "none", display: "flex", alignSelf: "flex-start", height: "1.3em", alignItems: "center"}}>
         <StatusDot live={l.live} />
       </Box>
-      <span>{leagueStatusLine(l.season, l.live)}</span>
+      <span>
+        {season && `${season} `}
+        <Box component="span" sx={{whiteSpace: "nowrap"}}>
+          {season && "· "}
+          {state}
+        </Box>
+      </span>
     </Box>
   );
 }

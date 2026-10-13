@@ -153,10 +153,16 @@ export function seasonLabel(season: string | null | undefined): string | null {
 // "Završeno" for a league without a season. The Team page's league rows, and (lower: the state in lower case after a
 // season, "Sezona 2025 · završeno", 13d) the line under a league's Ukupni poredak opened from a team.
 export function leagueStatusLine(season: string | null | undefined, live: boolean, {lower = false}: {lower?: boolean} = {}): string {
+  const parts = leagueStatusParts(season, live, {lower});
+  return parts.season ? `${parts.season} · ${parts.state}` : parts.state;
+}
+
+// The line's two parts, the season's label (null for none) and the state, so a narrow column breaks it before
+// "· Završeno", never after the dot
+export function leagueStatusParts(season: string | null | undefined, live: boolean, {lower = false}: {lower?: boolean} = {}): {season: string | null; state: string} {
   const label = seasonLabel(season);
   const state = live ? "U tijeku" : "Završeno";
-  if (!label) return state;
-  return `${label} · ${lower ? state.toLowerCase() : state}`;
+  return {season: label, state: label && lower ? state.toLowerCase() : state};
 }
 
 // The second line of a Team page's player: the username for an admin and the player themself (the server sends it
@@ -169,6 +175,12 @@ export function rosterSubline(player: {username: string | null}, teamName: strin
 export function teamInitial(name: string | null | undefined): string {
   const first = Array.from(name ?? "").find((ch) => /\d/.test(ch) || ch.toLocaleLowerCase("hr") !== ch.toLocaleUpperCase("hr"));
   return first ? first.toLocaleUpperCase("hr") : "?";
+}
+
+// The letters of a name's longest word, a hyphenated word counted in its parts ("Lopate-stare" -> 7, "Lopate-"): the
+// phone header makes the name smaller when that word wouldn't fit on a line (HeroCard)
+export function longestWord(name: string): number {
+  return Math.max(0, ...name.replace(/-/g, "- ").split(/\s+/).map((w) => Array.from(w).length));
 }
 
 // The Osobni podaci rows of a Player page (P:467): first and last name for everyone; for the player themself and
