@@ -8,7 +8,7 @@ import {MyBurzaPost} from "@/app/_interfaces/burza";
 import {leagueDateString} from "@/app/_lib/dates";
 import {MyPostChange, myTabLabel, repostFormHref, repostOpensForm} from "@/app/_lib/ui/burza";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
-import {DesktopShell, ErrorNote, PrimaryButton, Screen, Segmented, tabPanelProps, TopBar} from "@/app/_ui/sp";
+import {DesktopShell, ErrorNote, PrimaryButton, Screen, Segmented, tabPanelProps, TopBar, visuallyHidden} from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import {Box} from "@mui/material";
 import {useSearchParams} from "next/navigation";
@@ -157,7 +157,7 @@ export default function MyBurzaPage() {
 
   const picker = <KindPicker open={picking} onClose={() => setPicking(false)} onPick={choose} desktop={isDesktop} anchor={newRef.current} />;
   const live = (
-    <Box role="status" aria-live="polite" sx={{position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0,0,0,0)", whiteSpace: "nowrap"}}>
+    <Box role="status" aria-live="polite" sx={visuallyHidden}>
       {announce}
     </Box>
   );

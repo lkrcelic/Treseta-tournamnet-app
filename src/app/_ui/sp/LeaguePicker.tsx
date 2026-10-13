@@ -131,10 +131,13 @@ export function LeagueMenuButton({
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
+        title={current?.name}
         sx={{
           ...buttonBase,
           height: 48,
           maxWidth: 340,
+          // in a crowded header (Dnevni poredak at 1024 px, next to the rounds) the name gives way first
+          minWidth: 0,
           display: "flex",
           alignItems: "center",
           gap: "10px",

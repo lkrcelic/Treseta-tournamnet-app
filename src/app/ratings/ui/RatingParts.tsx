@@ -3,26 +3,30 @@
 import {PlayerRatingDetail} from "@/app/_interfaces/ratings";
 import {formatChange, RATING_COLUMNS, RATING_HOW, ratingChart, roundsLabel, shortDate} from "@/app/_lib/ui/ratings";
 import {NOUN, plural} from "@/app/_lib/ui/text";
-import {color, font, tint} from "@/app/_styles/tokens";
-import {buttonBase, Card, changeInk, ChipLink, ellipsis, ProvisionalTag, ResultPill, rowFocus, stretchedArea, tabular} from "@/app/_ui/sp";
+import {color, font, shadow, tint} from "@/app/_styles/tokens";
+import {buttonBase, Card, changeInk, ChipLink, ellipsis, ProvisionalTag, ResultPill, rowFocus, stretchedArea, tabular, VisuallyHidden} from "@/app/_ui/sp";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import StyleRoundedIcon from "@mui/icons-material/StyleRounded";
-import {Box} from "@mui/material";
+import {Box, keyframes, Theme} from "@mui/material";
+import type {SystemStyleObject} from "@mui/system";
 import React from "react";
 
 // Pieces of the ratings page (Claude Design "Rejting igrača"), shared by the phone and desktop layouts
 
+// the place in a circle; from 100 on (three digits) a size smaller, so they keep clear of the circle's edge
 export function RankDot({rank, size = 28}: {rank: number; size?: number}) {
   return (
     <Box
       component="span"
-      sx={{width: size, height: size, flex: "none", borderRadius: "50%", background: color.lineFill, color: color.navy, fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", ...tabular}}
+      sx={{width: size, height: size, flex: "none", borderRadius: "50%", background: color.lineFill, color: color.navy, fontSize: rank >= 100 ? 12 : 14, fontWeight: 700, letterSpacing: rank >= 100 ? "-.02em" : undefined, display: "flex", alignItems: "center", justifyContent: "center", ...tabular}}
     >
       {rank}
     </Box>
   );
 }
+
+const NARROW_PHONE = "@media (max-width: 379.98px)";
 
 // The cream card on top of a player's detail: name, team, rounds, the big rating, the last change and the place. The
 // whole card opens the player's page (handoff §6/§7): "Profil ›" on the phone, "Profil igrača ›" on the desktop is the
@@ -67,11 +71,13 @@ export function PlayerCard({detail, desktop = false}: {detail: PlayerRatingDetai
           </ChipLink>
         </Box>
       </Box>
-      <Box sx={{display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "12px"}}>
+      {/* a phone under 380 px: the rating a size smaller, so "+15 zadnja večer" still fits beside it; on an even narrower
+          one the change and the place go under it, on the right */}
+      <Box sx={{display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: "10px 12px", [NARROW_PHONE]: {columnGap: "8px"}}}>
         <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
-          <Box sx={{fontFamily: font.display, fontSize: desktop ? 60 : 64, fontWeight: 800, lineHeight: 0.9, letterSpacing: "-.03em", ...tabular}}>
+          <Box sx={{fontFamily: font.display, fontSize: desktop ? 60 : 64, [NARROW_PHONE]: {fontSize: 56}, fontWeight: 800, lineHeight: 0.9, letterSpacing: "-.03em", ...tabular}}>
             {player.rating}
-            <VisuallyHiddenText> {plural(player.rating, ...NOUN.bod)} rejtinga</VisuallyHiddenText>
+            <VisuallyHidden> {plural(player.rating, ...NOUN.bod)} rejtinga</VisuallyHidden>
           </Box>
           {player.provisional && (
             <Box sx={{alignSelf: "flex-start"}}>
@@ -79,7 +85,7 @@ export function PlayerCard({detail, desktop = false}: {detail: PlayerRatingDetai
             </Box>
           )}
         </Box>
-        <Box sx={{display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px", pb: "4px"}}>
+        <Box sx={{ml: "auto", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px", pb: "4px"}}>
           {player.rounds > 0 && (
             <Box component="span" sx={{height: 30, display: "flex", alignItems: "center", px: "10px", borderRadius: "15px", background: color.white, color: changeInk(player.change), fontSize: desktop ? 15 : 16, fontWeight: 700, whiteSpace: "nowrap", ...tabular}}>
               {formatChange(player.change)} zadnja večer
@@ -94,14 +100,14 @@ export function PlayerCard({detail, desktop = false}: {detail: PlayerRatingDetai
   );
 }
 
-// "Kroz večeri": the rating after each night, from the 1500 start
-export function RatingChartCard({detail, width}: {detail: PlayerRatingDetail; width: number}) {
+// "Kroz večeri": the rating after each night, from the 1500 start (the desktop card has a little more room at the sides)
+export function RatingChartCard({detail, width, desktop = false}: {detail: PlayerRatingDetail; width: number; desktop?: boolean}) {
   const H = 130;
   const chart = ratingChart(detail.history.map((h) => h.rating), width, H);
   const first = detail.history[0];
   const last = detail.history[detail.history.length - 1];
   return (
-    <Card component="section" aria-label="Rejting kroz večeri" sx={{borderRadius: "22px", p: "16px 16px 12px", display: "flex", flexDirection: "column", gap: "10px", flex: "none"}}>
+    <Card component="section" aria-label="Rejting kroz večeri" sx={{borderRadius: "22px", p: desktop ? "16px 18px 12px" : "16px 16px 12px", display: "flex", flexDirection: "column", gap: "10px", flex: "none"}}>
       <Box sx={{fontSize: 13, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: color.muted}}>Kroz večeri</Box>
       <Box component="svg" viewBox={`0 0 ${width} ${H}`} width="100%" role="img" aria-label={`Rejting od ${first ? shortDate(first.night) : ""} do ${last ? shortDate(last.night) : ""}: sada ${detail.player.rating}`} sx={{display: "block", overflow: "visible"}}>
         <path d={chart.area} fill={tint.navy[7]} />
@@ -166,13 +172,16 @@ export function LastNights({detail, desktop = false}: {detail: PlayerRatingDetai
   );
 }
 
-export function NoRoundsCard() {
+// A player without a rated round (8e): instead of the chart and the nights. The desktop card has no icon and no shadow.
+export function NoRoundsCard({desktop = false}: {desktop?: boolean}) {
   return (
-    <Card sx={{borderRadius: "22px", p: "36px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", textAlign: "center", flex: "none"}}>
-      <Box aria-hidden sx={{width: 60, height: 60, borderRadius: "50%", background: color.paper, color: color.navy, display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 30}}}>
-        <StyleRoundedIcon />
-      </Box>
-      <Box sx={{fontFamily: font.display, fontSize: 21, fontWeight: 800}}>Još nema odigranih kola</Box>
+    <Card sx={{borderRadius: "22px", p: "36px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", textAlign: "center", flex: "none", boxShadow: desktop ? "none" : undefined}}>
+      {!desktop && (
+        <Box aria-hidden sx={{width: 60, height: 60, borderRadius: "50%", background: color.paper, color: color.navy, display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 30}}}>
+          <StyleRoundedIcon />
+        </Box>
+      )}
+      <Box sx={{fontFamily: font.display, fontSize: desktop ? 20 : 21, fontWeight: 800}}>Još nema odigranih kola</Box>
       <Box sx={{fontSize: 15, lineHeight: 1.45, color: color.muted, textWrap: "pretty"}}>Rejting kreće od 1500 i mijenja se nakon prve odigrane večeri.</Box>
     </Card>
   );
@@ -228,10 +237,61 @@ export function RatingsInfo({view, onSwitch, compact = false}: {view: InfoView; 
   );
 }
 
-function VisuallyHiddenText({children}: {children: React.ReactNode}) {
+// ---------- while loading ----------
+
+// the placeholders breathe (8f): .55 → 1 → .55 every 1.2 s; still when the system asks for less motion
+const breathe = keyframes`0%,100%{opacity:.55}50%{opacity:1}`;
+const breathing = {animation: `${breathe} 1.2s ease-in-out infinite`, "@media (prefers-reduced-motion: reduce)": {animation: "none"}} as const;
+// the name lines' widths, row after row
+const NAME_WIDTHS = [62, 48, 70, 55, 66, 44, 60, 52];
+const bar = (height: number, width: number | string, fill: string, radius: number) => ({height, width, borderRadius: `${radius}px`, background: fill});
+
+// The list while it loads (8f): a rank circle, the name and the line under it, the rating. grid: the desktop table's
+// grid-template-columns (sx), so the placeholders sit under its column labels (and its Promjena and Kola get one each).
+export function RatingSkeletonRows({rows, height, grid}: {rows: number; height: number; grid?: SystemStyleObject<Theme>}) {
+  const desktop = grid != null;
   return (
-    <Box component="span" sx={{position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0,0,0,0)", whiteSpace: "nowrap"}}>
-      {children}
+    <Box role="status" aria-label="Učitavanje">
+      {Array.from({length: rows}, (_, i) => (
+        <Box
+          key={i}
+          aria-hidden
+          sx={{
+            height,
+            display: "grid",
+            gridTemplateColumns: "30px minmax(0,1fr) 56px",
+            columnGap: desktop ? 0 : "10px",
+            ...grid,
+            alignItems: "center",
+            p: desktop ? "0 18px" : "0 16px 0 12px",
+            borderBottom: `1px solid ${desktop ? color.divider : color.line}`,
+            ...breathing,
+          }}
+        >
+          <Box sx={{...bar(desktop ? 30 : 28, desktop ? 30 : 28, color.lineFill, 0), borderRadius: "50%"}} />
+          <Box sx={{display: "flex", flexDirection: "column", gap: "7px", minWidth: 0}}>
+            <Box sx={bar(12, `${NAME_WIDTHS[i % NAME_WIDTHS.length]}%`, color.lineFill, 6)} />
+            <Box sx={bar(9, "58%", color.paper2, 5)} />
+          </Box>
+          <Box sx={{...bar(20, desktop ? 64 : "100%", color.lineFill, 6), justifySelf: "end"}} />
+          {desktop && (
+            <>
+              <Box sx={{...bar(14, 34, color.lineFill, 6), justifySelf: "end"}} />
+              <Box sx={{...bar(14, 22, color.lineFill, 6), justifySelf: "end"}} />
+            </>
+          )}
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
+// A player's detail while it loads (it used to be a spinner): the cream card and a white card where the chart goes
+export function DetailSkeleton({desktop = false}: {desktop?: boolean}) {
+  return (
+    <Box role="status" aria-label="Učitavanje" sx={{display: "flex", flexDirection: "column", gap: "14px", flex: "none"}}>
+      <Box aria-hidden sx={{height: desktop ? 200 : 190, borderRadius: "24px", background: color.cream, ...breathing}} />
+      <Box aria-hidden sx={{height: 200, borderRadius: "22px", background: color.white, boxShadow: shadow.card, ...breathing}} />
     </Box>
   );
 }

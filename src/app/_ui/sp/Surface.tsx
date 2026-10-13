@@ -98,10 +98,23 @@ export function PlayerChip({name, fullName, size = "md"}: {name: string; fullNam
         fontSize: sm ? 14 : 15,
         fontWeight: 600,
         whiteSpace: "nowrap",
+        // never wider than its row: a long username ends in "…" instead of being cut off
+        maxWidth: "100%",
+        minWidth: 0,
       }}
     >
       <InitialsAvatar name={fullName || name} size={sm ? 26 : 28} />
-      {name}
+      <Box
+        component="span"
+        // cut short with "…": the whole name shows on hover
+        onMouseEnter={(e: React.MouseEvent<HTMLElement>) => {
+          const label = e.currentTarget;
+          label.title = label.scrollWidth > label.clientWidth ? name : "";
+        }}
+        sx={{minWidth: 0, overflow: "hidden", textOverflow: "ellipsis"}}
+      >
+        {name}
+      </Box>
     </Box>
   );
 }

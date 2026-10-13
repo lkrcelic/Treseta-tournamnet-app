@@ -5,6 +5,7 @@ import {getOngoingMatchAPI, OngoingMatchGoneError} from "@/app/_fetchers/ongoing
 import {getRoundDataAPI} from "@/app/_fetchers/round/getOne";
 import useCountUp from "@/app/_hooks/useCountUp";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
+import useShortWindow from "@/app/_hooks/useShortWindow";
 import {dostaCallers, MATCH_THRESHOLD, matchState, PlayedHand, Side} from "@/app/_lib/game/scoring";
 import useRoundStore from "@/app/_store/RoundStore";
 import useOngoingMatchStore from "@/app/_store/ongoingMatchStore";
@@ -34,6 +35,8 @@ export default function ScoreBoardPage() {
   const router = useTransitionRouter();
   const pathname = usePathname();
   const isDesktop = useIsDesktop();
+  // a short window (1024×640): a smaller header, so the hand entry panel keeps its keypad
+  const short = useShortWindow();
   const setOngoingMatch = useOngoingMatchStore((s) => s.setOngoingMatch);
   const match = useOngoingMatchStore((s) => s.ongoingMatch);
   const setRoundData = useRoundStore((s) => s.setRoundData);
@@ -301,6 +304,7 @@ export default function ScoreBoardPage() {
     return (
       <DesktopShell
         active="game"
+        compact={short}
         eyebrow={matchLabel}
         title={`${sides.names[0]} vs ${sides.names[1]}`}
         right={

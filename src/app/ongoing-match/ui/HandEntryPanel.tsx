@@ -4,7 +4,7 @@ import {TeamSide} from "@/app/_interfaces/side";
 import {handError} from "@/app/_lib/game/scoring";
 import useResultStore from "@/app/_store/game/resultStore";
 import {color, font, teamColor, tint} from "@/app/_styles/tokens";
-import {buttonBase, Card, ErrorNote, PrimaryButton, tabular} from "@/app/_ui/sp";
+import {buttonBase, Card, ErrorNote, PrimaryButton, SHORT_WINDOW, tabular} from "@/app/_ui/sp";
 import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
 import {Box} from "@mui/material";
 import {useEffect, useState} from "react";
@@ -96,7 +96,7 @@ export default function HandEntryPanel({
     fontFamily: font.display,
     fontSize: 26,
     fontWeight: 700,
-    minHeight: 44,
+    minHeight: 40,
     "&:active:not(:disabled)": {transform: "scale(.96)", background: color.lineFill},
     "&:disabled": {opacity: 0.35},
   } as const;
@@ -105,7 +105,18 @@ export default function HandEntryPanel({
     <Card
       component="section"
       aria-labelledby="entry-title"
-      sx={{minHeight: 0, borderRadius: "24px", p: "20px", display: "flex", flexDirection: "column", gap: "14px"}}
+      sx={{
+        minHeight: 0,
+        borderRadius: "24px",
+        p: "20px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "14px",
+        // a short window (1024×640): everything a little smaller, and if it still doesn't fit the panel scrolls (the keys
+        // never squeeze into each other)
+        overflowY: "auto",
+        [SHORT_WINDOW]: {p: "16px", gap: "8px"},
+      }}
     >
       <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between"}}>
         <Box component="h2" id="entry-title" sx={{m: 0, fontFamily: font.display, fontSize: 24, fontWeight: 800}}>
@@ -137,6 +148,7 @@ export default function HandEntryPanel({
                 ...buttonBase,
                 height: 84,
                 minWidth: 0,
+                [SHORT_WINDOW]: {height: 68},
                 borderRadius: "16px",
                 border: `2px solid ${teamColor[i]}`,
                 background: on ? teamColor[i] : color.white,
@@ -169,7 +181,7 @@ export default function HandEntryPanel({
       <Box
         role="group"
         aria-label="Bodovi igre"
-        sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gridAutoRows: "minmax(0,1fr)", gap: "8px"}}
+        sx={{flex: "1 0 auto", display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gridAutoRows: "minmax(40px,1fr)", gap: "8px"}}
       >
         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => (
           <Box key={d} component="button" type="button" onClick={() => setGamePoints(d)} sx={key}>

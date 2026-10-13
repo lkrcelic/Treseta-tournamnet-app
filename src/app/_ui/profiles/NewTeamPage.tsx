@@ -3,13 +3,14 @@
 import {createTeamAPI} from "@/app/_fetchers/team/create";
 import {updateCachedLeague, useLeagueList} from "@/app/_hooks/useLeagues";
 import useNavStack from "@/app/_hooks/useNavStack";
+import useShortWindow from "@/app/_hooks/useShortWindow";
 import useTeams, {teamsList} from "@/app/_hooks/useTeams";
 import type {TeamOverview} from "@/app/_interfaces/profiles";
 import {sortHr, teamNameError} from "@/app/_lib/ui/directory";
 import {teamInitial, teamTiles} from "@/app/_lib/ui/profiles";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import React, {useEffect, useRef, useState} from "react";
-import {DesktopFrame, HeroCard, useDirectoryFrame, useShortWindow} from "./PageParts";
+import {DesktopFrame, HeroCard, useDirectoryFrame} from "./PageParts";
 import {errorText, NameButton, NameEditing, TeamNameInput} from "./TeamAdmin";
 import {TeamColumns} from "./TeamPage";
 

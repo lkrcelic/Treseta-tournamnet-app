@@ -1,28 +1,30 @@
 "use client";
 
 import {getPlayerRatingAPI} from "@/app/_fetchers/ratings";
-import {useRestoredState, useScrollMemory} from "@/app/_hooks/useBackRestore";
+import {type ScrollMemory, useRestoredState, useScrollMemory} from "@/app/_hooks/useBackRestore";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
+import useMoreFocus from "@/app/_hooks/useMoreFocus";
 import useNavStack from "@/app/_hooks/useNavStack";
 import useRatings from "@/app/_hooks/useRatings";
+import useShortWindow from "@/app/_hooks/useShortWindow";
 import {PlayerRatingDetail, RatingRow} from "@/app/_interfaces/ratings";
 import type {NavStackControls} from "@/app/_lib/navStack";
-import {formatChange, RATING_COLUMNS, roundsLabel} from "@/app/_lib/ui/ratings";
-import {matchesQuery} from "@/app/_lib/ui/text";
-import {TransitionLink, useTransitionRouter} from "@/app/_lib/viewTransitions";
+import {formatChange, RATING_COLUMNS, ratingIdFromPath, ratingPath, roundsLabel, visibleRatings} from "@/app/_lib/ui/ratings";
+import {NOUN} from "@/app/_lib/ui/text";
+import {replaceAddress, TransitionLink, useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, ease, font, shadow, tint} from "@/app/_styles/tokens";
 import {
   BackPill,
   buttonBase,
   Card,
-  CenteredSpinner,
   changeInk,
   DesktopShell,
   ellipsis,
   ErrorState,
   IconCircleButton,
-  LoadingRows,
+  LoadMoreButton,
   MessageState,
+  NARROW_DESKTOP,
   PrimaryButton,
   ProvisionalTag,
   Screen,
@@ -30,8 +32,8 @@ import {
   SearchInput,
   tabular,
 } from "@/app/_ui/sp";
-import {PhoneFrame, useShortWindow} from "@/app/_ui/profiles/PageParts";
-import {infoTitle, InfoView, LastNights, NoRoundsCard, PlayerCard, RankDot, RatingChartCard, RatingsInfo} from "./RatingParts";
+import {PhoneFrame} from "@/app/_ui/profiles/PageParts";
+import {DetailSkeleton, infoTitle, InfoView, LastNights, NoRoundsCard, PlayerCard, RankDot, RatingChartCard, RatingSkeletonRows, RatingsInfo} from "./RatingParts";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import HelpOutlineRoundedIcon from "@mui/icons-material/HelpOutlineRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
@@ -40,12 +42,15 @@ import LeaderboardRoundedIcon from "@mui/icons-material/LeaderboardRounded";
 import PersonOffRoundedIcon from "@mui/icons-material/PersonOffRounded";
 import PersonSearchRoundedIcon from "@mui/icons-material/PersonSearchRounded";
 import {Box, Drawer, Popover, Tooltip} from "@mui/material";
+import {usePathname} from "next/navigation";
 import React, {useCallback, useEffect, useId, useMemo, useRef, useState} from "react";
 
-// Rejting igrača (Claude Design 8a–8m): one list across all leagues, highest rating first. On the phone a row opens
-// the player's detail (its own page); on the desktop the detail sits next to the list. The (i) button explains
-// every column, and on the desktop each column header has a tooltip too. The detail's cream card opens the player's
-// page; a rating opened from a Player page goes back to it (the phone's Back, the desktop's back pill).
+// Rejting igrača (Claude Design 8a–8m): one list across all leagues, highest rating first, 50 players at a time
+// ("Učitaj još"). On the phone a row opens the player's detail (its own page); on the desktop the detail sits next to
+// the list and the picked player is in the address (/ratings/<id>), so a reload or a shared link shows the same one.
+// The (i) button explains every column, and on the desktop each column header has a tooltip too. The detail's cream
+// card opens the player's page; a rating opened from a Player page goes back to it (the phone's Back, the desktop's
+// back pill).
 
 const EYEBROW = "Svi igrači · sve lige";
 
@@ -53,17 +58,29 @@ export default function RatingsScreen({playerId}: {playerId?: number}) {
   const isDesktop = useIsDesktop();
   // a Player page opened from the rating card says "‹ Rejting"; a detail opened from outside the app goes back to the list
   const nav = useNavStack("Rejting", "/ratings");
+  const pathname = usePathname();
+  // the player in the address: the desktop's pick changes it without a navigation, so it can differ from the route's
+  const shownId = ratingIdFromPath(pathname) ?? playerId ?? null;
   const {list, error, reload} = useRatings();
-  const [query, setQuery] = useState("");
-  const players = useMemo(
-    // by name only: usernames are private
-    () => (list?.players ?? []).filter((p) => matchesQuery(p.name, query)),
-    [list, query]
+  // the search and how many pages are open come back with Back to the list; a new search starts at the first page
+  const [query, keepQuery] = useRestoredState("ratings-query", "");
+  const [pages, setPages] = useRestoredState("ratings-pages", 1);
+  const setQuery = useCallback(
+    (q: string) => {
+      keepQuery(q);
+      setPages(1);
+    },
+    [keepQuery, setPages]
   );
+  const me = list?.me ?? null;
+  // the first page reaches my own row and, on the desktop, the player the page was opened for (a picked row is on screen
+  // already), so both are there without "Učitaj još"
+  const visible = useMemo(() => (list ? visibleRatings(list.players, query, pages, [me, isDesktop ? playerId : null]) : null), [list, query, pages, me, isDesktop, playerId]);
+  const paging = {visible, query, setQuery, onMore: () => setPages(pages + 1)};
 
-  if (isDesktop) return <DesktopRatings list={list?.players ?? null} me={list?.me ?? null} players={players} error={error} reload={reload} query={query} setQuery={setQuery} initial={playerId} nav={nav} />;
-  if (playerId != null) return <PhoneDetail playerId={playerId} nav={nav} />;
-  return <PhoneList all={list?.players ?? null} me={list?.me ?? null} players={players} error={error} reload={reload} query={query} setQuery={setQuery} />;
+  if (isDesktop) return <DesktopRatings all={list?.players ?? null} me={me} {...paging} error={error} reload={reload} shownId={shownId} initial={playerId} nav={nav} />;
+  if (shownId != null) return <PhoneDetail playerId={shownId} nav={nav} />;
+  return <PhoneList all={list?.players ?? null} me={me} {...paging} error={error} reload={reload} />;
 }
 
 function usePlayerRating(playerId: number | null) {
@@ -71,14 +88,20 @@ function usePlayerRating(playerId: number | null) {
   // the id that answered "no such player" (a deleted player, or a wrong link)
   const [missing, setMissing] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // the player asked for last: a late answer for one picked before (the desktop list, picked quickly) is dropped, so it
+  // never replaces the detail of the player picked after it
+  const asked = useRef<number | null>(null);
   const load = useCallback(async () => {
+    asked.current = playerId;
     if (playerId == null) return;
     setError(null);
     try {
       const found = await getPlayerRatingAPI(playerId);
+      if (asked.current !== playerId) return;
       if (found) setDetail(found);
       else setMissing(playerId);
     } catch (e) {
+      if (asked.current !== playerId) return;
       setError(e instanceof Error ? e.message : "Rejting igrača nije moguće učitati.");
     }
   }, [playerId]);
@@ -102,36 +125,56 @@ function ListMessage({kind, onRetry, onCard = true}: {kind: "empty" | "noMatch" 
 }
 
 type ListProps = {
+  // the whole list (null while it loads) and what of it is shown
+  all: RatingRow[] | null;
+  visible: ReturnType<typeof visibleRatings> | null;
   me: number | null;
-  players: RatingRow[];
   error: string | null;
   reload: () => void;
   query: string;
   setQuery: (q: string) => void;
+  onMore: () => void;
 };
+
+// a new search shows its first matches: the list goes back to the top
+function useSearch(setQuery: (q: string) => void, scroller: ScrollMemory) {
+  return useCallback(
+    (q: string) => {
+      setQuery(q);
+      const box = scroller.element();
+      if (box) box.scrollTop = 0;
+    },
+    [setQuery, scroller]
+  );
+}
 
 // ---------- phone ----------
 
-function PhoneList({all, me, players, error, reload, query, setQuery}: ListProps & {all: RatingRow[] | null}) {
+function PhoneList({all, visible, me, error, reload, query, setQuery, onMore}: ListProps) {
   const router = useTransitionRouter();
   const [info, setInfo] = useState<InfoView | null>(null);
   // Back from a player's detail finds the list where it was left
   const scroller = useScrollMemory("ratings");
+  const search = useSearch(setQuery, scroller);
+  const more = useMoreFocus(scroller.element, "ol > li", visible?.shown.length ?? 0, onMore);
 
   let body: React.ReactNode;
   if (error && !all) body = <ListMessage kind="error" onRetry={reload} />;
-  else if (!all) body = <LoadingRows rows={8} height={62} />;
+  else if (!all || !visible) body = <RatingSkeletonRows rows={8} height={62} />;
   else if (all.length === 0) body = <ListMessage kind="empty" />;
-  else if (players.length === 0) body = <ListMessage kind="noMatch" />;
+  else if (visible.shown.length === 0) body = <ListMessage kind="noMatch" />;
   else
     body = (
-      <Box component="ol" aria-label="Rejting igrača" sx={{listStyle: "none", m: 0, p: 0}}>
-        {players.map((p) => (
-          <Box component="li" key={p.id}>
-            <PhoneRow player={p} me={p.id === me} />
-          </Box>
-        ))}
-      </Box>
+      <>
+        <Box component="ol" aria-label="Rejting igrača" sx={{listStyle: "none", m: 0, p: 0}}>
+          {visible.shown.map((p) => (
+            <Box component="li" key={p.id}>
+              <PhoneRow player={p} me={p.id === me} />
+            </Box>
+          ))}
+        </Box>
+        {visible.left > 0 && <LoadMoreButton left={visible.left} noun={NOUN.igrač} onClick={more} />}
+      </>
     );
 
   return (
@@ -147,7 +190,7 @@ function PhoneList({all, me, players, error, reload, query, setQuery}: ListProps
           <InfoOutlinedIcon />
         </IconCircleButton>
       </Box>
-      <SearchInput height={48} placeholder="Traži igrača" aria-label="Traži igrača" value={query} onChange={(e) => setQuery(e.target.value)} />
+      <SearchInput variant="white" height={48} placeholder="Traži igrača" aria-label="Traži igrača" value={query} onChange={(e) => search(e.target.value)} onClear={() => search("")} />
       <Card ref={all ? scroller.ref : undefined} sx={{flex: 1, minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", borderRadius: "22px"}}>
         <Box aria-hidden sx={{position: "sticky", top: 0, zIndex: 3, background: color.white, height: 34, display: "flex", alignItems: "center", justifyContent: "space-between", pl: "14px", pr: "16px", borderBottom: `1px solid ${tint.navy[10]}`, fontSize: 11.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: color.muted}}>
           <span>#&nbsp;&nbsp;&nbsp;Igrač</span>
@@ -167,7 +210,7 @@ function PhoneRow({player: p, me}: {player: RatingRow; me: boolean}) {
   return (
     <Box
       component={TransitionLink}
-      href={`/ratings/${p.id}`}
+      href={ratingPath(p.id)}
       aria-current={me ? "true" : undefined}
       sx={{
         ...buttonBase,
@@ -254,7 +297,7 @@ function PhoneDetail({playerId, nav}: {playerId: number; nav: NavStackControls})
   let body: React.ReactNode;
   if (missing) body = <ListMessage kind="notFound" onCard={false} />;
   else if (error && !detail) body = <ListMessage kind="error" onRetry={reload} onCard={false} />;
-  else body = detail ? <DetailBody detail={detail} chartWidth={318} /> : <CenteredSpinner />;
+  else body = detail ? <DetailBody detail={detail} chartWidth={318} /> : <DetailSkeleton />;
   return (
     <PhoneFrame eyebrow="Rejting" nav={{...nav, canGoBack: true}}>
       {body}
@@ -268,11 +311,11 @@ function DetailBody({detail, chartWidth, desktop = false}: {detail: PlayerRating
       <PlayerCard detail={detail} desktop={desktop} />
       {detail.history.length > 0 ? (
         <>
-          <RatingChartCard detail={detail} width={chartWidth} />
+          <RatingChartCard detail={detail} width={chartWidth} desktop={desktop} />
           {detail.lastNights.length > 0 && <LastNights detail={detail} desktop={desktop} />}
         </>
       ) : (
-        <NoRoundsCard />
+        <NoRoundsCard desktop={desktop} />
       )}
     </>
   );
@@ -280,8 +323,12 @@ function DetailBody({detail, chartWidth, desktop = false}: {detail: PlayerRating
 
 // ---------- desktop ----------
 
-// the table's columns: grid widths and where each header's tooltip opens
-const DESK_COLUMNS = "64px minmax(0,1fr) 190px 120px 100px";
+// the table's columns: grid widths and where each header's tooltip opens. Under 1280 px wide (1024×640) the detail
+// column is narrower and so are the number columns, and Privremeno moves to the line under the name, so the names
+// keep room (at 1024 px the wide columns left the Igrač column 2 px).
+const deskGrid = {gridTemplateColumns: "64px minmax(0,1fr) 190px 120px 100px", [NARROW_DESKTOP]: {gridTemplateColumns: "44px minmax(0,1fr) 92px 96px 64px", columnGap: "10px"}} as const;
+const wideOnly = {[NARROW_DESKTOP]: {display: "none"}} as const;
+const narrowOnly = {display: "none", [NARROW_DESKTOP]: {display: "inline-flex"}} as const;
 const HEADS: {key: string; align: "start" | "end"}[] = [
   {key: "#", align: "start"},
   {key: "Igrač", align: "start"},
@@ -290,94 +337,124 @@ const HEADS: {key: string; align: "start" | "end"}[] = [
   {key: "Kola", align: "end"},
 ];
 
-function DesktopRatings({list, me, players, error, reload, query, setQuery, initial, nav}: ListProps & {list: RatingRow[] | null; initial?: number; nav: NavStackControls}) {
-  // the player picked in the list; Back from a Player page opened from the detail's card comes back to that player
-  // (and the list as it was), not to the one in the URL
-  const [picked, setPicked] = useRestoredState<number | null>("ratings-pick", initial ?? null);
-  const selected = picked ?? me ?? list?.[0]?.id ?? null;
+function DesktopRatings({
+  all,
+  visible,
+  me,
+  error,
+  reload,
+  query,
+  setQuery,
+  onMore,
+  shownId,
+  initial,
+  nav,
+}: ListProps & {shownId: number | null; initial?: number; nav: NavStackControls}) {
+  // the player in the address, else me, else the first; picking a row puts it in the address (no navigation: the list
+  // keeps its search and scroll, Back from the Player page opened from the detail returns to that player)
+  const selected = shownId ?? me ?? all?.[0]?.id ?? null;
   const {detail, missing, error: detailError, reload: reloadDetail} = usePlayerRating(selected);
   const scroller = useScrollMemory("ratings");
+  const search = useSearch(setQuery, scroller);
+  const more = useMoreFocus(scroller.element, "ol > li", visible?.shown.length ?? 0, onMore);
   // a short window: the back pill goes up into the header row (as on the Team and Player pages)
   const short = useShortWindow();
-  // a player's rating opened from elsewhere (/ratings/<id>, the Player page's rating): their row in the middle of the list
-  const shownInitial = useRef<number | null>(null);
+  // the row the page opens on, next to its detail: the player of a /ratings/<id> address (the Player page's rating),
+  // else my own row. In the middle of the list, once, when the list is first shown (a pick in the list changes only the
+  // address, not `initial`; Back brings the list's own scroll back instead)
+  const opened = useRef<number | null | undefined>(undefined);
+  const rows = visible?.shown;
   useEffect(() => {
     const box = scroller.element();
-    const row = box?.querySelector<HTMLElement>('button[aria-pressed="true"]');
-    if (initial == null || !box || !row || shownInitial.current === initial) return;
-    shownInitial.current = initial;
-    if (!scroller.restored()) scrollIntoMiddle(row, box);
-  }, [initial, players, scroller]);
+    if (!box || !rows || opened.current === (initial ?? null)) return;
+    opened.current = initial ?? null;
+    const row = box.querySelector<HTMLElement>('button[aria-pressed="true"]');
+    if (row && !scroller.restored()) scrollIntoMiddle(row, box);
+  }, [initial, rows, scroller]);
   const [infoAnchor, setInfoAnchor] = useState<HTMLElement | null>(null);
   const [infoView, setInfoView] = useState<InfoView>("cols");
   const infoId = useId();
 
-  let rows: React.ReactNode;
-  if (error && !list) rows = <ListMessage kind="error" onRetry={reload} />;
-  else if (!list) rows = <LoadingRows rows={10} height={60} />;
-  else if (list.length === 0) rows = <ListMessage kind="empty" />;
-  else if (players.length === 0) rows = <Box sx={{p: "48px", textAlign: "center", fontSize: 15, color: color.muted}}>Nema igrača s tim imenom.</Box>;
+  let list: React.ReactNode;
+  if (error && !all) list = <ListMessage kind="error" onRetry={reload} />;
+  else if (!all || !visible) list = <RatingSkeletonRows rows={10} height={60} grid={deskGrid} />;
+  else if (all.length === 0) list = <ListMessage kind="empty" />;
+  else if (visible.shown.length === 0) list = <Box sx={{p: "48px", textAlign: "center", fontSize: 15, color: color.muted}}>Nema igrača s tim imenom.</Box>;
   else
-    rows = (
-      <Box component="ol" aria-label="Rejting igrača" sx={{listStyle: "none", m: 0, p: 0}}>
-        {players.map((p) => {
-          const on = p.id === selected;
-          const mine = p.id === me;
-          return (
-            <Box component="li" key={p.id}>
-              <Box
-                component="button"
-                type="button"
-                onClick={() => setPicked(p.id)}
-                aria-pressed={on}
-                aria-current={mine ? "true" : undefined}
-                sx={{
-                  ...buttonBase,
-                  width: "100%",
-                  height: 60,
-                  display: "grid",
-                  gridTemplateColumns: DESK_COLUMNS,
-                  alignItems: "center",
-                  px: "18px",
-                  borderBottom: `1px solid ${color.divider}`,
-                  background: mine ? color.cream2 : on ? color.line : "transparent",
-                  boxShadow: [mine ? shadow.mineBar : null, on ? shadow.selectRing : null].filter(Boolean).join(", ") || "none",
-                  textAlign: "left",
-                  "&:hover": {filter: "brightness(.98)"},
-                }}
-              >
-                <RankDot rank={p.rank} size={30} />
-                <Box sx={{minWidth: 0, display: "flex", flexDirection: "column", gap: "1px"}}>
-                  <Box component="span" sx={{fontSize: 16, fontWeight: mine ? 700 : 600, color: color.ink, ...ellipsis}}>
-                    {p.name}
+    list = (
+      <>
+        <Box component="ol" aria-label="Rejting igrača" sx={{listStyle: "none", m: 0, p: 0}}>
+          {visible.shown.map((p) => {
+            const on = p.id === selected;
+            const mine = p.id === me;
+            return (
+              <Box component="li" key={p.id}>
+                <Box
+                  component="button"
+                  type="button"
+                  onClick={() => replaceAddress(ratingPath(p.id))}
+                  aria-pressed={on}
+                  aria-current={mine ? "true" : undefined}
+                  sx={{
+                    ...buttonBase,
+                    width: "100%",
+                    height: 60,
+                    display: "grid",
+                    ...deskGrid,
+                    alignItems: "center",
+                    px: "18px",
+                    borderBottom: `1px solid ${color.divider}`,
+                    background: mine ? color.cream2 : on ? color.line : "transparent",
+                    boxShadow: [mine ? shadow.mineBar : null, on ? shadow.selectRing : null].filter(Boolean).join(", ") || "none",
+                    textAlign: "left",
+                    "&:hover": {filter: "brightness(.98)"},
+                  }}
+                >
+                  <RankDot rank={p.rank} size={30} />
+                  <Box sx={{minWidth: 0, display: "flex", flexDirection: "column", gap: "1px"}}>
+                    <Box component="span" sx={{fontSize: 16, fontWeight: mine ? 700 : 600, color: color.ink, ...ellipsis}}>
+                      {p.name}
+                    </Box>
+                    <Box component="span" sx={{minWidth: 0, display: "flex", alignItems: "center", gap: "8px"}}>
+                      <Box component="span" sx={{minWidth: 0, fontSize: 13, color: color.muted, ...ellipsis}}>
+                        {p.team ?? "—"}
+                      </Box>
+                      {p.provisional && (
+                        <Box component="span" sx={narrowOnly}>
+                          <ProvisionalTag />
+                        </Box>
+                      )}
+                    </Box>
                   </Box>
-                  <Box component="span" sx={{fontSize: 13, color: color.muted, ...ellipsis}}>
-                    {p.team ?? "—"}
+                  <Box sx={{justifySelf: "end", display: "flex", alignItems: "center", gap: "10px"}}>
+                    {p.provisional && (
+                      <Box component="span" sx={{display: "inline-flex", ...wideOnly}}>
+                        <ProvisionalTag size="md" />
+                      </Box>
+                    )}
+                    <Box component="span" sx={{fontFamily: font.display, fontSize: 26, fontWeight: 800, color: color.ink, ...tabular}}>
+                      {p.rating}
+                    </Box>
                   </Box>
+                  <Box sx={{justifySelf: "end", fontSize: 15, fontWeight: 700, color: changeInk(p.change), ...tabular}}>{formatChange(p.rounds ? p.change : null)}</Box>
+                  <Box sx={{justifySelf: "end", fontSize: 15, fontWeight: 600, color: color.ink2, ...tabular}}>{p.rounds}</Box>
                 </Box>
-                <Box sx={{justifySelf: "end", display: "flex", alignItems: "center", gap: "10px"}}>
-                  {p.provisional && <ProvisionalTag size="md" />}
-                  <Box component="span" sx={{fontFamily: font.display, fontSize: 26, fontWeight: 800, color: color.ink, ...tabular}}>
-                    {p.rating}
-                  </Box>
-                </Box>
-                <Box sx={{justifySelf: "end", fontSize: 15, fontWeight: 700, color: changeInk(p.change), ...tabular}}>{formatChange(p.rounds ? p.change : null)}</Box>
-                <Box sx={{justifySelf: "end", fontSize: 15, fontWeight: 600, color: color.ink2, ...tabular}}>{p.rounds}</Box>
               </Box>
-            </Box>
-          );
-        })}
-      </Box>
+            );
+          })}
+        </Box>
+        {visible.left > 0 && <LoadMoreButton left={visible.left} noun={NOUN.igrač} onClick={more} />}
+      </>
     );
 
   return (
     <DesktopShell active="ratings" eyebrow={EYEBROW} title="Rejting igrača" lead={short ? <BackPill nav={nav} sx={{alignSelf: "center", maxWidth: 320}} /> : undefined}>
       {!short && <BackPill nav={nav} />}
-      <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) 420px", gap: "20px"}}>
-        <Card sx={{minHeight: 0, borderRadius: "24px", display: "flex", flexDirection: "column"}}>
+      <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) 420px", [NARROW_DESKTOP]: {gridTemplateColumns: "minmax(0,1fr) 360px"}, gap: "20px"}}>
+        {/* overflow: the last row (Učitaj još, a picked or my own row) keeps the card's round corners */}
+        <Card sx={{minHeight: 0, borderRadius: "24px", display: "flex", flexDirection: "column", overflow: "hidden"}}>
           <Box sx={{flex: "none", display: "flex", alignItems: "center", gap: "12px", p: "16px 18px 12px"}}>
-            <SearchInput soft height={46} placeholder="Traži igrača" aria-label="Traži igrača" value={query} onChange={(e) => setQuery(e.target.value)} sx={{flex: 1, maxWidth: 340}} />
-            <Box sx={{flex: 1}} />
+            <SearchInput variant="paper" height={46} placeholder="Traži igrača" aria-label="Traži igrača" value={query} onChange={(e) => search(e.target.value)} onClear={() => search("")} sx={{flex: 1, minWidth: 0, maxWidth: 340}} />
             <Box
               component="button"
               type="button"
@@ -388,7 +465,7 @@ function DesktopRatings({list, me, players, error, reload, query, setQuery, init
                 setInfoView("cols");
                 setInfoAnchor(infoAnchor ? null : e.currentTarget);
               }}
-              sx={{...buttonBase, height: 46, display: "flex", alignItems: "center", gap: "8px", pl: "12px", pr: "16px", border: `1.5px solid ${color.borderControl}`, borderRadius: "14px", background: infoAnchor ? color.paper : color.white, color: color.navy, fontSize: 15, fontWeight: 600, "& svg": {fontSize: 22}}}
+              sx={{...buttonBase, flex: "none", ml: "auto", height: 46, display: "flex", alignItems: "center", gap: "8px", pl: "12px", pr: "16px", border: `1.5px solid ${color.borderControl}`, borderRadius: "14px", background: infoAnchor ? color.paper : color.white, color: color.navy, fontSize: 15, fontWeight: 600, whiteSpace: "nowrap", "& svg": {fontSize: 22}}}
             >
               <InfoOutlinedIcon />
               Što znače stupci?
@@ -413,7 +490,7 @@ function DesktopRatings({list, me, players, error, reload, query, setQuery, init
               <RatingsInfo view={infoView} onSwitch={setInfoView} compact />
             </Popover>
           </Box>
-          <Box role="row" sx={{flex: "none", display: "grid", gridTemplateColumns: DESK_COLUMNS, alignItems: "center", height: 40, px: "18px", borderTop: `1px solid ${color.line}`, borderBottom: `1px solid ${tint.navy[12]}`}}>
+          <Box role="row" sx={{flex: "none", display: "grid", ...deskGrid, alignItems: "center", height: 40, px: "18px", borderTop: `1px solid ${color.line}`, borderBottom: `1px solid ${tint.navy[12]}`}}>
             {HEADS.map((h) => (
               <Tooltip
                 key={h.key}
@@ -433,8 +510,8 @@ function DesktopRatings({list, me, players, error, reload, query, setQuery, init
               </Tooltip>
             ))}
           </Box>
-          <Box ref={list ? scroller.ref : undefined} sx={{flex: 1, minHeight: 0, overflowY: "auto"}}>
-            {rows}
+          <Box ref={all ? scroller.ref : undefined} sx={{flex: 1, minHeight: 0, overflowY: "auto"}}>
+            {list}
           </Box>
         </Card>
         <Box sx={{minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: "14px"}}>
@@ -448,8 +525,8 @@ function DesktopRatings({list, me, players, error, reload, query, setQuery, init
             </Card>
           ) : detail ? (
             <DetailBody detail={detail} chartWidth={384} desktop />
-          ) : selected != null || !list ? (
-            <CenteredSpinner />
+          ) : selected != null || (!all && !error) ? (
+            <DetailSkeleton desktop />
           ) : null}
         </Box>
       </Box>

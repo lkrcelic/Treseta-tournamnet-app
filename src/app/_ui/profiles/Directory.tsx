@@ -4,6 +4,8 @@ import useAdminPlayers from "@/app/_hooks/useAdminPlayers";
 import {useRestoredState, useScrollMemory} from "@/app/_hooks/useBackRestore";
 import useIsAdmin from "@/app/_hooks/useIsAdmin";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
+import useMoreFocus from "@/app/_hooks/useMoreFocus";
+import useShortWindow from "@/app/_hooks/useShortWindow";
 import useTeams from "@/app/_hooks/useTeams";
 import type {AdminPlayerRow} from "@/app/_interfaces/player";
 import {startNavStack} from "@/app/_lib/navStack";
@@ -37,6 +39,7 @@ import {
   PageSkeleton,
   rowFocus,
   scrollIntoMiddle,
+  SearchInput,
   Tag,
 } from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
@@ -44,11 +47,10 @@ import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {Box, useMediaQuery} from "@mui/material";
 import {useParams, usePathname} from "next/navigation";
 import React, {useCallback, useEffect, useId, useMemo, useRef, useState} from "react";
-import {DirectoryFrame, DirectoryFrameContext, PLAYER_GRID, TEAM_GRID, useDirectoryFrame, useShortWindow} from "./PageParts";
+import {DirectoryFrame, DirectoryFrameContext, PLAYER_GRID, TEAM_GRID, useDirectoryFrame} from "./PageParts";
 
 // The admin's Ekipe and Igrači (handoff §6 "Desktop admin", design 13h, 13j, Profiles P:153-169): on the desktop, a
 // 290 px list of every team or player next to the page of the one picked. /teams and /teams/<id> share it (the list
@@ -391,6 +393,7 @@ function DirectoryCard<T>({
   // Back to the page puts the list where it was; otherwise the selected row is scrolled into view once it is there (a
   // page opened from a link, not from the list)
   const scroller = useScrollMemory(`${memory}-list`);
+  const more = useMoreFocus(scroller.element, ":scope > li", shown.length, () => setPages(pages + 1));
   const scrolledTo = useRef<number | null>(null);
   const hasSelected = selectedAt >= 0;
   useEffect(() => {
@@ -432,47 +435,18 @@ function DirectoryCard<T>({
             </Box>
           )}
         </Box>
-        <Box
-          component="label"
-          sx={{
-            height: 44,
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            px: "12px",
-            borderRadius: "12px",
-            background: color.paper,
-            cursor: "text",
-            "&:focus-within": {boxShadow: `inset 0 0 0 1.5px ${color.navy}`},
-            "& > svg": {fontSize: 20, color: color.muted, flex: "none"},
-          }}
-        >
-          <SearchRoundedIcon aria-hidden />
-          <Box
-            component="input"
-            type="search"
-            value={query}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => onQuery(e.target.value)}
-            placeholder={placeholder}
-            aria-label={placeholder}
-            autoComplete="off"
-            spellCheck={false}
-            sx={{
-              flex: 1,
-              minWidth: 0,
-              height: "100%",
-              p: 0,
-              border: "none",
-              outline: "none",
-              background: "transparent",
-              font: "inherit",
-              fontSize: 15,
-              color: color.ink,
-              "&::placeholder": {color: color.muted, opacity: 1},
-              "&::-webkit-search-cancel-button": {cursor: "pointer"},
-            }}
-          />
-        </Box>
+        <SearchInput
+          variant="paper"
+          height={44}
+          value={query}
+          onChange={(e) => onQuery(e.target.value)}
+          onClear={() => onQuery("")}
+          placeholder={placeholder}
+          aria-label={placeholder}
+          autoComplete="off"
+          spellCheck={false}
+          sx={{"& input::placeholder": {color: color.muted}}}
+        />
       </Box>
       <Box sx={{flex: 1, minHeight: 0, display: "flex", flexDirection: "column"}}>
         {error && !data ? (
@@ -495,7 +469,7 @@ function DirectoryCard<T>({
             ))}
             {left > 0 && (
               <Box component="li" sx={{pt: "6px", flex: "none"}}>
-                <LoadMoreButton left={left} noun={noun} onClick={() => setPages(pages + 1)} sx={{borderRadius: "14px"}} />
+                <LoadMoreButton left={left} noun={noun} onClick={more} sx={{borderRadius: "14px"}} />
               </Box>
             )}
           </Box>

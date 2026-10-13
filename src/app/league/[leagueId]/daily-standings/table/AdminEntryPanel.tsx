@@ -4,7 +4,7 @@ import {canSave, clearPoints, EntryState, setActive, switchMode, typeDigit} from
 import {Side} from "@/app/_lib/game/scoring";
 import {count, NOUN} from "@/app/_lib/ui/text";
 import {color, font, shadow, teamColor, tint} from "@/app/_styles/tokens";
-import {buttonBase, Card, ErrorNote, PrimaryButton, tabular} from "@/app/_ui/sp";
+import {buttonBase, Card, ErrorNote, PrimaryButton, SHORT_WINDOW, tabular} from "@/app/_ui/sp";
 import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
@@ -75,14 +75,30 @@ export default function AdminEntryPanel({
     fontFamily: font.display,
     fontSize: 26,
     fontWeight: 700,
-    minHeight: 44,
+    minHeight: 40,
     "&:active:not(:disabled)": {transform: "scale(.96)", background: color.lineFill},
     "&:disabled": {opacity: 0.35},
   } as const;
+  const saveSx = {[SHORT_WINDOW]: {height: 48, borderRadius: "16px"}};
   const small = {...buttonBase, height: 36, px: "12px", borderRadius: "10px", fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: "4px", "& svg": {fontSize: 18}} as const;
 
   return (
-    <Card component="section" aria-labelledby="admin-entry-title" sx={{minHeight: 0, borderRadius: "24px", p: "20px", display: "flex", flexDirection: "column", gap: "14px", overflowY: "auto"}}>
+    <Card
+      component="section"
+      aria-labelledby="admin-entry-title"
+      sx={{
+        minHeight: 0,
+        borderRadius: "24px",
+        p: "20px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "14px",
+        overflowY: "auto",
+        // a short window (1024×640): every row a little lower, so the whole panel, "Spremi igru" included, fits under
+        // the header (the keys stay at least 40 px; with an error note it scrolls)
+        [SHORT_WINDOW]: {p: "14px 16px", gap: "6px"},
+      }}
+    >
       <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px"}}>
         <Box component="h2" id="admin-entry-title" sx={{m: 0, fontFamily: font.display, fontSize: 24, fontWeight: 800}}>
           {title}
@@ -100,7 +116,7 @@ export default function AdminEntryPanel({
         </Box>
       </Box>
 
-      <Box role="radiogroup" aria-label="Način unosa" sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "4px", p: "4px", borderRadius: "14px", background: color.paper}}>
+      <Box role="radiogroup" aria-label="Način unosa" sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "4px", p: "4px", borderRadius: "14px", background: color.paper, [SHORT_WINDOW]: {p: "3px", borderRadius: "13px"}}}>
         {(
           [
             ["std", "Standardni unos", <StyleRoundedIcon key="i" />],
@@ -120,6 +136,7 @@ export default function AdminEntryPanel({
                 ...buttonBase,
                 height: 40,
                 borderRadius: "11px",
+                [SHORT_WINDOW]: {height: 32, borderRadius: "10px"},
                 background: on ? color.white : "transparent",
                 color: on ? color.ink : color.ink2,
                 boxShadow: on ? shadow.segment : "none",
@@ -162,6 +179,7 @@ export default function AdminEntryPanel({
               sx={{
                 ...buttonBase,
                 height: 84,
+                [SHORT_WINDOW]: {height: 60},
                 minWidth: 0,
                 borderRadius: "16px",
                 border: `2px solid ${teamColor[i]}`,
@@ -181,7 +199,7 @@ export default function AdminEntryPanel({
         })}
       </Box>
 
-      <Box role="group" aria-label="Bodovi" sx={{flex: 1, minHeight: 200, display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gridAutoRows: "minmax(0,1fr)", gap: "8px"}}>
+      <Box role="group" aria-label="Bodovi" sx={{flex: "1 0 auto", display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gridAutoRows: "minmax(40px,1fr)", gap: "8px", [SHORT_WINDOW]: {gap: "6px"}}}>
         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => (
           <Box key={d} component="button" type="button" onClick={() => onChange(typeDigit(entry, d))} sx={key}>
             {d}
@@ -203,11 +221,11 @@ export default function AdminEntryPanel({
 
       {error && <ErrorNote>{error}</ErrorNote>}
       {finish && !editing ? (
-        <PrimaryButton icon={<EmojiEventsRoundedIcon />} bg={finish.color} onClick={finish.onFinish} loading={finish.busy}>
+        <PrimaryButton icon={<EmojiEventsRoundedIcon />} bg={finish.color} onClick={finish.onFinish} loading={finish.busy} sx={saveSx}>
           Završi meč · {finish.winner}
         </PrimaryButton>
       ) : (
-        <PrimaryButton icon={editing ? <CheckCircleRoundedIcon /> : <AddCircleRoundedIcon />} onClick={onSave} disabled={!savable} loading={saving}>
+        <PrimaryButton icon={editing ? <CheckCircleRoundedIcon /> : <AddCircleRoundedIcon />} onClick={onSave} disabled={!savable} loading={saving} sx={saveSx}>
           {editing ? "Spremi izmjene" : "Spremi igru"}
         </PrimaryButton>
       )}

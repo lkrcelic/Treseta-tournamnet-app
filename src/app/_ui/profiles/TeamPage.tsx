@@ -3,6 +3,7 @@
 import useAdminPlayers from "@/app/_hooks/useAdminPlayers";
 import {reloadLeagues, useLeagueList} from "@/app/_hooks/useLeagues";
 import useNavStack from "@/app/_hooks/useNavStack";
+import useShortWindow from "@/app/_hooks/useShortWindow";
 import useTeamOverview from "@/app/_hooks/useTeamOverview";
 import type {TeamNight, TeamOverview, TeamOverviewLeague, TeamOverviewPlayer} from "@/app/_interfaces/profiles";
 import {leagueDateString} from "@/app/_lib/dates";
@@ -47,7 +48,6 @@ import {
   stretchedRow,
   TEAM_GRID,
   TEAM_STACKED_GRID,
-  useShortWindow,
 } from "./PageParts";
 import {AddError, NameButton, NameEditing, RemoveButton, TeamAdmin, TeamNameInput, useNameFocus, useTeamAdmin} from "./TeamAdmin";
 

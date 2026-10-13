@@ -2,12 +2,13 @@
 
 import useNavStack from "@/app/_hooks/useNavStack";
 import usePlayerOverview from "@/app/_hooks/usePlayerOverview";
+import useShortWindow from "@/app/_hooks/useShortWindow";
 import useTeams from "@/app/_hooks/useTeams";
 import type {PlayerOverview} from "@/app/_interfaces/profiles";
 import type {RatingNight} from "@/app/_interfaces/ratings";
 import {teamAddOptions} from "@/app/_lib/ui/directory";
 import {playerTeamLeagues, playerTiles, teamInitial} from "@/app/_lib/ui/profiles";
-import {formatChange, shortDate} from "@/app/_lib/ui/ratings";
+import {formatChange, ratingPath, shortDate} from "@/app/_lib/ui/ratings";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {color} from "@/app/_styles/tokens";
 import {changeInk, ColumnCard, ColumnHead, ellipsis, EmptyState, InitialsAvatar, ResultPill, SearchAddField, tabular, Tag} from "@/app/_ui/sp";
@@ -28,7 +29,6 @@ import {
   RowChevron,
   stretchedLink,
   stretchedRow,
-  useShortWindow,
 } from "./PageParts";
 import {PersonalDataCard} from "./PersonalDataCard";
 import {EditDataButton, PlayerTeamsAdmin, usePlayerTeamsAdmin} from "./PlayerAdmin";
@@ -44,7 +44,7 @@ import {TeamCards} from "./TeamCards";
 const NO_TEAMS = "Igrač još nije ni u jednoj ekipi.";
 
 // a player who isn't on Rejting has no rating detail (it would say "Igrač ne postoji")
-const ratingHref = (p: PlayerOverview) => (p.rating.rank != null ? `/ratings/${p.player.id}` : null);
+const ratingHref = (p: PlayerOverview) => (p.rating.rank != null ? ratingPath(p.player.id) : null);
 
 // ---------- phone ----------
 

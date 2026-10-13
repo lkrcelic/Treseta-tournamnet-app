@@ -2,7 +2,7 @@
 
 import {count, NOUN} from "@/app/_lib/ui/text";
 import {color, ease, font, teamColor, teamTint, teamTrack} from "@/app/_styles/tokens";
-import {buttonBase, Card, ellipsis, EmptyState, tabular} from "@/app/_ui/sp";
+import {buttonBase, Card, ellipsis, EmptyState, tabular, visuallyHidden} from "@/app/_ui/sp";
 import {Box, SxProps, Theme} from "@mui/material";
 import React from "react";
 
@@ -84,7 +84,7 @@ export function ScorePanel({
       >
         {total}
       </Box>
-      <Box component="span" aria-live="polite" sx={{position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0,0,0,0)"}}>
+      <Box component="span" aria-live="polite" sx={visuallyHidden}>
         {`${name}: ${count(finalTotal ?? total, NOUN.bod)}${celebrate ? ", pobjeda" : ""}`}
       </Box>
       <Box aria-hidden sx={{position: "relative", height: desk ? 5 : 4, borderRadius: "3px", background: teamTrack[index], overflow: "hidden"}}>

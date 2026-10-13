@@ -1,11 +1,44 @@
 // Formatting and chart geometry for Rejting, and a player's rating summary as Rejting has it (the server builds the
 // Team and Player pages with it). Framework free so they can be unit tested.
 import {MU0} from "@/app/_lib/rating/glicko2";
-import {count, NOUN} from "@/app/_lib/ui/text";
+import {count, matchesQuery, NOUN} from "@/app/_lib/ui/text";
 import type {RatingRow} from "@/app/_interfaces/ratings";
 import type {PlayerRatingSummary} from "@/app/_interfaces/profiles";
 
 export type RatingSummary = Omit<PlayerRatingSummary, "total">;
+
+// Rejting shows the list a page at a time ("Učitaj još · još 42 igrača")
+export const RATINGS_PAGE = 50;
+
+/**
+ * What the Rejting list shows: the players whose name matches the search (by name only, usernames are private), each
+ * keeping their place on the whole list, `pages` pages of 50. Without a search the first page reaches down to the rows
+ * in `keep` (the viewer's own row, the player a /ratings/<id> link opened), rounded up to ten, so they are on screen
+ * without "Učitaj još". left = matches not shown yet.
+ */
+export function visibleRatings(
+  list: readonly RatingRow[],
+  query: string,
+  pages: number,
+  keep: readonly (number | null | undefined)[] = []
+): {shown: RatingRow[]; matched: number; left: number} {
+  const searching = query.trim() !== "";
+  const matches = searching ? list.filter((p) => matchesQuery(p.name, query)) : list;
+  // the place of the lowest kept row on the list (players with the same rating share a rank, so the place, not the rank)
+  const reach = searching ? 0 : Math.max(0, ...keep.map((id) => (id == null ? 0 : list.findIndex((p) => p.id === id) + 1)));
+  const first = Math.max(RATINGS_PAGE, Math.ceil(reach / 10) * 10);
+  const size = first + Math.max(0, pages - 1) * RATINGS_PAGE;
+  const shown = matches.slice(0, size);
+  return {shown, matched: matches.length, left: matches.length - shown.length};
+}
+
+// a player's rating page, and the player of a /ratings/<id> address (null for the list itself)
+export const ratingPath = (playerId: number) => `/ratings/${playerId}`;
+
+export function ratingIdFromPath(pathname: string | null | undefined): number | null {
+  const m = /^\/ratings\/(\d{1,9})\/?$/.exec(pathname ?? "");
+  return m ? Number(m[1]) : null;
+}
 
 // A player's rating as Rejting shows it (the Team and Player pages). A player who isn't on the list (never on a team,
 // no rated round) keeps their stored rating with no change and no rounds: Privremeno, and no place.

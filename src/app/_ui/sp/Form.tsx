@@ -1,10 +1,11 @@
 import {color, shadow} from "@/app/_styles/tokens";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import ErrorRoundedIcon from "@mui/icons-material/ErrorRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {Box, SxProps, Theme} from "@mui/material";
-import React, {useId, useState} from "react";
+import React, {useCallback, useId, useRef, useState} from "react";
 import {buttonBase, mergeSx} from "./base";
 
 // iOS Safari gives a date input its own minimum width and ignores width: 100%, so on a narrow phone it runs past
@@ -135,31 +136,109 @@ export function PasswordField({
   );
 }
 
+// A borderless search field shows its keyboard focus as a navy line inside its edge
+const borderlessFocus = `inset 0 0 0 1.5px ${color.navy}`;
+
+const SEARCH_VARIANT = {
+  // white with a border (soft: the cream-tinted fill of desktop forms)
+  outline: {},
+  // white, no border, a card's shadow: on the phone's paper background (Rejting 8a)
+  white: {border: "none", background: color.white, boxShadow: shadow.card, fontSize: 16, "&:focus": {background: color.white}, "&:focus-visible": {boxShadow: `${shadow.card}, ${borderlessFocus}`}},
+  // paper, no border: inside a white card on the desktop (Rejting 8k, the Ekipe and Igrači lists)
+  paper: {border: "none", background: color.paper, fontSize: 15, "&:focus": {background: color.paper}, "&:focus-visible": {boxShadow: borderlessFocus}},
+} as const;
+
+type SearchInputProps = InputProps & {
+  height?: number;
+  active?: boolean;
+  variant?: keyof typeof SEARCH_VARIANT;
+  // with a query, a round "Očisti" button at the end empties it (and the field keeps the focus)
+  onClear?: () => void;
+};
+
 // Input with a leading search icon
-export const SearchInput = React.forwardRef<HTMLInputElement, InputProps & {height?: number; active?: boolean}>(
-  function SearchInput({sx, height = 52, active, soft, ...rest}, ref) {
-    return (
-      <Box sx={mergeSx({position: "relative", flex: "none"}, sx)}>
-        <SearchRoundedIcon
-          aria-hidden
+export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(function SearchInput(
+  {sx, height = 52, active, soft, variant = "outline", onClear, ...rest},
+  ref
+) {
+  const own = useRef<HTMLInputElement | null>(null);
+  // the field for the clear button's focus, and for whoever passed a ref
+  const setRef = useCallback(
+    (el: HTMLInputElement | null) => {
+      own.current = el;
+      if (typeof ref === "function") ref(el);
+      else if (ref) ref.current = el;
+    },
+    [ref]
+  );
+  // the borderless fields of a narrow card (the Ekipe and Igrači lists, 44 px) are a size smaller inside
+  const small = variant !== "outline" && height <= 44;
+  const icon = variant === "outline" ? 24 : small ? 20 : 22;
+  const left = small ? 12 : 14;
+  // the designs: the phone's white field 16, the paper ones 14 (12 in a narrow card), the outlined ones by height
+  const radius = variant === "white" ? 16 : small ? 12 : height < 50 ? 14 : 16;
+  // the clear button is as far in from the end as the icon from the start (the borderless fields' padding); in an
+  // outlined field it is centred in the field's height
+  const clearInset = variant === "outline" ? (height - 32) / 2 : left;
+  const clearable = onClear != null && String(rest.value ?? "") !== "";
+  return (
+    <Box sx={mergeSx({position: "relative", flex: "none"}, sx)}>
+      <SearchRoundedIcon
+        aria-hidden
+        sx={{
+          position: "absolute",
+          left: `${left}px`,
+          top: "50%",
+          transform: "translateY(-50%)",
+          fontSize: icon,
+          color: active ? color.navy : color.muted,
+          pointerEvents: "none",
+        }}
+      />
+      <TextInput
+        ref={setRef}
+        type="search"
+        soft={soft}
+        sx={mergeSx(SEARCH_VARIANT[variant], {
+          height,
+          pl: `${left + icon + (small ? 8 : 10)}px`,
+          pr: clearable ? `${clearInset + 32 + 8}px` : undefined,
+          borderColor: active ? color.navy : undefined,
+          borderRadius: `${radius}px`,
+          // our own clear button replaces the browser's
+          ...(onClear && {"&::-webkit-search-cancel-button": {display: "none"}}),
+        })}
+        {...rest}
+      />
+      {clearable && (
+        <Box
+          component="button"
+          type="button"
+          aria-label="Očisti"
+          onClick={() => {
+            onClear();
+            own.current?.focus();
+          }}
           sx={{
+            ...buttonBase,
             position: "absolute",
-            left: "14px",
+            right: `${clearInset}px`,
             top: "50%",
             transform: "translateY(-50%)",
-            fontSize: 24,
-            color: active ? color.navy : color.muted,
-            pointerEvents: "none",
+            width: 32,
+            height: 32,
+            borderRadius: "50%",
+            background: color.lineFill,
+            color: color.muted,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            "& svg": {fontSize: 18},
           }}
-        />
-        <TextInput
-          ref={ref}
-          type="search"
-          soft={soft}
-          sx={{height, pl: "48px", borderColor: active ? color.navy : undefined, borderRadius: height < 50 ? "14px" : "16px"}}
-          {...rest}
-        />
-      </Box>
-    );
-  }
-);
+        >
+          <CloseRoundedIcon aria-hidden />
+        </Box>
+      )}
+    </Box>
+  );
+});

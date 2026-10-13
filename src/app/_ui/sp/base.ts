@@ -58,6 +58,26 @@ export function scrollIntoMiddle(row: HTMLElement, box: HTMLElement, pinned = 0)
 
 export const tabular = {fontVariantNumeric: "tabular-nums"} as const;
 
+// Desktop window sizes below the designed 1440×900, for sx keys (and useShortWindow): a window under 800 px high gets
+// the compact headers, header cards and scorepad panels; one under 1280 px wide narrows the fixed side columns (both
+// are true for a 1024×640 laptop window)
+export const SHORT_WINDOW = "@media (max-height: 799.98px)";
+export const NARROW_DESKTOP = "@media (max-width: 1279.98px)";
+
+// Text for screen readers only. The sizes are strings on purpose: in sx a bare 1 is 100% (a full-width absolute box
+// that made the phone Rejting detail scroll sideways).
+export const visuallyHidden = {
+  position: "absolute",
+  width: "1px",
+  height: "1px",
+  p: 0,
+  m: "-1px",
+  overflow: "hidden",
+  clip: "rect(0,0,0,0)",
+  whiteSpace: "nowrap",
+  border: 0,
+} as const;
+
 export const ellipsis = {whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"} as const;
 
 // merges sx values the way MUI expects (arrays are flattened by MUI)

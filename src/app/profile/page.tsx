@@ -11,6 +11,7 @@ import useNavStack from "@/app/_hooks/useNavStack";
 import {useMyRating} from "@/app/_hooks/useRatings";
 import {fullName} from "@/app/_lib/players/names";
 import {leagueDateString} from "@/app/_lib/dates";
+import {ratingPath} from "@/app/_lib/ui/ratings";
 import {displayDate} from "@/app/_lib/ui/text";
 import {normalizeUsername, USERNAME_MAX, usernameError} from "@/app/_lib/validation/username";
 import useAuthStore from "@/app/_store/authStore";
@@ -86,7 +87,7 @@ export default function ProfilePage() {
       sub={player ? name : null}
       avatarName={name || user?.username || ""}
       rating={rating}
-      ratingHref={myRating ? `/ratings/${myRating.id}` : "/ratings"}
+      ratingHref={myRating ? ratingPath(myRating.id) : "/ratings"}
     />
   );
 

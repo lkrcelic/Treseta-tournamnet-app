@@ -123,6 +123,16 @@ export function useTransitionRouter() {
   return useMemo(() => ({push, replace, back, router}), [push, replace, back, router]);
 }
 
+// The address bar shows `href` in place of the current address, and the page stays as it is (no navigation, nothing
+// reloads or remounts): a desktop list whose selection is in the address (Rejting's /ratings/<id>), so a reload, a
+// shared link and Back come to the same player without the list losing its search and scroll. usePathname follows (Next
+// keeps its router in step with history.replaceState); the page stack swaps its top entry as for a replace.
+export function replaceAddress(href: string) {
+  if (pathOfHref(href) === window.location.pathname) return;
+  noteReplace(pathOfHref(href));
+  window.history.replaceState(null, "", href);
+}
+
 // A click that opens the link in this tab: the main button and no modifier (Cmd/Ctrl/Shift/Alt open a new tab or window)
 export function plainClick(e: React.MouseEvent): boolean {
   return e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;

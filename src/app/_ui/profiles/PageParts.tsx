@@ -25,12 +25,13 @@ import {
   StatTile,
   stretchedArea,
   tabular,
+  visuallyHidden,
 } from "@/app/_ui/sp";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import PersonOffRoundedIcon from "@mui/icons-material/PersonOffRounded";
 import SearchOffRoundedIcon from "@mui/icons-material/SearchOffRounded";
-import {Box, SxProps, Theme, useMediaQuery} from "@mui/material";
+import {Box, SxProps, Theme} from "@mui/material";
 import React, {useContext, useId} from "react";
 import {createPortal} from "react-dom";
 
@@ -40,15 +41,6 @@ import {createPortal} from "react-dom";
 // The desktop columns: Igrači is the wide one on a Team page (13f); a Player page has three equal ones (13g)
 export const TEAM_GRID = "minmax(0,1.25fr) minmax(0,1fr) minmax(0,1fr)";
 export const PLAYER_GRID = "repeat(3, minmax(0,1fr))";
-
-// Below this window height the desktop header card gets smaller, so the columns under it keep room for their rows
-// (a 1024×640 laptop window)
-const SHORT = "(max-height: 799.98px)";
-
-// true in a short desktop window (see SHORT)
-export function useShortWindow(): boolean {
-  return useMediaQuery(SHORT, {noSsr: true});
-}
 
 // ---------- frames ----------
 
@@ -202,9 +194,6 @@ export function PageStatus<T>({
 }
 
 // ---------- the cream header card ----------
-
-// read by screen readers, not shown
-const visuallyHidden = {position: "absolute", width: "1px", height: "1px", p: 0, m: "-1px", overflow: "hidden", clip: "rect(0,0,0,0)", whiteSpace: "nowrap", border: 0} as const;
 
 // The header card of a Team page (13a/13f) and of a desktop Player page (13g): the initials, the name (and "Neaktivan"
 // after it), "Tvoja ekipa" in the top right corner, an optional block on the right (the player's rating) and the
