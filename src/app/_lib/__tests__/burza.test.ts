@@ -238,11 +238,11 @@ const base: BurzaPost = {
 
 test("ad cards and pages say what each kind needs", () => {
   assert.equal(postSub(base), "Liga Četvrtak · rejting 1550");
-  assert.equal(postBody(base), "Igra s: Ante Kovač · rejting ekipe oko 1550");
+  assert.equal(postBody(base), "Suigrač: Ante Kovač · rejting ekipe oko 1550");
   assert.equal(postHeadline(base), "Ekipa Slavonci traži zamjenu");
   assert.deepEqual(
     postDetails(base).map((d) => `${d.label}: ${d.value}`),
-    ["Liga: Liga Četvrtak", "Večer: čet 15. 10.", "Igra s: Ante Kovač", "Rejting ekipe: oko 1550"]
+    ["Liga: Liga Četvrtak", "Večer: čet 15. 10.", "Suigrač: Ante Kovač", "Rejting ekipe: oko 1550"]
   );
 
   const partner: BurzaPost = {...base, kind: "PARTNER", team: null, night: null, with_player: null, team_rating: null, author: {id: 8, name: "Antonio Jurić"}};
@@ -429,7 +429,7 @@ const mineAvailable: MyBurzaPost = {...minePartner, kind: "AVAILABLE", league: n
 
 test("Moji oglasi says what each ad is and when it closes", () => {
   assert.equal(myPostTitle(mine), "Ekipa Dalmatinci traži zamjenu");
-  assert.equal(myPostSub(mine), "Liga Utorak · uto 13. 10. · igra s: Ivan Perić");
+  assert.equal(myPostSub(mine), "Liga Utorak · uto 13. 10. · suigrač: Ivan Perić");
   assert.equal(myPostTitle(minePartner), "Tražim partnera");
   assert.equal(myPostSub(minePartner), "Liga Četvrtak");
   assert.equal(myPostTitle(mineAvailable), "Dostupan sam");

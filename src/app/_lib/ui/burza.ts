@@ -83,7 +83,7 @@ export function postSub(p: BurzaPost): string {
 // The ad's text in the list
 export function postBody(p: BurzaPost): string {
   if (p.kind === "SUBSTITUTE") {
-    return [p.with_player && `Igra s: ${p.with_player}`, p.team_rating != null && `rejting ekipe oko ${p.team_rating}`].filter(Boolean).join(" · ");
+    return [p.with_player && `Suigrač: ${p.with_player}`, p.team_rating != null && `rejting ekipe oko ${p.team_rating}`].filter(Boolean).join(" · ");
   }
   if (p.kind === "PARTNER") return p.note || "Javi se ako i ti tražiš partnera.";
   return [p.note || "Javi se ako trebate igrača.", p.rating != null && `rejting ${p.rating}`].filter(Boolean).join(" · ");
@@ -102,7 +102,7 @@ export function postDetails(p: BurzaPost): {label: string; value: string}[] {
     return [
       {label: "Liga", value: p.league?.name ?? "—"},
       {label: "Večer", value: p.night ? nightLabel(p.night) : "—"},
-      {label: "Igra s", value: p.with_player ?? "—"},
+      {label: "Suigrač", value: p.with_player ?? "—"},
       {label: "Rejting ekipe", value: p.team_rating != null ? `oko ${p.team_rating}` : "—"},
     ];
   }
@@ -153,10 +153,10 @@ export function myPostTitle(p: BurzaPost): string {
   return p.kind === "PARTNER" ? "Tražim partnera" : "Dostupan sam";
 }
 
-// The line under it: "Liga Utorak · uto 13. 10. · igra s: Ivan Perić", "Liga Četvrtak", "Za zamjenu i novog partnera"
+// The line under it: "Liga Utorak · uto 13. 10. · suigrač: Ivan Perić", "Liga Četvrtak", "Za zamjenu i novog partnera"
 export function myPostSub(p: BurzaPost): string {
   if (p.kind === "SUBSTITUTE") {
-    return [p.league?.name, p.night && nightLabel(p.night), p.with_player && `igra s: ${p.with_player}`].filter(Boolean).join(" · ");
+    return [p.league?.name, p.night && nightLabel(p.night), p.with_player && `suigrač: ${p.with_player}`].filter(Boolean).join(" · ");
   }
   if (p.kind === "PARTNER") return p.league?.name ?? "";
   return `Za ${availableAs(p.as_substitute, p.as_partner)}`;

@@ -61,7 +61,7 @@ export type BurzaPost = {
   team: {id: number; name: string} | null;
   league: {id: number; name: string} | null;
   night: string | null; // YYYY-MM-DD
-  // SUBSTITUTE: the player the substitute plays with ("igra s: ...")
+  // SUBSTITUTE: the player the substitute plays with ("suigrač: ...")
   with_player: string | null;
   // SUBSTITUTE: the team players' average rating, in tens
   team_rating: number | null;

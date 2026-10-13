@@ -141,8 +141,7 @@ export function SubstituteForm({
       <Step n={3} id="step-with">
         Tko traži zamjenu?
       </Step>
-      <StepHint id="step-with-hint">Zamjena igra s tim igračem.</StepHint>
-      <Box role="radiogroup" aria-labelledby="step-with" aria-describedby="step-with-hint" sx={{...cardSx, overflow: "hidden"}}>
+      <Box role="radiogroup" aria-labelledby="step-with" sx={{...cardSx, overflow: "hidden"}}>
         {players.map((p, i) => {
           const on = p.id === withId;
           return (
@@ -176,15 +175,6 @@ export function SubstituteForm({
       {props.error && <ErrorNote>{props.error}</ErrorNote>}
     </>,
     <PublishButton disabled={!valid} submitting={props.submitting} onClick={publish} />
-  );
-}
-
-// A short line under a step's title, lined up with the title's text (the steps sit 12 px apart)
-function StepHint({id, children}: {id: string; children: React.ReactNode}) {
-  return (
-    <Box id={id} sx={{mt: "-8px", pl: "38px", pr: "2px", fontSize: 13.5, lineHeight: 1.4, color: color.muted}}>
-      {children}
-    </Box>
   );
 }
 
