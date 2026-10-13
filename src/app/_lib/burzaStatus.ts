@@ -94,7 +94,7 @@ export function partnerError(leagueEnd: string | null, today: string): string | 
 
 export const REPOST_FORBIDDEN = "Možeš ponovno objaviti samo svoj oglas.";
 // Burza lists an availability ad only with a phone number (its own or the profile's); Moji oglasi opens the form
-export const REPOST_NO_PHONE = "Oglas nema broja mobitela. Upiši ga u obrascu Dostupan sam.";
+export const REPOST_NO_PHONE = "Oglas nema broja mobitela. Upiši ga na Moj profil.";
 
 // What "Objavi ponovno" checks
 export type RepostFacts = {

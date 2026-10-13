@@ -391,7 +391,7 @@ test("only the author publishes an ad again, and it has to be able to go up", ()
   // an availability ad goes up only with a phone number, its own or the profile's (Burza lists no other)
   const available: RepostFacts = {...partner, post: {kind: "AVAILABLE", closed: true, league_id: null, night: null, league_end: null, player_id: 7}};
   assert.equal(repostError(available), null);
-  assert.equal(repostError({...available, phone: false})?.message, "Oglas nema broja mobitela. Upiši ga u obrascu Dostupan sam.");
+  assert.equal(repostError({...available, phone: false})?.message, "Oglas nema broja mobitela. Upiši ga na Moj profil.");
 });
 
 test("a new or published-again ad that copies an open one is matched on what makes it the same", () => {
