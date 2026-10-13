@@ -6,16 +6,22 @@ import {updateOngoingResult} from "@/app/_lib/service/ongoingResult/update";
 import {canPlayRound, notYourRoundResponse, requireUser} from "@/app/_lib/service/auth/requireUser";
 import {getRoundIdOfOngoingResult} from "@/app/_lib/service/ongoingMatch/getRoundId";
 import {errorResponse} from "@/app/_lib/apiErrors";
+import {isDbId} from "@/app/_lib/helpers/query/dbId";
+
+// A new response each time: a response body can only be sent once
+const resultNotFound = () => NextResponse.json({error: "Igra ne postoji."}, {status: STATUS.NotFound});
 
 export async function GET(request: NextRequest, {params}: { params: { id: string } }): Promise<Response> {
     const auth = await requireUser(request);
     if (auth.response) return auth.response;
-    const {id} = params;
+    const resultId = Number(params.id);
+    // an id the database can't hold (also a malformed one) doesn't exist either
+    if (!isDbId(resultId)) return resultNotFound();
 
     try {
-        const dbOngoingResult = await getOngoingResult(Number(id));
+        const dbOngoingResult = await getOngoingResult(resultId);
         if (!dbOngoingResult) {
-            return NextResponse.json({error: "Igra ne postoji."}, {status: STATUS.NotFound});
+            return resultNotFound();
         }
 
         const ongoingResult = ResultResponseValidation.parse(dbOngoingResult);
@@ -30,6 +36,7 @@ export async function PUT(request: NextRequest, {params}: { params: { id: string
     const auth = await requireUser(request);
     if (auth.response) return auth.response;
     const resultId = Number(params.id);
+    if (!isDbId(resultId)) return resultNotFound();
 
     try {
         const req_data = await request.json();

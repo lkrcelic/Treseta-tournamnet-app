@@ -1,5 +1,5 @@
 import {apiFetch, responseErrorMessage} from "@/app/_fetchers/errorMessage";
-import {AvailabilityRequest, BurzaAvailability, BurzaCreateRequest, BurzaList, BurzaPost, MyBurzaList, MyBurzaPost, MySchedule} from "@/app/_interfaces/burza";
+import {BurzaAvailability, BurzaCreateRequest, BurzaList, BurzaPost, MyBurzaList, MyBurzaPost, MySchedule} from "@/app/_interfaces/burza";
 
 // The open ads (public)
 export async function getBurzaAPI(): Promise<BurzaPost[]> {
@@ -57,16 +57,6 @@ export async function repostBurzaPostAPI(id: number, night?: string): Promise<My
 export async function getAvailabilityAPI(): Promise<BurzaAvailability> {
   const response = await apiFetch("/api/burza/availability", {cache: "no-store"});
   if (!response.ok) throw new Error(await responseErrorMessage(response, "Dostupnost se nije učitala."));
-  return response.json();
-}
-
-export async function setAvailabilityAPI(availability: AvailabilityRequest): Promise<BurzaAvailability> {
-  const response = await apiFetch("/api/burza/availability", {
-    method: "PUT",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify(availability),
-  });
-  if (!response.ok) throw new Error(await responseErrorMessage(response, "Dostupnost nije spremljena."));
   return response.json();
 }
 

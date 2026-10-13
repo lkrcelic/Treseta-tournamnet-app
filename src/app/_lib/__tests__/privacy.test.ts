@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {fullAccess, playerView, PrivatePlayer, rosterUsername, rosterView, Viewer} from "../players/privacy";
+import {fullAccess, lineupVisible, playerView, PrivatePlayer, rosterUsername, rosterView, Viewer} from "../players/privacy";
 import {displayName, NAMELESS_PLAYER} from "../players/names";
 import {PlayerPublicResponseValidation, PlayerSelfResponseValidation} from "../../_interfaces/player";
 import {isDbId} from "../helpers/query/dbId";
@@ -119,6 +119,16 @@ test("a team roster: usernames for admins and the player themselves, in Croatian
   assert.deepEqual(rosterView(self, roster).filter((p) => "username" in p), [{id: 7, first_name: "Ana", last_name: "Zec", username: "azec"}]);
   // an admin: everyone's
   assert.deepEqual(rosterView(admin, roster).map((p) => p.username), ["azec", "ccar", "pnovak", "tlee", "zban"]);
+});
+
+test("a round's lineup (both teams' usernames) is for its players while it is open, a finished one for admins only", () => {
+  // the route lets only the players of the round (or an admin) this far: canPlayRound
+  assert.equal(lineupVisible(other, {open: true}), true);
+  assert.equal(lineupVisible(admin, {open: true}), true);
+  // a finished round: a player of it gets "Ova runda je već završena." (403) instead of the rosters
+  assert.equal(lineupVisible(other, {open: false}), false);
+  assert.equal(lineupVisible(self, {open: false}), false);
+  assert.equal(lineupVisible(admin, {open: false}), true);
 });
 
 test("a player without a name shows as Igrač bez imena, never as the username", () => {

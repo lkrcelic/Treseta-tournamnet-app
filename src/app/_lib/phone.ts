@@ -13,10 +13,6 @@ export function phoneInput(value: string): string {
   return value.replace(/[^\d+ ]/g, "");
 }
 
-export function phoneDigits(value: string | null | undefined): number {
-  return (value ?? "").replace(/\D/g, "").length;
-}
-
 // The number with its country code, as digits only ("385912345678"); null when it can't be a phone number
 function internationalDigits(value: string | null | undefined): string | null {
   const raw = (value ?? "").trim();

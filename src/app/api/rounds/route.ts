@@ -1,14 +1,7 @@
 import {NextRequest, NextResponse} from "next/server";
 import {STATUS} from "@/app/_lib/statusCodes";
-import {matchTeams} from "@/app/_lib/matching/multipleRoundMatching";
-import {getLeagueTeamsWithScores} from "@/app/_lib/helpers/query/leagueScores";
-import {RoundCreateRequestValidation} from "@/app/_interfaces/round";
-import {insertRoundBatch} from "@/app/_lib/service/round/insertPairRounds";
-import {errorResponse} from "@/app/_lib/apiErrors";
 import {prisma} from "@/app/_lib/prisma";
-import {requireAdmin, requireUser} from "@/app/_lib/service/auth/requireUser";
-import {seatRounds} from "@/app/_lib/matching/smokingTables";
-import {teamSmokers} from "@/app/_lib/service/team/smokers";
+import {requireUser} from "@/app/_lib/service/auth/requireUser";
 
 export async function GET(request: NextRequest) {
   const auth = await requireUser(request);
@@ -97,33 +90,5 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Error fetching rounds:", error);
     return NextResponse.json({error: "Kola se nisu učitala."}, {status: STATUS.BadRequest});
-  }
-}
-
-export async function POST(request: NextRequest) {
-  const auth = await requireAdmin(request);
-  if (auth.response) return auth.response;
-
-  try {
-    const body = await request.json();
-    const createRound = RoundCreateRequestValidation.parse(body);
-    const {league_id, present_teams} = createRound;
-
-    const teamsWithScores = await getLeagueTeamsWithScores(league_id);
-
-    const filteredTeams = teamsWithScores.filter((team) => present_teams.includes(team.id));
-    // too few teams is an InvalidResultError from the pairing: a 400 with its sentence
-    const matches = matchTeams(filteredTeams);
-
-    // one round, in the pairing's order (smoking tables come with Create Round's generate-multiple)
-    const smokers = await teamSmokers(filteredTeams.map((t) => t.id));
-    const {firstRoundNumber, alreadyCreated} = await insertRoundBatch(seatRounds([matches]), league_id, {smokers});
-
-    return NextResponse.json(
-      {round_number: firstRoundNumber, already_created: alreadyCreated},
-      {status: alreadyCreated ? STATUS.OK : STATUS.Created}
-    );
-  } catch (error) {
-    return errorResponse(error, "Kolo nije napravljeno.");
   }
 }

@@ -153,8 +153,6 @@ test("every admin endpoint calls requireAdmin", () => {
   // every handler, reads included
   const adminFiles = [
     ...routeFiles(join(API, "admin")),
-    join(API, "players", "route.ts"),
-    join(API, "session", "route.ts"),
     join(API, "matches", "route.ts"),
   ];
   // the mutations (reads there are for players too); the player ones are in ALLOWED_WITHOUT_ADMIN

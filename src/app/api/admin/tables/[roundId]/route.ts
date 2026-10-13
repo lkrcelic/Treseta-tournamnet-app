@@ -5,15 +5,21 @@ import {errorResponse} from "@/app/_lib/apiErrors";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {getTablePad} from "@/app/_lib/service/admin/hands";
 import {editTablePair, removeTable} from "@/app/_lib/service/admin/tables";
+import {isDbId} from "@/app/_lib/helpers/query/dbId";
 
 type Params = {params: {roundId: string}};
+
+// an id the database can't hold (also a malformed one) doesn't exist either; a new response each time
+const tableNotFound = () => NextResponse.json({error: "Stol ne postoji."}, {status: STATUS.NotFound});
 
 // A table with every match and hand, for the admin scorepad
 export async function GET(request: NextRequest, {params}: Params) {
   const auth = await requireAdmin(request);
   if (auth.response) return auth.response;
+  const roundId = Number(params.roundId);
+  if (!isDbId(roundId)) return tableNotFound();
   try {
-    return NextResponse.json(await getTablePad(Number(params.roundId)), {status: STATUS.OK});
+    return NextResponse.json(await getTablePad(roundId), {status: STATUS.OK});
   } catch (error) {
     return errorResponse(error, "Stol se nije učitao.");
   }
@@ -25,9 +31,11 @@ const PairValidation = z.object({team1_id: z.number().int(), team2_id: z.number(
 export async function PATCH(request: NextRequest, {params}: Params) {
   const auth = await requireAdmin(request);
   if (auth.response) return auth.response;
+  const roundId = Number(params.roundId);
+  if (!isDbId(roundId)) return tableNotFound();
   try {
     const {team1_id, team2_id} = PairValidation.parse(await request.json());
-    const changed = await editTablePair(Number(params.roundId), team1_id, team2_id);
+    const changed = await editTablePair(roundId, team1_id, team2_id);
     return NextResponse.json({changed}, {status: STATUS.OK});
   } catch (error) {
     return errorResponse(error, "Par nije spremljen.");
@@ -38,8 +46,10 @@ export async function PATCH(request: NextRequest, {params}: Params) {
 export async function DELETE(request: NextRequest, {params}: Params) {
   const auth = await requireAdmin(request);
   if (auth.response) return auth.response;
+  const roundId = Number(params.roundId);
+  if (!isDbId(roundId)) return tableNotFound();
   try {
-    await removeTable(Number(params.roundId));
+    await removeTable(roundId);
     return new NextResponse(null, {status: STATUS.NoContent});
   } catch (error) {
     return errorResponse(error, "Stol nije uklonjen.");

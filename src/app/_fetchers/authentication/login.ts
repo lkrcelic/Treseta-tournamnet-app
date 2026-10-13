@@ -13,7 +13,7 @@ export async function loginUser(loginUser: LoginUserInterface): Promise<LoginOut
   if (response.status === 429) return "locked";
   // the password was right, but an admin deactivated the account
   if (response.status === 403) return "inactive";
-  // the route answers 404 for an unknown user or a wrong password
+  // the route answers 404 for an unknown user or a wrong password, 400 for an empty field
   if (response.status === 404 || response.status === 400) return "wrong";
   return "error";
 }

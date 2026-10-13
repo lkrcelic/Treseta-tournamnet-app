@@ -1,6 +1,7 @@
 import {prisma} from "@/app/_lib/prisma";
 import {NextRequest, NextResponse} from "next/server";
 import {randomUUID} from "crypto";
+import {z} from "zod";
 
 import argon2 from "argon2";
 import {LoginUser} from "@/app/_interfaces/login";
@@ -83,7 +84,14 @@ export async function POST(req: NextRequest) {
     }
     return response;
   } catch (error) {
+    // an empty username or password (Prijava checks both fields before sending), or a body that isn't JSON
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({error: "Upiši korisničko ime i lozinku."}, {status: STATUS.BadRequest});
+    }
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({error: "Neispravan zahtjev."}, {status: STATUS.BadRequest});
+    }
     console.error("Error: ", error);
-    return NextResponse.json({message: "Prijava nije uspjela."}, {status: STATUS.ServerError});
+    return NextResponse.json({error: "Prijava nije uspjela."}, {status: STATUS.ServerError});
   }
 }

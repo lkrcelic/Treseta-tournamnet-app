@@ -6,7 +6,7 @@ import {isValidPhone, normalizePhone, phoneInput, PHONE_ERROR, PHONE_HINT} from 
 import {busyLine, KIND_TAG, postBody, postSub, postTitle, timeAgo} from "@/app/_lib/ui/burza";
 import {initials, plural} from "@/app/_lib/ui/text";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
-import {color, font, shadow, tint} from "@/app/_styles/tokens";
+import {color, shadow, tint} from "@/app/_styles/tokens";
 import {BottomSheet, buttonBase, Card, ellipsis, mergeSx, tabular} from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import BackHandRoundedIcon from "@mui/icons-material/BackHandRounded";
@@ -619,15 +619,6 @@ export function KindPicker({open, onClose, onPick, desktop, anchor}: {open: bool
       </Box>
       <KindList onPick={onPick} />
     </Popover>
-  );
-}
-
-// The big headline of a screen in the display font
-export function Headline({children, size = 30, sx}: {children: React.ReactNode; size?: number; sx?: SxProps<Theme>}) {
-  return (
-    <Box component="h1" sx={mergeSx({m: 0, fontFamily: font.display, fontSize: size, fontWeight: 800, lineHeight: 1.05, letterSpacing: "-.02em"}, sx)}>
-      {children}
-    </Box>
   );
 }
 

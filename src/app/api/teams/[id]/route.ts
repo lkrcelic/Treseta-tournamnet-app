@@ -8,17 +8,23 @@ import {errorResponse} from "@/app/_lib/apiErrors";
 import {TEAM_NAME_TAKEN, TeamExtendedResponseValidation, TeamUpdateValidation} from "@/app/_interfaces/team";
 import {renameTeam} from "@/app/_lib/service/team/update";
 import {rosterView} from "@/app/_lib/players/privacy";
+import {isDbId} from "@/app/_lib/helpers/query/dbId";
+
+// A new response each time: a response body can only be sent once
+const teamNotFound = () => NextResponse.json({error: "Ekipa ne postoji."}, {status: STATUS.NotFound});
 
 // Handle GET request to fetch a single team by ID
 export async function GET(request: NextRequest, {params}: { params: { id: string } }) {
   const auth = await requireUser(request);
   if (auth.response) return auth.response;
-    const {id} = params;
+    const teamId = Number(params.id);
+    // an id the database can't hold (also a malformed one) doesn't exist either
+    if (!isDbId(teamId)) return teamNotFound();
 
     try {
         const dbTeam = await prisma.team.findUnique({
             where: {
-                team_id: Number(id),
+                team_id: teamId,
             },
             // the response includes the players, so load them (without this every request failed validation);
             // rosterView below drops the usernames others may not see and puts the players in Croatian name order
@@ -29,7 +35,7 @@ export async function GET(request: NextRequest, {params}: { params: { id: string
         });
 
         if (!dbTeam) {
-            return NextResponse.json({error: "Ekipa ne postoji."}, {status: STATUS.NotFound});
+            return teamNotFound();
         }
         const team = TeamExtendedResponseValidation.parse({
             ...dbTeam,
@@ -49,9 +55,11 @@ export async function PATCH(request: NextRequest, {params}: { params: { id: stri
 
   try {
     const {team_name} = TeamUpdateValidation.parse(await request.json());
-    const team = await renameTeam(Number(params.id), team_name);
+    const teamId = Number(params.id);
+    if (!isDbId(teamId)) return teamNotFound();
+    const team = await renameTeam(teamId, team_name);
     if (!team) {
-      return NextResponse.json({error: "Ekipa ne postoji."}, {status: STATUS.NotFound});
+      return teamNotFound();
     }
     return NextResponse.json({team_id: team.team_id, team_name: team.team_name}, {status: STATUS.OK});
   } catch (error) {

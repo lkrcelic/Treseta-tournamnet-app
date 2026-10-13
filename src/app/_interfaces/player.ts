@@ -172,10 +172,3 @@ export const PlayerSelfResponseValidation = PlayerResponseValidation.extend({
   active: z.boolean().optional(),
 });
 export type PlayerSelfResponse = z.infer<typeof PlayerSelfResponseValidation>;
-
-const PlayerResponses = z.array(PlayerResponseValidation);
-
-export const playersOutput = PlayerResponses;
-export type PlayerResponse = z.infer<typeof PlayerResponseValidation>;
-export type PlayerPartialResponse = z.infer<typeof PlayerPartialResponseValidation>;
-export const PlayerPartialResponseArrayValidation = z.array(PlayerPartialResponseValidation);

@@ -1,4 +1,4 @@
-import {color, font, shadow} from "@/app/_styles/tokens";
+import {color, shadow} from "@/app/_styles/tokens";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import {Box, SxProps, Theme} from "@mui/material";
 import React from "react";
@@ -326,5 +326,3 @@ export function LoadMoreButton({left, noun, onClick, sx}: {left: number; noun: N
     </Box>
   );
 }
-
-export const displayFont = font.display;

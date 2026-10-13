@@ -4,12 +4,16 @@ import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {z} from "zod";
 import {defaultLineup, PLAYERS_PER_TEAM} from "@/app/_lib/lineup";
 import {displayName, fullName} from "@/app/_lib/players/names";
+import {lineupVisible, Viewer} from "@/app/_lib/players/privacy";
 
 // Who plays a round: two players from each team, picked on Start Game before the scoreboard opens. Ratings of the
 // round go to these players (rounds without a lineup rate the whole roster). A deactivated player isn't offered or
 // picked: when a lineup saved before the deactivation names them, the open round's screen puts an active teammate in
 // their place, so it can be confirmed again (a finished round keeps what was saved). The members' usernames go to the
-// players of the round (design 7c shows them under the names).
+// players of the round while it is open (design 7c shows them under the names); a finished round's lineup only to
+// admins (lineupVisible).
+
+export const ROUND_FINISHED = "Ova runda je već završena.";
 
 export type LineupMember = {id: number; name: string; username: string};
 
@@ -48,7 +52,8 @@ const teamSelect = {
   teamPlayers: {select: {player: {select: {id: true, first_name: true, last_name: true, username: true, active: true}}}},
 } as const;
 
-export async function getLineup(roundId: number, viewerId: number): Promise<Lineup> {
+// "finished": a player asking for a round that is over (the route answers 403 with ROUND_FINISHED)
+export async function getLineup(roundId: number, viewer: Viewer): Promise<Lineup | "finished"> {
   const round = await prisma.round.findUnique({
     where: {id: roundId},
     select: {
@@ -63,6 +68,7 @@ export async function getLineup(roundId: number, viewerId: number): Promise<Line
     },
   });
   if (!round) throw new NotFoundError("Runda ne postoji.");
+  if (!lineupVisible(viewer, round)) return "finished";
 
   const saved = round.roundPlayers.length > 0;
   const leagueId = round.leagueRounds[0]?.league_id ?? null;
@@ -88,7 +94,7 @@ export async function getLineup(roundId: number, viewerId: number): Promise<Line
     return {
       id: t.team_id,
       name: t.team_name,
-      mine: t.teamPlayers.some((tp) => tp.player.id === viewerId),
+      mine: t.teamPlayers.some((tp) => tp.player.id === viewer.id),
       members,
       selected,
       needed: Math.min(PLAYERS_PER_TEAM, roster.length),
@@ -144,7 +150,7 @@ export async function saveLineup(roundId: number, lineup: LineupSave): Promise<v
       },
     });
     if (!round) throw new NotFoundError("Runda ne postoji.");
-    if (!round.open) throw new InvalidResultError("Ova runda je već završena.");
+    if (!round.open) throw new InvalidResultError(ROUND_FINISHED);
 
     // a player deactivated while the screen was open: say who, instead of the count below
     const inactive = [...round.team1.teamPlayers, ...round.team2.teamPlayers]

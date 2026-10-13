@@ -10,7 +10,6 @@ export const tint = {
     8: "rgba(60,74,103,.08)",
     10: "rgba(60,74,103,.1)",
     12: "rgba(60,74,103,.12)",
-    16: "rgba(60,74,103,.16)",
     18: "rgba(60,74,103,.18)",
     20: "rgba(60,74,103,.2)",
     22: "rgba(60,74,103,.22)",
@@ -32,7 +31,6 @@ export const tint = {
     45: "rgba(188,71,73,.45)",
   },
   green: {
-    8: "rgba(56,102,65,.08)",
     9: "rgba(56,102,65,.09)",
     12: "rgba(56,102,65,.12)",
     13: "rgba(56,102,65,.13)",
@@ -146,13 +144,8 @@ export const shadow = {
 } as const;
 
 export const radius = {
-  sm: "10px",
   md: "14px",
-  input: "16px",
-  button: "18px",
   card: "22px",
-  hero: "24px",
-  heroDesk: "28px",
 } as const;
 
 export const ease = "cubic-bezier(.2,.8,.2,1)";

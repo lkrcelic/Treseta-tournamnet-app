@@ -386,20 +386,6 @@ export async function getAvailability(playerId: number): Promise<BurzaAvailabili
   };
 }
 
-// Profil · Dostupan sam: switching it on publishes the availability ad with the profile's number, switching it off
-// closes it; the pills change as what the player is available
-export async function setAvailability(
-  playerId: number,
-  req: {available: boolean; as_substitute: boolean; as_partner: boolean}
-): Promise<BurzaAvailability> {
-  await prisma.$transaction(async (tx) => {
-    await lockAuthor(tx, playerId);
-    if (req.available) await saveAvailable(tx, playerId, {as_substitute: req.as_substitute, as_partner: req.as_partner});
-    else await tx.marketPost.updateMany({where: {kind: "AVAILABLE", closed_at: null, player_id: playerId}, data: {closed_at: new Date()}});
-  });
-  return getAvailability(playerId);
-}
-
 // Deaktiviraj račun (admin): closes the player's ads that are still up. An ad that already expired stays as it is, so
 // Moji oglasi keeps showing it as Istekao on its own date (stillUpIds). Call it after lockPlayerAds(tx, playerId).
 export async function closeActivePosts(tx: Tx, playerId: number): Promise<void> {

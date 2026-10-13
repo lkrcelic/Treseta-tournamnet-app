@@ -64,6 +64,13 @@ export function rosterView(viewer: Viewer | null, players: RosterPlayer[]): Rost
     .sort((a, b) => fullName(a).localeCompare(fullName(b), "hr"));
 }
 
+// A round's lineup (GET /api/rounds/[id]/lineup) lists both teams with their usernames, for Tko igra ovu rundu?, which
+// opens while the round is still to be played: a player of the round gets it only then (the route checks that they
+// play it), an admin always. A finished round's rosters would give away the opponents' usernames for every past round.
+export function lineupVisible(viewer: Viewer, round: {open: boolean}): boolean {
+  return round.open || isAdminRole(viewer);
+}
+
 function isoDay(d: Date | string | null): string | null {
   if (d == null) return null;
   return typeof d === "string" ? d.slice(0, 10) : d.toISOString().slice(0, 10);

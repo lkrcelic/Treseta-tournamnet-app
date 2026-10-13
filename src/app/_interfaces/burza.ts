@@ -48,13 +48,6 @@ export const BurzaUpdateRequestValidation = z.object({closed: z.literal(true)});
 export const BurzaRepostRequestValidation = z.object({night: isoDate.optional()});
 export type BurzaRepostRequest = {night?: string};
 
-// Profile · Dostupan sam
-export const AvailabilityRequestValidation = z
-  .object({available: z.boolean(), as_substitute: z.boolean().default(true), as_partner: z.boolean().default(false)})
-  .refine((r) => !r.available || r.as_substitute || r.as_partner, {message: "Odaberi barem jedno.", path: ["as_substitute"]});
-
-export type AvailabilityRequest = {available: boolean; as_substitute: boolean; as_partner: boolean};
-
 // One ad as Burza shows it
 export type BurzaPost = {
   id: number;

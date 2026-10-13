@@ -36,14 +36,3 @@ export async function getRoundMatchups(roundNumber: number, leagueId: number): P
 
   return rounds as RoundMatchup[];
 }
-
-export async function getCurrentRoundMatchups(leagueId: number): Promise<RoundMatchup[] | null> {
-  const currentRound = await prisma.round.aggregate({
-    _max: {round_number: true},
-    where: {leagueRounds: {some: {league_id: leagueId}}},
-  });
-
-  if (!currentRound._max.round_number) return null;
-
-  return await getRoundMatchups(currentRound._max.round_number, leagueId);
-}

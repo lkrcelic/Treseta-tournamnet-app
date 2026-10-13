@@ -1,4 +1,4 @@
-import {color, font, shadow} from "@/app/_styles/tokens";
+import {color, font} from "@/app/_styles/tokens";
 import {Box, SxProps, Theme} from "@mui/material";
 import React from "react";
 import {cardSx, mergeSx} from "./base";
@@ -167,5 +167,3 @@ export function InfoNote({icon, children, sx}: {icon: React.ReactNode; children:
     </Box>
   );
 }
-
-export const raisedShadow = shadow.raised;

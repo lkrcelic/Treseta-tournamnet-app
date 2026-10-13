@@ -33,11 +33,6 @@ export const TeamPlayerAddValidation = z.object({
   player_id: z.number().int(),
 });
 
-export const AddTeammateRequestValidation = z.object({
-  team_id: z.number().int(),
-  player_id: z.number().int(),
-});
-
 // A player on a team's roster; the username is only sent to admins and the player themselves (handoff §6 "Privacy",
 // _lib/players/privacy.ts rosterView)
 const TeamMemberValidation = z.object({
