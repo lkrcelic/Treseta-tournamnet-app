@@ -336,7 +336,7 @@ function ManageLeagueDesktop() {
   const sidePanel = (
     <Box sx={{minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: "16px"}}>
       {hasConferences && teams && <DistributeCard conferences={confList} teams={rows} order={tableOrder} onDistribute={distribute} />}
-      <AddTeamCard exclude={rows.map((r) => r.id)} onAdd={onAdd} onCreate={() => router.push(`/teams/new?league=${leagueId}`)} />
+      <AddTeamCard exclude={rows.map((r) => r.id)} onAdd={onAdd} onCreate={() => router.push(`/teams?new=1&league=${leagueId}`)} />
       <InfoNote icon={<InfoRoundedIcon />}>
         Neaktivne ekipe ostaju u ligi i poretku, ali se ne uključuju automatski kad kreiraš kolo.
       </InfoNote>

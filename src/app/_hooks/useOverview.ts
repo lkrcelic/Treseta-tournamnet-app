@@ -61,13 +61,21 @@ export function useOverview<T>(
     reload();
   }, [reload]);
 
+  // the page as last shown: setData changes only a page that is there
+  const shown = useRef(state);
+  useEffect(() => {
+    shown.current = state;
+  }, [state]);
+
   const setData = useCallback(
     (change: T | ((prev: T) => T)) => {
+      if (shown.current.key !== key || shown.current.data == null) return;
+      // whichever comes first, the change stays: a load that answers after it is dropped, one that answered before
+      // it is what the change applies to. Counted here, not in the state update (which React runs later), so a reload
+      // asked for right after the change is not dropped with the loads before it.
+      generation.current++;
       setState((s) => {
         if (s.key !== key || s.data == null) return s;
-        // whichever comes first, the change stays: a load that answers after it is dropped, one that answered before
-        // it is what the change applies to
-        generation.current++;
         const data = typeof change === "function" ? (change as (prev: T) => T)(s.data) : change;
         cache.set(key, data);
         return {...s, data};

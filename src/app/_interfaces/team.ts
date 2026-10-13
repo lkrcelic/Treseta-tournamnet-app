@@ -2,6 +2,11 @@ import {z} from "zod";
 
 const TeamName = z.string().trim().min(1, "Ime ekipe je obavezno.").max(100, "Ime ekipe je predugo.");
 
+// Another team has that name (ignoring case): the server's refusal, and the Team page's check before it sends a name
+export const TEAM_NAME_TAKEN = "Ekipa s tim imenom već postoji.";
+// the Team page's pencil and "Nova ekipa" with an empty name
+export const TEAM_NAME_REQUIRED = "Upiši ime ekipe.";
+
 // A new team: its name and any number of players (the first two are its founders).
 // founder_id1 / founder_id2 are the older form of the same request and still accepted.
 export const TeamRequestValidation = z
@@ -45,7 +50,7 @@ const TeamMemberValidation = z.object({
 export const TeamExtendedResponseValidation = z.object({
   team_id: z.number().int(),
   team_name: z.string(),
-  // Manage Teams marks the founders and lists the team's leagues
+  // the founders (the first two players), and the leagues the Ekipe directory counts
   founder_id1: z.number().int().nullable().optional(),
   founder_id2: z.number().int().nullable().optional(),
   teamPlayers: z.array(

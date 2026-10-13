@@ -5,7 +5,7 @@ import {requireAdmin, requireUser} from "@/app/_lib/service/auth/requireUser";
 import {prisma} from "@/app/_lib/prisma";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {errorResponse} from "@/app/_lib/apiErrors";
-import {TeamExtendedResponseValidation, TeamUpdateValidation} from "@/app/_interfaces/team";
+import {TEAM_NAME_TAKEN, TeamExtendedResponseValidation, TeamUpdateValidation} from "@/app/_interfaces/team";
 import {renameTeam} from "@/app/_lib/service/team/update";
 import {rosterView} from "@/app/_lib/players/privacy";
 
@@ -57,7 +57,7 @@ export async function PATCH(request: NextRequest, {params}: { params: { id: stri
   } catch (error) {
     // two renames to the same name at once: the unique index catches the second
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json({error: "Ekipa s tim imenom već postoji."}, {status: STATUS.BadRequest});
+      return NextResponse.json({error: TEAM_NAME_TAKEN}, {status: STATUS.BadRequest});
     }
     return errorResponse(error, "Ime ekipe nije spremljeno.");
   }

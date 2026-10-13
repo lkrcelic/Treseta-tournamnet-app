@@ -18,18 +18,19 @@ import EmojiEventsRoundedIcon from "@mui/icons-material/EmojiEventsRounded";
 import EventRoundedIcon from "@mui/icons-material/EventRounded";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import LeaderboardRoundedIcon from "@mui/icons-material/LeaderboardRounded";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import LibraryAddRoundedIcon from "@mui/icons-material/LibraryAddRounded";
 import LoginRoundedIcon from "@mui/icons-material/LoginRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
+import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
+import PersonSearchRoundedIcon from "@mui/icons-material/PersonSearchRounded";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import {Box, Drawer, SxProps, Theme} from "@mui/material";
 import Link from "next/link";
 import {startNavStack} from "@/app/_lib/navStack";
-import {pathOfHref, TransitionLink} from "@/app/_lib/viewTransitions";
+import {pathOfHref, plainClick, TransitionLink} from "@/app/_lib/viewTransitions";
 import React, {useEffect, useRef, useState} from "react";
 import {buttonBase, ellipsis, mergeSx} from "./base";
 import {GhostIconButton, IconCircleButton} from "./Buttons";
@@ -49,11 +50,14 @@ export type NavKey =
   | "burza"
   | "manageLeague"
   | "createLeague"
-  | "manageTeam"
+  | "teams"
+  | "players"
   | "profile";
 
 // Desktop page frame: menu button + eyebrow/title header, right-hand controls, content filling the viewport. Without a
 // title the header is the menu button and the eyebrow alone (the Team and Player pages: "PIATNIK BELA LIGA", 13f).
+// compact: a smaller title and less space around it, for a page that needs the height of a short window (the admin's
+// Ekipe and Igrači directories under 800 px).
 export function DesktopShell({
   active,
   eyebrow,
@@ -61,6 +65,7 @@ export function DesktopShell({
   right,
   back,
   lead,
+  compact = false,
   children,
   sx,
 }: {
@@ -72,6 +77,7 @@ export function DesktopShell({
   back?: {label: string; href: string};
   // any other control next to the menu button (a stacked page's BackPill in a short window)
   lead?: React.ReactNode;
+  compact?: boolean;
   children: React.ReactNode;
   sx?: SxProps<Theme>;
 }) {
@@ -88,8 +94,8 @@ export function DesktopShell({
         minHeight: 640,
         display: "flex",
         flexDirection: "column",
-        gap: "20px",
-        p: "24px 36px 28px",
+        gap: compact ? "14px" : "20px",
+        p: compact ? "16px 36px 20px" : "24px 36px 28px",
         boxSizing: "border-box",
         maxWidth: 1920,
         mx: "auto",
@@ -136,12 +142,12 @@ export function DesktopShell({
         )}
         {lead}
         {/* the title keeps its width (up to half the header); crowded right-hand controls shrink and scroll instead */}
-        <Box sx={{display: "flex", flexDirection: "column", gap: "6px", mr: "auto", minWidth: 0, flexShrink: 0, maxWidth: "50%"}}>
+        <Box sx={{display: "flex", flexDirection: "column", gap: compact ? "2px" : "6px", mr: "auto", minWidth: 0, flexShrink: 0, maxWidth: "50%"}}>
           {eyebrow && <Eyebrow sx={title == null ? {fontWeight: 700, letterSpacing: ".14em", ...ellipsis} : undefined}>{eyebrow}</Eyebrow>}
           {title != null && (
             <Box
               component="h1"
-              sx={{m: 0, fontFamily: font.display, fontSize: 44, fontWeight: 800, lineHeight: 1, letterSpacing: "-.02em", ...ellipsis}}
+              sx={{m: 0, fontFamily: font.display, fontSize: compact ? 32 : 44, fontWeight: 800, lineHeight: 1, letterSpacing: "-.02em", ...ellipsis}}
             >
               {title}
             </Box>
@@ -168,10 +174,11 @@ const NAV: NavItem[] = [
   {key: "league", label: "Ukupni poredak", icon: <EmojiEventsRoundedIcon />, leaguePage: "standings"},
   {key: "ratings", label: "Rejting", icon: <LeaderboardRoundedIcon />, href: "/ratings"},
   {key: "raspored", label: "Raspored", icon: <EventRoundedIcon />, href: "/raspored"},
-  {key: "burza", label: "Burza igrača", icon: <GroupsRoundedIcon />, href: "/burza"},
+  {key: "burza", label: "Burza igrača", icon: <PersonSearchRoundedIcon />, href: "/burza"},
   {key: "manageLeague", label: "Upravljanje ligom", icon: <TuneRoundedIcon />, leaguePage: "manage", head: "Admin", adminOnly: true},
   {key: "createLeague", label: "Nova liga", icon: <LibraryAddRoundedIcon />, href: "/league/new", adminOnly: true},
-  {key: "manageTeam", label: "Ekipe", icon: <EditRoundedIcon />, href: "/teams", adminOnly: true},
+  {key: "teams", label: "Ekipe", icon: <GroupsRoundedIcon />, href: "/teams", adminOnly: true},
+  {key: "players", label: "Igrači", icon: <PersonRoundedIcon />, href: "/players", adminOnly: true},
   {key: "profile", label: "Moj profil", icon: <AccountCircleRoundedIcon />, href: "/profile", head: "Račun"},
 ];
 
@@ -273,7 +280,7 @@ export function NavDrawer({open, onClose, active}: {open: boolean; onClose: () =
                   href={n.href}
                   onClick={(e: React.MouseEvent) => {
                     // a page opened from the menu starts the page stack: it has no Back (a new tab is left alone)
-                    if (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) startNavStack(pathOfHref(n.href!), window.location.pathname);
+                    if (plainClick(e)) startNavStack(pathOfHref(n.href!), window.location.pathname);
                     onClose();
                   }}
                   aria-current={on ? "page" : undefined}

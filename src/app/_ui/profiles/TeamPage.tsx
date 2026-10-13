@@ -1,8 +1,12 @@
 "use client";
 
+import useAdminPlayers from "@/app/_hooks/useAdminPlayers";
+import {reloadLeagues, useLeagueList} from "@/app/_hooks/useLeagues";
 import useNavStack from "@/app/_hooks/useNavStack";
 import useTeamOverview from "@/app/_hooks/useTeamOverview";
 import type {TeamNight, TeamOverview, TeamOverviewLeague, TeamOverviewPlayer} from "@/app/_interfaces/profiles";
+import {leagueDateString} from "@/app/_lib/dates";
+import {leagueAddOptions, playerAddOptions} from "@/app/_lib/ui/directory";
 import {leagueStatusLine, nightParts, rosterSubline, teamInitial, teamTiles} from "@/app/_lib/ui/profiles";
 import {formatChange, shortDate} from "@/app/_lib/ui/ratings";
 import {count, NOUN} from "@/app/_lib/ui/text";
@@ -20,15 +24,20 @@ import {
   ProvisionalTag,
   RankBadge,
   rowFocus,
+  SearchAddField,
   SectionLabel,
+  Spinner,
   tabular,
   Tag,
 } from "@/app/_ui/sp";
+import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
+import PersonAddRoundedIcon from "@mui/icons-material/PersonAddRounded";
 import {Box} from "@mui/material";
-import React, {useId} from "react";
+import React, {useId, useMemo} from "react";
 import {
   DesktopFrame,
   HeroCard,
+  PageColumns,
   PageStatus,
   PhoneFrame,
   PhoneListHead,
@@ -37,23 +46,31 @@ import {
   stretchedLink,
   stretchedRow,
   TEAM_GRID,
+  TEAM_STACKED_GRID,
   useShortWindow,
 } from "./PageParts";
+import {AddError, NameButton, NameEditing, RemoveButton, TeamAdmin, TeamNameInput, useNameFocus, useTeamAdmin} from "./TeamAdmin";
 
 // The Team page (/teams/[teamId], handoff §6, frames 13a, 13b, 13f, 13k–13o): the cream header with the team's best
 // place, players and leagues, then its players (to their pages), its leagues (to that league's standings with the team
-// highlighted) and its last nights. Read-only for everyone; the admin controls come with the Ekipe directory.
+// highlighted) and its last nights. On the desktop an admin also renames the team, adds and removes its players and puts
+// it in leagues (TeamAdmin.tsx).
 
-const EMPTY = {
+// what an empty column says (Nova ekipa says it its own way)
+export type EmptyText = {players: string; leagues: string; nights: string};
+
+const EMPTY: EmptyText = {
   players: "Ekipa još nema igrača.",
   leagues: "Ekipa još ne igra ni u jednoj ligi.",
   nights: "Još nema odigranih večeri.",
-} as const;
+};
 
 const playerHref = (p: TeamOverviewPlayer) => `/players/${p.id}`;
 const leagueHref = (l: TeamOverviewLeague, teamId: number) => `/league/${l.league_id}/standings?team=${teamId}`;
 
-function Hero({team, desktop, short = false}: {team: TeamOverview; desktop: boolean; short?: boolean}) {
+// rename: the admin's pencil next to the name (desktop)
+function Hero({team, desktop, short = false, rename}: {team: TeamOverview; desktop: boolean; short?: boolean; rename?: NameEditing}) {
+  const focus = useNameFocus(rename?.editing ?? false);
   return (
     <HeroCard
       desktop={desktop}
@@ -61,6 +78,8 @@ function Hero({team, desktop, short = false}: {team: TeamOverview; desktop: bool
       avatarName={team.team.name}
       avatarLetters={teamInitial(team.team.name)}
       title={team.team.name}
+      titleEditor={rename?.editing ? <TeamNameInput edit={rename} short={short} inputRef={focus.inputRef} /> : undefined}
+      nameTag={rename ? <NameButton edit={rename} short={short} onStart={rename.start} buttonRef={focus.buttonRef} /> : undefined}
       cornerTag={team.team.mine ? <Tag variant="mine" size={desktop ? "md" : "sm"} /> : undefined}
       tiles={teamTiles(team.stats)}
     />
@@ -286,22 +305,20 @@ const GRID = {
 } as const;
 
 // The desktop Team page (13f; 13n loading, 13o a new team). embedded: inside the admin's Ekipe directory (13h), which
-// brings its own frame.
+// brings its own frame. An admin gets the controls (the server says so in viewer.admin).
 export function TeamPageDesktop({teamId, embedded = false}: {teamId: number; embedded?: boolean}) {
   const overview = useTeamOverview(teamId);
   const team = overview.data;
   const nav = useNavStack(team?.team.name ?? null);
   const short = useShortWindow();
+  const actions = useTeamAdmin(overview);
+  const admin = team?.viewer.admin ? actions : null;
   return (
     <DesktopFrame embedded={embedded} short={short} nav={nav}>
       {team ? (
         <>
-          <Hero team={team} desktop short={short} />
-          <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: TEAM_GRID, gridTemplateRows: "minmax(0,1fr)", gap: "18px"}}>
-            <DesktopPlayers team={team} />
-            <DesktopLeagues team={team} />
-            <DesktopNights nights={team.nights} />
-          </Box>
+          <Hero team={team} desktop short={short} rename={admin?.rename} />
+          <TeamColumns team={team} admin={admin} />
         </>
       ) : (
         <PageStatus kind="team" overview={overview} nav={nav} desktop template={TEAM_GRID} />
@@ -310,13 +327,26 @@ export function TeamPageDesktop({teamId, embedded = false}: {teamId: number; emb
   );
 }
 
+// The three columns under the header card (13f, 13h; 13o for Nova ekipa, which passes its own empty texts)
+export function TeamColumns({team, admin, empty = EMPTY}: {team: TeamOverview; admin: TeamAdmin | null; empty?: EmptyText}) {
+  return (
+    <PageColumns template={TEAM_GRID} stackedTemplate={TEAM_STACKED_GRID}>
+      <DesktopPlayers team={team} admin={admin} empty={empty.players} />
+      <DesktopLeagues team={team} admin={admin} empty={empty.leagues} />
+      <DesktopNights nights={team.nights} empty={empty.nights} />
+    </PageColumns>
+  );
+}
+
 const rightLabel = {textAlign: "right"} as const;
 
-function DesktopPlayers({team}: {team: TeamOverview}) {
+function DesktopPlayers({team, admin, empty}: {team: TeamOverview; admin: TeamAdmin | null; empty: string}) {
+  const pending = admin?.pending.filter((p) => !team.players.some((x) => x.id === p.id)) ?? [];
   return (
     <ColumnCard
       title="Igrači"
-      right={count(team.players.length, NOUN.igrač)}
+      right={count(team.players.length + pending.length, NOUN.igrač)}
+      addField={admin && <PlayersAddField team={team} admin={admin} />}
       header={
         <ColumnHead grid={GRID.players}>
           <span>Igrač</span>
@@ -326,7 +356,7 @@ function DesktopPlayers({team}: {team: TeamOverview}) {
           <span />
         </ColumnHead>
       }
-      empty={team.players.length === 0 && <EmptyState icon>{EMPTY.players}</EmptyState>}
+      empty={team.players.length === 0 && pending.length === 0 && <EmptyState icon>{empty}</EmptyState>}
     >
       <Box component="ul" sx={{listStyle: "none", m: 0, p: 0}}>
         {team.players.map((p) => (
@@ -359,8 +389,32 @@ function DesktopPlayers({team}: {team: TeamOverview}) {
               </Box>
             </Box>
             <Box sx={{width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center"}}>
-              <RowChevron />
+              {admin ? <RemoveButton label={`Ukloni ${p.name} iz ekipe`} onClick={() => admin.removePlayer(p)} /> : <RowChevron />}
             </Box>
+          </Box>
+        ))}
+        {pending.map((p) => (
+          <Box
+            component="li"
+            key={`pending-${p.id}`}
+            aria-busy="true"
+            sx={{height: 64, display: "grid", gridTemplateColumns: GRID.players, gap: "12px", alignItems: "center", p: "0 12px 0 20px", borderBottom: `1px solid ${color.divider}`}}
+          >
+            <Box sx={{minWidth: 0, display: "flex", alignItems: "center", gap: "12px"}}>
+              <InitialsAvatar name={p.name} size={40} variant="paper" />
+              <Box component="span" sx={{minWidth: 0, display: "flex", flexDirection: "column", gap: "1px"}}>
+                <Box component="span" sx={{fontSize: 16, fontWeight: 600, color: color.ink, ...ellipsis}}>
+                  {p.name}
+                </Box>
+                <Box component="span" sx={{fontSize: 13, color: color.muted}}>
+                  Dodajem u ekipu…
+                </Box>
+              </Box>
+            </Box>
+            <Box sx={{justifySelf: "end", display: "flex"}}>
+              <Spinner size={22} />
+            </Box>
+            <span />
           </Box>
         ))}
       </Box>
@@ -368,10 +422,64 @@ function DesktopPlayers({team}: {team: TeamOverview}) {
   );
 }
 
-function DesktopLeagues({team}: {team: TeamOverview}) {
+// "Dodaj igrača" (P:207-215): the active players who aren't in the team, found by name or username
+function PlayersAddField({team, admin}: {team: TeamOverview; admin: TeamAdmin}) {
+  const {list, error, reload} = useAdminPlayers();
+  const options = useMemo(
+    () => (list ? playerAddOptions(list, [...team.players.map((p) => p.id), ...admin.pending.map((p) => p.id)]) : []),
+    [list, team.players, admin.pending]
+  );
+  return (
+    <>
+      <SearchAddField
+        placeholder="Dodaj igrača · ime ili korisničko ime"
+        icon={<PersonAddRoundedIcon aria-hidden />}
+        options={options}
+        onAdd={(o) => {
+          const row = list?.find((p) => p.id === o.id);
+          if (row) admin.addPlayer(row);
+        }}
+        note="Igrač mora imati račun da bi ga se dodalo."
+        noHit="Nema takvog igrača."
+      />
+      {error && !list && <AddError onRetry={reload}>{error}</AddError>}
+      {admin.playersError && <AddError>{admin.playersError}</AddError>}
+    </>
+  );
+}
+
+// "Dodaj u ligu" (P:236-244): the leagues the team isn't in. No switch and no remove here (Upravljanje ligom).
+function LeaguesAddField({team, admin}: {team: TeamOverview; admin: TeamAdmin}) {
+  const {leagues, error} = useLeagueList();
+  const options = useMemo(
+    () => (leagues ? leagueAddOptions(leagues, team.leagues.map((l) => l.league_id), leagueDateString()) : []),
+    [leagues, team.leagues]
+  );
+  return (
+    <>
+      <SearchAddField
+        placeholder="Dodaj u ligu · ime lige"
+        icon={<AddCircleRoundedIcon aria-hidden />}
+        options={options}
+        onAdd={(o) => {
+          const league = leagues?.find((l) => l.id === o.id);
+          if (league) admin.addLeague(league);
+        }}
+        // a team in every league: the field has nothing to offer, and says why
+        note={leagues && options.length === 0 ? "Ekipa je već u svim ligama." : undefined}
+        noHit="Nema druge lige s tim imenom."
+      />
+      {error && !leagues && <AddError onRetry={reloadLeagues}>Lige se nisu učitale.</AddError>}
+      {admin.leaguesError && <AddError>{admin.leaguesError}</AddError>}
+    </>
+  );
+}
+
+function DesktopLeagues({team, admin, empty}: {team: TeamOverview; admin: TeamAdmin | null; empty: string}) {
   return (
     <ColumnCard
       title="Lige"
+      addField={admin && <LeaguesAddField team={team} admin={admin} />}
       header={
         <ColumnHead grid={GRID.leagues}>
           <span>#</span>
@@ -382,7 +490,7 @@ function DesktopLeagues({team}: {team: TeamOverview}) {
           <span />
         </ColumnHead>
       }
-      empty={team.leagues.length === 0 && <EmptyState icon>{EMPTY.leagues}</EmptyState>}
+      empty={team.leagues.length === 0 && <EmptyState icon>{empty}</EmptyState>}
     >
       <Box component="ul" sx={{listStyle: "none", m: 0, p: 0}}>
         {team.leagues.map((l) => (
@@ -428,7 +536,7 @@ function DesktopLeagues({team}: {team: TeamOverview}) {
   );
 }
 
-function DesktopNights({nights}: {nights: TeamNight[]}) {
+function DesktopNights({nights, empty}: {nights: TeamNight[]; empty: string}) {
   return (
     <ColumnCard
       title="Zadnje večeri"
@@ -441,7 +549,7 @@ function DesktopNights({nights}: {nights: TeamNight[]}) {
           </Box>
         </ColumnHead>
       }
-      empty={nights.length === 0 && <EmptyState icon>{EMPTY.nights}</EmptyState>}
+      empty={nights.length === 0 && <EmptyState icon>{empty}</EmptyState>}
     >
       <Box component="ol" sx={{listStyle: "none", m: 0, p: 0}}>
         {nights.map((n) => (

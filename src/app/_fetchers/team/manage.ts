@@ -1,7 +1,7 @@
 import {apiFetch, responseErrorMessage} from "@/app/_fetchers/errorMessage";
 import {TeamExtendedResponse, TeamsResponseValidation} from "@/app/_interfaces/team";
 
-// Every team with its players and leagues (Manage Teams)
+// Every team with its players and leagues (the admin's Ekipe directory; usernames only for admins)
 export async function getTeamsAPI(): Promise<TeamExtendedResponse[]> {
   const response = await apiFetch("/api/teams");
   if (!response.ok) throw new Error(await responseErrorMessage(response, "Ekipe se nisu učitale."));

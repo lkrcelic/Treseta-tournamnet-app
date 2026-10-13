@@ -1,7 +1,7 @@
 // src/app/api/teams/route.ts
 
 import {prisma} from "@/app/_lib/prisma";
-import {TeamRequestValidation, TeamsResponseValidation} from "@/app/_interfaces/team";
+import {TEAM_NAME_TAKEN, TeamRequestValidation, TeamsResponseValidation} from "@/app/_interfaces/team";
 import {Prisma} from "@prisma/client";
 import {errorResponse} from "@/app/_lib/apiErrors";
 import {NextRequest, NextResponse} from "next/server";
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(createdTeam, {status: STATUS.OK});
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json({error: "Ekipa s tim imenom već postoji."}, {status: STATUS.BadRequest});
+      return NextResponse.json({error: TEAM_NAME_TAKEN}, {status: STATUS.BadRequest});
     }
     return errorResponse(error, "Ekipa nije napravljena.");
   }

@@ -3,6 +3,7 @@ import {Team} from "@prisma/client";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {isByeTeam} from "@/app/_lib/bye";
 import {anyCase} from "@/app/_lib/helpers/query/anyCase";
+import {TEAM_NAME_TAKEN} from "@/app/_interfaces/team";
 
 // Team names are unique ignoring case ("Lavovi" and "lavovi" would be the same team in a standings table)
 export async function teamNameTaken(name: string, exceptTeamId?: number): Promise<boolean> {
@@ -25,7 +26,7 @@ export async function renameTeam(teamId: number, name: string): Promise<Team | n
   if (!(await teamExists(teamId))) return null;
   if (isByeTeam(teamId)) throw new InvalidResultError("Slobodna runda se ne može mijenjati.");
   if (await teamNameTaken(name, teamId)) {
-    throw new InvalidResultError("Ekipa s tim imenom već postoji.");
+    throw new InvalidResultError(TEAM_NAME_TAKEN);
   }
   return prisma.team.update({where: {team_id: teamId}, data: {team_name: name.trim()}});
 }

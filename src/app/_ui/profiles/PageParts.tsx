@@ -31,7 +31,8 @@ import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import PersonOffRoundedIcon from "@mui/icons-material/PersonOffRounded";
 import SearchOffRoundedIcon from "@mui/icons-material/SearchOffRounded";
 import {Box, SxProps, Theme, useMediaQuery} from "@mui/material";
-import React, {useId} from "react";
+import React, {useContext, useId} from "react";
+import {createPortal} from "react-dom";
 
 // The frame, the cream header and the states shared by the Team and Player pages (handoff §6,
 // komponente/Profiles.dc.html, abbreviated P below)
@@ -63,10 +64,23 @@ export function PhoneFrame({eyebrow, nav, children}: {eyebrow: string; nav: NavS
   );
 }
 
+// The admin's Ekipe and Igrači directories (13h, 13j) hold the Team and Player pages next to their list. stacked: the
+// page column is too narrow for three columns (a window under 1360 px), so the second and third card share a column;
+// leadSlot: the place in the frame's header row for a back pill in a short window; lastPage: the last team's or
+// player's page shown in the frame (/teams/29), where Nova ekipa goes back to.
+export type DirectoryFrame = {stacked: boolean; leadSlot: HTMLElement | null; lastPage: string | null};
+
+export const DirectoryFrameContext = React.createContext<DirectoryFrame | null>(null);
+
+// the directory frame around this page, or null for a page on its own
+export function useDirectoryFrame(): DirectoryFrame | null {
+  return useContext(DirectoryFrameContext);
+}
+
 // The desktop page (P:145-171): the back pill naming the page it returns to, then the page. Alone it sits in the
 // desktop frame under the eyebrow with the app's name (13f, 13g); embedded, the admin directory's frame holds it.
-// short (a short window, see useShortWindow): alone, the back pill moves up into the frame's header row next to the
-// menu button, so the columns get its height. active: the nav drawer's item (a league's table opened from a team).
+// short (a short window, see useShortWindow): the back pill moves up into the frame's header row next to the menu
+// button, so the columns get its height. active: the nav drawer's item (a league's table opened from a team).
 export function DesktopFrame({
   embedded,
   short = false,
@@ -80,20 +94,73 @@ export function DesktopFrame({
   active?: NavKey;
   children: React.ReactNode;
 }) {
-  const inHeader = short && !embedded;
+  const frame = useDirectoryFrame();
+  const slot = embedded ? frame?.leadSlot ?? null : null;
+  const inHeader = short && (!embedded || slot != null);
+  const headerPill = <BackPill nav={nav} sx={{alignSelf: "center", maxWidth: 320}} />;
   const page = (
-    <Box sx={{flex: 1, minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column", gap: "16px", position: "relative"}}>
+    <Box sx={{flex: 1, minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column", gap: short ? "12px" : "16px", position: "relative"}}>
       {!inHeader && <BackPill nav={nav} />}
       {children}
+      {inHeader && slot && createPortal(headerPill, slot)}
     </Box>
   );
   if (embedded) return page;
   return (
-    <DesktopShell active={active} eyebrow={BRAND.name} lead={inHeader ? <BackPill nav={nav} sx={{alignSelf: "center", maxWidth: 320}} /> : undefined}>
+    <DesktopShell active={active} eyebrow={BRAND.name} lead={inHeader ? headerPill : undefined}>
       {page}
     </DesktopShell>
   );
 }
+
+// The three columns of a desktop page under its header card, each scrolling on its own (P:204). Stacked (in a narrow
+// directory frame, see DirectoryFrame) the first keeps a column of its own and the other two share the second column,
+// each still scrolling on its own: the upper card takes the height it needs up to 60% of the column, the lower one the
+// rest, so both titles are always in view. While the upper card's add field is in use, the lower one gives way down to
+// its title row.
+export function PageColumns({
+  template,
+  stackedTemplate,
+  children,
+}: {
+  template: string;
+  stackedTemplate: string;
+  children: [React.ReactNode, React.ReactNode, React.ReactNode];
+}) {
+  const stacked = useDirectoryFrame()?.stacked ?? false;
+  const [first, second, third] = children;
+  return (
+    <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: stacked ? stackedTemplate : template, gridTemplateRows: "minmax(0,1fr)", gap: "18px"}}>
+      {first}
+      {/* the same element either way, so a column's state (an open add field) stays when the window crosses 1360 px */}
+      <Box
+        sx={
+          stacked
+            ? {
+                minHeight: 0,
+                minWidth: 0,
+                display: "flex",
+                flexDirection: "column",
+                gap: "18px",
+                // (two cards: the upper one is the one that isn't last)
+                "& > :not(:last-child)": {flex: "0 1 auto", minHeight: 0, maxHeight: "calc(60% - 9px)"},
+                // the lower card's title row (66 px) and the gap stay
+                "& > :not(:last-child):focus-within": {maxHeight: "calc(100% - 84px)"},
+                "& > :last-child": {flex: "1 1 0", minHeight: 0},
+              }
+            : {display: "contents"}
+        }
+      >
+        {second}
+        {third}
+      </Box>
+    </Box>
+  );
+}
+
+// the stacked columns: the Team page's Igrači stays the wider one
+export const TEAM_STACKED_GRID = "minmax(0,1.25fr) minmax(0,1fr)";
+export const PLAYER_STACKED_GRID = "minmax(0,1fr) minmax(0,1fr)";
 
 // ---------- states ----------
 
@@ -129,16 +196,24 @@ export function PageStatus<T>({
 
 // ---------- the cream header card ----------
 
+// read by screen readers, not shown
+const visuallyHidden = {position: "absolute", width: "1px", height: "1px", p: 0, m: "-1px", overflow: "hidden", clip: "rect(0,0,0,0)", whiteSpace: "nowrap", border: 0} as const;
+
 // The header card of a Team page (13a/13f) and of a desktop Player page (13g): the initials, the name (and "Neaktivan"
 // after it), "Tvoja ekipa" in the top right corner, an optional block on the right (the player's rating) and the
 // three tiles. On the phone the name wraps and the tiles are smaller, and the corner tag gets a line of its own above
-// the name, so the name keeps the card's full width; in a short desktop window the card is smaller.
+// the name, so the name keeps the card's full width. In a short desktop window (useShortWindow) the card is about two
+// thirds as high: a smaller avatar and name, and tiles of two lines (the sub line follows the number). titleEditor
+// takes the name's place while an admin renames the team (the pencil and ✓ come in nameTag; the name stays as a
+// heading for screen readers). The name is the page's h1, or an h2 under the "Ekipe"/"Igrači" h1 of the admin's
+// directory.
 export function HeroCard({
   desktop = false,
   short = false,
   avatarName,
   avatarLetters,
   title,
+  titleEditor,
   nameTag,
   cornerTag,
   aside,
@@ -150,14 +225,16 @@ export function HeroCard({
   // a team's one letter (teamInitial); a player's initials otherwise
   avatarLetters?: string;
   title: string;
+  titleEditor?: React.ReactNode;
   nameTag?: React.ReactNode;
   cornerTag?: React.ReactNode;
   aside?: React.ReactNode;
   tiles: HeroTile[];
 }) {
   const titleId = useId();
-  const compact = !desktop || short;
-  const avatar = desktop ? (short ? 60 : 76) : 64;
+  const heading = useDirectoryFrame() ? "h2" : "h1";
+  const shortDesk = desktop && short;
+  const avatar = desktop ? (short ? 48 : 76) : 64;
   // the phone's corner tag sits on a line above the name (4 px over it), so it never takes width from the name
   const phoneTag = !desktop && cornerTag != null;
   return (
@@ -167,43 +244,53 @@ export function HeroCard({
       sx={{
         flex: "none",
         minWidth: 0,
-        borderRadius: desktop ? "28px" : "24px",
+        borderRadius: desktop ? (short ? "24px" : "28px") : "24px",
         background: color.cream,
-        p: desktop ? (short ? "16px 22px" : "22px 24px") : phoneTag ? "14px 20px 20px" : "20px",
+        p: desktop ? (short ? "14px 20px" : "22px 24px") : phoneTag ? "14px 20px 20px" : "20px",
         display: "flex",
         flexDirection: "column",
-        gap: desktop ? (short ? "12px" : "18px") : "16px",
+        gap: desktop ? (short ? "10px" : "18px") : "16px",
       }}
     >
       {phoneTag && <Box sx={{display: "flex", justifyContent: "flex-end", mr: "-6px", mb: "-12px"}}>{cornerTag}</Box>}
-      <Box sx={{display: "flex", alignItems: "center", gap: desktop ? (short ? "16px" : "18px") : "14px", minWidth: 0}}>
-        <InitialsAvatar name={avatarName} letters={avatarLetters} size={avatar} variant="navy" sx={desktop ? {fontSize: short ? 24 : 28} : undefined} />
-        <Box sx={{flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: "10px"}}>
-          <Box
-            component="h1"
-            id={titleId}
-            title={desktop ? title : undefined}
-            sx={{
-              m: 0,
-              minWidth: 0,
-              fontFamily: font.display,
-              fontWeight: 800,
-              ...(desktop
-                ? {fontSize: short ? 36 : 44, lineHeight: 1.05, letterSpacing: "-.025em", ...ellipsis}
-                : // only a word longer than the whole line breaks
-                  {fontSize: 32, lineHeight: 1.02, letterSpacing: "-.02em", textWrap: "pretty", overflowWrap: "break-word"}),
-            }}
-          >
-            {title}
-          </Box>
+      <Box sx={{display: "flex", alignItems: "center", gap: desktop ? (short ? "14px" : "18px") : "14px", minWidth: 0}}>
+        <InitialsAvatar name={avatarName} letters={avatarLetters} size={avatar} variant="navy" sx={desktop ? {fontSize: short ? 20 : 28} : undefined} />
+        {/* the field (and a note under it) and its ✓ line up at the top; the ✓ centres itself on the field */}
+        <Box sx={{flex: 1, minWidth: 0, display: "flex", alignItems: titleEditor ? "flex-start" : "center", gap: "10px"}}>
+          {titleEditor ? (
+            <>
+              <Box component={heading} id={titleId} sx={visuallyHidden}>
+                {title}
+              </Box>
+              {titleEditor}
+            </>
+          ) : (
+            <Box
+              component={heading}
+              id={titleId}
+              title={desktop ? title : undefined}
+              sx={{
+                m: 0,
+                minWidth: 0,
+                fontFamily: font.display,
+                fontWeight: 800,
+                ...(desktop
+                  ? {fontSize: short ? 32 : 44, lineHeight: 1.05, letterSpacing: "-.025em", ...ellipsis}
+                  : // only a word longer than the whole line breaks
+                    {fontSize: 32, lineHeight: 1.02, letterSpacing: "-.02em", textWrap: "pretty", overflowWrap: "break-word"}),
+              }}
+            >
+              {title}
+            </Box>
+          )}
           {nameTag}
         </Box>
         {aside}
         {desktop && cornerTag && <Box sx={{flex: "none", alignSelf: "flex-start", display: "flex", mt: "-4px", mr: "-4px"}}>{cornerTag}</Box>}
       </Box>
-      <Box sx={{display: "flex", gap: desktop ? "10px" : "8px"}}>
+      <Box sx={{display: "flex", gap: desktop ? (short ? "8px" : "10px") : "8px"}}>
         {tiles.map((t) => (
-          <StatTile key={t.label} compact={compact} label={t.label} value={t.value} sub={t.sub} />
+          <StatTile key={t.label} compact={!desktop} inline={shortDesk} label={t.label} value={t.value} sub={t.sub} />
         ))}
       </Box>
     </Box>
@@ -216,13 +303,13 @@ export function HeroCard({
 export function HeaderRating({rating, provisional, href, short = false}: {rating: number; provisional: boolean; href: string | null; short?: boolean}) {
   const content = (
     <>
-      <Box component="span" sx={{display: "flex", flexDirection: "column", alignItems: "flex-end", gap: short ? "4px" : "6px"}}>
-        <Box component="span" sx={{fontSize: 12.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.navy}}>
+      <Box component="span" sx={{display: "flex", flexDirection: "column", alignItems: "flex-end", gap: short ? "3px" : "6px"}}>
+        <Box component="span" sx={{fontSize: short ? 12 : 12.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.navy}}>
           Rejting
         </Box>
         <Box component="span" sx={{display: "flex", alignItems: "center", gap: "10px"}}>
           {provisional && <ProvisionalTag size="lg" />}
-          <Box component="span" sx={{fontFamily: font.display, fontSize: short ? 52 : 64, fontWeight: 800, lineHeight: 0.85, letterSpacing: "-.03em", color: color.ink, ...tabular}}>
+          <Box component="span" sx={{fontFamily: font.display, fontSize: short ? 44 : 64, fontWeight: 800, lineHeight: 0.85, letterSpacing: "-.03em", color: color.ink, ...tabular}}>
             {rating}
           </Box>
         </Box>

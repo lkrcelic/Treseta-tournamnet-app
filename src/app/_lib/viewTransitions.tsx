@@ -123,6 +123,11 @@ export function useTransitionRouter() {
   return useMemo(() => ({push, replace, back, router}), [push, replace, back, router]);
 }
 
+// A click that opens the link in this tab: the main button and no modifier (Cmd/Ctrl/Shift/Alt open a new tab or window)
+export function plainClick(e: React.MouseEvent): boolean {
+  return e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
+}
+
 // next/link that animates the navigation (modified clicks — new tab etc. — behave as usual)
 export const TransitionLink = React.forwardRef<
   HTMLAnchorElement,
@@ -135,7 +140,7 @@ export const TransitionLink = React.forwardRef<
       href={href}
       onClick={(e) => {
         onClick?.(e);
-        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        if (e.defaultPrevented || !plainClick(e)) return;
         e.preventDefault();
         push(String(href), direction);
       }}

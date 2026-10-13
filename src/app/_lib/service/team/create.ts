@@ -1,6 +1,6 @@
 import {prisma} from "@/app/_lib/prisma";
 import {Team} from "@prisma/client";
-import {TeamCreateRequest} from "@/app/_interfaces/team";
+import {TEAM_NAME_TAKEN, TeamCreateRequest} from "@/app/_interfaces/team";
 import {PLAYER_DEACTIVATED} from "@/app/_interfaces/player";
 import {activeLeagueId, leagueExists} from "@/app/_lib/service/league/leagues";
 import {lockRatings} from "@/app/_lib/service/admin/recalc";
@@ -14,7 +14,7 @@ import {teamNameTaken} from "./update";
 // active players can be in it (a deleted player has no account any more).
 export async function createTeam(request: TeamCreateRequest, creatorId: number): Promise<Team> {
   if (await teamNameTaken(request.team_name)) {
-    throw new InvalidResultError("Ekipa s tim imenom već postoji.");
+    throw new InvalidResultError(TEAM_NAME_TAKEN);
   }
 
   const leagueId = request.league_id === undefined ? await activeLeagueId() : request.league_id;

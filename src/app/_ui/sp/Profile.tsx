@@ -19,8 +19,40 @@ import {IconCircleButton} from "./Buttons";
 // ---------- header card ----------
 
 // One number on the cream header card (P:198): "NAJBOLJE MJESTO / #3 / Piatnik Bela Liga 2025". compact is the phone
-// size: three tiles share the width, so a long label wraps and the numbers stay level at the bottom.
-export function StatTile({label, value, sub, compact = false}: {label: string; value: React.ReactNode; sub?: React.ReactNode; compact?: boolean}) {
+// size: three tiles share the width, so a long label wraps and the numbers stay level at the bottom. inline is the
+// short desktop window's (under 800 px high): the sub line follows the number on its line ("#3 Piatnik Bela…"), so
+// the tile is two lines high.
+export function StatTile({
+  label,
+  value,
+  sub,
+  compact = false,
+  inline = false,
+}: {
+  label: string;
+  value: React.ReactNode;
+  sub?: React.ReactNode;
+  compact?: boolean;
+  inline?: boolean;
+}) {
+  if (inline) {
+    const text = typeof sub === "string" && sub ? sub : undefined;
+    return (
+      <Box sx={{flex: 1, minWidth: 0, borderRadius: "14px", background: tint.white[62], p: "8px 12px", display: "flex", flexDirection: "column", gap: "2px"}}>
+        <Box component="span" sx={{fontSize: 11, fontWeight: 700, letterSpacing: ".08em", lineHeight: 1.2, textTransform: "uppercase", color: color.ink2, ...ellipsis}}>
+          {label}
+        </Box>
+        <Box component="span" title={text} sx={{display: "flex", alignItems: "baseline", gap: "8px", minWidth: 0}}>
+          <Box component="span" sx={{flex: "none", fontFamily: font.display, fontSize: 22, fontWeight: 800, lineHeight: 1.05, color: color.ink, whiteSpace: "nowrap", ...tabular}}>
+            {value}
+          </Box>
+          <Box component="span" sx={{flex: 1, minWidth: 0, fontSize: 12.5, lineHeight: 1.3, color: color.ink2, ...ellipsis}}>
+            {sub}
+          </Box>
+        </Box>
+      </Box>
+    );
+  }
   return (
     <Box
       sx={{
@@ -519,14 +551,25 @@ export function SearchAddField({
           <Box
             component="li"
             key={o.id}
-            sx={{height: 54, flex: "none", display: "flex", alignItems: "center", gap: "12px", p: "0 6px 0 14px", borderRadius: "14px", background: color.paper2}}
+            sx={{
+              minHeight: 54,
+              boxSizing: "border-box",
+              flex: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              p: "7px 6px 7px 14px",
+              borderRadius: "14px",
+              background: color.paper2,
+            }}
           >
-            <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column"}}>
-              <Box component="span" sx={{fontSize: 15, fontWeight: 600, color: color.ink, ...ellipsis}}>
+            <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "1px"}}>
+              {/* names wrap instead of being cut: league names differ only at their end ("… Jesen 25/26") */}
+              <Box component="span" sx={{fontSize: 15, fontWeight: 600, lineHeight: 1.3, color: color.ink, overflowWrap: "anywhere"}}>
                 {o.name}
               </Box>
               {o.sub && (
-                <Box component="span" sx={{fontSize: 12.5, color: color.muted, ...ellipsis}}>
+                <Box component="span" title={o.sub} sx={{fontSize: 12.5, color: color.muted, ...ellipsis}}>
                   {o.sub}
                 </Box>
               )}

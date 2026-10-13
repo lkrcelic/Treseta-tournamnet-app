@@ -10,7 +10,20 @@ import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {color} from "@/app/_styles/tokens";
 import {changeInk, ColumnCard, ColumnHead, ellipsis, EmptyState, InitialsAvatar, ResultPill, tabular, Tag} from "@/app/_ui/sp";
 import {Box} from "@mui/material";
-import {DesktopFrame, HeaderRating, HeroCard, PageStatus, PhoneFrame, PLAYER_GRID, RowChevron, stretchedLink, stretchedRow, useShortWindow} from "./PageParts";
+import {
+  DesktopFrame,
+  HeaderRating,
+  HeroCard,
+  PageColumns,
+  PageStatus,
+  PhoneFrame,
+  PLAYER_GRID,
+  PLAYER_STACKED_GRID,
+  RowChevron,
+  stretchedLink,
+  stretchedRow,
+  useShortWindow,
+} from "./PageParts";
 import {PersonalDataCard} from "./PersonalDataCard";
 import {ProfileHero} from "./ProfileHero";
 import {TeamCards} from "./TeamCards";
@@ -76,11 +89,11 @@ export function PlayerPageDesktop({playerId, embedded = false}: {playerId: numbe
             aside={<HeaderRating rating={data.rating.rating} provisional={data.rating.provisional} href={ratingHref(data)} short={short} />}
             tiles={playerTiles(data.rating, data.teams)}
           />
-          <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: PLAYER_GRID, gridTemplateRows: "minmax(0,1fr)", gap: "18px"}}>
+          <PageColumns template={PLAYER_GRID} stackedTemplate={PLAYER_STACKED_GRID}>
             <DesktopTeams teams={data.teams} />
             <PersonalDataCard player={data.player} full={data.full} desktop />
             <DesktopNights nights={data.nights} />
-          </Box>
+          </PageColumns>
         </>
       ) : (
         <PageStatus kind="player" overview={overview} nav={nav} desktop template={PLAYER_GRID} />
