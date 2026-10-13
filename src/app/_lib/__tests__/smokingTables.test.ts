@@ -1,8 +1,10 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
+import {Prisma} from "@prisma/client";
 import {Team, TeamPair} from "@/app/_lib/matching/multipleRoundMatching";
 import {emptyRecord, fairShares, seatRounds, SeatedPair, SmokingRecord, SmokingRound, smokingRecords} from "@/app/_lib/matching/smokingTables";
 import {BYE_TEAM_ID} from "@/app/_lib/bye";
+import {teamSmokers} from "@/app/_lib/service/team/smokers";
 
 const team = (id: number): Team => ({id, name: `Team ${id}`, score: 0, point_difference: 0, played_against: []});
 const bye: Team = {id: BYE_TEAM_ID, name: "Bye", score: 0, point_difference: 0, played_against: []};
@@ -111,6 +113,31 @@ test("two teams that haven't sat tonight beat one, and the next round goes to a 
   // round 1: 1-3 has two teams that haven't sat (1 has two smokers), 2-4 one; round 2: 1-2 (2 hasn't sat) wins
   const seated = seatRounds(rounds, {tables: [1], smokers: smokers({1: 2, 2: 1, 3: 1}), records: new Map()});
   assert.deepEqual(seated.map(smokingTeams), [[1, 3], [1, 2]]);
+});
+
+// the roster query answered as Prisma would, over players given as [team, smoker, active]
+const rosterDb = (players: [number, boolean, boolean][]) =>
+  ({
+    teamPlayer: {
+      findMany: async ({where}: {where: {team_id: {in: number[]}; player: {smoker?: boolean; active?: boolean}}}) =>
+        players
+          .map(([team_id, smoker, active]) => ({team_id, player: {smoker, active}}))
+          .filter((r) => where.team_id.in.includes(r.team_id))
+          .filter((r) => Object.entries(where.player).every(([field, value]) => r.player[field as "smoker" | "active"] === value)),
+    },
+  }) as unknown as Prisma.TransactionClient;
+
+test("a team's smokers are its players with Pušač on, but not deactivated ones, and the bye has none", async () => {
+  const db = rosterDb([
+    [1, true, true],
+    [1, true, false], // deactivated: still on the roster, but can't play
+    [1, false, true],
+    [2, true, false],
+    [3, true, true],
+    [3, true, true],
+    [4, true, true], // a team that wasn't asked for
+  ]);
+  assert.deepEqual(await teamSmokers([1, 2, 3, BYE_TEAM_ID], db), new Map([[1, 1], [3, 2]]));
 });
 
 test("fair shares split the smoking seats by smokers, at most one per team", () => {

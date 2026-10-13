@@ -158,6 +158,15 @@ test("the bye only comes up in the last window", () => {
   for (const round of rounds) assert.ok(byeTeamOf(round)! > 8);
 });
 
+test("impossible settings are refused with a sentence for the admin (an InvalidResultError, which the API sends as a 400)", () => {
+  // matched by name: the tests compile to an ES5 target, where instanceof doesn't work for Error subclasses
+  const refused = (windowSize: number, numberOfRounds: number, message: string) =>
+    assert.throws(() => generateMultipleRoundPairings(makeTeams(6), {windowSize, numberOfRounds}), {name: "InvalidResultError", message});
+  refused(7, 3, "Prozor mora biti paran broj.");
+  refused(4, 4, "Broj kola mora biti manji od prozora.");
+  refused(8, 6, "Broj kola mora biti manji od broja ekipa.");
+});
+
 test("earlier meetings are squared: two pairs that met once beat one pair that met twice", () => {
   const teams = makeTeams(4);
   meet(teams, 1, 2, 2); // 1-2 / 3-4 costs 4
