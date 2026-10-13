@@ -87,8 +87,14 @@ export function inConference(rows: StandingsRow[], conferenceId: number | null):
 
 // The second line of a phone standings row: "24 OK · 19 POB · 3 NER · 2 IZG" (OK only in the league table)
 export function statsLine(row: StandingsRow, withPlayed: boolean): string {
-  const base = `${row.wins} POB · ${row.draws} NER · ${row.losses} IZG`;
-  return withPlayed ? `${row.played} OK · ${base}` : base;
+  const {played, results} = statsParts(row, withPlayed);
+  return played + results;
+}
+
+// The same line in two parts, so a narrow phone can leave out the first: "24 OK · " ("" without withPlayed) and
+// "19 POB · 3 NER · 2 IZG"
+export function statsParts(row: StandingsRow, withPlayed: boolean): {played: string; results: string} {
+  return {played: withPlayed ? `${row.played} OK · ` : "", results: `${row.wins} POB · ${row.draws} NER · ${row.losses} IZG`};
 }
 
 // Top three for the podium and the rest for the list. With fewer than 3 teams, or before anyone has played

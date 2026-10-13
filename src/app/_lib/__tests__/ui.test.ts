@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
 import {count, displayDate, initials, loadMoreLabel, matchesQuery, NOUN, plural, weekdayDate} from "../ui/text";
-import {highlightParam, splitPodium, standingsTeamHref, statsLine, toStandingsRows} from "../ui/standings";
+import {highlightParam, splitPodium, standingsTeamHref, statsLine, statsParts, toStandingsRows} from "../ui/standings";
 import {filterTables, liveCount, splitColumns, tableColumns, toTableRows} from "../ui/tables";
+import {BYE_TEAM_ID, teamLabel} from "../bye";
 
 test("initials from full names, usernames and empty values", () => {
   assert.equal(initials("Marko Marković"), "MM");
@@ -47,6 +48,9 @@ test("standings rows get rank, sign, live and my-team flags", () => {
   assert.deepEqual(rows.map((r) => r.highlight), [false, false, true, false]);
   assert.equal(statsLine(rows[0], false), "5 POB · 0 NER · 1 IZG");
   assert.equal(statsLine(rows[0], true), "6 OK · 5 POB · 0 NER · 1 IZG");
+  // a narrow phone leaves out the first part
+  assert.deepEqual(statsParts(rows[0], true), {played: "6 OK · ", results: "5 POB · 0 NER · 1 IZG"});
+  assert.deepEqual(statsParts(rows[0], false), {played: "", results: "5 POB · 0 NER · 1 IZG"});
 });
 
 test("a league opened from a Team page highlights that team by id, instead of the player's own", () => {
@@ -112,6 +116,23 @@ test("table filters by status, team name and table number", () => {
   assert.deepEqual(filterTables(rows, "all", "lic").map((r) => r.table), [3]);
   assert.deepEqual(filterTables(rows, "all", "3").map((r) => r.table), [3]);
   assert.equal(filterTables(rows, "live", "dal").length, 0);
+});
+
+test("the bye's side of a table reads Slobodna runda, not its team name", () => {
+  const byeRound = {id: 14, table_number: 5, team1_id: BYE_TEAM_ID, team2_id: 9, team1: {team_name: "Bye"}, team2: {team_name: "Zovi na babu"}, team1_wins: 0, team2_wins: 2, active: false, open: false};
+  const rows = toTableRows([...rounds, byeRound, {...byeRound, id: 15, table_number: 6, team1_id: 9, team2_id: BYE_TEAM_ID, team1: byeRound.team2, team2: byeRound.team1}]);
+  const [first, second] = rows.filter((r) => r.bye);
+  assert.deepEqual([first.teamA, first.teamB], ["Slobodna runda", "Zovi na babu"]);
+  assert.deepEqual([second.teamA, second.teamB], ["Zovi na babu", "Slobodna runda"]);
+  // the ids stay as they are, and the other tables keep their names
+  assert.equal(first.teamAId, BYE_TEAM_ID);
+  assert.deepEqual(rows.filter((r) => !r.bye).map((r) => r.teamA), ["Dalmatinci", "Slavonci", "Ličani", "Purgeri"]);
+  // the search finds the bye's tables by what is shown
+  assert.deepEqual(filterTables(rows, "all", "slobodna").map((r) => r.table), [5, 6]);
+  assert.equal(filterTables(rows, "all", "bye").length, 0);
+  assert.equal(teamLabel(BYE_TEAM_ID, "Bye"), "Slobodna runda");
+  assert.equal(teamLabel(9, "Zovi na babu"), "Zovi na babu");
+  assert.equal(teamLabel(null, "Ekipa"), "Ekipa");
 });
 
 test("desktop round view uses 1, 2 or 3 columns by team count", () => {

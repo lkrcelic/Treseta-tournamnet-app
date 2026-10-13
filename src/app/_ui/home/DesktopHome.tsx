@@ -107,7 +107,7 @@ export default function DesktopHome() {
             <>
               <Podium rows={podium} compact rowHref={standingsTeamHref} sx={{px: "20px", pb: "14px"}} />
               <Box ref={leagueList.ref} sx={{flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable", borderTop: `1px solid ${tint.navy[10]}`}}>
-                <StandingsGrid rows={rest} columns={[]} dense showLive={false} caption="Ukupni poredak lige, od 4. mjesta" rowHref={standingsTeamHref} />
+                <StandingsGrid rows={rest} columns={[]} dense head={false} showLive={false} caption="Ukupni poredak lige, od 4. mjesta" rowHref={standingsTeamHref} />
               </Box>
             </>
           )}

@@ -17,7 +17,7 @@ import {inConference, splitPodium, standingsTeamHref, toStandingsRows} from "@/a
 import {filterTables, liveCount, splitColumns, TableFilter, tableColumns, toTableRows} from "@/app/_lib/ui/tables";
 import {ConferenceFilter} from "@/app/_ui/league/ConferenceFilter";
 import {count, displayDate, NOUN} from "@/app/_lib/ui/text";
-import {color, font} from "@/app/_styles/tokens";
+import {color, font, shadow} from "@/app/_styles/tokens";
 import {
   Card,
   DesktopShell,
@@ -38,6 +38,7 @@ import {
   Segmented,
   StandingsGrid,
   StandingsRows,
+  TabItem,
   tabPanelProps,
 } from "@/app/_ui/sp";
 import {DesktopTableRow, PhoneRoundTables, TABLE_ROW_HEIGHT} from "@/app/league/[leagueId]/daily-standings/ui/RoundTables";
@@ -48,7 +49,7 @@ import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import {Box} from "@mui/material";
 import {useParams, useSearchParams} from "next/navigation";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
-import {useEffect, useMemo, useState} from "react";
+import React, {useEffect, useMemo, useRef, useState} from "react";
 
 export default function DailyStandings() {
   const params = useParams<{leagueId: string}>();
@@ -106,17 +107,7 @@ export default function DailyStandings() {
     setTab(k);
     setTabTouched(true);
   };
-  const tabs = [{key: 0, label: "Tablica okupljanja"}, ...roundNumbers.map((n) => ({key: n, label: `Kolo ${n}`, live: roundsLive(n)}))];
-  // on a narrow desktop the tabs scroll sideways: keep the open one in view (only the tab strip scrolls, not the page)
-  useEffect(() => {
-    const el = isDesktop ? document.getElementById(`daily-tab-${tab}`) : null;
-    const strip = el?.parentElement;
-    if (!el || !strip || strip.scrollWidth <= strip.clientWidth) return;
-    const box = strip.getBoundingClientRect();
-    const r = el.getBoundingClientRect();
-    if (r.left < box.left) strip.scrollLeft -= box.left - r.left;
-    else if (r.right > box.right) strip.scrollLeft += r.right - box.right;
-  }, [isDesktop, tab, roundNumbers.length]);
+  const tabs: TabItem<number>[] = [{key: 0, label: "Tablica okupljanja"}, ...roundNumbers.map((n) => ({key: n, label: `Kolo ${n}`, live: roundsLive(n)}))];
   const roundRows = useMemo(
     () => toTableRows((daily.data?.rounds ?? []).filter((r) => r.round_number === tab), myTeamNames, conferences.of),
     [daily.data, tab, myTeamNames, conferences]
@@ -148,17 +139,7 @@ export default function DailyStandings() {
         right={
           <>
             <LeagueMenuButton leagues={leagues} value={leagueId} onChange={changeLeague} />
-            {/* a long night (many rounds) scrolls sideways instead of squeezing the date */}
-            {tabs.length > 1 && (
-              <Segmented
-                items={tabs}
-                value={tab}
-                onChange={pickTab}
-                label="Prikaz"
-                idPrefix="daily"
-                sx={{flex: "0 1 auto", minWidth: 0, overflowX: "auto", scrollbarWidth: "none"}}
-              />
-            )}
+            {tabs.length > 1 && <HeaderTabs items={tabs} value={tab} onChange={pickTab} />}
             {arrows}
           </>
         }
@@ -200,7 +181,8 @@ export default function DailyStandings() {
       <Box component="header" sx={{display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "12px", px: "4px"}}>
         <Box sx={{display: "flex", flexDirection: "column", gap: "6px", minWidth: 0}}>
           <LeagueEyebrowButton leagues={leagues} value={leagueId} onChange={changeLeague} />
-          <Display size={36} sx={{lineHeight: 1, fontVariantNumeric: "tabular-nums"}}>
+          {/* the date shares the row with the two arrows: on a phone under 360 px wide it is smaller, so it ends before them */}
+          <Display size={36} sx={{lineHeight: 1, fontVariantNumeric: "tabular-nums", "@media (max-width: 359.98px)": {fontSize: 30}}}>
             {dateTitle}
           </Display>
         </Box>
@@ -240,6 +222,84 @@ export default function DailyStandings() {
       </PrimaryButton>
     </Screen>
   );
+}
+
+// The desktop header's tabs. A long night (many rounds) scrolls sideways instead of squeezing the date: the side that
+// has more tabs fades out, a vertical mouse wheel scrolls the strip, and the open tab is kept clear of the fade. The
+// white pill is drawn by the wrapper, so the fade takes only the tabs (a mask also cuts the strip's own shadow).
+const TAB_FADE = 40;
+
+function HeaderTabs({items, value, onChange}: {items: TabItem<number>[]; value: number; onChange: (k: number) => void}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState({left: false, right: false});
+  const shape = items.map((t) => `${t.key}${t.live ? "*" : ""}`).join();
+
+  // which sides have tabs out of view: on a scroll, and when the strip or a tab changes size (a narrower window,
+  // a new round, a live dot)
+  useEffect(() => {
+    const strip = ref.current?.querySelector<HTMLElement>("[role=tablist]");
+    if (!strip) return;
+    const update = () => {
+      const left = strip.scrollLeft > 1;
+      const right = strip.scrollLeft < strip.scrollWidth - strip.clientWidth - 1;
+      setMore((m) => (m.left === left && m.right === right ? m : {left, right}));
+    };
+    // a mouse wheel turns up and down: move the strip sideways instead (a trackpad's sideways swipe already does),
+    // and let the page have the wheel once the strip is at its end
+    const onWheel = (e: WheelEvent) => {
+      if (strip.scrollWidth <= strip.clientWidth || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      const unit = e.deltaMode === WheelEvent.DOM_DELTA_LINE ? 16 : e.deltaMode === WheelEvent.DOM_DELTA_PAGE ? strip.clientWidth : 1;
+      const before = strip.scrollLeft;
+      strip.scrollLeft += e.deltaY * unit;
+      if (strip.scrollLeft !== before) e.preventDefault();
+    };
+    update();
+    const sizes = new ResizeObserver(update);
+    sizes.observe(strip);
+    Array.from(strip.children).forEach((tab) => sizes.observe(tab));
+    strip.addEventListener("scroll", update, {passive: true});
+    strip.addEventListener("wheel", onWheel, {passive: false});
+    return () => {
+      sizes.disconnect();
+      strip.removeEventListener("scroll", update);
+      strip.removeEventListener("wheel", onWheel);
+    };
+  }, [shape]);
+
+  // keep the open tab in view and out of the fade, and a tab reached with the keyboard (Tab into the strip); not on a
+  // click's focus, which would move the strip between press and release and lose the click
+  useEffect(() => {
+    const strip = ref.current?.querySelector<HTMLElement>("[role=tablist]");
+    revealTab(strip, strip?.querySelector<HTMLElement>("[aria-selected=true]"));
+  }, [value, items.length]);
+  const onFocus = (e: React.FocusEvent<HTMLElement>) => {
+    if (e.target.matches("[role=tab]:focus-visible")) revealTab(ref.current?.querySelector<HTMLElement>("[role=tablist]"), e.target);
+  };
+
+  // only the mask's alpha counts: the tabs show where it is opaque and fade out towards a clear end
+  const end = (fade: boolean) => (fade ? "transparent" : color.ink);
+  const mask = more.left || more.right ? `linear-gradient(to right, ${end(more.left)}, ${color.ink} ${TAB_FADE}px, ${color.ink} calc(100% - ${TAB_FADE}px), ${end(more.right)})` : "none";
+  return (
+    <Box ref={ref} onFocus={onFocus} sx={{flex: "0 1 auto", minWidth: 0, display: "flex", borderRadius: "24px", background: color.white, boxShadow: shadow.card}}>
+      <Segmented
+        items={items}
+        value={value}
+        onChange={onChange}
+        label="Prikaz"
+        idPrefix="daily"
+        sx={{flex: "1 1 auto", minWidth: 0, overflowX: "auto", scrollbarWidth: "none", boxShadow: "none", maskImage: mask}}
+      />
+    </Box>
+  );
+}
+
+// Scrolls the strip (only the strip, not the page) so the tab is whole and clear of the fade at either end
+function revealTab(strip: HTMLElement | null | undefined, tab: HTMLElement | null | undefined) {
+  if (!strip || !tab || strip.scrollWidth <= strip.clientWidth) return;
+  const box = strip.getBoundingClientRect();
+  const r = tab.getBoundingClientRect();
+  if (r.left < box.left + TAB_FADE) strip.scrollLeft -= box.left + TAB_FADE - r.left;
+  else if (r.right > box.right - TAB_FADE) strip.scrollLeft += r.right - (box.right - TAB_FADE);
 }
 
 // Desktop "Tablica okupljanja": podium and the full table with real columns. Teams still playing are marked red on

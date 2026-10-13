@@ -1,5 +1,5 @@
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
-import {statsLine, StandingsRow} from "@/app/_lib/ui/standings";
+import {statsParts, StandingsRow} from "@/app/_lib/ui/standings";
 import {count, NOUN, plural} from "@/app/_lib/ui/text";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {Box, SxProps, Theme} from "@mui/material";
@@ -230,6 +230,17 @@ export function StandingsRows({
 const HEAD_HEIGHT = 34;
 const LINE_HEIGHT = {podium: 58, row: 62} as const;
 
+// Phones narrower than the designed 390 px: the stats line ("21 OK · 11 POB · 9 NER · 1 IZG") gets smaller type and
+// the columns sit a little closer, under 375 px the line leaves out the OK count (still read to screen readers), and
+// under 340 px RAZ is a little smaller, so even a six-digit RAZ leaves the line its room. The rows keep their height:
+// the line never wraps, and is cut with an ellipsis rather than run under RAZ.
+const SMALL_PHONE = "@media (max-width: 389.98px)";
+const NARROW_PHONE = "@media (max-width: 374.98px)";
+const TINY_PHONE = "@media (max-width: 339.98px)";
+// the right-hand block (RAZ and BOD) and the row's end, shared by the labels row so the labels stay over their numbers
+const numbersSx = {display: "flex", gap: "12px", [SMALL_PHONE]: {gap: "8px"}} as const;
+const rowEndSx = {pr: "16px", [SMALL_PHONE]: {pr: "14px"}} as const;
+
 // "#  EKIPA" on the left, "RAZ" and "BOD" over their columns (Profiles P:119); the rows say the same to screen readers
 function RowsHead() {
   return (
@@ -241,7 +252,7 @@ function RowsHead() {
         alignItems: "center",
         justifyContent: "space-between",
         pl: "14px",
-        pr: "16px",
+        ...rowEndSx,
         borderBottom: `1px solid ${tint.navy[10]}`,
         fontSize: 11.5,
         fontWeight: 700,
@@ -252,7 +263,7 @@ function RowsHead() {
       }}
     >
       <span>#&nbsp;&nbsp;&nbsp;Ekipa</span>
-      <Box component="span" sx={{display: "flex", gap: "12px"}}>
+      <Box component="span" sx={numbersSx}>
         <Box component="span" sx={{minWidth: 48, textAlign: "right"}}>
           Raz
         </Box>
@@ -278,32 +289,43 @@ function StandingsLine({
   keepClear?: KeepClear;
 }) {
   const onPodium = medal != null;
+  const stats = statsParts(r, withPlayed);
   return (
     <Box
       component="li"
       aria-current={r.highlight ? "true" : undefined}
       data-highlight={r.highlight ? "" : undefined}
-      sx={{
+      sx={mergeSx(rowEndSx, {
         height: onPodium ? LINE_HEIGHT.podium : LINE_HEIGHT.row,
         display: "grid",
         gridTemplateColumns: "30px minmax(0,1fr) auto",
         alignItems: "center",
         gap: "10px",
+        [SMALL_PHONE]: {gap: "8px"},
         pl: "12px",
-        pr: "16px",
         borderBottom: `1px solid ${color.line}`,
         background: r.highlight ? color.cream2 : onPodium ? color.medalBg[medal] : "transparent",
         boxShadow: r.highlight ? shadow.mineBar : "none",
         ...(href ? linkedRow(r.highlight || onPodium) : {}),
-      }}
+      })}
     >
       {onPodium ? <Medal rank={r.rank} index={medal} size={28} /> : <RankBadge rank={r.rank} live={r.live} />}
       <Box sx={{display: "flex", flexDirection: "column", gap: "2px", minWidth: 0}}>
         <TeamLabel name={<TeamName row={r} href={href} keepClear={keepClear} />} conference={r.conference} sx={{fontSize: 16, fontWeight: onPodium || r.highlight ? 700 : 600}} />
-        <Box sx={{fontSize: 12.5, color: onPodium ? color.ink2 : color.muted, whiteSpace: "nowrap", ...tabular}}>{statsLine(r, withPlayed)}</Box>
+        <Box sx={{fontSize: 12.5, [SMALL_PHONE]: {fontSize: 11.5}, color: onPodium ? color.ink2 : color.muted, ...ellipsis, ...tabular}}>
+          {stats.played && (
+            <Box component="span" sx={{[NARROW_PHONE]: visuallyHidden}}>
+              {stats.played}
+            </Box>
+          )}
+          {stats.results}
+        </Box>
       </Box>
-      <Box sx={{display: "flex", alignItems: "baseline", gap: "12px"}}>
-        <Box aria-label={`razlika ${r.diff}`} sx={{minWidth: 48, textAlign: "right", fontSize: 17, fontWeight: 700, color: color.navy, ...tabular}}>
+      <Box sx={{...numbersSx, alignItems: "baseline"}}>
+        <Box
+          aria-label={`razlika ${r.diff}`}
+          sx={{minWidth: 48, textAlign: "right", fontSize: 17, [TINY_PHONE]: {fontSize: 15}, fontWeight: 700, color: color.navy, ...tabular}}
+        >
           {r.diff}
         </Box>
         <Box
@@ -327,11 +349,14 @@ function StandingsLine({
 
 type GridColumn = "played" | "wins" | "draws" | "losses";
 
-// Desktop standings table with real columns; RAZ and BOD larger than the counts
+// Desktop standings table with real columns; RAZ and BOD larger than the counts. head={false}: no column labels row
+// on screen (Početna's Ukupni poredak card, 3a: the rows follow the podium straight away); screen readers still get
+// the column names.
 export function StandingsGrid({
   rows,
   columns = ["wins", "draws", "losses"],
   dense = false,
+  head = true,
   caption,
   sx,
   showLive = true,
@@ -340,12 +365,13 @@ export function StandingsGrid({
   rows: StandingsRow[];
   columns?: GridColumn[];
   dense?: boolean;
+  head?: boolean;
   caption: string;
   sx?: SxProps<Theme>;
   showLive?: boolean;
   rowHref?: RowHref;
 }) {
-  const head: Record<GridColumn, string> = {played: "OK", wins: "POB", draws: "NER", losses: "IZG"};
+  const short: Record<GridColumn, string> = {played: "OK", wins: "POB", draws: "NER", losses: "IZG"};
   const full: Record<GridColumn, string> = {played: "Odigrano kola", wins: "Pobjede", draws: "Neriješeno", losses: "Izgubljeno"};
   const countW = dense ? 40 : columns.length > 3 ? 64 : 56;
   const template = `${dense ? 36 : 44}px minmax(0,1fr) ${columns.map(() => `${countW}px`).join(" ")} ${dense ? 64 : columns.length > 3 ? 96 : 80}px ${dense ? 48 : columns.length > 3 ? 72 : 64}px`;
@@ -354,13 +380,18 @@ export function StandingsGrid({
   const headHeight = dense ? 34 : 44;
   const rowHeight = dense ? 46 : 56;
   // the column labels stay on top while the rows scroll under them (the parent card is the scroller)
-  const keepClear = {top: headHeight + rowHeight / 2, bottom: rowHeight / 2};
+  const keepClear = {top: (head ? headHeight : 0) + rowHeight / 2, bottom: rowHeight / 2};
   return (
     <Box component="table" role="table" sx={mergeSx({width: "100%", borderCollapse: "collapse", display: "block"}, sx)}>
       <Box component="caption" sx={visuallyHidden}>
         {caption}
       </Box>
-      <Box component="thead" role="rowgroup" data-pinned="" sx={{display: "block", position: "sticky", top: 0, zIndex: 1}}>
+      <Box
+        component="thead"
+        role="rowgroup"
+        data-pinned={head ? "" : undefined}
+        sx={head ? {display: "block", position: "sticky", top: 0, zIndex: 1} : visuallyHidden}
+      >
         <Box
           component="tr"
           role="row"
@@ -386,7 +417,7 @@ export function StandingsGrid({
           {columns.map((c) => (
             <Box component="th" role="columnheader" scope="col" key={c} sx={{textAlign: "center"}}>
               <abbr title={full[c]} style={{textDecoration: "none"}}>
-                {head[c]}
+                {short[c]}
               </abbr>
             </Box>
           ))}

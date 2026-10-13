@@ -2,7 +2,7 @@ import {Prisma} from "@prisma/client";
 import {prisma} from "@/app/_lib/prisma";
 import {AdminHand, HandKind, PadHand, PadMatch, TablePad} from "@/app/_interfaces/adminHand";
 import {ResultCreateRequest} from "@/app/_interfaces/result";
-import {isByeTeam} from "@/app/_lib/bye";
+import {isByeTeam, teamLabel} from "@/app/_lib/bye";
 import {MATCH_THRESHOLD, matchState} from "@/app/_lib/game/scoring";
 import {InvalidResultError, normalizeResult} from "@/app/_lib/validation/validateResult";
 import {transformResult} from "@/app/_lib/helpers/databaseHelpers";
@@ -93,8 +93,8 @@ export async function getTablePad(roundId: number): Promise<TablePad> {
     roundNumber: round.round_number,
     date: round.round_date ? round.round_date.toISOString().slice(0, 10) : null,
     table: round.table_number,
-    team1: {id: round.team1.team_id, name: round.team1.team_name},
-    team2: {id: round.team2.team_id, name: round.team2.team_name},
+    team1: {id: round.team1.team_id, name: teamLabel(round.team1.team_id, round.team1.team_name)},
+    team2: {id: round.team2.team_id, name: teamLabel(round.team2.team_id, round.team2.team_name)},
     done: !round.open,
     bye: isByeTeam(round.team1_id) || isByeTeam(round.team2_id),
     hasLineup: round._count.roundPlayers > 0,
