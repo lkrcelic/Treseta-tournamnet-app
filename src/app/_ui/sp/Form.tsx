@@ -136,6 +136,72 @@ export function PasswordField({
   );
 }
 
+type TimeInputProps = Omit<InputProps, "value" | "onChange" | "type"> & {
+  value: string;
+  onChange: (value: string) => void;
+  // what the clear button says to a screen reader
+  clearLabel?: string;
+  height?: number;
+};
+
+// An optional time ("HH:MM", empty: none): a time input with a round button at the end that empties it, since the
+// browser's own time field can't be cleared with the mouse
+export function TimeInput({value, onChange, clearLabel = "Ukloni vrijeme", height = 52, sx, ...rest}: TimeInputProps) {
+  const own = useRef<HTMLInputElement | null>(null);
+  const inset = (height - 32) / 2;
+  return (
+    <Box sx={{position: "relative", minWidth: 0}}>
+      <TextInput
+        ref={own}
+        type="time"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        sx={mergeSx({...dateInputFix, height, pr: value ? `${inset + 32 + 8}px` : undefined}, sx)}
+        {...rest}
+      />
+      {value && (
+        <Box
+          component="button"
+          type="button"
+          aria-label={clearLabel}
+          title={clearLabel}
+          onClick={() => {
+            onChange("");
+            own.current?.focus();
+          }}
+          sx={{
+            ...buttonBase,
+            position: "absolute",
+            right: `${inset}px`,
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: 32,
+            height: 32,
+            borderRadius: "50%",
+            background: color.lineFill,
+            color: color.muted,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            "& svg": {fontSize: 18},
+          }}
+        >
+          <CloseRoundedIcon aria-hidden />
+        </Box>
+      )}
+    </Box>
+  );
+}
+
+// A labelled TimeInput (Nova liga and Upravljanje ligom · Podaci: "Početak večeri · neobavezno")
+export function TimeField({label, error, sx, inputSx, ...input}: TimeInputProps & {label: string; error?: string; inputSx?: SxProps<Theme>}) {
+  return (
+    <Field label={label} error={error} sx={sx}>
+      {(a11y) => <TimeInput {...a11y} {...input} sx={inputSx} />}
+    </Field>
+  );
+}
+
 // A borderless search field shows its keyboard focus as a navy line inside its edge
 const borderlessFocus = `inset 0 0 0 1.5px ${color.navy}`;
 

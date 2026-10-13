@@ -2,9 +2,10 @@
 
 import {updateLeagueAPI} from "@/app/_fetchers/league/leagues";
 import {LeagueOption, updateCachedLeague} from "@/app/_hooks/useLeagues";
-import {END_DATE_ERROR, endsAfterStart, LEAGUE_NAME_TAKEN, leagueNameTaken} from "@/app/_interfaces/league";
+import {END_DATE_ERROR, endsAfterStart, LEAGUE_NAME_TAKEN, leagueNameTaken, START_TIME_ERROR} from "@/app/_interfaces/league";
+import {isStartTime} from "@/app/_lib/nights";
 import {color, font, tint} from "@/app/_styles/tokens";
-import {buttonBase, Card, ErrorNote, IconCircleButton, OutlineButton, PrimaryButton, TextField} from "@/app/_ui/sp";
+import {buttonBase, Card, ErrorNote, IconCircleButton, OutlineButton, PrimaryButton, TextField, TimeField} from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ErrorRoundedIcon from "@mui/icons-material/ErrorRounded";
 import RemoveRoundedIcon from "@mui/icons-material/RemoveRounded";
@@ -14,7 +15,8 @@ import React, {useState} from "react";
 const DAYS = ["Pon", "Uto", "Sri", "Čet", "Pet", "Sub", "Ned"];
 const DAY_NAMES = ["ponedjeljak", "utorak", "srijeda", "četvrtak", "petak", "subota", "nedjelja"];
 
-type Details = {name: string; season: string; start: string; end: string; day: number | null; rounds: number};
+// time: when the nights start, "HH:MM" ("": none)
+type Details = {name: string; season: string; start: string; end: string; day: number | null; time: string; rounds: number};
 
 const fromLeague = (l: LeagueOption | undefined): Details => ({
   name: l?.name ?? "",
@@ -22,12 +24,13 @@ const fromLeague = (l: LeagueOption | undefined): Details => ({
   start: l?.startDate ?? "",
   end: l?.endDate ?? "",
   day: l?.playDay ?? null,
+  time: l?.startTime ?? "",
   rounds: l?.roundsPerNight ?? 3,
 });
 
-// Upravljanje ligom (desktop) · Podaci: the league's name, season, dates, play day and default rounds per night.
-// Save stays off until something changes; the name can't be empty or another league's (any case). aside: the second
-// column (the league's conferences).
+// Upravljanje ligom (desktop) · Podaci: the league's name, season, dates, play day, start time and default rounds per
+// night. Save stays off until something changes; the name can't be empty or another league's (any case). aside: the
+// second column (the league's conferences).
 export default function LeagueDetailsView({leagueId, leagues, aside}: {leagueId: number; leagues: LeagueOption[]; aside?: React.ReactNode}) {
   const base = fromLeague(leagues.find((l) => l.id === leagueId));
   const [draft, setDraft] = useState<Partial<Details>>({});
@@ -52,7 +55,9 @@ export default function LeagueDetailsView({leagueId, leagues, aside}: {leagueId:
         ? "Početak je obavezan."
         : !endsAfterStart(d.start, d.end)
           ? END_DATE_ERROR
-          : "";
+          : d.time && !isStartTime(d.time)
+            ? START_TIME_ERROR
+            : "";
   const dirty = (Object.keys(base) as (keyof Details)[]).some((k) => String(base[k]) !== String(d[k]));
   const canSave = dirty && !error && !saving;
 
@@ -67,9 +72,18 @@ export default function LeagueDetailsView({leagueId, leagues, aside}: {leagueId:
         start_date: d.start || null,
         end_date: d.end || null,
         play_day: d.day,
+        start_time: d.time || null,
         rounds_per_night: d.rounds,
       });
-      updateCachedLeague(leagueId, {name, season: d.season.trim() || null, startDate: d.start || null, endDate: d.end || null, playDay: d.day, roundsPerNight: d.rounds});
+      updateCachedLeague(leagueId, {
+        name,
+        season: d.season.trim() || null,
+        startDate: d.start || null,
+        endDate: d.end || null,
+        playDay: d.day,
+        startTime: d.time || null,
+        roundsPerNight: d.rounds,
+      });
       setDraft({});
       setSaved(true);
     } catch (e) {
@@ -130,6 +144,10 @@ export default function LeagueDetailsView({leagueId, leagues, aside}: {leagueId:
                 </Box>
               ))}
             </Box>
+          </Box>
+          <Box sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "12px", alignItems: "end"}}>
+            <TimeField label="Početak večeri · neobavezno" value={d.time} onChange={(v) => set("time", v)} clearLabel="Ukloni početak večeri" soft inputSx={inputSx} />
+            <Box sx={{fontSize: 13, lineHeight: 1.45, color: color.muted, pb: "6px"}}>Zadano za sve večeri. Pojedinoj večeri promijeni ga na kartici Datumi.</Box>
           </Box>
           <Box role="group" aria-labelledby="ld-rpn" sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", p: "12px 14px", borderRadius: "16px", background: color.paper2}}>
             <Box sx={{display: "flex", flexDirection: "column"}}>

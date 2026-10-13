@@ -52,6 +52,22 @@ export function nightLabel(iso: string): string {
   return `${WEEKDAYS_SHORT[d.getUTCDay()]} ${d.getUTCDate()}. ${d.getUTCMonth() + 1}.`;
 }
 
+// A night's start time: a wall-clock "HH:MM" from 00:00 to 23:59, as League.start_time and LeagueNight.start_time
+export const isStartTime = (v: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
+
+// When a night starts: its own time, else the league's, else none
+export function effectiveTime(own: string | null | undefined, leagueTime: string | null | undefined): string | null {
+  return own || leagueTime || null;
+}
+
+// "sri 14. 10. · 19:00" (Raspored, Početna); a night without a time is only its date
+export function nightTimeLabel(iso: string, time: string | null | undefined): string {
+  return time ? `${nightLabel(iso)} · ${time}` : nightLabel(iso);
+}
+
+// A start time in a list column (Upravljanje ligom · Datumi): "19:00", or "—" without one
+export const timeLabel = (time: string | null | undefined) => time || "—";
+
 // "uto 13. 10. 2026." (Upravljanje ligom · Datumi)
 export function nightLabelLong(iso: string): string {
   const time = utcTime(iso);

@@ -27,6 +27,7 @@ import {
   SuccessNote,
   SwitchTrack,
   TextField,
+  TimeField,
 } from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
@@ -55,6 +56,8 @@ function CreateLeagueDesktop() {
   const [endDate, setEndDate] = useState("");
   // optional: with a play day the nights fill in from the dates, without one they're added one by one
   const [playDay, setPlayDay] = useState<number | null>(null);
+  // optional too: when the nights start, "HH:MM" ("": no time)
+  const [startTime, setStartTime] = useState("");
   const [roundsPerNight, setRoundsPerNight] = useState(3);
   // the nights filled in from the dates and the play day, minus the removed ones, plus the added ones
   const [removedNights, setRemovedNights] = useState<string[]>([]);
@@ -135,6 +138,7 @@ function CreateLeagueDesktop() {
         start_date: startDate || null,
         end_date: endDate || null,
         play_day: playDay,
+        start_time: startTime || null,
         rounds_per_night: roundsPerNight,
         team_ids: Array.from(selected),
         conferences,
@@ -148,6 +152,7 @@ function CreateLeagueDesktop() {
           count(league.team_count, NOUN.ekipa),
           conferences.length ? count(conferences.length, ["konferencija", "konferencije", "konferencija"]) : null,
           playDay != null ? DAY_NAMES[playDay] : null,
+          startTime ? `u ${startTime}` : null,
           count(nights.length, NOUN.večer),
         ]
           .filter(Boolean)
@@ -243,6 +248,15 @@ function CreateLeagueDesktop() {
           ))}
         </Box>
       </Box>
+      <TimeField
+        label="Početak večeri · neobavezno"
+        value={startTime}
+        onChange={setStartTime}
+        clearLabel="Ukloni početak večeri"
+        soft
+        sx={{maxWidth: "calc(50% - 6px)"}}
+        inputSx={{height: 52, borderRadius: "14px", fontSize: 16}}
+      />
       <Box role="group" aria-labelledby="league-nights" sx={{display: "flex", flexDirection: "column", gap: "10px"}}>
         <Box sx={{display: "flex", alignItems: "baseline", justifyContent: "space-between", px: "4px"}}>
           <Box id="league-nights" sx={{fontSize: 14, fontWeight: 600, color: color.ink2}}>

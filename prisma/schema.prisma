@@ -114,6 +114,10 @@ model League {
   end_date         DateTime? @db.Date
   // 0 = Monday ... 6 = Sunday; CHECK constraint added in the migration script
   play_day         Int?
+  // when its nights start, "HH:MM" (00:00 ... 23:59; CHECK constraint in the migration script); optional. Text, not a
+  // Postgres TIME: Prisma reads TIME as a DateTime on 1970-01-01, which a time zone can shift, and a wall-clock time
+  // needs no date or zone. A night's own start_time wins over this one.
+  start_time       String?   @db.VarChar(5)
   // default "Rounds" in Create Round
   rounds_per_night Int       @default(3)
   // the admins' notes, shown next to Create Round (never in the public league list)
@@ -152,8 +156,10 @@ model Conference {
 // league is created; admins add or remove single nights, and a round created on another date adds its night.
 // Players see them in Raspored, and Burza igrača offers only these nights to a team that needs a substitute.
 model LeagueNight {
-  league_id Int
-  night     DateTime @db.Date
+  league_id  Int
+  night      DateTime @db.Date
+  // this night's own start time, "HH:MM", when it differs from the league's start_time (null: the league's)
+  start_time String?  @db.VarChar(5)
 
   league League @relation(fields: [league_id], references: [league_id], onDelete: Cascade)
 

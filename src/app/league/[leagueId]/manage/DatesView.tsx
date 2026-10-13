@@ -1,25 +1,42 @@
 "use client";
 
-import {addLeagueNightAPI, removeLeagueNightAPI} from "@/app/_fetchers/league/nights";
+import {addLeagueNightAPI, removeLeagueNightAPI, setLeagueNightTimeAPI} from "@/app/_fetchers/league/nights";
 import useLeagueNights from "@/app/_hooks/useLeagueNights";
 import {updateCachedLeague} from "@/app/_hooks/useLeagues";
 import {NIGHT_TAKEN} from "@/app/_interfaces/league";
 import {leagueDateString} from "@/app/_lib/dates";
-import {isIsoDate, NIGHT_STATUS_LABEL, nextNightIndex, nightLabelLong, nightsSummaryLabel, nightStatus, NightStatus} from "@/app/_lib/nights";
+import {
+  effectiveTime,
+  isIsoDate,
+  isStartTime,
+  NIGHT_STATUS_LABEL,
+  nextNightIndex,
+  nightLabelLong,
+  nightsSummaryLabel,
+  nightStatus,
+  NightStatus,
+  timeLabel,
+} from "@/app/_lib/nights";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
-import {buttonBase, Card, cardSx, dateInputFix, EmptyState, ErrorNote, LoadingRows, tabular} from "@/app/_ui/sp";
+import {buttonBase, Card, cardSx, dateInputFix, EmptyState, ErrorNote, GhostIconButton, LoadingRows, tabular, TextInput, TimeInput} from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import PersonSearchRoundedIcon from "@mui/icons-material/PersonSearchRounded";
+import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
+import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
 import SmartphoneRoundedIcon from "@mui/icons-material/SmartphoneRounded";
 import {Box} from "@mui/material";
 import React, {useEffect, useState} from "react";
 
 // Upravljanje ligom · Datumi (design 11b "Datumi lige"): the league's nights, adding a night and removing one that has
 // no rounds. Players see them in Raspored; Burza igrača offers only these nights to a team that needs a substitute.
+// Each night starts at the league's time (Podaci) unless it has its own, which the admin sets here for a night still
+// to be played and can take back to the league's.
 
-const GRID = "56px minmax(0,1fr) 140px 52px";
+const GRID = "56px minmax(0,1fr) 200px 140px 52px";
 const PILL: Record<NightStatus, {bg: string; ink: string}> = {
   played: {bg: tint.green[12], ink: color.green},
   notPlayed: {bg: "transparent", ink: color.muted},
@@ -27,10 +44,14 @@ const PILL: Record<NightStatus, {bg: string; ink: string}> = {
   upcoming: {bg: color.paper, ink: color.ink2},
 };
 
-export default function DatesView({leagueId, data}: {leagueId: number; data: ReturnType<typeof useLeagueNights>}) {
+// defaultTime: the league's start time (Podaci), "HH:MM" or null
+export default function DatesView({leagueId, defaultTime, data}: {leagueId: number; defaultTime: string | null; data: ReturnType<typeof useLeagueNights>}) {
   const {nights, setNights, error, reload} = data;
   const today = leagueDateString();
   const [draft, setDraft] = useState("");
+  // the new night's own start time ("": the league's)
+  const [draftTime, setDraftTime] = useState("");
+  const [savingTime, setSavingTime] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -56,9 +77,14 @@ export default function DatesView({leagueId, data}: {leagueId: number; data: Ret
     setAdding(true);
     setActionError(null);
     try {
-      await addLeagueNightAPI(leagueId, draft);
-      setNights((prev) => [...(prev ?? []), {date: draft, played: false}].sort((a, b) => a.date.localeCompare(b.date)));
+      // the league's own time isn't kept as the night's, so the night follows a later change in Podaci
+      const own = draftTime && draftTime !== defaultTime ? draftTime : null;
+      await addLeagueNightAPI(leagueId, draft, own);
+      setNights((prev) =>
+        [...(prev ?? []), {date: draft, played: false, start_time: own, time: effectiveTime(own, defaultTime)}].sort((a, b) => a.date.localeCompare(b.date))
+      );
       setDraft("");
+      setDraftTime("");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Večer nije dodana.";
       // the same line as the check here, and the list fetched again so the night shows
@@ -85,6 +111,22 @@ export default function DatesView({leagueId, data}: {leagueId: number; data: Ret
     setRemoving(null);
   };
 
+  // a night's own start time, or null for the league's; optimistic like remove
+  const setTime = async (date: string, time: string | null) => {
+    const own = time && time !== defaultTime ? time : null;
+    setSavingTime(date);
+    setActionError(null);
+    const before = nights;
+    setNights((prev) => prev?.map((n) => (n.date === date ? {...n, start_time: own, time: effectiveTime(own, defaultTime)} : n)) ?? prev);
+    try {
+      await setLeagueNightTimeAPI(leagueId, date, own);
+    } catch (err) {
+      setNights(before);
+      setActionError(err instanceof Error ? err.message : "Početak večeri nije spremljen.");
+    }
+    setSavingTime(null);
+  };
+
   return (
     <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1.5fr) minmax(0,1fr)", gap: "20px"}}>
       <Card component="section" aria-labelledby="league-nights" sx={{minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderRadius: "24px"}}>
@@ -104,6 +146,7 @@ export default function DatesView({leagueId, data}: {leagueId: number; data: Ret
         >
           <span>#</span>
           <span>Datum</span>
+          <span>Početak</span>
           <span>Status</span>
           <span />
         </Box>
@@ -133,6 +176,15 @@ export default function DatesView({leagueId, data}: {leagueId: number; data: Ret
                   <Box component="span" sx={{fontSize: 16, fontWeight: isNext ? 700 : 600, color: color.ink}}>
                     {nightLabelLong(n.date)}
                   </Box>
+                  <NightTime
+                    night={n.date}
+                    own={n.start_time}
+                    defaultTime={defaultTime}
+                    // a night with rounds or one that has passed keeps its time
+                    editable={!n.played && n.date >= today}
+                    busy={savingTime === n.date}
+                    onSave={(time) => setTime(n.date, time)}
+                  />
                   <Box component="span" sx={{justifySelf: "start", height: 26, display: "flex", alignItems: "center", px: "10px", borderRadius: "9px", background: PILL[status].bg, color: PILL[status].ink, fontSize: 12.5, fontWeight: 700}}>
                     {NIGHT_STATUS_LABEL[status]}
                   </Box>
@@ -162,19 +214,32 @@ export default function DatesView({leagueId, data}: {leagueId: number; data: Ret
           <Box component="h2" id="add-night" sx={{m: 0, fontFamily: font.display, fontSize: 22, fontWeight: 800}}>
             Dodaj večer
           </Box>
-          <Box
-            component="input"
-            type="date"
-            aria-label="Datum večeri"
-            value={draft}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-              setDraft(e.target.value);
-              // by now the fetched list has that night
-              setTakenNight(null);
-            }}
-            aria-invalid={duplicate || undefined}
-            sx={{...dateInputFix, width: "100%", height: 52, boxSizing: "border-box", borderRadius: "14px", border: `1.5px solid ${duplicate ? color.red : color.border}`, background: color.paper2, px: "14px", font: "inherit", fontSize: 16, color: color.ink, outline: "none", "&:focus": {borderColor: color.navy, background: color.white}}}
-          />
+          <Box sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,150px)", gap: "8px"}}>
+            <Box
+              component="input"
+              type="date"
+              aria-label="Datum večeri"
+              value={draft}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                setDraft(e.target.value);
+                // by now the fetched list has that night
+                setTakenNight(null);
+              }}
+              aria-invalid={duplicate || undefined}
+              sx={{...dateInputFix, width: "100%", height: 52, boxSizing: "border-box", borderRadius: "14px", border: `1.5px solid ${duplicate ? color.red : color.border}`, background: color.paper2, px: "14px", font: "inherit", fontSize: 16, color: color.ink, outline: "none", "&:focus": {borderColor: color.navy, background: color.white}}}
+            />
+            <TimeInput
+              aria-label="Početak večeri"
+              value={draftTime}
+              onChange={setDraftTime}
+              clearLabel="Ukloni početak večeri"
+              soft
+              sx={{borderRadius: "14px", fontSize: 16, px: "14px"}}
+            />
+          </Box>
+          <Box sx={{fontSize: 13, lineHeight: 1.45, color: color.muted}}>
+            {defaultTime ? `Početak je neobavezan. Bez njega večer počinje u ${defaultTime}, kao cijela liga.` : "Početak je neobavezan."}
+          </Box>
           {duplicate && (
             <Box role="alert" sx={{fontSize: 13, fontWeight: 600, color: color.red}}>
               {NIGHT_TAKEN}
@@ -200,9 +265,98 @@ export default function DatesView({leagueId, data}: {leagueId: number; data: Ret
             Igrači vide večeri na mobitelu pod <b>Raspored</b>, sa sljedećom večeri istaknutom.
           </UsedLine>
           <UsedLine icon={<PersonSearchRoundedIcon />}>Burza igrača nudi samo ove večeri kad ekipa traži zamjenu.</UsedLine>
+          <UsedLine icon={<ScheduleRoundedIcon />}>
+            Raspored i Početna pokazuju i početak večeri. Zadani početak lige je na kartici <b>Podaci</b>, a ovdje ga mijenjaš pojedinoj večeri.
+          </UsedLine>
           <UsedLine icon={<LockRoundedIcon />}>Odigrane večeri ne mogu se ukloniti ovdje. Prvo obriši njihova kola na kartici Kola.</UsedLine>
         </Card>
       </Box>
+    </Box>
+  );
+}
+
+// A night's start time: its own (bold), the league's (muted, "zadano") or "—". A night still to be played gets a
+// pencil that opens a time field (Enter or ✓ saves, Escape or leaving the field cancels) and, with its own time, a
+// button back to the league's.
+function NightTime({
+  night,
+  own,
+  defaultTime,
+  editable,
+  busy,
+  onSave,
+}: {
+  night: string;
+  own: string | null;
+  defaultTime: string | null;
+  editable: boolean;
+  busy: boolean;
+  onSave: (time: string | null) => void;
+}) {
+  const [editing, setEditing] = useState<string | null>(null);
+  const time = effectiveTime(own, defaultTime);
+  const label = nightLabelLong(night);
+
+  if (editing != null) {
+    const save = () => {
+      setEditing(null);
+      if (editing === "" ? own != null : isStartTime(editing) && editing !== time) onSave(editing || null);
+    };
+    return (
+      <Box
+        component="form"
+        noValidate
+        onSubmit={(e: React.FormEvent) => {
+          e.preventDefault();
+          save();
+        }}
+        onBlur={(e: React.FocusEvent<HTMLFormElement>) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setEditing(null);
+        }}
+        onKeyDown={(e: React.KeyboardEvent) => {
+          if (e.key === "Escape") setEditing(null);
+        }}
+        sx={{display: "flex", alignItems: "center", gap: "4px", minWidth: 0}}
+      >
+        <TextInput
+          type="time"
+          autoFocus
+          aria-label={`Početak večeri ${label}`}
+          value={editing}
+          onChange={(e) => setEditing(e.target.value)}
+          sx={{...dateInputFix, flex: 1, height: 40, borderRadius: "10px", fontSize: 15, px: "10px"}}
+        />
+        <GhostIconButton type="submit" label="Spremi početak" size={36} sx={{color: color.navy}}>
+          <CheckRoundedIcon />
+        </GhostIconButton>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{display: "flex", alignItems: "center", gap: "2px", minWidth: 0}}>
+      <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", alignItems: "baseline", gap: "6px", fontSize: 15, ...tabular}}>
+        <Box component="span" sx={{fontWeight: own ? 700 : 500, color: own ? color.ink : color.muted}}>
+          {timeLabel(time)}
+        </Box>
+        {!own && time && (
+          <Box component="span" sx={{fontSize: 12.5, color: color.muted}}>
+            zadano
+          </Box>
+        )}
+      </Box>
+      {editable && (
+        <>
+          {own && (
+            <GhostIconButton label={defaultTime ? `Vrati zadani početak (${defaultTime})` : "Ukloni početak"} size={36} onClick={() => onSave(null)} disabled={busy}>
+              <RestartAltRoundedIcon />
+            </GhostIconButton>
+          )}
+          <GhostIconButton label={`Promijeni početak večeri ${label}`} size={36} onClick={() => setEditing(time ?? "")} disabled={busy}>
+            <EditRoundedIcon />
+          </GhostIconButton>
+        </>
+      )}
     </Box>
   );
 }

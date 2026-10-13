@@ -5,7 +5,7 @@ import useLeagueNights from "@/app/_hooks/useLeagueNights";
 import useLeagues, {useSelectedLeagueId} from "@/app/_hooks/useLeagues";
 import useMySchedule from "@/app/_hooks/useMySchedule";
 import {leagueDateString} from "@/app/_lib/dates";
-import {nextNightIndex, nightLabel, nightsCountLabel, nightsLeftLabel, RASPORED_PILL, rasporedPill, RasporedPill} from "@/app/_lib/nights";
+import {nextNightIndex, nightsCountLabel, nightsLeftLabel, nightTimeLabel, RASPORED_PILL, rasporedPill, RasporedPill} from "@/app/_lib/nights";
 import {TransitionLink, useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, font, shadow} from "@/app/_styles/tokens";
 import {buttonBase, Card, CenteredSpinner, DesktopShell, ellipsis, EmptyState, ErrorNote, InitialsAvatar, PillTabs, Screen, Segmented, tabPanelProps, tabular, TopBar} from "@/app/_ui/sp";
@@ -25,6 +25,8 @@ type Shown = {
   players: {id: number; name: string; me: boolean}[];
   nights: string[];
   played: Set<string>;
+  // when each night starts, "HH:MM" (a night without a time isn't in it)
+  times: Record<string, string>;
   // the team's next night can get a substitute
   canAsk: boolean;
 };
@@ -79,6 +81,7 @@ export default function RasporedPage() {
       players: current.players,
       nights: current.nights,
       played: new Set(current.played),
+      times: current.times,
       canAsk: current.active,
     };
   } else if (otherId != null && other.nights) {
@@ -89,6 +92,7 @@ export default function RasporedPage() {
       players: [],
       nights: other.nights.map((n) => n.date),
       played: new Set(other.nights.filter((n) => n.played).map((n) => n.date)),
+      times: Object.fromEntries(other.nights.flatMap((n) => (n.time ? [[n.date, n.time]] : []))),
       canAsk: false,
     };
   }
@@ -187,7 +191,7 @@ function Schedule({shown, today, desktop}: {shown: Shown; today: string; desktop
           {cardTitle}
         </Box>
         <Box component="span" sx={{fontFamily: font.display, fontSize: 26, fontWeight: 800, lineHeight: 1.05}}>
-          {nightLabel(cardNight)}
+          {nightTimeLabel(cardNight, shown.times[cardNight])}
         </Box>
         <Box component="span" sx={{fontSize: 14, color: color.cream}}>
           {nightsLeftLabel(left)}
@@ -234,7 +238,7 @@ function Schedule({shown, today, desktop}: {shown: Shown; today: string; desktop
                   {i + 1}
                 </Box>
                 <Box component="span" sx={{flex: 1, fontSize: 16, fontWeight: isNext ? 700 : 600, color: past ? color.muted : color.ink}}>
-                  {nightLabel(night)}
+                  {nightTimeLabel(night, shown.times[night])}
                 </Box>
                 {pill && (
                   <Box

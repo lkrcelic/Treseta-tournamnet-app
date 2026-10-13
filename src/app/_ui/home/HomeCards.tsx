@@ -1,7 +1,7 @@
 "use client";
 
 import {BurzaPost, MyLeague, MySchedule} from "@/app/_interfaces/burza";
-import {nextNightIndex, nightLabel} from "@/app/_lib/nights";
+import {nextNightIndex, nightTimeLabel} from "@/app/_lib/nights";
 import {adCount, namesAndMore, teamsAsking, teamsLooking} from "@/app/_lib/ui/burza";
 import {initials} from "@/app/_lib/ui/text";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
@@ -29,6 +29,8 @@ export function nextNight(schedule: MySchedule | null): {league: MyLeague; night
 // Sljedeća večer: the team, its players and the night (opening Raspored); Nađi zamjenu opens the substitute form
 export function NextNightCard({league, night, today}: {league: MyLeague; night: string; today: string}) {
   const tonight = night === today;
+  // "sri 14. 10. · 19:00", or only the date when the night has no start time
+  const when = nightTimeLabel(night, league.times[night]);
   return (
     <Box
       component="section"
@@ -42,11 +44,11 @@ export function NextNightCard({league, night, today}: {league: MyLeague; night: 
         <Box
           component={TransitionLink}
           href={`/raspored?league=${league.league_id}`}
-          aria-label={`Raspored, ${nightLabel(night)}`}
+          aria-label={`Raspored, ${when}`}
           sx={{...buttonBase, height: 32, display: "flex", alignItems: "center", gap: "6px", px: "10px", borderRadius: "10px", background: color.cream, color: color.navy, fontSize: 13, fontWeight: 800, textDecoration: "none", whiteSpace: "nowrap", "& svg": {fontSize: 18}}}
         >
           <EventRoundedIcon aria-hidden />
-          {nightLabel(night)}
+          {when}
         </Box>
       </Box>
       <Box sx={{fontFamily: font.display, fontSize: 30, fontWeight: 800, lineHeight: 1, overflowWrap: "anywhere"}}>{league.team_name}</Box>

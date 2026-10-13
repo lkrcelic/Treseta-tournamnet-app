@@ -117,6 +117,8 @@ export type MyLeague = {
   players: {id: number; name: string; rating: number; me: boolean; active: boolean}[];
   nights: string[]; // YYYY-MM-DD, in date order
   played: string[]; // the nights that have rounds
+  // when each night starts (its own time or the league's), "HH:MM"; a night without a time isn't in it
+  times: Record<string, string>;
 };
 
 export type MySchedule = {today: string; leagues: MyLeague[]};

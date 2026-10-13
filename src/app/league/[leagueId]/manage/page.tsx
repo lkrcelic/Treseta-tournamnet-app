@@ -366,7 +366,7 @@ function ManageLeagueDesktop() {
       ) : view === "rounds" ? (
         <RoundsView leagueId={leagueId} data={leagueRounds} />
       ) : view === "dates" ? (
-        <DatesView leagueId={leagueId} data={leagueNights} />
+        <DatesView leagueId={leagueId} defaultTime={leagues.find((l) => l.id === leagueId)?.startTime ?? null} data={leagueNights} />
       ) : (
         <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) 380px", [NARROW_DESKTOP]: {gridTemplateColumns: "minmax(0,1fr) 320px"}, gap: "20px"}}>
           <Card component="section" aria-label={`Ekipe lige ${leagueName}`} sx={{minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderRadius: "24px"}}>

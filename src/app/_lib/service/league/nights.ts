@@ -1,5 +1,6 @@
-import {LeagueNightRow, MAX_NIGHTS_ERROR, NIGHT_TAKEN} from "@/app/_interfaces/league";
-import {MAX_NIGHTS} from "@/app/_lib/nights";
+import {LeagueNightRow, MAX_NIGHTS_ERROR, NIGHT_TAKEN, PAST_NIGHT_TIME_ERROR} from "@/app/_interfaces/league";
+import {leagueDateString} from "@/app/_lib/dates";
+import {effectiveTime, MAX_NIGHTS} from "@/app/_lib/nights";
 import {prisma} from "@/app/_lib/prisma";
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
@@ -23,26 +24,28 @@ export async function playedNightKeys(leagueIds: number[]): Promise<Set<string>>
   return new Set(rows.map((r) => `${r.league_id}|${isoDate(r.night)}`));
 }
 
-// A league's nights in date order, each with whether it has rounds; null when the league doesn't exist
+// A league's nights in date order, each with whether it has rounds and when it starts; null when the league doesn't
+// exist
 export async function listLeagueNights(leagueId: number): Promise<LeagueNightRow[] | null> {
   const league = await prisma.league.findUnique({
     where: {league_id: leagueId},
-    select: {nights: {select: {night: true}, orderBy: {night: "asc"}}},
+    select: {start_time: true, nights: {select: {night: true, start_time: true}, orderBy: {night: "asc"}}},
   });
   if (!league) return null;
   const played = await playedNightKeys([leagueId]);
   return league.nights.map((n) => {
     const date = isoDate(n.night);
-    return {date, played: played.has(`${leagueId}|${date}`)};
+    return {date, played: played.has(`${leagueId}|${date}`), start_time: n.start_time, time: effectiveTime(n.start_time, league.start_time)};
   });
 }
 
-export async function addLeagueNight(leagueId: number, date: string): Promise<void> {
+// startTime: the night's own start time (null: the league's)
+export async function addLeagueNight(leagueId: number, date: string, startTime: string | null = null): Promise<void> {
   if ((await prisma.leagueNight.count({where: {league_id: leagueId}})) >= MAX_NIGHTS) {
     throw new InvalidResultError(MAX_NIGHTS_ERROR);
   }
   try {
-    await prisma.leagueNight.create({data: {league_id: leagueId, night: nightValue(date)}});
+    await prisma.leagueNight.create({data: {league_id: leagueId, night: nightValue(date), start_time: startTime}});
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2002") throw new InvalidResultError(NIGHT_TAKEN);
@@ -59,6 +62,18 @@ export async function removeLeagueNight(leagueId: number, date: string): Promise
   if (rounds) throw new InvalidResultError("Odigrane večeri ne mogu se ukloniti ovdje. Prvo obriši njihova kola na kartici Kola.");
   const {count} = await prisma.leagueNight.deleteMany({where: {league_id: leagueId, night}});
   return count > 0;
+}
+
+// Sets a night's own start time, or with null goes back to the league's. Only a night still to be played: one that
+// has passed or has rounds keeps its time. Returns false when the league doesn't have that night.
+export async function setLeagueNightTime(leagueId: number, date: string, startTime: string | null): Promise<boolean> {
+  const night = nightValue(date);
+  const exists = await prisma.leagueNight.count({where: {league_id: leagueId, night}});
+  if (!exists) return false;
+  const rounds = await prisma.round.count({where: {round_date: night, leagueRounds: {some: {league_id: leagueId}}}});
+  if (rounds || date < leagueDateString()) throw new InvalidResultError(PAST_NIGHT_TIME_ERROR);
+  await prisma.leagueNight.update({where: {league_id_night: {league_id: leagueId, night}}, data: {start_time: startTime}});
+  return true;
 }
 
 // A round created on a date the league hadn't planned adds that night, so Raspored shows it as played

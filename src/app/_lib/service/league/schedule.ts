@@ -1,14 +1,15 @@
 import {MyLeague, MySchedule} from "@/app/_interfaces/burza";
 import {BYE_TEAM_ID} from "@/app/_lib/bye";
 import {leagueDateString} from "@/app/_lib/dates";
-import {nextNightIndex} from "@/app/_lib/nights";
+import {effectiveTime, nextNightIndex} from "@/app/_lib/nights";
 import {prisma} from "@/app/_lib/prisma";
 import {playedNightKeys} from "@/app/_lib/service/league/nights";
 import {displayName} from "@/app/_lib/players/names";
 
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 
-// The leagues the player plays in through their teams, each with the team, its players and the league's nights
+// The leagues the player plays in through their teams, each with the team, its players and the league's nights (with
+// their start times)
 // (Početna · Sljedeća večer, Raspored, Burza · Trebam zamjenu). The league with the soonest night comes first;
 // leagues whose season is over come last.
 export async function mySchedule(playerId: number): Promise<MySchedule> {
@@ -22,7 +23,9 @@ export async function mySchedule(playerId: number): Promise<MySchedule> {
       leagueTeams: {
         select: {
           active: true,
-          league: {select: {league_id: true, league_name: true, nights: {select: {night: true}, orderBy: {night: "asc"}}}},
+          league: {
+            select: {league_id: true, league_name: true, start_time: true, nights: {select: {night: true, start_time: true}, orderBy: {night: "asc"}}},
+          },
         },
       },
     },
@@ -34,6 +37,11 @@ export async function mySchedule(playerId: number): Promise<MySchedule> {
   const leagues: MyLeague[] = teams.flatMap((t) =>
     t.leagueTeams.map(({active, league}) => {
       const nights = league.nights.map((n) => isoDate(n.night));
+      const times: Record<string, string> = {};
+      league.nights.forEach((n, i) => {
+        const time = effectiveTime(n.start_time, league.start_time);
+        if (time) times[nights[i]] = time;
+      });
       return {
         league_id: league.league_id,
         league_name: league.league_name,
@@ -46,6 +54,7 @@ export async function mySchedule(playerId: number): Promise<MySchedule> {
           .sort((a, b) => Number(b.me) - Number(a.me) || a.name.localeCompare(b.name, "hr")),
         nights,
         played: nights.filter((n) => played.has(`${league.league_id}|${n}`)),
+        times,
       };
     })
   );

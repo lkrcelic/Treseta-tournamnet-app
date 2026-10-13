@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 // A new response each time: a response body can only be sent once
 const leagueNotFound = () => NextResponse.json({error: "Liga ne postoji."}, {status: STATUS.NotFound});
 
-// A league's nights, each with whether it has rounds (Raspored, Upravljanje ligom · Datumi). Public, like the season table.
+// A league's nights, each with whether it has rounds and when it starts (Raspored, Upravljanje ligom · Datumi). Public, like the season table.
 export async function GET(_request: NextRequest, {params}: {params: {id: string}}) {
   try {
     const leagueId = Number(params.id);
@@ -25,17 +25,17 @@ export async function GET(_request: NextRequest, {params}: {params: {id: string}
   }
 }
 
-// Add a night (admin)
+// Add a night, with its own start time or the league's (admin)
 export async function POST(request: NextRequest, {params}: {params: {id: string}}) {
   const auth = await requireAdmin(request);
   if (auth.response) return auth.response;
 
   try {
-    const {date} = LeagueNightAddRequestValidation.parse(await request.json());
+    const {date, start_time} = LeagueNightAddRequestValidation.parse(await request.json());
     const leagueId = Number(params.id);
     if (!isDbId(leagueId)) return leagueNotFound();
-    await addLeagueNight(leagueId, date);
-    return NextResponse.json({date, played: false}, {status: STATUS.Created});
+    await addLeagueNight(leagueId, date, start_time ?? null);
+    return NextResponse.json({date, played: false, start_time: start_time ?? null}, {status: STATUS.Created});
   } catch (error) {
     return errorResponse(error, "Večer nije dodana.");
   }

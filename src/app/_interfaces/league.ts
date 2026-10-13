@@ -1,4 +1,4 @@
-import {isIsoDate, MAX_NIGHTS} from "@/app/_lib/nights";
+import {isIsoDate, isStartTime, MAX_NIGHTS} from "@/app/_lib/nights";
 import {count, NOUN} from "@/app/_lib/ui/text";
 import {z} from "zod";
 import {CONFERENCE_NAME_MAX, MAX_CONFERENCES} from "@/app/_lib/conferences";
@@ -7,6 +7,9 @@ export const DATE_FORMAT_ERROR = "Datum mora biti u obliku GGGG-MM-DD.";
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, DATE_FORMAT_ERROR);
 const leagueName = z.string().trim().min(1, "Ime lige je obavezno.").max(100, "Ime lige može imati najviše 100 znakova.");
 const season = z.string().trim().max(20, "Sezona može imati najviše 20 znakova.");
+export const START_TIME_ERROR = "Početak večeri mora biti vrijeme od 00:00 do 23:59.";
+// "HH:MM"; null: no time
+const startTime = z.string({invalid_type_error: START_TIME_ERROR}).refine(isStartTime, START_TIME_ERROR).nullable();
 
 // A conference as Create League and Manage League send it. The rules for the whole list (none or 2–6, unique names and
 // colors from the palette) are checked by the service, which answers with a readable message.
@@ -38,6 +41,8 @@ export const LeagueCreateRequestValidation = z
     end_date: isoDate.optional().nullable(),
     // 0 = Monday ... 6 = Sunday
     play_day: z.number().int().min(0).max(6).optional().nullable(),
+    // when the nights start; optional
+    start_time: startTime.optional(),
     rounds_per_night: z.number().int().min(1).max(6).default(3),
     team_ids: z.array(z.number().int()).default([]),
     conferences: z.array(ConferenceInputValidation).max(MAX_CONFERENCES).default([]),
@@ -56,6 +61,7 @@ export const LeagueUpdateRequestValidation = z.object({
   start_date: isoDate.nullable().optional(),
   end_date: isoDate.nullable().optional(),
   play_day: z.number().int().min(0).max(6).nullable().optional(),
+  start_time: startTime.optional(),
   rounds_per_night: z.number().int().min(1).max(6).optional(),
 });
 
@@ -63,13 +69,23 @@ export const LeagueNotesRequestValidation = z.object({
   notes: z.string().max(5000, "Bilješke mogu imati najviše 5000 znakova."),
 });
 
-// Upravljanje ligom · Datumi: add a night
+// Upravljanje ligom · Datumi: add a night, with its own start time or (left out or null) the league's
 export const LeagueNightAddRequestValidation = z.object({
   date: z.string().refine(isIsoDate, DATE_FORMAT_ERROR),
+  start_time: startTime.optional(),
 });
 
-// A league night and whether it has rounds (a played night can't be removed)
-export type LeagueNightRow = {date: string; played: boolean};
+// Upravljanje ligom · Datumi: a night's own start time; null goes back to the league's
+export const LeagueNightUpdateRequestValidation = z.object({
+  start_time: startTime,
+});
+
+// The start time of a night that has rounds or has passed doesn't change
+export const PAST_NIGHT_TIME_ERROR = "Početak se mijenja samo večerima koje još nisu odigrane.";
+
+// A league night and whether it has rounds (a played night can't be removed). start_time: its own start time (null:
+// the league's); time: when it starts, its own or the league's (null: no time).
+export type LeagueNightRow = {date: string; played: boolean; start_time: string | null; time: string | null};
 
 export const LeagueTeamAddRequestValidation = z.object({
   team_id: z.number().int(),
@@ -107,6 +123,7 @@ export type LeagueSummary = {
   start_date: string | null;
   end_date: string | null;
   play_day: number | null;
+  start_time: string | null; // "HH:MM", when the nights start unless a night has its own
   rounds_per_night: number;
   // the smoking tables of its last Create Round (empty: none)
   smoking_tables: number[];
