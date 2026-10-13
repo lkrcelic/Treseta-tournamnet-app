@@ -2,6 +2,7 @@
 
 import {getPlayerByIdAPI, PlayerById} from "@/app/_fetchers/player/getById";
 import {updateBirthDateAPI} from "@/app/_fetchers/player/updateBirthDate";
+import {updatePhoneAPI} from "@/app/_fetchers/player/updatePhone";
 import {updateSmokerAPI} from "@/app/_fetchers/player/updateSmoker";
 import {updateUsernameAPI} from "@/app/_fetchers/player/updateUsername";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
@@ -11,6 +12,7 @@ import useNavStack from "@/app/_hooks/useNavStack";
 import {useMyRating} from "@/app/_hooks/useRatings";
 import {fullName} from "@/app/_lib/players/names";
 import {leagueDateString} from "@/app/_lib/dates";
+import {isValidPhone, PHONE_ERROR, phoneInput} from "@/app/_lib/phone";
 import {ratingPath} from "@/app/_lib/ui/ratings";
 import {displayDate} from "@/app/_lib/ui/text";
 import {normalizeUsername, USERNAME_MAX, usernameError} from "@/app/_lib/validation/username";
@@ -119,6 +121,16 @@ export default function ProfilePage() {
             </Box>
           </Box>
         ))}
+        {player && (
+          <PhoneRow
+            value={player.phone ?? null}
+            desktop={desktop}
+            onSave={async (phone) => {
+              const saved = await updatePhoneAPI(player.id, phone);
+              setPlayer((p) => (p ? {...p, phone: saved} : p));
+            }}
+          />
+        )}
         {player && (
           <BirthDateRow
             value={player.birth_date ?? null}
@@ -250,6 +262,106 @@ function SmokerRow({value, desktop, onSave}: {value: boolean; desktop: boolean; 
         </Box>
       </Box>
       {error && <ErrorNote sx={{m: `0 ${desktop ? "18px" : "16px"} 12px`}}>{error}</ErrorNote>}
+    </Box>
+  );
+}
+
+// The Mobitel Podaci row, with an edit button opening a phone field with Odustani and Spremi in place. Burza igrača
+// fills the number into new ads; an empty field removes it.
+function PhoneRow({value, desktop, onSave}: {value: string | null; desktop: boolean; onSave: (phone: string | null) => Promise<void>}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const px = desktop ? "18px" : "16px";
+
+  if (draft == null) {
+    return (
+      <Box sx={{height: desktop ? 56 : 52, display: "flex", alignItems: "center", gap: "8px", pl: px, pr: "6px", borderBottom: `1px solid ${color.line}`}}>
+        <Box component="dt" sx={{flex: "none", whiteSpace: "nowrap", fontSize: 15, color: color.muted}}>
+          Mobitel
+        </Box>
+        <Box component="dd" sx={{m: 0, flex: 1, minWidth: 0, textAlign: "right", fontSize: 15, fontWeight: 600, whiteSpace: "nowrap", ...tabular}}>
+          {value || "—"}
+        </Box>
+        <Box
+          component="button"
+          type="button"
+          aria-label="Uredi broj mobitela"
+          onClick={() => {
+            setDraft(value ?? "");
+            setError(null);
+          }}
+          sx={{...buttonBase, width: 44, height: 44, flex: "none", borderRadius: "12px", color: color.navy, display: "flex", alignItems: "center", justifyContent: "center", "&:hover": {background: color.paper}, "& svg": {fontSize: 20}}}
+        >
+          <EditRoundedIcon />
+        </Box>
+      </Box>
+    );
+  }
+
+  const trimmed = draft.trim();
+  const invalid = trimmed !== "" && !isValidPhone(trimmed);
+  const canSave = !invalid && trimmed !== (value ?? "") && !saving;
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSave) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave(trimmed || null);
+      setDraft(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Broj nije spremljen.");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <Box sx={{display: "flex", flexDirection: "column", gap: "8px", p: `12px ${px} 14px`, borderBottom: `1px solid ${color.line}`, background: color.cream2}}>
+      <Box component="dt" sx={{fontSize: 13, fontWeight: 600, color: color.ink2}}>
+        <label htmlFor="phone">Mobitel</label>
+      </Box>
+      <Box component="dd" sx={{m: 0}}>
+        <Box component="form" onSubmit={save} noValidate sx={{display: "flex", flexDirection: "column", gap: "8px"}}>
+          <Box
+            component="input"
+            id="phone"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            autoFocus
+            placeholder="091 234 5678"
+            value={draft}
+            aria-invalid={invalid || undefined}
+            aria-describedby="phone-hint"
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDraft(phoneInput(e.target.value))}
+            sx={{height: 50, width: "100%", boxSizing: "border-box", borderRadius: "14px", border: `1.5px solid ${invalid ? color.red : color.navy}`, background: color.white, px: "14px", font: "inherit", fontSize: 16, color: color.ink, outline: "none"}}
+          />
+          <Box id="phone-hint" aria-live="polite" sx={{fontSize: 12.5, color: invalid ? color.red : color.muted}}>
+            {invalid ? PHONE_ERROR : "Upisuje se u tvoje oglase u Burzi igrača. Prazno polje briše broj."}
+          </Box>
+          {error && <ErrorNote>{error}</ErrorNote>}
+          <Box sx={{display: "flex", gap: "8px"}}>
+            <Box
+              component="button"
+              type="button"
+              onClick={() => setDraft(null)}
+              sx={{...buttonBase, flex: 1, height: 46, borderRadius: "14px", border: `1.5px solid ${tint.navy[25]}`, background: color.white, color: color.navy, fontSize: 15, fontWeight: 600}}
+            >
+              Odustani
+            </Box>
+            <Box
+              component="button"
+              type="submit"
+              disabled={!canSave}
+              aria-busy={saving || undefined}
+              sx={{...buttonBase, flex: 1, height: 46, borderRadius: "14px", background: color.navy, color: color.white, fontSize: 15, fontWeight: 600, "&:disabled": {opacity: 0.4}}}
+            >
+              {saving ? "Spremam…" : "Spremi"}
+            </Box>
+          </Box>
+        </Box>
+      </Box>
     </Box>
   );
 }
