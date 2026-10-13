@@ -30,9 +30,11 @@ conference.
 
 ## Decisions
 
-**D1. Pairing.** *Decided:* the pairing doesn't change. After pairing, Create Round checks the new tables, and if a
-table has two teams from the same conference it shows a notice listing them, in the same dialog as the "Some teams
-will play twice today" notice. "Continue" creates the rounds anyway.
+**D1. Pairing.** *Decided (revised 13 Oct 2026):* Create Round has an "Only within conferences" switch, off by
+default and shown only in a league with conferences. On, every conference is paired on its own (its own windows and,
+with an odd count, its own bye), so teams only play teams of their conference; the teams without a conference make a
+group of their own. Off, the pairing ignores conferences and there is no notice. (The first version kept the pairing
+and warned about tables with two teams of one conference; that was the opposite of what the league wants.)
 
 **D2. What does a conference table count?** *Decided:* the same table, showing only the conference's teams (same
 numbers, ranked within the conference).
@@ -61,7 +63,7 @@ none). The scoreboard, the lineup step and the admin table scorepad keep green a
 the two sides of the board.
 
 **D6. The Bela app.** *Decided:* Bela doesn't get conferences for now. They are listed under Differences from Bela in
-[BELA_SYNC.md](BELA_SYNC.md): the new files as Treseta only, and the 27 shared files with conference code, around
+[BELA_SYNC.md](BELA_SYNC.md): the new files as Treseta only, and the 28 shared files with conference code, around
 which the nightly sync merges a Bela change.
 
 **D7. Branch.** *Decided:* a new branch from `feat/scorepad`. It merges after the cutover (Phase 6 of
@@ -119,7 +121,7 @@ model LeagueTeam {
 | `GET` (public, like `/standings`) and `PUT` (admin) on `/api/leagues/[id]/conferences` | new route |
 | `PUT /api/leagues/[id]/conferences/teams` (admin, bulk assignment for "Distribute evenly") | new route |
 | `PATCH /api/leagues/[id]/teams/[teamId]` also takes `conference_id` | existing route |
-| Create Round: after pairing, the tables with two teams of one conference; refused (409, with the list) unless `allowSameConference`, in the same response as the repeats | `api/rounds/generate-multiple`, `_interfaces/round.ts` |
+| Create Round: `withinConferences` pairs every conference on its own (`generateGroupedRoundPairings`) | `api/rounds/generate-multiple`, `_interfaces/round.ts`, `_lib/matching/multipleRoundMatching.ts` |
 | Start Game: the two teams' conferences (team1 first), when the round's league has conferences | `api/rounds/open` |
 
 The standings services, the SQL function and the rounds API stay as they are. They already return `team_id`, so the
@@ -165,9 +167,8 @@ and links to Manage League · Teams to assign the teams.
 
 ### Create Round (`_ui/round/CreateRound.tsx`)
 
-The "Some teams will play twice today" dialog becomes a pairing notice with up to two lists: the pairs that would
-meet twice, and the tables with two teams of one conference (each row with the conference's dot). "Expand the window"
-shows only when there are repeats; "Continue" creates the rounds with both allowed.
+Under Rounds and Window, an "Only within conferences" switch (off by default, back to off on another league). A
+conference with too few teams tonight for the rounds is refused with its name. The repeats dialog is Bela's.
 
 ### Dots
 
@@ -236,5 +237,5 @@ conferences unchanged.
 
 ## Out of scope
 
-Pairing that takes conferences into account (D1 only adds the notice), records that count only rounds within a
+Records that count only rounds within a
 conference (D2), a history of conference changes, playoffs between conferences, and conferences in the Bela app (D6).

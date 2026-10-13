@@ -125,15 +125,15 @@ New Bela text with the app's name or the sponsor uses `BRAND` here, and its file
 ### Conferences
 
 A league can split its teams into conferences, each with a name and a color. The color is a dot before the team's
-name, and Daily's night table and League standings get a view per conference. Create Round warns about a table with two
-teams of one conference. Bela doesn't have conferences for now. The plan and decisions are in
+name, and Daily's night table and League standings get a view per conference. Create Round can pair
+every conference on its own ("Only within conferences"). Bela doesn't have conferences for now. The plan and decisions are in
 [CONFERENCES_PLAN.md](CONFERENCES_PLAN.md).
 
 New files (Treseta only):
 
 | Treseta | What it holds |
 |---|---|
-| `_lib/conferences.ts` | The palette, the rules for a league's list (none or 2–6, names and colors unique), the lookup the screens use, the same-conference pairs for Create Round, and "Distribute evenly". Pure, unit tested in `_lib/__tests__/conferences.test.ts` |
+| `_lib/conferences.ts` | The palette, the rules for a league's list (none or 2–6, names and colors unique), the lookup the screens use, tonight's teams by conference for Create Round, and "Distribute evenly". Pure, unit tested in `_lib/__tests__/conferences.test.ts` |
 | `_lib/service/league/conferences.ts`, `api/leagues/[id]/conferences/route.ts`, `api/leagues/[id]/conferences/teams/route.ts`, `_fetchers/league/conferences.ts` | Reading a league's conferences (public) and saving them and the teams' conferences (admin) |
 | `_hooks/useConferences.ts`, `_hooks/useConferenceFilter.ts` | A league's conferences for the screens, and the conference picked on Daily and League standings |
 | `_ui/sp/TeamDot.tsx` | The dot before a team's name, taken from the Start Game card |
@@ -145,7 +145,8 @@ edit:
 | File | Treseta's edit |
 |---|---|
 | `_interfaces/league.ts`, `_lib/service/league/leagues.ts`, `_fetchers/league/leagues.ts`, `_hooks/useLeagueTeams.ts`, `api/leagues/[id]/teams/[teamId]/route.ts` | Create League takes conferences; a league's team list has each team's `conference_id`, and the team PATCH sets it |
-| `_interfaces/round.ts`, `api/rounds/generate-multiple/route.ts`, `_fetchers/round/createMultipleRounds.ts`, `_ui/round/CreateRound.tsx`, `createRound/page.tsx` | Create Round: the same-conference tables come back in the same 409 as the repeats (`PAIRING_NOTICE`, `allowSameConference`), the notice lists both, and the team list has the dots |
+| `_interfaces/round.ts`, `api/rounds/generate-multiple/route.ts`, `_fetchers/round/createMultipleRounds.ts`, `_ui/round/CreateRound.tsx`, `createRound/page.tsx` | Create Round: the "Only within conferences" switch (`withinConferences`) and the team list's dots |
+| `_lib/matching/multipleRoundMatching.ts` | `generateGroupedRoundPairings` at the end of the file, which pairs every conference on its own with the unchanged pairing |
 | `api/rounds/open/route.ts`, `_fetchers/round/getOpenByPlayerId.ts`, `_hooks/useOpenTable.ts`, `_ui/home/PhoneHome.tsx` | The Start Game card shows the two teams' conference colors (green and red in a league without conferences) |
 | `_lib/ui/standings.ts`, `_lib/ui/tables.ts`, `_ui/sp/Standings.tsx`, `_ui/sp/Controls.tsx`, `_ui/sp/index.ts` | Standings and table rows carry each team's conference, the standings draw its dot, a tab item can have a dot, and the kit exports `TeamDot` |
 | `league/[leagueId]/daily-standings/page.tsx`, `league/[leagueId]/daily-standings/ui/RoundTables.tsx`, `league/[leagueId]/standings/page.tsx`, `_ui/home/DesktopHome.tsx`, `round/pairings/[roundNumber]/page.tsx` | The dots, and the conference filter on Daily's night table and League standings |

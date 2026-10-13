@@ -30,16 +30,12 @@ export const RoundCreateRequestValidation = z.object({
   windowSize: z.number().int().min(2).max(200).optional(),
   // create the rounds even though some teams then meet twice today
   allowRepeats: z.boolean().optional(),
-  // create the rounds even though some tables have two teams of the same conference
-  allowSameConference: z.boolean().optional(),
+  // pair every conference on its own, so teams only meet teams of their conference (off by default)
+  withinConferences: z.boolean().optional(),
 });
 
-// the error code of a round creation that needs the admin's go-ahead: some teams would meet twice today (repeats),
-// or some tables would have two teams of the same conference (same_conference)
-export const PAIRING_NOTICE = "PAIRING_NOTICE";
-
-// a table of the new rounds whose two teams are in the same conference, as the notice lists it
-export type SameConferencePair = {teams: [string, string]; conference: {name: string; color: string}};
+// the error code of a round creation that would have some teams meet twice today
+export const REPEAT_MATCHUPS = "REPEAT_MATCHUPS";
 
 export type RoundCreateRequest = z.infer<typeof RoundCreateRequestValidation>;
 export type RoundResponse = z.infer<typeof RoundResponseValidation>;

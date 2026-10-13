@@ -80,23 +80,12 @@ export function conferenceLookup(data: LeagueConferences | null | undefined): Co
   return {conferences, of: (teamId) => byTeam.get(teamId) ?? null};
 }
 
-// The pairs of new rounds whose two teams are in the same conference (the bye has none), each pair once, for the
-// notice in Create Round
-export function sameConferencePairs<T extends {id: number}>(
-  rounds: readonly (readonly {teamOne: T; teamTwo: T}[])[],
-  of: ConferenceOf
-): {teamOne: T; teamTwo: T; conference: Conference}[] {
-  const seen = new Set<string>();
-  const found: {teamOne: T; teamTwo: T; conference: Conference}[] = [];
-  for (const pair of rounds.flat()) {
-    const conference = of(pair.teamOne.id);
-    if (!conference || of(pair.teamTwo.id)?.id !== conference.id) continue;
-    const key = [pair.teamOne.id, pair.teamTwo.id].sort((a, b) => a - b).join("-");
-    if (seen.has(key)) continue;
-    seen.add(key);
-    found.push({...pair, conference});
-  }
-  return found;
+// Create Round with "Only within conferences": tonight's teams by conference, in the league's order of conferences;
+// the teams without one make a group of their own, last
+export function conferenceGroups<T extends {id: number}>(teams: readonly T[], lookup: ConferenceLookup): {name: string; teams: T[]}[] {
+  const groups = lookup.conferences.map((c) => ({name: c.name, teams: teams.filter((t) => lookup.of(t.id)?.id === c.id)}));
+  const none = teams.filter((t) => !lookup.of(t.id));
+  return none.length ? [...groups, {name: "Teams without a conference", teams: none}] : groups;
 }
 
 // "Distribute evenly" in Manage League: deals the teams, in table order, to the conferences in snake order (A B C C B A

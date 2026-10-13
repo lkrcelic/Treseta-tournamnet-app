@@ -3,15 +3,17 @@ import {test} from "node:test";
 import {
   CONFERENCE_COLORS,
   conferenceDot,
+  conferenceGroups,
   conferenceLookup,
   conferencesError,
   distributeEvenly,
   MAX_CONFERENCES,
   nextFreeColor,
-  sameConferencePairs,
 } from "../conferences";
 import {inConference, splitPodium, toStandingsRows} from "../ui/standings";
 import {toTableRows} from "../ui/tables";
+import {generateGroupedRoundPairings} from "../matching/multipleRoundMatching";
+import {BYE_TEAM_ID} from "../bye";
 
 const BLUE = CONFERENCE_COLORS[0].hex;
 const ORANGE = CONFERENCE_COLORS[1].hex;
@@ -69,21 +71,17 @@ test("the lookup gives each team its conference: null without one, undefined whe
 
 const team = (id: number) => ({id, name: `T${id}`});
 
-test("Create Round lists each pair of one conference once, without the bye", () => {
-  const rounds = [
-    [{teamOne: team(1), teamTwo: team(3)}, {teamOne: team(2), teamTwo: team(1)}, {teamOne: team(4), teamTwo: team(0)}],
-    // the same pair again (a repeat) and a team without a conference
-    [{teamOne: team(3), teamTwo: team(1)}, {teamOne: team(5), teamTwo: team(2)}, {teamOne: team(2), teamTwo: team(4)}],
-  ];
-  const found = sameConferencePairs(rounds, lookup.of);
+test("Only within conferences groups tonight's teams by conference, the teams without one last", () => {
+  const groups = conferenceGroups([team(1), team(2), team(3), team(5)], lookup);
   assert.deepEqual(
-    found.map((p) => [p.teamOne.id, p.teamTwo.id, p.conference.name]),
+    groups.map((g) => [g.name, g.teams.map((t) => t.id)]),
     [
-      [1, 3, "Sjever"],
-      [2, 4, "Jug"],
+      ["Sjever", [1, 3]],
+      ["Jug", [2]],
+      ["Teams without a conference", [5]],
     ]
   );
-  assert.equal(sameConferencePairs(rounds, conferenceLookup(null).of).length, 0);
+  assert.deepEqual(conferenceGroups([team(1), team(3)], lookup).map((g) => g.teams.length), [2, 0]);
 });
 
 test("Distribute evenly deals the table out in snake order", () => {
@@ -138,4 +136,37 @@ test("round tables carry both teams' conferences", () => {
   // the bye has no conference
   assert.equal(rows[2].conferenceB, null);
   assert.equal(toTableRows(rounds)[0].conferenceA, undefined);
+});
+
+const ranked = (ids: number[]) =>
+  ids.map((id, i) => ({id, name: `T${id}`, score: 100 - i, point_difference: 0, played_against: [] as number[]}));
+
+test("Only within conferences: teams meet only teams of their conference, each odd conference with its own bye", () => {
+  const north = ranked([1, 2, 3, 4, 5, 6, 7]);
+  const south = ranked([11, 12, 13, 14, 15, 16]);
+  const plan = generateGroupedRoundPairings(
+    [
+      {name: "Sjever", teams: north},
+      {name: "Jug", teams: south},
+    ],
+    {windowSize: 8, numberOfRounds: 3}
+  );
+  assert.equal(plan.rounds.length, 3);
+  assert.equal(plan.repeats.length, 0);
+  const side = (id: number) => (id < 10 ? "N" : "S");
+  for (const round of plan.rounds) {
+    const ids = round.flatMap((p) => [p.teamOne.id, p.teamTwo.id]).filter((id) => id !== BYE_TEAM_ID);
+    assert.equal(ids.length, 13);
+    assert.equal(new Set(ids).size, 13);
+    const byes = round.filter((p) => p.teamTwo.id === BYE_TEAM_ID || p.teamOne.id === BYE_TEAM_ID);
+    assert.equal(byes.length, 1);
+    // the bye comes after every real table
+    assert.equal(round[round.length - 1], byes[0]);
+    for (const p of round) if (!byes.includes(p)) assert.equal(side(p.teamOne.id), side(p.teamTwo.id));
+  }
+  // too few teams in one conference for the rounds
+  assert.throws(
+    () => generateGroupedRoundPairings([{name: "Jug", teams: ranked([11, 12, 13])}, {name: "Sjever", teams: north}], {windowSize: 8, numberOfRounds: 3}),
+    /Jug has 3 teams/
+  );
 });

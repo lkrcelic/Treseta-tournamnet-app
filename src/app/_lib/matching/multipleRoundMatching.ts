@@ -327,3 +327,30 @@ export function matchTeams(teams: Team[]): TeamPair[] {
 
   return generateMultipleRoundPairings(teams, options).rounds[0] ?? [];
 }
+
+/**
+ * Pairs every group (a league's conference) on its own, so two teams only meet inside their group, and puts the
+ * groups' tables together round by round, in the order of the groups. A group with an odd count has its own bye; the
+ * byes go after every real table. The time budget is shared between the groups.
+ */
+export function generateGroupedRoundPairings(groups: {name: string; teams: Team[]}[], options: MultiRoundMatchingOptions): RoundsPlan {
+  const playing = groups.filter((g) => g.teams.length > 0);
+  const small = playing.find((g) => g.teams.length <= options.numberOfRounds);
+  if (small) {
+    throw new Error(
+      `${small.name} has ${small.teams.length} ${small.teams.length === 1 ? "team" : "teams"} tonight, too few for ${options.numberOfRounds} rounds within the conference.`
+    );
+  }
+  const budget = Math.max(500, Math.floor((options.timeBudgetMs ?? DEFAULT_TIME_BUDGET_MS) / Math.max(1, playing.length)));
+  const rounds: TeamPair[][] = Array.from({length: options.numberOfRounds}, () => []);
+  const byes: TeamPair[][] = Array.from({length: options.numberOfRounds}, () => []);
+  const repeats: TeamPair[] = [];
+  for (const group of playing) {
+    const plan = generateMultipleRoundPairings(group.teams, {...options, timeBudgetMs: budget});
+    plan.rounds.forEach((round, r) => {
+      for (const pair of round) (pair.teamTwo.id === BYE_TEAM_ID || pair.teamOne.id === BYE_TEAM_ID ? byes[r] : rounds[r]).push(pair);
+    });
+    repeats.push(...plan.repeats);
+  }
+  return {rounds: rounds.map((round, r) => [...round, ...byes[r]]), repeats};
+}
