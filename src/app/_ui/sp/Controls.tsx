@@ -2,7 +2,7 @@ import {color, ease, font, shadow} from "@/app/_styles/tokens";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import RemoveRoundedIcon from "@mui/icons-material/RemoveRounded";
 import {Box, SxProps, Theme} from "@mui/material";
-import React, {useRef} from "react";
+import React, {useEffect, useRef} from "react";
 import {buttonBase, mergeSx, tabular} from "./base";
 import {LiveDot} from "./Live";
 import {TeamDot} from "./TeamDot";
@@ -209,6 +209,11 @@ export function PillTabs<K extends string | number>({
   idPrefix?: string;
 }) {
   const {refs, onKeyDown} = useRovingKeys(items, value, onChange);
+  // the picked tab scrolls into view, also when it was picked elsewhere (an address, a long name off the edge)
+  const index = items.findIndex((t) => t.key === value);
+  useEffect(() => {
+    refs.current[index]?.scrollIntoView({block: "nearest", inline: "nearest"});
+  }, [index, refs]);
   return (
     <Box
       role="tablist"

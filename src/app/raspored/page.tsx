@@ -8,7 +8,7 @@ import {leagueDateString} from "@/app/_lib/dates";
 import {nextNightIndex, nightLabel, nightsCountLabel, nightsLeftLabel, RASPORED_PILL, rasporedPill, RasporedPill} from "@/app/_lib/nights";
 import {TransitionLink, useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, font, shadow} from "@/app/_styles/tokens";
-import {buttonBase, Card, CenteredSpinner, DesktopShell, ellipsis, EmptyState, ErrorNote, InitialsAvatar, Screen, Segmented, tabPanelProps, tabular, TopBar} from "@/app/_ui/sp";
+import {buttonBase, Card, CenteredSpinner, DesktopShell, ellipsis, EmptyState, ErrorNote, InitialsAvatar, PillTabs, Screen, Segmented, tabPanelProps, tabular, TopBar} from "@/app/_ui/sp";
 import EventRoundedIcon from "@mui/icons-material/EventRounded";
 import PersonSearchRoundedIcon from "@mui/icons-material/PersonSearchRounded";
 import {Box} from "@mui/material";
@@ -94,11 +94,19 @@ export default function RasporedPage() {
   }
 
   const pick = (id: number) => router.router.replace(`/raspored?league=${id}`, {scroll: false});
-  // League names often differ only at their end ("… Proljeće 25/26", "… Jesen 25/26"), so a name wraps onto a second
-  // line instead of being cut short (DECISIONS #44): on the phone the tabs share the width, on the desktop the strip is
-  // as wide as its names and gives way to the title
+  // League names often differ only at their end ("… Proljeće 25/26", "… Jesen 25/26"), so they are never cut short.
+  // On the phone the leagues are pills in one row that scrolls sideways, like the rounds on Dnevni poredak; on the
+  // desktop the strip is as wide as its names (wrapping onto a second line) and gives way to the title.
   const tabs =
-    mine.length > 1 ? (
+    mine.length > 1 && !isDesktop ? (
+      <PillTabs<number>
+        items={mine.map((l) => ({key: l.league_id, label: l.league_name}))}
+        value={current!.league_id}
+        onChange={pick}
+        label="Liga"
+        idPrefix="raspored"
+      />
+    ) : mine.length > 1 ? (
       <Segmented<number>
         items={mine.map((l) => ({
           key: l.league_id,
@@ -115,8 +123,11 @@ export default function RasporedPage() {
         size={44}
         idPrefix="raspored"
         sx={{
-          "& [role=tab]": {fontSize: 15, height: "auto", minHeight: 44, whiteSpace: "normal", py: "5px", px: isDesktop ? "16px" : "8px"},
-          ...(isDesktop ? {width: "auto", maxWidth: "60vw", flex: "0 1 auto", minWidth: 0} : {}),
+          "& [role=tab]": {fontSize: 15, height: "auto", minHeight: 44, whiteSpace: "normal", py: "5px", px: "16px"},
+          width: "auto",
+          maxWidth: "60vw",
+          flex: "0 1 auto",
+          minWidth: 0,
         }}
       />
     ) : null;
