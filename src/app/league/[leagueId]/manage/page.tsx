@@ -137,10 +137,10 @@ export default function ManageLeague() {
     {key: "inactive" as Filter, label: "Inactive", count: rows.filter((r) => !r.active).length},
   ];
   const confFilters = [
-    {key: ALL_CONFERENCES, label: "All", count: rows.length},
+    {key: ALL_CONFERENCES, label: "Sve", count: rows.length},
     ...confList.map((c) => ({key: c.id, label: c.name, dot: c.color, count: rows.filter((r) => r.conferenceId === c.id).length})),
     // shown while some team has no conference (or while picked)
-    ...(unassigned > 0 || confFilter === NO_CONFERENCE ? [{key: NO_CONFERENCE, label: "None", dot: null, count: unassigned, alert: unassigned > 0}] : []),
+    ...(unassigned > 0 || confFilter === NO_CONFERENCE ? [{key: NO_CONFERENCE, label: "Bez konferencije", dot: null, count: unassigned, alert: unassigned > 0}] : []),
   ];
   const leagueName = leagues.find((l) => l.id === leagueId)?.name ?? "";
 

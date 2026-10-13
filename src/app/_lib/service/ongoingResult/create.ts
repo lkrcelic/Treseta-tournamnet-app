@@ -18,10 +18,10 @@ export async function createResult(
             SELECT player_pair1_score, player_pair2_score, score_threshold
             FROM "OngoingMatch" WHERE id = ${result.match_id} FOR UPDATE`;
         if (!match) {
-            throw new InvalidResultError("This match is already finished.");
+            throw new InvalidResultError("Ovaj meč je već završen.");
         }
         if (matchWinner(match.player_pair1_score, match.player_pair2_score, match.score_threshold ?? MATCH_THRESHOLD) !== null) {
-            throw new InvalidResultError("This match is already over, finish it instead of adding a hand.");
+            throw new InvalidResultError("Meč je gotov – završi ga umjesto da dodaješ igru.");
         }
 
         const created = await tx.ongoingResult.create({data: transformResult(result), select: {result_id: true}});

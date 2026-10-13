@@ -15,22 +15,22 @@ export type Side = 1 | 2;
 // Returns a reason the hand's points can't be right, or null when they are fine.
 export function handError(points1: number, points2: number, custom: boolean): string | null {
   if (!Number.isInteger(points1) || !Number.isInteger(points2)) {
-    return "Points must be whole numbers.";
+    return "Bodovi moraju biti cijeli brojevi.";
   }
   if (points1 < 0 || points2 < 0) {
-    return "Points can't be negative.";
+    return "Bodovi ne mogu biti negativni.";
   }
   if (points1 === 0 && points2 === 0) {
-    return "Enter points for at least one team.";
+    return "Upiši bodove barem jednoj ekipi.";
   }
   if (custom) {
     if (points1 > CUSTOM_HAND_MAX || points2 > CUSTOM_HAND_MAX) {
-      return `A custom hand can't give a team more than ${CUSTOM_HAND_MAX} points.`;
+      return `Ručni unos ne može ekipi dati više od ${CUSTOM_HAND_MAX} bodova.`;
     }
     return null;
   }
   if (points1 + points2 !== HAND_POINTS) {
-    return `Points must add up to ${HAND_POINTS}.`;
+    return `Zbroj bodova mora biti ${HAND_POINTS}.`;
   }
   return null;
 }

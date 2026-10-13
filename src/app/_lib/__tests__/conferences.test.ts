@@ -24,14 +24,14 @@ test("a league has no conferences or 2–6, named and colored from the palette, 
   assert.equal(conferencesError([{name: "Sjever", color: BLUE}, {name: "Jug", color: ORANGE}]), null);
   // the hex may come in lower case
   assert.equal(conferencesError([{name: "Sjever", color: BLUE.toLowerCase()}, {name: "Jug", color: ORANGE}]), null);
-  assert.match(conferencesError([{name: "Sjever", color: BLUE}]) ?? "", /at least 2/);
+  assert.match(conferencesError([{name: "Sjever", color: BLUE}]) ?? "", /barem 2/);
   const seven = Array.from({length: MAX_CONFERENCES + 1}, (_, i) => ({name: `K${i}`, color: CONFERENCE_COLORS[i % MAX_CONFERENCES].hex}));
-  assert.match(conferencesError(seven) ?? "", /at most 6/);
-  assert.match(conferencesError([{name: " ", color: BLUE}, {name: "Jug", color: ORANGE}]) ?? "", /needs a name/);
-  assert.match(conferencesError([{name: "Sjever", color: BLUE}, {name: " sjever ", color: ORANGE}]) ?? "", /same name/);
-  assert.match(conferencesError([{name: "Sjever", color: BLUE}, {name: "Jug", color: BLUE}]) ?? "", /same color/);
-  assert.match(conferencesError([{name: "Sjever", color: "#FF0000"}, {name: "Jug", color: ORANGE}]) ?? "", /palette/);
-  assert.match(conferencesError([{name: "x".repeat(41), color: BLUE}, {name: "Jug", color: ORANGE}]) ?? "", /at most 40/);
+  assert.match(conferencesError(seven) ?? "", /najviše 6 konferencija/);
+  assert.match(conferencesError([{name: " ", color: BLUE}, {name: "Jug", color: ORANGE}]) ?? "", /treba ime/);
+  assert.match(conferencesError([{name: "Sjever", color: BLUE}, {name: " sjever ", color: ORANGE}]) ?? "", /isto ime/);
+  assert.match(conferencesError([{name: "Sjever", color: BLUE}, {name: "Jug", color: BLUE}]) ?? "", /istu boju/);
+  assert.match(conferencesError([{name: "Sjever", color: "#FF0000"}, {name: "Jug", color: ORANGE}]) ?? "", /palete/);
+  assert.match(conferencesError([{name: "x".repeat(41), color: BLUE}, {name: "Jug", color: ORANGE}]) ?? "", /najviše 40 znakova/);
 });
 
 test("a new conference row takes the first color nobody has", () => {
@@ -78,7 +78,7 @@ test("Only within conferences groups tonight's teams by conference, the teams wi
     [
       ["Sjever", [1, 3]],
       ["Jug", [2]],
-      ["Teams without a conference", [5]],
+      ["Ekipe bez konferencije", [5]],
     ]
   );
   assert.deepEqual(conferenceGroups([team(1), team(3)], lookup).map((g) => g.teams.length), [2, 0]);
@@ -167,6 +167,6 @@ test("Only within conferences: teams meet only teams of their conference, each o
   // too few teams in one conference for the rounds
   assert.throws(
     () => generateGroupedRoundPairings([{name: "Jug", teams: ranked([11, 12, 13])}, {name: "Sjever", teams: north}], {windowSize: 8, numberOfRounds: 3}),
-    /Jug has 3 teams/
+    /Jug večeras ima 3 ekipe, premalo za 3 kola/
   );
 });

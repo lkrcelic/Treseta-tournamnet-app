@@ -128,10 +128,10 @@ export function useCreateRound(leagueId: number | null, defaultRounds?: number) 
         >
           <Box component="span" sx={{display: "flex", flexDirection: "column", gap: "2px", minWidth: 0}}>
             <Box component="span" sx={{fontSize: 15, fontWeight: 700}}>
-              Only within conferences
+              Samo unutar konferencija
             </Box>
             <Box component="span" sx={{fontSize: 12, fontWeight: 500, color: color.muted}}>
-              Teams only play teams of their own conference
+              Ekipe igraju samo s ekipama svoje konferencije
             </Box>
           </Box>
         </SwitchRow>

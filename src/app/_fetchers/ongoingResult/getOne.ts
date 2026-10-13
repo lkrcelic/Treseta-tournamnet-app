@@ -4,7 +4,7 @@ export async function getOngoingResultAPI(resultId: number): Promise<ResultRespo
     const response = await fetch(`/api/ongoing-result/${resultId}`);
 
     if (!response.ok) {
-        throw new Error(`Failed to fetch the hand: ${response.statusText}`);
+        throw new Error("Igra se nije učitala.");
     }
 
     return response.json();

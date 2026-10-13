@@ -15,7 +15,7 @@ export async function updateOngoingResultAPI({resultId, result}: UpdateOngoingRe
     });
 
     if (!response.ok) {
-        throw new Error(await responseErrorMessage(response, "Failed to update the hand"));
+        throw new Error(await responseErrorMessage(response, "Igra nije spremljena."));
     }
 
     return response.json();

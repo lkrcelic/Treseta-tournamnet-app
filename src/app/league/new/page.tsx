@@ -230,10 +230,10 @@ export default function CreateLeague() {
         >
           <Box component="span" sx={{display: "flex", flexDirection: "column"}}>
             <Box id="conf-title" component="span" sx={{fontSize: 15, fontWeight: 600}}>
-              Conferences
+              Konferencije
             </Box>
             <Box id="conf-hint" component="span" sx={{fontSize: 13, color: color.muted}}>
-              Groups of teams, each with a color and its own table
+              Skupine ekipa, svaka sa svojom bojom i vlastitom tablicom
             </Box>
           </Box>
           <SwitchTrack on={withConferences} />
@@ -241,7 +241,7 @@ export default function CreateLeague() {
         {withConferences && (
           <>
             <ConferenceEditor value={conferenceDrafts} onChange={setConferenceDrafts} />
-            <Box sx={{fontSize: 13, color: color.muted, px: "2px"}}>You put the teams in conferences in Manage League.</Box>
+            <Box sx={{fontSize: 13, color: color.muted, px: "2px"}}>Ekipe u konferencije rasporediš u Upravljanju ligom.</Box>
             {/* shown once a name is typed, so switching on doesn't open with an error */}
             {conferencesInvalid && conferenceDrafts.some((c) => c.name.trim()) && (
               <Box role="alert" sx={{fontSize: 14, fontWeight: 600, color: color.red, display: "flex", alignItems: "center", gap: "6px", "& svg": {fontSize: 18}}}>

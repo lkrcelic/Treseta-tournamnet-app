@@ -86,7 +86,7 @@ export default function ScorePage({actionType}: ActionProps) {
               "&:active:not(:disabled)": {transform: "scale(.95)"},
             }}
           >
-            Custom
+            Ručno
           </Box>
           <Box component="button" type="button" onClick={() => setGamePoints(0)} sx={key}>
             0
@@ -102,7 +102,7 @@ export default function ScorePage({actionType}: ActionProps) {
           </Box>
         </Box>
         <Box aria-live="polite" sx={{minHeight: 20, pt: "10px", textAlign: "center", fontSize: 14, fontWeight: 600, color: color.muted}}>
-          {result.custom ? "Custom: bodovi svake ekipe upisuju se posebno" : ""}
+          {result.custom ? "Ručni unos: bodovi svake ekipe upisuju se posebno" : ""}
         </Box>
       </Box>
       {error && <ErrorNote sx={{mb: "10px"}}>{error}</ErrorNote>}

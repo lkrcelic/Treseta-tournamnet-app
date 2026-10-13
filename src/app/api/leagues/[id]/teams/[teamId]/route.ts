@@ -15,7 +15,7 @@ export async function PATCH(request: NextRequest, {params}: {params: {id: string
   const teamId = Number(params.teamId);
   try {
     const body = LeagueTeamUpdateRequestValidation.parse(await request.json());
-    const notInLeague = () => NextResponse.json({error: "The team is not in this league."}, {status: STATUS.NotFound});
+    const notInLeague = () => NextResponse.json({error: "Ekipa nije u ovoj ligi."}, {status: STATUS.NotFound});
     if (body.conference_id !== undefined && !(await setLeagueTeamConference(leagueId, teamId, body.conference_id))) return notInLeague();
     if (body.active !== undefined && !(await setLeagueTeamActive(leagueId, teamId, body.active))) return notInLeague();
     return NextResponse.json({league_id: leagueId, team_id: teamId, ...body}, {status: STATUS.OK});
@@ -31,7 +31,7 @@ export async function DELETE(request: NextRequest, {params}: {params: {id: strin
 
   try {
     const removed = await removeTeamFromLeague(Number(params.id), Number(params.teamId));
-    if (!removed) return NextResponse.json({error: "The team is not in this league."}, {status: STATUS.NotFound});
+    if (!removed) return NextResponse.json({error: "Ekipa nije u ovoj ligi."}, {status: STATUS.NotFound});
     return new NextResponse(null, {status: STATUS.NoContent});
   } catch (error) {
     return errorResponse(error, "Failed to remove the team.");

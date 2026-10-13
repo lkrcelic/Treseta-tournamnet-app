@@ -85,7 +85,7 @@ export default function ConferencesCard({
     <Card component="section" aria-labelledby="conf-card" sx={{p: "22px", display: "flex", flexDirection: "column", gap: "14px", borderRadius: "24px"}}>
       <Box sx={{display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "12px"}}>
         <Box component="h2" id="conf-card" sx={{m: 0, fontFamily: font.display, fontSize: 22, fontWeight: 800}}>
-          Conferences
+          Konferencije
         </Box>
         {list.length > 0 && (
           <Box
@@ -95,19 +95,19 @@ export default function ConferencesCard({
             disabled={saving}
             sx={{...buttonBase, fontSize: 14, fontWeight: 600, color: color.red, borderRadius: "8px", px: "4px", "&:hover": {textDecoration: "underline"}}}
           >
-            Remove all
+            Ukloni sve
           </Box>
         )}
       </Box>
       <Box sx={{fontSize: 14, lineHeight: 1.4, color: color.inkSoft}}>
-        Groups of teams, each with a color: a dot before the team&apos;s name, and its own table on Daily and League Standings.
+        Skupine ekipa, svaka sa svojom bojom: točka ispred imena ekipe i vlastita tablica na Dnevnom i Ukupnom poretku.
       </Box>
       {drafts == null ? (
         <LoadingRows rows={2} height={56} />
       ) : list.length === 0 ? (
         <OutlineButton height={50} onClick={() => edit(startingDrafts())} sx={{borderWidth: "1.5px", borderColor: "rgba(60,74,103,.25)", fontSize: 15}}>
           <AddRoundedIcon sx={{fontSize: 22}} />
-          Add conferences
+          Dodaj konferencije
         </OutlineButton>
       ) : (
         <ConferenceEditor value={list} onChange={edit} disabled={saving} />
@@ -122,8 +122,8 @@ export default function ConferencesCard({
         <Box role="alert" sx={{p: "12px 14px", borderRadius: "14px", background: "rgba(188,71,73,.07)", display: "flex", gap: "10px", "& > svg": {fontSize: 22, color: color.red, flex: "none"}}}>
           <WarningRoundedIcon />
           <Box sx={{fontSize: 14, lineHeight: 1.4, color: color.ink}}>
-            {removed.map((c) => c.name).join(", ")} {removed.length === 1 ? "has" : "have"} {orphaned} {plural(orphaned, "team", "teams", "teams")}. They will be left
-            without a conference. Save again to go ahead.
+            {removed.map((c) => c.name).join(", ")} {removed.length === 1 ? "ima" : "imaju"} {orphaned} {plural(orphaned, "ekipu", "ekipe", "ekipa")}. Ostat će
+            bez konferencije. Spremi ponovno za nastavak.
           </Box>
         </Box>
       )}
@@ -131,10 +131,10 @@ export default function ConferencesCard({
       {(dirty || done) && (
         <Box sx={{display: "flex", gap: "10px"}}>
           <OutlineButton height={52} onClick={discard} disabled={!dirty || saving} sx={{flex: 1, fontSize: 15, border: "1.5px solid rgba(60,74,103,.25)", "&:disabled": {opacity: 0.4}}}>
-            Discard
+            Odbaci
           </OutlineButton>
           <PrimaryButton onClick={save} disabled={!dirty || !!invalid} loading={saving} height={52} sx={{flex: 1, fontSize: 16}}>
-            {!dirty && done ? "Saved ✓" : confirming ? "Save anyway" : "Save"}
+            {!dirty && done ? "Spremljeno ✓" : confirming ? "Svejedno spremi" : "Spremi"}
           </PrimaryButton>
         </Box>
       )}

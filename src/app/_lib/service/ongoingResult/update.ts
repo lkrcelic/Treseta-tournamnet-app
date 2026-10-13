@@ -20,7 +20,7 @@ export async function updateOngoingResult({result_id, resultData, normalize = no
             SELECT match_id, team1_game_points, team2_game_points
             FROM "OngoingResult" WHERE result_id = ${result_id} FOR UPDATE`;
         if (!existingResult) {
-            throw new InvalidResultError(`Hand ${result_id} not found.`);
+            throw new InvalidResultError("Igra ne postoji.");
         }
 
         await tx.ongoingResult.update({

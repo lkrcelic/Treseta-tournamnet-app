@@ -52,7 +52,7 @@ export const LeagueTeamUpdateRequestValidation = z
     active: z.boolean().optional(),
     conference_id: z.number().int().nullable().optional(),
   })
-  .refine((t) => t.active !== undefined || t.conference_id !== undefined, {message: "Send active or conference_id."});
+  .refine((t) => t.active !== undefined || t.conference_id !== undefined, {message: "Pošalji active ili conference_id."});
 
 // Manage League · Details: the league's whole list of conferences, in order. A conference with an id is kept (renamed
 // or recolored), one without is new, and the league's conferences left out are deleted (their teams lose them).

@@ -163,7 +163,7 @@ export default function HandEntryPanel({
       </Box>
 
       <Box sx={{minHeight: 18, fontSize: 13, fontWeight: 600, color: color.muted}}>
-        {result.custom ? "Custom: bodovi svake ekipe upisuju se posebno." : "Druga ekipa dobiva ostatak do 11."}
+        {result.custom ? "Ručni unos: bodovi svake ekipe upisuju se posebno." : "Druga ekipa dobiva ostatak do 11."}
       </Box>
 
       <Box
@@ -183,7 +183,7 @@ export default function HandEntryPanel({
           aria-pressed={result.custom}
           sx={{...key, background: result.custom ? color.navy : color.cream, color: result.custom ? "#FFFFFF" : color.navy, fontFamily: font.body, fontSize: 16}}
         >
-          Custom
+          Ručno
         </Box>
         <Box component="button" type="button" onClick={() => setGamePoints(0)} sx={key}>
           0

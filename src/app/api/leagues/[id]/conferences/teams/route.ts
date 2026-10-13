@@ -14,11 +14,11 @@ export async function PUT(request: NextRequest, {params}: {params: {id: string}}
 
   const leagueId = Number(params.id);
   try {
-    if (!(await leagueExists(leagueId))) return NextResponse.json({error: "League not found."}, {status: STATUS.NotFound});
+    if (!(await leagueExists(leagueId))) return NextResponse.json({error: "Liga ne postoji."}, {status: STATUS.NotFound});
     const {teams} = LeagueTeamConferencesRequestValidation.parse(await request.json());
     await setLeagueTeamConferences(leagueId, teams);
     return NextResponse.json(await getLeagueConferences(leagueId), {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to save the teams' conferences.");
+    return errorResponse(error, "Konferencije ekipa nisu spremljene.");
   }
 }

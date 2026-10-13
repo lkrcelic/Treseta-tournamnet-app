@@ -41,13 +41,13 @@ export function conferencesError(list: readonly {name?: string; color?: string}[
   if (list.length === 0) return null;
   const names = list.map((c) => (c.name ?? "").trim());
   const colors = list.map((c) => (c.color ?? "").toUpperCase());
-  if (list.length < MIN_CONFERENCES) return `A league needs at least ${MIN_CONFERENCES} conferences, or none.`;
-  if (list.length > MAX_CONFERENCES) return `A league can have at most ${MAX_CONFERENCES} conferences.`;
-  if (names.some((n) => !n)) return "Every conference needs a name.";
-  if (names.some((n) => n.length > CONFERENCE_NAME_MAX)) return `A conference name can be at most ${CONFERENCE_NAME_MAX} characters.`;
-  if (names.some((n, i) => names.findIndex((m) => sameText(n, m)) !== i)) return "Two conferences can't have the same name.";
-  if (colors.some((c) => !isConferenceColor(c))) return "Pick each conference's color from the palette.";
-  if (colors.some((c, i) => colors.indexOf(c) !== i)) return "Two conferences can't have the same color.";
+  if (list.length < MIN_CONFERENCES) return `Liga treba barem ${MIN_CONFERENCES} konferencije ili nijednu.`;
+  if (list.length > MAX_CONFERENCES) return `Liga može imati najviše ${MAX_CONFERENCES} konferencija.`;
+  if (names.some((n) => !n)) return "Svaka konferencija treba ime.";
+  if (names.some((n) => n.length > CONFERENCE_NAME_MAX)) return `Ime konferencije može imati najviše ${CONFERENCE_NAME_MAX} znakova.`;
+  if (names.some((n, i) => names.findIndex((m) => sameText(n, m)) !== i)) return "Dvije konferencije ne mogu imati isto ime.";
+  if (colors.some((c) => !isConferenceColor(c))) return "Svakoj konferenciji odaberi boju iz palete.";
+  if (colors.some((c, i) => colors.indexOf(c) !== i)) return "Dvije konferencije ne mogu imati istu boju.";
   return null;
 }
 
@@ -85,7 +85,7 @@ export function conferenceLookup(data: LeagueConferences | null | undefined): Co
 export function conferenceGroups<T extends {id: number}>(teams: readonly T[], lookup: ConferenceLookup): {name: string; teams: T[]}[] {
   const groups = lookup.conferences.map((c) => ({name: c.name, teams: teams.filter((t) => lookup.of(t.id)?.id === c.id)}));
   const none = teams.filter((t) => !lookup.of(t.id));
-  return none.length ? [...groups, {name: "Teams without a conference", teams: none}] : groups;
+  return none.length ? [...groups, {name: "Ekipe bez konferencije", teams: none}] : groups;
 }
 
 // "Distribute evenly" in Manage League: deals the teams, in table order, to the conferences in snake order (A B C C B A

@@ -13,10 +13,10 @@ export const dynamic = "force-dynamic";
 export async function GET(_request: NextRequest, {params}: {params: {id: string}}) {
   const leagueId = Number(params.id);
   try {
-    if (!(await leagueExists(leagueId))) return NextResponse.json({error: "League not found."}, {status: STATUS.NotFound});
+    if (!(await leagueExists(leagueId))) return NextResponse.json({error: "Liga ne postoji."}, {status: STATUS.NotFound});
     return NextResponse.json(await getLeagueConferences(leagueId), {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to fetch conferences.");
+    return errorResponse(error, "Konferencije se nisu učitale.");
   }
 }
 
@@ -28,9 +28,9 @@ export async function PUT(request: NextRequest, {params}: {params: {id: string}}
   const leagueId = Number(params.id);
   try {
     const {conferences} = LeagueConferencesRequestValidation.parse(await request.json());
-    if (!(await setLeagueConferences(leagueId, conferences))) return NextResponse.json({error: "League not found."}, {status: STATUS.NotFound});
+    if (!(await setLeagueConferences(leagueId, conferences))) return NextResponse.json({error: "Liga ne postoji."}, {status: STATUS.NotFound});
     return NextResponse.json(await getLeagueConferences(leagueId), {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Failed to save the conferences.");
+    return errorResponse(error, "Konferencije nisu spremljene.");
   }
 }

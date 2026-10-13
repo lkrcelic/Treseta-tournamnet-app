@@ -103,7 +103,7 @@ export default function AdminEntryPanel({
         {(
           [
             ["std", "Standardni unos", <StyleRoundedIcon key="i" />],
-            ["man", "Custom", <EditNoteRoundedIcon key="i" />],
+            ["man", "Ručni unos", <EditNoteRoundedIcon key="i" />],
           ] as const
         ).map(([mode, label, icon]) => {
           const on = entry.mode === mode;

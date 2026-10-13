@@ -20,8 +20,8 @@ export async function POST(request: NextRequest) {
 
         const resultId = await createResult(resultData);
 
-        return NextResponse.json({message: "Result successfully created", result_id: resultId}, {status: STATUS.OK});
+        return NextResponse.json({message: "Igra je spremljena.", result_id: resultId}, {status: STATUS.OK});
     } catch (error) {
-        return errorResponse(error, "Failed to save the hand.");
+        return errorResponse(error, "Igra nije spremljena.");
     }
 }

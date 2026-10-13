@@ -15,14 +15,14 @@ export async function GET(request: NextRequest, {params}: { params: { id: string
     try {
         const dbOngoingResult = await getOngoingResult(Number(id));
         if (!dbOngoingResult) {
-            return NextResponse.json({error: "Hand not found."}, {status: STATUS.NotFound});
+            return NextResponse.json({error: "Igra ne postoji."}, {status: STATUS.NotFound});
         }
 
         const ongoingResult = ResultResponseValidation.parse(dbOngoingResult);
 
         return NextResponse.json(ongoingResult, {status: STATUS.OK});
     } catch (error) {
-        return errorResponse(error, "Failed to fetch the hand.");
+        return errorResponse(error, "Igra se nije učitala.");
     }
 }
 
@@ -41,8 +41,8 @@ export async function PUT(request: NextRequest, {params}: { params: { id: string
 
         await updateOngoingResult({result_id: resultId, resultData: resultData});
 
-        return NextResponse.json({message: "Result successfully updated"}, {status: STATUS.OK});
+        return NextResponse.json({message: "Igra je spremljena."}, {status: STATUS.OK});
     } catch (error) {
-        return errorResponse(error, "Failed to update the hand.");
+        return errorResponse(error, "Igra nije spremljena.");
     }
 }

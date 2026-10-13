@@ -30,12 +30,12 @@ export async function setLeagueConferences(leagueId: number, list: LeagueConfere
   const error = conferencesError(list);
   if (error) throw new InvalidResultError(error);
   const keep = list.flatMap((c) => (c.conference_id == null ? [] : [c.conference_id]));
-  if (new Set(keep).size !== keep.length) throw new InvalidResultError("A conference is listed twice.");
+  if (new Set(keep).size !== keep.length) throw new InvalidResultError("Konferencija je navedena dvaput.");
 
   return prisma.$transaction(async (tx) => {
     if (!(await tx.league.count({where: {league_id: leagueId}}))) return false;
     const own = new Set((await tx.conference.findMany({where: {league_id: leagueId}, select: {conference_id: true}})).map((c) => c.conference_id));
-    if (keep.some((id) => !own.has(id))) throw new InvalidResultError("A conference is not in this league.");
+    if (keep.some((id) => !own.has(id))) throw new InvalidResultError("Konferencija nije u ovoj ligi.");
 
     await tx.conference.deleteMany({where: {league_id: leagueId, conference_id: {notIn: keep}}});
     for (let position = 0; position < list.length; position++) {
@@ -53,13 +53,13 @@ async function checkConferences(tx: Prisma.TransactionClient, leagueId: number, 
   const wanted = Array.from(new Set(ids));
   if (!wanted.length) return;
   const found = await tx.conference.count({where: {league_id: leagueId, conference_id: {in: wanted}}});
-  if (found !== wanted.length) throw new InvalidResultError("The conference is not in this league.");
+  if (found !== wanted.length) throw new InvalidResultError("Konferencija nije u ovoj ligi.");
 }
 
 // Puts a team of a league in one of the league's conferences, or in none (null). Returns false when the team is not
 // in the league.
 export async function setLeagueTeamConference(leagueId: number, teamId: number, conferenceId: number | null): Promise<boolean> {
-  if (teamId === BYE_TEAM_ID) throw new InvalidResultError("The bye team can't be in a conference.");
+  if (teamId === BYE_TEAM_ID) throw new InvalidResultError("Slobodna runda ne može biti u konferenciji.");
   return prisma.$transaction(async (tx) => {
     await checkConferences(tx, leagueId, conferenceId == null ? [] : [conferenceId]);
     const {count} = await tx.leagueTeam.updateMany({where: {league_id: leagueId, team_id: teamId}, data: {conference_id: conferenceId}});
@@ -69,14 +69,14 @@ export async function setLeagueTeamConference(leagueId: number, teamId: number, 
 
 // Several teams' conferences at once (Manage League · "Distribute evenly"); every team must be in the league
 export async function setLeagueTeamConferences(leagueId: number, teams: LeagueTeamConferencesRequest["teams"]): Promise<void> {
-  if (teams.some((t) => t.team_id === BYE_TEAM_ID)) throw new InvalidResultError("The bye team can't be in a conference.");
+  if (teams.some((t) => t.team_id === BYE_TEAM_ID)) throw new InvalidResultError("Slobodna runda ne može biti u konferenciji.");
   const teamIds = Array.from(new Set(teams.map((t) => t.team_id)));
-  if (teamIds.length !== teams.length) throw new InvalidResultError("A team is listed twice.");
+  if (teamIds.length !== teams.length) throw new InvalidResultError("Ekipa je navedena dvaput.");
 
   await prisma.$transaction(async (tx) => {
     await checkConferences(tx, leagueId, teams.flatMap((t) => (t.conference_id == null ? [] : [t.conference_id])));
     const inLeague = await tx.leagueTeam.count({where: {league_id: leagueId, team_id: {in: teamIds}}});
-    if (inLeague !== teamIds.length) throw new InvalidResultError("A team is not in this league.");
+    if (inLeague !== teamIds.length) throw new InvalidResultError("Ekipa nije u ovoj ligi.");
     // one update per conference
     const byConference = new Map<number | null, number[]>();
     for (const t of teams) byConference.set(t.conference_id, [...(byConference.get(t.conference_id) ?? []), t.team_id]);

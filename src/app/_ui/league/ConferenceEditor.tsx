@@ -38,7 +38,7 @@ export function ConferenceEditor({value, onChange, disabled = false}: {value: Co
   return (
     <Box sx={{display: "flex", flexDirection: "column", gap: "10px"}}>
       {value.map((r, i) => {
-        const label = r.name.trim() || `Conference ${i + 1}`;
+        const label = r.name.trim() || `Konferencija ${i + 1}`;
         return (
           <Box
             key={r.key}
@@ -50,14 +50,14 @@ export function ConferenceEditor({value, onChange, disabled = false}: {value: Co
               <TeamDot color={r.color} size={14} />
               <TextInput
                 aria-label={`Ime konferencije ${i + 1}`}
-                placeholder={i === 0 ? "e.g. Sjever" : i === 1 ? "e.g. Jug" : "Conference name"}
+                placeholder={i === 0 ? "npr. Sjever" : i === 1 ? "npr. Jug" : "Ime konferencije"}
                 value={r.name}
                 maxLength={CONFERENCE_NAME_MAX}
                 disabled={disabled}
                 onChange={(e) => setName(r.key, e.target.value)}
                 sx={{height: 48, borderRadius: "12px", fontSize: 16}}
               />
-              <GhostIconButton label={`Remove ${label}`} onClick={() => remove(r.key)} disabled={disabled || value.length <= MIN_CONFERENCES} sx={{"&:disabled": {opacity: 0.35}}}>
+              <GhostIconButton label={`Ukloni: ${label}`} onClick={() => remove(r.key)} disabled={disabled || value.length <= MIN_CONFERENCES} sx={{"&:disabled": {opacity: 0.35}}}>
                 <CloseRoundedIcon />
               </GhostIconButton>
             </Box>
@@ -104,7 +104,7 @@ export function ConferenceEditor({value, onChange, disabled = false}: {value: Co
       {value.length < MAX_CONFERENCES && (
         <OutlineButton height={48} onClick={add} disabled={disabled} sx={{borderWidth: "1.5px", borderColor: "rgba(60,74,103,.25)", fontSize: 15}}>
           <AddRoundedIcon sx={{fontSize: 22}} />
-          Add conference
+          Dodaj konferenciju
         </OutlineButton>
       )}
     </Box>

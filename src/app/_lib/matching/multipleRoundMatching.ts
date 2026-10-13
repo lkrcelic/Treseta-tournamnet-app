@@ -1,5 +1,6 @@
 import {BYE_TEAM_ID} from "@/app/_lib/bye";
 import {maxWeightMatching, WeightedEdge} from "./blossom";
+import {plural} from "@/app/_lib/ui/text";
 
 export interface Team {
   readonly id: number;
@@ -338,7 +339,7 @@ export function generateGroupedRoundPairings(groups: {name: string; teams: Team[
   const small = playing.find((g) => g.teams.length <= options.numberOfRounds);
   if (small) {
     throw new Error(
-      `${small.name} has ${small.teams.length} ${small.teams.length === 1 ? "team" : "teams"} tonight, too few for ${options.numberOfRounds} rounds within the conference.`
+      `${small.name} večeras ima ${small.teams.length} ${plural(small.teams.length, "ekipu", "ekipe", "ekipa")}, premalo za ${options.numberOfRounds} ${plural(options.numberOfRounds, "kolo", "kola", "kola")} unutar konferencije.`
     );
   }
   const budget = Math.max(500, Math.floor((options.timeBudgetMs ?? DEFAULT_TIME_BUDGET_MS) / Math.max(1, playing.length)));

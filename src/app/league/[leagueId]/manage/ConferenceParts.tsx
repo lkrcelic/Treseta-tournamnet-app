@@ -11,7 +11,7 @@ import ShuffleRoundedIcon from "@mui/icons-material/ShuffleRounded";
 import {Box, Popover} from "@mui/material";
 import {useRef, useState} from "react";
 
-// A team's conference in Manage League · Teams: a chip "● Sjever ▾" (or "No conference") under the team's name,
+// A team's conference in Manage League · Teams: a chip "● Sjever ▾" (or "Bez konferencije") under the team's name,
 // opening the league's conferences in a menu (desktop) or a sheet (phone)
 export function ConferencePicker({
   teamName,
@@ -28,7 +28,7 @@ export function ConferencePicker({
   const [open, setOpen] = useState(false);
   const anchor = useRef<HTMLButtonElement>(null);
   const current = conferences.find((c) => c.id === value) ?? null;
-  const options = [...conferences, {id: null, name: "No conference", color: null}];
+  const options = [...conferences, {id: null, name: "Bez konferencije", color: null}];
   const choose = (id: number | null) => {
     setOpen(false);
     if (id !== (current?.id ?? null)) onPick(id);
@@ -104,7 +104,7 @@ export function ConferencePicker({
       >
         <TeamDot color={current?.color ?? null} />
         <Box component="span" sx={ellipsis}>
-          {current?.name ?? "No conference"}
+          {current?.name ?? "Bez konferencije"}
         </Box>
         <ExpandMoreRoundedIcon sx={{fontSize: 18, flex: "none", color: color.muted}} />
       </Box>
@@ -128,7 +128,7 @@ export function ConferencePicker({
   );
 }
 
-// Manage League · Teams: how many teams each conference has, and "Distribute evenly": every team is dealt out in snake
+// Manage League · Teams: how many teams each conference has, and "Rasporedi ravnomjerno": every team is dealt out in snake
 // order of the league table, so the conferences are as big and about as strong as each other. Asked first, since it
 // replaces the teams' conferences. order: the league's team ids in table order.
 export function DistributeCard({
@@ -164,7 +164,7 @@ export function DistributeCard({
   return (
     <Card component="section" aria-labelledby="conf-teams" sx={{p: "20px", display: "flex", flexDirection: "column", gap: "12px", borderRadius: "24px"}}>
       <Box component="h2" id="conf-teams" sx={{m: 0, fontFamily: font.display, fontSize: 22, fontWeight: 800}}>
-        Teams per conference
+        Ekipe po konferencijama
       </Box>
       <Box component="ul" sx={{listStyle: "none", m: 0, p: 0, display: "flex", flexDirection: "column"}}>
         {counts.map((c) => (
@@ -182,7 +182,7 @@ export function DistributeCard({
           <Box component="li" sx={{minHeight: 40, display: "flex", alignItems: "center", gap: "10px"}}>
             <TeamDot color={null} size={10} />
             <Box component="span" sx={{flex: 1, fontSize: 15, fontWeight: 600, color: color.red}}>
-              No conference
+              Bez konferencije
             </Box>
             <Box component="span" sx={{fontSize: 15, fontWeight: 700, color: color.red, fontVariantNumeric: "tabular-nums"}}>
               {unassigned}
@@ -193,24 +193,25 @@ export function DistributeCard({
       {confirming ? (
         <Box role="alert" sx={{display: "flex", flexDirection: "column", gap: "10px", p: "12px 14px", borderRadius: "14px", background: color.tableHead}}>
           <Box sx={{fontSize: 14, lineHeight: 1.4, color: color.ink}}>
-            All {teams.length} {plural(teams.length, "team", "teams", "teams")} are dealt out by the league table:{" "}
-            <b>{conferences.map((c) => `${c.name} ${plan.filter((p) => p.conference_id === c.id).length}`).join(" · ")}</b>. This replaces
-            their conferences now.
+            {plural(teams.length, "Raspoređuje se", "Raspoređuju se", "Raspoređuje se")} {teams.length} {plural(teams.length, "ekipa", "ekipe", "ekipa")} po
+            poretku lige:{" "}
+            <b>{conferences.map((c) => `${c.name} ${plan.filter((p) => p.conference_id === c.id).length}`).join(" · ")}</b>. Ovo
+            zamjenjuje njihove dosadašnje konferencije.
           </Box>
           {error && <ErrorNote>{error}</ErrorNote>}
           <Box sx={{display: "flex", gap: "8px"}}>
             <OutlineButton height={44} onClick={() => setConfirming(false)} disabled={busy} sx={{flex: 1, fontSize: 15, border: "1.5px solid rgba(60,74,103,.25)"}}>
-              Cancel
+              Odustani
             </OutlineButton>
             <SolidButton height={44} onClick={go} loading={busy} sx={{flex: 1, fontSize: 15}}>
-              Distribute
+              Rasporedi
             </SolidButton>
           </Box>
         </Box>
       ) : (
         <OutlineButton height={48} onClick={() => setConfirming(true)} disabled={teams.length === 0} sx={{borderWidth: "1.5px", borderColor: "rgba(60,74,103,.25)", fontSize: 15}}>
           <ShuffleRoundedIcon sx={{fontSize: 20}} />
-          Distribute evenly
+          Rasporedi ravnomjerno
         </OutlineButton>
       )}
     </Card>

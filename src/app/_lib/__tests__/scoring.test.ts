@@ -15,9 +15,9 @@ test("a normal hand splits 11 between the teams", () => {
 });
 
 test("a normal hand that doesn't add up to 11 is refused", () => {
-  assert.match(handError(6, 6, false)!, /add up to 11/);
-  assert.match(handError(14, 3, false)!, /add up to 11/);
-  assert.match(handError(5, 0, false)!, /add up to 11/);
+  assert.match(handError(6, 6, false)!, /mora biti 11/);
+  assert.match(handError(14, 3, false)!, /mora biti 11/);
+  assert.match(handError(5, 0, false)!, /mora biti 11/);
 });
 
 test("a custom hand is typed freely for each team, up to the limit", () => {
@@ -25,14 +25,14 @@ test("a custom hand is typed freely for each team, up to the limit", () => {
   assert.equal(handError(0, 4, true), null);
   assert.equal(handError(6, 5, true), null);
   assert.equal(handError(99, 99, true), null);
-  assert.match(handError(100, 0, true)!, /more than 99/);
+  assert.match(handError(100, 0, true)!, /više od 99/);
 });
 
 test("points can't be negative, fractional or both zero", () => {
   for (const custom of [false, true]) {
-    assert.match(handError(12, -1, custom)!, /negative/);
-    assert.match(handError(5.5, 5.5, custom)!, /whole numbers/);
-    assert.match(handError(0, 0, custom)!, /at least one team/);
+    assert.match(handError(12, -1, custom)!, /negativni/);
+    assert.match(handError(5.5, 5.5, custom)!, /cijeli brojevi/);
+    assert.match(handError(0, 0, custom)!, /barem jednoj ekipi/);
   }
 });
 
