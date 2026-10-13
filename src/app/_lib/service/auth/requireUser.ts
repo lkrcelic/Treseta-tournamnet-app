@@ -3,6 +3,7 @@ import {NextRequest, NextResponse} from "next/server";
 import {prisma} from "@/app/_lib/prisma";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {adminCheck, isAdminRole} from "@/app/_lib/players/admin";
+import {PUBLISHED_ROUND} from "@/app/_lib/roundStatus";
 import {getAuthorizedUser} from "./getAuthorizedUser";
 
 // The middleware lets every /api request through, so each route checks the session itself with these helpers:
@@ -35,7 +36,9 @@ function unauthorizedResponse(): NextResponse {
   return NextResponse.json({error: "Prijava je istekla. Prijavi se ponovno."}, {status: STATUS.Unauthorized});
 }
 
-// Only the players of the two teams in a round (or an admin) may enter or change its results.
+// Only the players of the two teams in a round (or an admin) may enter or change its results, and the players only once
+// the round is published (Upravljanje ligom · Skica). Nobody starts a match or confirms a lineup in an unpublished
+// round: the services refuse that for admins too, saying why.
 export async function canPlayRound(user: Player, roundId: number | null | undefined): Promise<boolean> {
   if (isAdminRole(user)) return true;
   if (roundId == null) return false;
@@ -43,6 +46,7 @@ export async function canPlayRound(user: Player, roundId: number | null | undefi
   const round = await prisma.round.findFirst({
     where: {
       id: roundId,
+      ...PUBLISHED_ROUND,
       OR: [
         {team1: {teamPlayers: {some: {player_id: user.id}}}},
         {team2: {teamPlayers: {some: {player_id: user.id}}}},

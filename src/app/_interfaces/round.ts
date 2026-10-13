@@ -43,5 +43,27 @@ export const RoundCreateRequestValidation = z.object({
 export const REPEAT_MATCHUPS = "REPEAT_MATCHUPS";
 
 export type RoundCreateRequest = z.infer<typeof RoundCreateRequestValidation>;
+
+// Upravljanje ligom · Skica: a night's rounds with their tables and status (GET /api/leagues/:id/nights/:date/draft)
+export type DraftTable = {
+  id: number;
+  table: number | null;
+  // smoking is allowed at the table
+  smoking: boolean;
+  team1: {id: number; name: string};
+  team2: {id: number; name: string};
+};
+
+export type DraftRound = {
+  roundNumber: number;
+  status: "DRAFT" | "APPROVED" | "PUBLISHED";
+  // ISO time; null until it is published
+  publishedAt: string | null;
+  // one of its tables: the round's id for PATCH /api/rounds/:id/approve and /unapprove
+  id: number;
+  tables: DraftTable[];
+};
+
+export type DraftNight = {date: string; rounds: DraftRound[]};
 export type RoundResponse = z.infer<typeof RoundResponseValidation>;
 export type RoundExtendedResponse = z.infer<typeof RoundExtendedResponseValidation>;

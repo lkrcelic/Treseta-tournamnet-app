@@ -69,6 +69,7 @@ export const NOUN = {
   pušač: ["pušač", "pušača", "pušača"],
   pobjeda: ["pobjeda", "pobjede", "pobjeda"],
   odigranoKolo: ["odigrano kolo", "odigrana kola", "odigranih kola"],
+  neobjavljenoKolo: ["neobjavljeno kolo", "neobjavljena kola", "neobjavljenih kola"],
   ekipaTraži: ["ekipa traži", "ekipe traže", "ekipa traži"],
   ekipaNeIgra: ["ekipa ne igra", "ekipe ne igraju", "ekipa ne igra"],
   neaktivna: ["neaktivna", "neaktivne", "neaktivnih"],

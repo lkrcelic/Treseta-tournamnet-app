@@ -1,8 +1,11 @@
 import { prisma } from "@/app/_lib/prisma";
+import { PUBLISHED_ROUND } from "@/app/_lib/roundStatus";
 
+// The nights the league played: those with published rounds (a night that has only a draft isn't one yet)
 export async function getRoundDatesByLeagueId(league_id: number): Promise<string[]> {
   const rounds = await prisma.round.findMany({
     where: {
+      ...PUBLISHED_ROUND,
       leagueRounds: {
         some: {
           league_id: league_id,

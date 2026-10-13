@@ -5,6 +5,7 @@ import {z} from "zod";
 import {defaultLineup, PLAYERS_PER_TEAM} from "@/app/_lib/lineup";
 import {displayName, fullName} from "@/app/_lib/players/names";
 import {lineupVisible, Viewer} from "@/app/_lib/players/privacy";
+import {ROUND_NOT_PUBLISHED} from "@/app/_lib/roundStatus";
 
 // Who plays a round: two players from each team, picked on Start Game before the scoreboard opens. Ratings of the
 // round go to these players (rounds without a lineup rate the whole roster). A deactivated player isn't offered or
@@ -143,6 +144,7 @@ export async function saveLineup(roundId: number, lineup: LineupSave): Promise<v
       where: {id: roundId},
       select: {
         open: true,
+        status: true,
         team1_id: true,
         team2_id: true,
         team1: {select: {teamPlayers: {select: {player: {select: savePlayerSelect}}}}},
@@ -151,6 +153,8 @@ export async function saveLineup(roundId: number, lineup: LineupSave): Promise<v
     });
     if (!round) throw new NotFoundError("Runda ne postoji.");
     if (!round.open) throw new InvalidResultError(ROUND_FINISHED);
+    // the lineup is confirmed when the round is played, which waits for it to be published
+    if (round.status !== "PUBLISHED") throw new InvalidResultError(ROUND_NOT_PUBLISHED);
 
     // a player deactivated while the screen was open: say who, instead of the count below
     const inactive = [...round.team1.teamPlayers, ...round.team2.teamPlayers]

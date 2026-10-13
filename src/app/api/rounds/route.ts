@@ -2,7 +2,10 @@ import {NextRequest, NextResponse} from "next/server";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {prisma} from "@/app/_lib/prisma";
 import {requireUser} from "@/app/_lib/service/auth/requireUser";
+import {PUBLISHED_ROUND} from "@/app/_lib/roundStatus";
 
+// A night's tables (Dnevni poredak, the menu's live dot): published rounds only, for admins too (their drafts are on
+// Upravljanje ligom · Skica)
 export async function GET(request: NextRequest) {
   const auth = await requireUser(request);
   if (auth.response) return auth.response;
@@ -17,7 +20,7 @@ export async function GET(request: NextRequest) {
     const teamId = searchParams.get('team_id');
     const leagueId = searchParams.get('league_id');
 
-    const whereClause: Record<string, unknown> = {};
+    const whereClause: Record<string, unknown> = {...PUBLISHED_ROUND};
     const includeExtra: Record<string, unknown> = {};
 
     if (roundDate) {

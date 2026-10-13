@@ -2,6 +2,7 @@ import {Prisma} from "@prisma/client";
 import {BYE_TEAM_ID, isByeTeam} from "@/app/_lib/bye";
 import {lineupFreezeRows} from "@/app/_lib/lineup";
 import {RATINGS_FROM} from "@/app/_lib/service/admin/recalc";
+import {PUBLISHED_ROUND} from "@/app/_lib/roundStatus";
 
 /**
  * Before these teams' rosters change (a player added, removed or deleted), saves each team's roster of today as the
@@ -13,10 +14,11 @@ export async function freezeRosterLineups(tx: Prisma.TransactionClient, teamIds:
   const ids = Array.from(new Set(teamIds)).filter((id) => !isByeTeam(id));
   if (ids.length === 0) return;
 
-  // the rounds the rating replay counts (replayRatings): finished, no bye, since ratings began
+  // the rounds the rating replay counts (replayRatings): finished, published, no bye, since ratings began
   const rounds = await tx.round.findMany({
     where: {
       open: false,
+      ...PUBLISHED_ROUND,
       round_date: {gte: RATINGS_FROM},
       team1_id: {not: BYE_TEAM_ID},
       team2_id: {not: BYE_TEAM_ID},

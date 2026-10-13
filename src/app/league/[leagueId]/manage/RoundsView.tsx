@@ -17,13 +17,17 @@ import React, {useCallback, useEffect, useRef, useState} from "react";
 const UNDO_MS = 8000;
 const keyOf = (r: LeagueRoundSummary) => `${r.date}|${r.roundNumber}`;
 
+// a round not published yet is a draft or approved (Skica); a published one played, being played or not started
 const STATUS: Record<LeagueRoundSummary["status"], {label: string; ink: string}> = {
+  draft: {label: "Skica", ink: color.muted},
+  approved: {label: "Odobreno", ink: color.navy},
   played: {label: "Odigrano", ink: color.green},
   live: {label: "U tijeku", ink: color.red},
   new: {label: "Nije počelo", ink: color.faint},
 };
 
 function warning(r: LeagueRoundSummary): string {
+  if (r.status === "draft" || r.status === "approved") return `Kolo još nije objavljeno. Uklonit će se ${count(r.tables, NOUN.par)}.`;
   if (r.status === "new") return `Još se ništa nije odigralo. Uklonit će se ${count(r.tables, NOUN.par)}.`;
   if (r.status === "live") return `Ovo kolo je u tijeku. Uklonit će se ${count(r.tables, NOUN.stol)} i njihove igre.`;
   return `Uklonit će se ${count(r.tables, NOUN.stol)} i svi upisani rezultati. Poredak i rejting se ponovno izračunaju.`;

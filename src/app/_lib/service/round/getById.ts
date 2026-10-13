@@ -1,14 +1,17 @@
 import {RoundExtendedResponse, RoundExtendedResponseValidation} from "@/app/_interfaces/round";
 import {prisma} from "@/app/_lib/prisma";
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
+import {visibleRounds} from "@/app/_lib/roundStatus";
 
-export async function getRoundById(id: number): Promise<RoundExtendedResponse> {
+// admin: also a round that isn't published yet (for anyone else it doesn't exist)
+export async function getRoundById(id: number, admin = false): Promise<RoundExtendedResponse> {
     // an id that isn't a whole number can't be a round
     if (!Number.isInteger(id)) throw new NotFoundError("Runda ne postoji.");
 
-    const dbRound = await prisma.round.findUnique({
+    const dbRound = await prisma.round.findFirst({
         where: {
             id: Number(id),
+            ...visibleRounds(admin),
         },
         include: {
             team1: {

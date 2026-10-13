@@ -5,7 +5,6 @@ import useLeagueTeams, {LeagueTeam} from "@/app/_hooks/useLeagueTeams";
 import {updateCachedLeague} from "@/app/_hooks/useLeagues";
 import {smokingSummary} from "@/app/_lib/ui/smoking";
 import {count, matchesQuery, NOUN, plural} from "@/app/_lib/ui/text";
-import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, EmptyState, ErrorNote, LoadingRows, OutlineButton, PrimaryButton, SearchInput, SectionLabel, SolidButton, Stepper, SwitchRow, SwitchTrack, TeamLabel} from "@/app/_ui/sp";
 import useConferences from "@/app/_hooks/useConferences";
@@ -22,9 +21,9 @@ const FIRST_SMOKING_TABLES = [1, 2];
 
 // Novo kolo for one league: the options, the smoking tables, the teams present tonight and the create action, laid
 // out by Upravljanje ligom's "Novo kolo" view (desktop only). defaultSmokingTables: the ones of the league's last round
-// creation (the switch starts on with them).
-function useCreateRound(leagueId: number, defaultRounds?: number, defaultSmokingTables?: number[]) {
-  const router = useTransitionRouter();
+// creation (the switch starts on with them). The rounds are created as drafts; onCreated gets their night, and
+// Upravljanje ligom opens Skica, where the admin approves and publishes them.
+function useCreateRound(leagueId: number, onCreated: (date: string) => void, defaultRounds?: number, defaultSmokingTables?: number[]) {
   const [rounds, setRounds] = useState(4);
   const [windowSize, setWindowSize] = useState(8);
   const [query, setQuery] = useState("");
@@ -102,11 +101,11 @@ function useCreateRound(leagueId: number, defaultRounds?: number, defaultSmoking
     setRepeats(null);
     try {
       const tables = smokingOn ? smokingTables : [];
-      const roundNumber = await createMultipleRoundsAPI(leagueId, selected.map((t) => t.id), rounds, window, allowRepeats, tables, hasConferences && withinConferences);
+      const {date} = await createMultipleRoundsAPI(leagueId, selected.map((t) => t.id), rounds, window, allowRepeats, tables, hasConferences && withinConferences);
       // the next Create Round in this session starts with them too
       updateCachedLeague(leagueId, {smokingTables: tables});
-      // replace, so the back button doesn't lead to this form again
-      router.replace(`/round/pairings/${roundNumber}?league=${leagueId}`);
+      setCreating(false);
+      onCreated(date);
     } catch (e) {
       if (e instanceof RepeatMatchupsError) setRepeats(e.repeats);
       else setCreateError(e instanceof Error ? e.message : "Kolo nije moguće napraviti.");
@@ -248,8 +247,19 @@ function InactiveBadge() {
 
 // Upravljanje ligom (desktop) · Novo kolo: options, the smoking tables, the league's notes and the create action on the
 // left; who sits out and every team's switch on the right. The smoking plan opens over both.
-export function CreateRoundView({leagueId, defaultRounds, defaultSmokingTables}: {leagueId: number; defaultRounds?: number; defaultSmokingTables?: number[]}) {
-  const cr = useCreateRound(leagueId, defaultRounds, defaultSmokingTables);
+export function CreateRoundView({
+  leagueId,
+  onCreated,
+  defaultRounds,
+  defaultSmokingTables,
+}: {
+  leagueId: number;
+  // the rounds are drafts on this night (YYYY-MM-DD)
+  onCreated: (date: string) => void;
+  defaultRounds?: number;
+  defaultSmokingTables?: number[];
+}) {
+  const cr = useCreateRound(leagueId, onCreated, defaultRounds, defaultSmokingTables);
   // under the plan the view can't be reached by Tab or a screen reader (React 18 has no inert prop, hence the spread)
   const hidden = cr.planOpen ? ({inert: ""} as object) : {};
   return (

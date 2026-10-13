@@ -9,6 +9,8 @@ import {ensureLeagueNight} from "@/app/_lib/service/league/nights";
 
 export type CreatedRounds = {
   firstRoundNumber: number;
+  // the night they are on (YYYY-MM-DD): tonight in league time
+  date: string;
   // true when the same rounds were already created and not started yet, so nothing new was created
   alreadyCreated: boolean;
 };
@@ -21,7 +23,8 @@ export type BatchSmoking = {
   tables?: number[];
 };
 
-// Creates the rounds for one or more round numbers of a league in a single transaction, every pair at its table.
+// Creates the rounds for one or more round numbers of a league in a single transaction, every pair at its table, as
+// drafts: players see them once an admin approves and publishes them (Upravljanje ligom · Skica).
 // If the admin submits the same teams again (back button, double click) while the previous batch hasn't been
 // started yet, the existing rounds are returned instead of creating duplicates.
 export async function insertRoundBatch(roundsPairs: SeatedPair[][], leagueId: number, smoking: BatchSmoking = {}): Promise<CreatedRounds> {
@@ -29,10 +32,12 @@ export async function insertRoundBatch(roundsPairs: SeatedPair[][], leagueId: nu
     // One round creation per league at a time
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(${leagueId})`;
 
+    const roundDate = leagueDate();
+    const date = roundDate.toISOString().slice(0, 10);
     const teamIds = new Set(roundsPairs.flat().flatMap((pair) => [pair.teamOne.id, pair.teamTwo.id]));
     const existingRoundNumber = await findUnstartedBatch(tx, leagueId, teamIds);
     if (existingRoundNumber !== null) {
-      return {firstRoundNumber: existingRoundNumber, alreadyCreated: true};
+      return {firstRoundNumber: existingRoundNumber, date, alreadyCreated: true};
     }
 
     const maxRound = await tx.round.aggregate({
@@ -41,14 +46,13 @@ export async function insertRoundBatch(roundsPairs: SeatedPair[][], leagueId: nu
     });
     const firstRoundNumber = (maxRound._max.round_number ?? 0) + 1;
 
-    const roundDate = leagueDate();
     for (let i = 0; i < roundsPairs.length; i++) {
       await insertRounds(tx, roundsPairs[i], leagueId, firstRoundNumber + i, roundDate, smoking.smokers ?? new Map());
     }
     await ensureLeagueNight(tx, leagueId, roundDate);
     if (smoking.tables) await tx.league.update({where: {league_id: leagueId}, data: {smoking_tables: smoking.tables}});
 
-    return {firstRoundNumber, alreadyCreated: false};
+    return {firstRoundNumber, date, alreadyCreated: false};
   }, {timeout: 30000});
 }
 
@@ -73,7 +77,9 @@ async function insertRounds(
         smoking_table: pair.smoking,
         team1_smokers: smokers.get(pair.teamOne.id) ?? 0,
         team2_smokers: smokers.get(pair.teamTwo.id) ?? 0,
-        // A bye round counts as won 2:0 by the real team and is closed right away
+        status: "DRAFT",
+        // A bye round counts as won 2:0 by the real team and is closed right away; the standings count it once the
+        // round is published (publishNight)
         ...(isByeRound && {
           team1_wins: isByeTeam(pair.teamOne.id) ? 0 : 2,
           team2_wins: isByeTeam(pair.teamOne.id) ? 2 : 0,
@@ -83,11 +89,7 @@ async function insertRounds(
       },
     });
 
-    if (isByeRound) {
-      await createByeMatches(tx, round.id, pair.teamOne.id);
-      const realTeamId = isByeTeam(pair.teamOne.id) ? pair.teamTwo.id : pair.teamOne.id;
-      await tx.$executeRaw`CALL update_team_score(${realTeamId}, ${leagueId})`;
-    }
+    if (isByeRound) await createByeMatches(tx, round.id, pair.teamOne.id);
   }
 }
 

@@ -36,7 +36,8 @@ export const deleteHandAPI = (kind: HandKind, resultId: number) =>
 
 export const finishTableMatchAPI = (roundId: number) => send(`/api/admin/tables/${roundId}/finish`, "POST", undefined, "Meč nije završen.");
 
-export type LeagueRoundSummary = {date: string; roundNumber: number; tables: number; status: "played" | "live" | "new"};
+// status: how far a published round got; a round not published yet is "draft" or "approved" (Upravljanje ligom · Skica)
+export type LeagueRoundSummary = {date: string; roundNumber: number; tables: number; status: "draft" | "approved" | "played" | "live" | "new"};
 
 export const getLeagueRoundsAPI = (leagueId: number): Promise<LeagueRoundSummary[]> =>
   send(`/api/admin/leagues/${leagueId}/rounds`, "GET", undefined, "Kola se nisu učitala.");

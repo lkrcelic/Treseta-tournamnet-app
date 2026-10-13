@@ -154,6 +154,8 @@ test("every admin endpoint calls requireAdmin", () => {
   const adminFiles = [
     ...routeFiles(join(API, "admin")),
     join(API, "matches", "route.ts"),
+    // Upravljanje ligom · Skica: a night's rounds before they are published, and discarding them
+    join(API, "leagues", "[id]", "nights", "[date]", "draft", "route.ts"),
   ];
   // the mutations (reads there are for players too); the player ones are in ALLOWED_WITHOUT_ADMIN
   const groups: Record<string, string[]> = {

@@ -3,6 +3,7 @@ import {OngoingMatch} from "@prisma/client";
 import {CreateOngoingMatchRequest} from "@/app/_interfaces/match";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {lockRound, MATCHES_PER_ROUND} from "@/app/_lib/service/round/finish";
+import {ROUND_NOT_PUBLISHED} from "@/app/_lib/roundStatus";
 
 export async function createOngoingMatch(createRequest: CreateOngoingMatchRequest): Promise<OngoingMatch> {
     return prisma.$transaction(async (tx) => {
@@ -10,6 +11,10 @@ export async function createOngoingMatch(createRequest: CreateOngoingMatchReques
         const round = await lockRound(tx, createRequest.round_id);
         if (!round) {
             throw new InvalidResultError("Runda ne postoji.");
+        }
+        // nobody plays a round before it is published
+        if (round.status !== "PUBLISHED") {
+            throw new InvalidResultError(ROUND_NOT_PUBLISHED);
         }
 
         const existingOngoingMatch = await tx.ongoingMatch.findFirst({

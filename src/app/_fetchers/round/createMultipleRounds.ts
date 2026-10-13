@@ -17,7 +17,7 @@ export async function createMultipleRoundsAPI(
   // the tables where smoking is allowed tonight (empty: none)
   smokingTables?: number[],
   withinConferences?: boolean,
-): Promise<number> {
+): Promise<{roundNumber: number; date: string}> {
   const response = await apiFetch("/api/rounds/generate-multiple", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
@@ -38,6 +38,7 @@ export async function createMultipleRoundsAPI(
   if (!response.ok) {
     throw new Error(await responseErrorMessage(response, "Kolo nije napravljeno."));
   }
+  // the first new round's number and the night (YYYY-MM-DD) the drafts are on
   const data = await response.json();
-  return data.round_number;
+  return {roundNumber: data.round_number, date: data.date};
 }

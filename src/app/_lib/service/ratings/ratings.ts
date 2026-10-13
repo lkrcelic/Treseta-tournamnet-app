@@ -10,6 +10,7 @@ import {PlayerRatingDetail, RatingNight, RatingRow, RatingsList} from "@/app/_in
 import {PLAYER_NOT_FOUND} from "@/app/_interfaces/player";
 import {displayName} from "@/app/_lib/players/names";
 import {ratingSummary, RatingSummary} from "@/app/_lib/ui/ratings";
+import {PUBLISHED_ROUND} from "@/app/_lib/roundStatus";
 
 // Player ratings across all leagues: everyone on a team or with a rated round, highest rating first. Deleted players
 // aren't listed (their rounds still count for everyone else's rating); usernames are private, so they aren't sent.
@@ -42,7 +43,10 @@ export async function allRatings(): Promise<RatingRow[]> {
                    JOIN "Team" t ON t.team_id = tp.team_id
           WHERE tp.player_id = p.id
             AND t.team_id <> ${BYE_TEAM_ID}
-          ORDER BY (SELECT MAX(r.round_date) FROM "Round" r WHERE r.team1_id = t.team_id OR r.team2_id = t.team_id) DESC NULLS LAST,
+          ORDER BY (SELECT MAX(r.round_date)
+                    FROM "Round" r
+                    WHERE (r.team1_id = t.team_id OR r.team2_id = t.team_id)
+                      AND r.status = 'PUBLISHED') DESC NULLS LAST,
                    t.team_name
           LIMIT 1) team ON true
       WHERE p.deleted_at IS NULL
@@ -106,6 +110,7 @@ export async function lastNights(playerId: number, nights: {night: Date; change:
   const rounds = await prisma.round.findMany({
     where: {
       open: false,
+      ...PUBLISHED_ROUND,
       round_date: {in: nights.map((n) => n.night), gte: RATINGS_FROM},
       team1_id: {not: BYE_TEAM_ID},
       team2_id: {not: BYE_TEAM_ID},

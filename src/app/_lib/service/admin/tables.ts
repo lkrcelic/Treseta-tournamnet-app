@@ -5,13 +5,24 @@ import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {createByeMatches} from "@/app/_lib/service/round/insertPairRounds";
 import {isRatedRound, recalcTeamScores, replayRatings} from "./recalc";
 import {teamSmokers} from "@/app/_lib/service/team/smokers";
+import {RoundStatus, roundStatusOf} from "@/app/_lib/roundStatus";
 
 // Admin edits of a night's tables (a "round number" of a league on a date is a set of tables, one Round row each).
 // A table whose teams change loses what was played at it; standings and, when a counted result changed, ratings
 // are recalculated in the same transaction.
 
 type Tx = Prisma.TransactionClient;
-type TableRound = {id: number; team1_id: number; team2_id: number; open: boolean; round_number: number | null; round_date: Date | null; table_number: number | null};
+type TableRound = {
+  id: number;
+  team1_id: number;
+  team2_id: number;
+  open: boolean;
+  round_number: number | null;
+  round_date: Date | null;
+  table_number: number | null;
+  status: RoundStatus;
+  published_at: Date | null;
+};
 
 export class NotFoundError extends Error {
   constructor(message: string) {
@@ -20,7 +31,17 @@ export class NotFoundError extends Error {
   }
 }
 
-const tableSelect = {id: true, team1_id: true, team2_id: true, open: true, round_number: true, round_date: true, table_number: true} as const;
+const tableSelect = {
+  id: true,
+  team1_id: true,
+  team2_id: true,
+  open: true,
+  round_number: true,
+  round_date: true,
+  table_number: true,
+  status: true,
+  published_at: true,
+} as const;
 
 // The table and the league it belongs to, with the league locked for edits (same lock as round creation)
 async function loadTable(tx: Tx, roundId: number): Promise<{table: TableRound; leagueId: number}> {
@@ -148,7 +169,8 @@ export async function removeTable(roundId: number): Promise<void> {
   }, {timeout: 30000});
 }
 
-// Adds a table to a round that exists on that night; both teams must not be playing in that round yet
+// Adds a table to a round that exists on that night; both teams must not be playing in that round yet. The table is
+// published (or not) as the round's other tables are.
 export async function addTable(leagueId: number, roundDate: Date, roundNumber: number, team1Id: number, team2Id: number): Promise<number> {
   if (team1Id === team2Id) throw new InvalidResultError("Ekipa ne može igrati sama protiv sebe.");
   if (isByeTeam(team1Id) || isByeTeam(team2Id)) throw new InvalidResultError("Slobodna runda ne može biti za stolom.");
@@ -171,6 +193,8 @@ export async function addTable(leagueId: number, roundDate: Date, roundNumber: n
         table_number: tableNumber,
         team1_smokers: smokers.get(team1Id) ?? 0,
         team2_smokers: smokers.get(team2Id) ?? 0,
+        status: roundStatusOf(tables),
+        published_at: roundStatusOf(tables) === "PUBLISHED" ? tables[0].published_at : null,
         leagueRounds: {create: {league_id: leagueId}},
       },
     });
@@ -182,7 +206,8 @@ export type RoundSummary = {
   date: string; // YYYY-MM-DD
   roundNumber: number;
   tables: number;
-  status: "played" | "live" | "new";
+  // how far a published round got; a round not published yet is a draft or approved (Upravljanje ligom · Skica)
+  status: "draft" | "approved" | "played" | "live" | "new";
 };
 
 // The league's rounds (a round number on a night), newest first, with how far they got
@@ -204,11 +229,16 @@ export async function listLeagueRounds(leagueId: number): Promise<RoundSummary[]
   return Array.from(groups, ([key, tables]) => {
     const [date, n] = key.split("|");
     const played = tables.filter((t) => !isBye(t));
-    const status: RoundSummary["status"] = played.length > 0 && played.every((t) => !t.open)
-      ? "played"
-      : played.some((t) => !t.open || t.active || t._count.matches > 0 || t._count.ongoingMatches > 0)
-        ? "live"
-        : "new";
+    const publication = roundStatusOf(tables);
+    const status: RoundSummary["status"] = publication === "DRAFT"
+      ? "draft"
+      : publication === "APPROVED"
+        ? "approved"
+        : played.length > 0 && played.every((t) => !t.open)
+          ? "played"
+          : played.some((t) => !t.open || t.active || t._count.matches > 0 || t._count.ongoingMatches > 0)
+            ? "live"
+            : "new";
     return {date, roundNumber: Number(n), tables: tables.length, status};
   }).sort((a, b) => b.date.localeCompare(a.date) || b.roundNumber - a.roundNumber);
 }

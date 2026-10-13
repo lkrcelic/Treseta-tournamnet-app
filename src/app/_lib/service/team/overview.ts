@@ -8,6 +8,7 @@ import {rosterUsername, Viewer} from "@/app/_lib/players/privacy";
 import {getLeagueStandings} from "@/app/_lib/service/league/getStandings";
 import {ratingSummaries} from "@/app/_lib/service/ratings/ratings";
 import {aggregateTeamNights, bestRank, teamLeagueRows} from "@/app/_lib/ui/profiles";
+import {PUBLISHED_ROUND} from "@/app/_lib/roundStatus";
 import {TeamNight, TeamOverview, TeamOverviewPlayer} from "@/app/_interfaces/profiles";
 
 // Zadnje večeri shows this many nights
@@ -107,6 +108,7 @@ async function lastTeamNights(teamId: number): Promise<TeamNight[]> {
       FROM "Round" r
                JOIN "LeagueRound" lr ON lr.round_id = r.id
       WHERE r.open = false
+        AND r.status = 'PUBLISHED'
         AND r.round_date IS NOT NULL
         AND (r.team1_id = ${teamId} OR r.team2_id = ${teamId})
       ORDER BY r.round_date DESC
@@ -116,6 +118,7 @@ async function lastTeamNights(teamId: number): Promise<TeamNight[]> {
   const rounds = await prisma.round.findMany({
     where: {
       open: false,
+      ...PUBLISHED_ROUND,
       round_date: {in: dates.map((d) => d.round_date)},
       OR: [{team1_id: teamId}, {team2_id: teamId}],
     },

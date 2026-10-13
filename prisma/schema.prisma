@@ -16,6 +16,13 @@ enum RoleEnum {
   PLAYER
 }
 
+// A round's way to the players: created as a draft, approved by an admin, then published
+enum RoundStatus {
+  DRAFT
+  APPROVED
+  PUBLISHED
+}
+
 model Player {
   id              Int       @id @default(autoincrement())
   username        String    @unique @db.VarChar(100)
@@ -287,6 +294,13 @@ model Round {
   // smokers on each team's roster when it was seated here; the smoking rotation counts from these
   team1_smokers Int       @default(0)
   team2_smokers Int       @default(0)
+  // Novo kolo creates a night's rounds as DRAFT; an admin approves them and publishes the approved ones (Upravljanje
+  // ligom · Skica). Until then only admins see them: players, the standings and every public page see PUBLISHED rounds.
+  // Every table of a round (a round number on a night) has the same status.
+  status        RoundStatus @default(DRAFT)
+  // when it was published; null for an unpublished round and for the rounds from before publishing (CHECK constraint
+  // in the migration script: only a published round has it)
+  published_at  DateTime?
 
   team1          Team           @relation("RoundTeam1", fields: [team1_id], references: [team_id], onDelete: Cascade)
   team2          Team           @relation("RoundTeam2", fields: [team2_id], references: [team_id], onDelete: Cascade)

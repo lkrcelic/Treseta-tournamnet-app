@@ -12,7 +12,8 @@ import {Prisma} from "@prisma/client";
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 export const nightValue = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
 
-// The nights that have rounds in the given leagues, as "leagueId|YYYY-MM-DD"
+// The nights that have published rounds in the given leagues, as "leagueId|YYYY-MM-DD" (a night with only a draft
+// isn't played yet)
 export async function playedNightKeys(leagueIds: number[]): Promise<Set<string>> {
   if (!leagueIds.length) return new Set();
   const rows = await prisma.$queryRaw<{league_id: number; night: Date}[]>`
@@ -20,7 +21,8 @@ export async function playedNightKeys(leagueIds: number[]): Promise<Set<string>>
       FROM "LeagueRound" lr
                JOIN "Round" r ON r.id = lr.round_id
       WHERE lr.league_id IN (${Prisma.join(leagueIds)})
-        AND r.round_date IS NOT NULL`;
+        AND r.round_date IS NOT NULL
+        AND r.status = 'PUBLISHED'`;
   return new Set(rows.map((r) => `${r.league_id}|${isoDate(r.night)}`));
 }
 
@@ -55,11 +57,14 @@ export async function addLeagueNight(leagueId: number, date: string, startTime: 
   }
 }
 
-// Removes a night that has no rounds. Returns false when the league doesn't have that night.
+// Removes a night that has no rounds (a draft counts too). Returns false when the league doesn't have that night.
 export async function removeLeagueNight(leagueId: number, date: string): Promise<boolean> {
   const night = nightValue(date);
-  const rounds = await prisma.round.count({where: {round_date: night, leagueRounds: {some: {league_id: leagueId}}}});
-  if (rounds) throw new InvalidResultError("Odigrane večeri ne mogu se ukloniti ovdje. Prvo obriši njihova kola na kartici Kola.");
+  const rounds = await prisma.round.groupBy({by: ["status"], where: {round_date: night, leagueRounds: {some: {league_id: leagueId}}}});
+  if (rounds.some((r) => r.status === "PUBLISHED")) {
+    throw new InvalidResultError("Odigrane večeri ne mogu se ukloniti ovdje. Prvo obriši njihova kola na kartici Kola.");
+  }
+  if (rounds.length) throw new InvalidResultError("Ova večer ima skicu kola. Prvo je odbaci na kartici Skica.");
   const {count} = await prisma.leagueNight.deleteMany({where: {league_id: leagueId, night}});
   return count > 0;
 }

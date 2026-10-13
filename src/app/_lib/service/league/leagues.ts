@@ -13,8 +13,8 @@ import {recalcTeamScores} from "@/app/_lib/service/admin/recalc";
 const dateString = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 const dateValue = (d?: string | null) => (d ? new Date(`${d}T00:00:00.000Z`) : null);
 
-// Every league, newest first, with its number of teams (the bye team is not counted), its latest round night, its
-// last scheduled night and which one is being played now
+// Every league, newest first, with its number of teams (the bye team is not counted), its latest night with published
+// rounds, its last scheduled night and which one is being played now
 export async function listLeagues(): Promise<LeagueSummary[]> {
   const [leagues, played] = await Promise.all([
     prisma.league.findMany({
@@ -28,6 +28,7 @@ export async function listLeagues(): Promise<LeagueSummary[]> {
         SELECT lr.league_id, MAX(r.round_date) AS last_played
         FROM "LeagueRound" lr
                  JOIN "Round" r ON r.id = lr.round_id
+        WHERE r.status = 'PUBLISHED'
         GROUP BY lr.league_id
     `,
   ]);

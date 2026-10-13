@@ -45,6 +45,11 @@ import {useParams, useSearchParams} from "next/navigation";
 import LeagueDetailsView from "./LeagueDetailsView";
 import DatesView from "./DatesView";
 import RoundsView, {useLeagueRounds} from "./RoundsView";
+import DraftView from "./DraftView";
+import {LeagueRoundSummary} from "@/app/_fetchers/admin/daily";
+import {isIsoDate} from "@/app/_lib/nights";
+import EditCalendarRoundedIcon from "@mui/icons-material/EditCalendarRounded";
+import TaskAltRoundedIcon from "@mui/icons-material/TaskAltRounded";
 import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
@@ -55,8 +60,8 @@ import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {ReactNode, useCallback, useEffect, useMemo, useRef, useState} from "react";
 
 type Filter = "all" | "active" | "inactive";
-type View = "create" | "teams" | "rounds" | "dates" | "details";
-const VIEWS: View[] = ["create", "teams", "rounds", "dates", "details"];
+type View = "draft" | "create" | "teams" | "rounds" | "dates" | "details";
+const VIEWS: View[] = ["draft", "create", "teams", "rounds", "dates", "details"];
 type Row = {id: number; name: string; players: string[]; played: number | null; active: boolean; conferenceId: number | null};
 // the conference filter of the team list: every team, one conference's (its id), or the teams without one
 const ALL_CONFERENCES = 0;
@@ -97,10 +102,22 @@ function ManageLeagueDesktop() {
   const [justAdded, setJustAdded] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   // create a round (the first view), the league's teams, its rounds (delete a round), its nights or its details;
-  // ?view= opens another
-  const viewParam = useSearchParams().get("view") as View | null;
+  // ?view= opens another. Skica (?view=draft&date=) is there while a night's rounds wait to be published.
+  const searchParams = useSearchParams();
+  const viewParam = searchParams.get("view") as View | null;
   const [view, setView] = useState<View>(viewParam && VIEWS.includes(viewParam) ? viewParam : "create");
   const leagueRounds = useLeagueRounds(leagueId);
+  // the night Skica shows: the one just created (or ?date=), else the latest night with rounds not published yet. It
+  // stays after its last round is published, as "Objavljeno", until the page is left.
+  const dateParam = searchParams.get("date");
+  const [shownNight, setShownNight] = useState<string | null>(dateParam && isIsoDate(dateParam) ? dateParam : null);
+  const firstLeague = useRef(leagueId);
+  useEffect(() => {
+    if (leagueId === firstLeague.current) return;
+    firstLeague.current = leagueId;
+    setShownNight(null);
+  }, [leagueId]);
+  const draft = draftTab(leagueRounds.rounds, shownNight);
   const leagueNights = useLeagueNights(leagueId);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [pending, setPending] = useState<PendingRemoval | null>(null);
@@ -154,6 +171,9 @@ function ManageLeagueDesktop() {
     ...(unassigned > 0 || confFilter === NO_CONFERENCE ? [{key: NO_CONFERENCE, label: "Bez konferencije", dot: null, count: unassigned, alert: unassigned > 0}] : []),
   ];
   const leagueName = leagues.find((l) => l.id === leagueId)?.name ?? "";
+  // Skica without a night to show (none waiting, or the rounds list didn't load) is Novo kolo; it shows a loading
+  // card while the list is on its way
+  const shown: View = view === "draft" && !draft && (leagueRounds.rounds != null || leagueRounds.error) ? "create" : view;
 
   // optimistic, like the Active switch
   const setConference = async (r: Row, conferenceId: number | null) => {
@@ -354,18 +374,48 @@ function ManageLeagueDesktop() {
       title="Upravljanje ligom"
       right={<LeagueMenuButton leagues={leagues} value={leagueId} onChange={(id) => router.router.push(`/league/${id}/manage?view=${view}`)} />}
     >
-      <ViewSwitch view={view} onChange={setView} teams={rows.length} rounds={leagueRounds.rounds?.length ?? null} nights={leagueNights.nights?.length ?? null} />
-      {view === "create" ? (
+      <ViewSwitch
+        view={shown}
+        onChange={setView}
+        draft={draft}
+        teams={rows.length}
+        rounds={leagueRounds.rounds?.length ?? null}
+        nights={leagueNights.nights?.length ?? null}
+      />
+      {shown === "draft" && draft ? (
+        <DraftView
+          key={`${leagueId}|${draft.date}`}
+          leagueId={leagueId}
+          date={draft.date}
+          onChanged={leagueRounds.reload}
+          onDiscarded={() => {
+            setShownNight(null);
+            leagueRounds.reload();
+            setView("create");
+          }}
+        />
+      ) : shown === "draft" ? (
+        <Card sx={{flex: 1, overflow: "hidden", borderRadius: "24px"}}>
+          <LoadingRows rows={8} height={58} />
+        </Card>
+      ) : shown === "create" ? (
         <CreateRoundView
           leagueId={leagueId}
+          onCreated={(date) => {
+            // Skica waits for the list with the new rounds (a loading card), instead of showing the old one
+            leagueRounds.setRounds(null);
+            leagueRounds.reload();
+            setShownNight(date);
+            setView("draft");
+          }}
           defaultRounds={leagues.find((l) => l.id === leagueId)?.roundsPerNight}
           defaultSmokingTables={leagues.find((l) => l.id === leagueId)?.smokingTables}
         />
-      ) : view === "details" ? (
+      ) : shown === "details" ? (
         <LeagueDetailsView key={leagueId} leagueId={leagueId} leagues={leagues} aside={conferencesCard} />
-      ) : view === "rounds" ? (
+      ) : shown === "rounds" ? (
         <RoundsView leagueId={leagueId} data={leagueRounds} />
-      ) : view === "dates" ? (
+      ) : shown === "dates" ? (
         <DatesView leagueId={leagueId} defaultTime={leagues.find((l) => l.id === leagueId)?.startTime ?? null} data={leagueNights} />
       ) : (
         <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) 380px", [NARROW_DESKTOP]: {gridTemplateColumns: "minmax(0,1fr) 320px"}, gap: "20px"}}>
@@ -626,20 +676,46 @@ function AddTeamCard({exclude, onAdd, onCreate}: {exclude: number[]; onAdd: (t: 
   );
 }
 
+// Skica's tab: the night it shows, how many of its rounds aren't published yet (none: "Objavljeno" with a check)
+type DraftTab = {date: string; waiting: number};
+
+// The night for Skica: `shown` (the night just created, or ?date=) while the league has rounds that night, else the
+// latest night with rounds not published yet; null for none
+function draftTab(rounds: LeagueRoundSummary[] | null, shown: string | null): DraftTab | null {
+  if (!rounds) return null;
+  const waiting = (date: string) => rounds.filter((r) => r.date === date && (r.status === "draft" || r.status === "approved")).length;
+  if (shown && rounds.some((r) => r.date === shown)) return {date: shown, waiting: waiting(shown)};
+  const latest = rounds
+    .filter((r) => r.status === "draft" || r.status === "approved")
+    .map((r) => r.date)
+    .sort()
+    .pop();
+  return latest ? {date: latest, waiting: waiting(latest)} : null;
+}
+
 function ViewSwitch({
   view,
   onChange,
+  draft,
   teams,
   rounds,
   nights,
 }: {
   view: View;
   onChange: (v: View) => void;
+  draft: DraftTab | null;
   teams: number;
   rounds: number | null;
   nights: number | null;
 }) {
   const items: {key: View; label: string; icon: ReactNode; count: number | null}[] = [
+    ...(draft
+      ? [
+          draft.waiting > 0
+            ? {key: "draft" as View, label: "Skica", icon: <EditCalendarRoundedIcon />, count: draft.waiting}
+            : {key: "draft" as View, label: "Objavljeno", icon: <TaskAltRoundedIcon />, count: null},
+        ]
+      : []),
     {key: "create", label: "Novo kolo", icon: <AddCircleRoundedIcon />, count: null},
     {key: "teams", label: "Ekipe", icon: <GroupsRoundedIcon />, count: teams},
     {key: "rounds", label: "Kola", icon: <ViewListRoundedIcon />, count: rounds},

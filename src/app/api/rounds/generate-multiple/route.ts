@@ -58,10 +58,11 @@ export async function POST(request: NextRequest) {
     const setup = smokingTables?.length ? await smokingSetup(league_id, smokingTables, smokers) : null;
     const seated = seatRounds(plan.rounds, setup);
 
-    const {firstRoundNumber, alreadyCreated} = await insertRoundBatch(seated, league_id, {smokers, tables: smokingTables});
+    // drafts until an admin publishes them (Upravljanje ligom · Skica)
+    const {firstRoundNumber, date, alreadyCreated} = await insertRoundBatch(seated, league_id, {smokers, tables: smokingTables});
 
     return NextResponse.json(
-      {round_number: firstRoundNumber, already_created: alreadyCreated},
+      {round_number: firstRoundNumber, date, already_created: alreadyCreated},
       {status: alreadyCreated ? STATUS.OK : STATUS.Created}
     );
   } catch (error) {

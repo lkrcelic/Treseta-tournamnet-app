@@ -36,6 +36,7 @@ export const tint = {
     13: "rgba(56,102,65,.13)",
     14: "rgba(56,102,65,.14)",
     15: "rgba(56,102,65,.15)",
+    35: "rgba(56,102,65,.35)",
   },
   gold: {16: "rgba(212,168,44,.16)"},
   // cream on the navy cards

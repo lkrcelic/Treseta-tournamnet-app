@@ -1,11 +1,14 @@
 import {RoundResponse, RoundResponseValidation} from "@/app/_interfaces/round";
 import {prisma} from "@/app/_lib/prisma";
 import {Prisma} from "@prisma/client";
+import {PUBLISHED_ROUND} from "@/app/_lib/roundStatus";
 
+// The round the player plays next (Početna's table and opponent, Započni igru): an open, published one
 export async function getLastOpenRoundByPlayerId(playerId: number): Promise<RoundResponse | null> {
   const dbRound = await prisma.round.findFirst({
     where: {
       open: true,
+      ...PUBLISHED_ROUND,
       OR: [
         {
           team1: {
