@@ -5,7 +5,8 @@ export const PHONE_MIN_DIGITS = 9;
 const PHONE_MAX_DIGITS = 15; // the longest international number (E.164)
 
 export const PHONE_HINT = "Obavezno. Broj piše na oglasu da te mogu nazvati.";
-export const PHONE_ERROR = "Upiši cijeli broj, npr. 091 234 5678.";
+// (the example number doesn't break across lines: no-break spaces)
+export const PHONE_ERROR = "Upiši cijeli broj, npr. 091\u00a0234\u00a05678.";
 
 // What a phone field keeps while typing: digits, spaces and a plus
 export function phoneInput(value: string): string {

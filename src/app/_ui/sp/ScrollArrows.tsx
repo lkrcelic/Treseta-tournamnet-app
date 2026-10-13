@@ -10,9 +10,11 @@ type Place = {x: number; upY: number; downY: number; upOn: boolean; downOn: bool
 
 const ARROW = 40;
 
-// the nearest list or panel under the mouse that can scroll (inside the desktop frame)
+// the nearest list or panel under the mouse that can scroll (inside the desktop frame); none in an area marked
+// data-no-scroll-arrows (the admin's side panel)
 function scrollableAt(target: EventTarget | null, root: HTMLElement): HTMLElement | null {
   for (let el = target instanceof HTMLElement ? target : null; el && el !== root; el = el.parentElement) {
+    if (el.dataset.noScrollArrows != null) return null;
     if (el.scrollHeight - el.clientHeight > 4) {
       const oy = getComputedStyle(el).overflowY;
       if (oy === "auto" || oy === "scroll") return el;
@@ -88,6 +90,15 @@ export function useScrollArrows(rootRef: React.RefObject<HTMLElement>) {
       stop();
     };
   }, [update, stop]);
+
+  // ...and its size; a list that goes away under a still pointer (a side panel closed with Escape) takes them along
+  useEffect(() => {
+    const el = target.current;
+    if (!place || !el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => update(el.isConnected ? el : null));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [place, update]);
 
   const onMouseMove = (e: React.MouseEvent) => {
     const root = rootRef.current;

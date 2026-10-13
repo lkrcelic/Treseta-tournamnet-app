@@ -18,6 +18,8 @@ export type SharedListStore<T> = {
   update: (change: (list: T[]) => T[]) => void;
   // forgets the list and loads it again for the parts on screen
   invalidate: () => void;
+  // the list as it is now (null before it loaded), for an action that needs it once (where to go after a delete)
+  peek: () => T[] | null;
 };
 
 type State<T> = {userId: number | null; list: T[] | null; error: string | null};
@@ -78,6 +80,9 @@ export function sharedList<T>(load: () => Promise<T[]>, fallbackError: string): 
       if (!state.list) return;
       generation++;
       set({...state, list: change(state.list)});
+    },
+    peek() {
+      return state.list;
     },
     invalidate() {
       generation++;

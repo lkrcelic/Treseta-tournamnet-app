@@ -7,8 +7,9 @@ import {buttonBase, mergeSx, tabular} from "./base";
 import {LiveDot} from "./Live";
 import {TeamDot} from "./TeamDot";
 
-// Visual 52×32 switch track. Use inside an element that has role="switch" + aria-checked.
-export function SwitchTrack({on, onColor = color.navy}: {on: boolean; onColor?: string}) {
+// Visual 52×32 switch track. Use inside an element that has role="switch" + aria-checked. dim: a switch that can't be
+// changed now
+export function SwitchTrack({on, onColor = color.navy, dim = false}: {on: boolean; onColor?: string; dim?: boolean}) {
   return (
     <Box
       component="span"
@@ -20,7 +21,8 @@ export function SwitchTrack({on, onColor = color.navy}: {on: boolean; onColor?: 
         height: 32,
         borderRadius: "16px",
         background: on ? onColor : color.borderControl,
-        transition: "background 180ms ease",
+        opacity: dim ? 0.5 : 1,
+        transition: "background 180ms ease, opacity 180ms ease",
       }}
     >
       <Box
@@ -42,7 +44,8 @@ export function SwitchTrack({on, onColor = color.navy}: {on: boolean; onColor?: 
   );
 }
 
-// A full-width row that toggles: label on the left, switch on the right (Create Round team list)
+// A full-width row that toggles: label on the left, switch on the right (Create Round team list). disabled: the switch
+// is dimmed and can't be changed
 export function SwitchRow({
   checked,
   onChange,
@@ -89,7 +92,7 @@ export function SwitchRow({
       <Box component="span" sx={{display: "flex", alignItems: "center", gap: "8px", minWidth: 0}}>
         {children}
       </Box>
-      <SwitchTrack on={checked} onColor={onColor} />
+      <SwitchTrack on={checked} onColor={onColor} dim={disabled} />
     </Box>
   );
 }

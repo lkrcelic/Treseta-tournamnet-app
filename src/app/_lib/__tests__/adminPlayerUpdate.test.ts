@@ -32,7 +32,7 @@ test("the phone is stored with the country code, and empty or null removes it", 
   assert.deepEqual(parse({phone: "091 234 5678"}).data, {phone: "+385 91 234 5678"});
   assert.deepEqual(parse({phone: ""}).data, {phone: null});
   assert.deepEqual(parse({phone: null}).data, {phone: null});
-  assert.equal(message({phone: "12"}), "Upiši cijeli broj, npr. 091 234 5678.");
+  assert.equal(message({phone: "12"}), "Upiši cijeli broj, npr. 091\u00a0234\u00a05678.");
 });
 
 test("the birth date is a real past date, or null to remove it", () => {

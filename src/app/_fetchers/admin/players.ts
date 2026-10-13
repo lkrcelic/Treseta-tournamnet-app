@@ -1,13 +1,11 @@
 import {apiFetch, responseErrorMessage} from "@/app/_fetchers/errorMessage";
-import type {AdminPlayerField, AdminPlayerRow, AdminPlayerUpdateRequest, PlayerActiveResponse, PlayerView} from "@/app/_interfaces/player";
+import {ADMIN_PLAYER_FIELDS, type AdminPlayerField, type AdminPlayerRow, type AdminPlayerUpdateRequest, type PlayerActiveResponse, type PlayerView} from "@/app/_interfaces/player";
 
 // Admin player management (see /api/admin/players): the Igrači directory and "Uredi osobne podatke"
 
 // A refused Spremi can carry a message per field (a taken username or email, a field that isn't valid), shown under
 // its input; the error's own message is the first of them
 type PlayerUpdateError = Error & {fields: Partial<Record<AdminPlayerField, string>>};
-
-const FIELDS: AdminPlayerField[] = ["first_name", "last_name", "username", "email", "phone", "birth_date"];
 
 export function playerFieldErrors(error: unknown): Partial<Record<AdminPlayerField, string>> {
   return (error as Partial<PlayerUpdateError> | null)?.fields ?? {};
@@ -33,11 +31,11 @@ export async function updateAdminPlayerAPI(playerId: number, changes: AdminPlaye
   const fields: PlayerUpdateError["fields"] = {};
   // a 409 names the taken fields; a 400 lists the problems (zod issues) with the field as the first path element
   for (const [field, message] of Object.entries(body?.errors ?? {})) {
-    if (FIELDS.includes(field as AdminPlayerField) && typeof message === "string") fields[field as AdminPlayerField] = message;
+    if (ADMIN_PLAYER_FIELDS.includes(field as AdminPlayerField) && typeof message === "string") fields[field as AdminPlayerField] = message;
   }
   for (const issue of Array.isArray(body?.issues) ? body.issues : []) {
     const field = issue?.path?.[0];
-    if (FIELDS.includes(field) && typeof issue.message === "string") fields[field as AdminPlayerField] ??= issue.message;
+    if (ADMIN_PLAYER_FIELDS.includes(field) && typeof issue.message === "string") fields[field as AdminPlayerField] ??= issue.message;
   }
   const message = typeof body?.error === "string" ? body.error : fallback;
   throw Object.assign(new Error(message), {fields});

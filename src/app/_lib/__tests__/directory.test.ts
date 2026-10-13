@@ -12,16 +12,25 @@ import {
   filterTeams,
   leagueAddOptions,
   leagueOptionSub,
+  neighbourId,
+  nextAfterDelete,
   playerAddOptions,
   playerDirectorySub,
+  playerTeamFromDirectory,
+  removeAdminPlayer,
+  removeMemberEverywhere,
   removePlayerTeam,
   removeTeamMember,
   renamePlayersTeam,
   renameTeamIn,
+  setAdminPlayerActive,
   sortHr,
+  teamAddOptions,
   teamDirectorySub,
   teamNameError,
   toDirectoryTeam,
+  updateAdminPlayer,
+  updateTeamMember,
 } from "../ui/directory";
 
 const teams = [
@@ -166,4 +175,76 @@ test("a team's name: required, and not another team's name ignoring case", () =>
   assert.equal(teamNameError(" Zagorci ", teams, 2), "");
   assert.equal(teamNameError("Purgeri", teams, null), "");
   assert.equal(teamNameError("Purgeri", null, null), "");
+});
+
+test("Dodaj u ekipu offers the teams the player isn't in, with their players and leagues", () => {
+  assert.deepEqual(teamAddOptions(teams, [1]), [{id: 2, name: "Zagorci", sub: "0 igrača · 0 liga"}]);
+  assert.deepEqual(
+    teamAddOptions(teams, []).map((o) => o.sub),
+    ["3 igrača · 1 liga", "0 igrača · 0 liga"]
+  );
+});
+
+test("a team added on a Player page shows with its leagues (newest first) and the player among its players", () => {
+  const team = {...teams[0], leagues: [{id: 1, name: "Stara"}, {id: 3, name: "Nova"}]};
+  const me = {id: 20, first_name: "Đuro", last_name: "Šimić", username: "djuro"};
+  const row = playerTeamFromDirectory(team, me);
+  assert.equal(row.team_id, 1);
+  assert.equal(row.team_name, "Dalmatinci");
+  assert.deepEqual(row.leagues, [{league_id: 3, league_name: "Nova"}, {league_id: 1, league_name: "Stara"}]);
+  assert.deepEqual(row.players.map((p) => p.id), [10, 11, 12, 20]);
+  assert.deepEqual(row.players[3], {id: 20, first_name: "Đuro", last_name: "Šimić"});
+  // already a member: not twice
+  assert.equal(playerTeamFromDirectory(team, {id: 10, first_name: "Ivo", last_name: "Kovač"}).players.length, 3);
+});
+
+test("a change on a Player page shows in both directories", () => {
+  // a new name takes the player to their new place in the list, with the new username
+  const renamed = updateAdminPlayer(players, {id: 10, first_name: "Ante", last_name: "Kovač", username: "ante.k"});
+  assert.deepEqual(renamed.map((p) => p.name), ["Ana Čolić", "Ante Kovač", "Đuro Šimić"]);
+  assert.equal(renamed[1].username, "ante.k");
+  assert.deepEqual(renamed[1].teams, [{team_id: 1, team_name: "Dalmatinci"}]);
+  // without a username (never for an admin) the old one stays; a player without a name reads "Igrač bez imena"
+  assert.equal(updateAdminPlayer(players, {id: 20, first_name: "", last_name: ""}).find((p) => p.id === 20)?.name, "Igrač bez imena");
+  assert.equal(updateAdminPlayer(players, {id: 20, first_name: "Đuro", last_name: "Š"}).find((p) => p.id === 20)?.username, "djuro");
+
+  const members = updateTeamMember(teams, {id: 12, first_name: "Ante", last_name: "Horvat", username: "ante.h"});
+  assert.deepEqual(members[0].players.map((p) => p.username), ["ante.h", "ivo.k", "srecko"]);
+  assert.equal(members[1], teams[1]);
+
+  const off = setAdminPlayerActive(players, 20, false);
+  assert.equal(off[1].active, false);
+  assert.equal(off[0], players[0]);
+  assert.deepEqual(playerAddOptions(off, []).map((o) => o.id), [10]);
+
+  assert.deepEqual(removeAdminPlayer(players, 20).map((p) => p.id), [10, 21]);
+  const gone = removeMemberEverywhere(teams, 11);
+  assert.deepEqual(gone[0].players.map((p) => p.id), [10, 12]);
+  assert.equal(gone[1], teams[1]);
+});
+
+test("after a delete the directory opens the next player, or the one before the last", () => {
+  const list = [{id: 1}, {id: 2}, {id: 3}];
+  assert.equal(neighbourId(list, 1), 2);
+  assert.equal(neighbourId(list, 2), 3);
+  assert.equal(neighbourId(list, 3), 2);
+  assert.equal(neighbourId([{id: 7}], 7), null);
+  // not in the list (already gone): the first one
+  assert.equal(neighbourId(list, 9), 1);
+  assert.equal(neighbourId([], 9), null);
+});
+
+test("with a search on, the next player the search shows opens; a search with no other player is cleared", () => {
+  const all = [{id: 1}, {id: 2}, {id: 3}, {id: 4}, {id: 5}];
+  // no search: the whole list
+  assert.deepEqual(nextAfterDelete(all, null, 2), {next: 3, clearSearch: false});
+  // the search shows 2, 4 and 5: the next one it shows, the search stays
+  assert.deepEqual(nextAfterDelete(all, [{id: 2}, {id: 4}, {id: 5}], 2), {next: 4, clearSearch: false});
+  assert.deepEqual(nextAfterDelete(all, [{id: 2}, {id: 4}, {id: 5}], 5), {next: 4, clearSearch: false});
+  // it shows only the deleted player: cleared, and the next of the whole list
+  assert.deepEqual(nextAfterDelete(all, [{id: 3}], 3), {next: 4, clearSearch: true});
+  // it doesn't show the deleted player at all
+  assert.deepEqual(nextAfterDelete(all, [{id: 1}], 3), {next: 4, clearSearch: true});
+  assert.deepEqual(nextAfterDelete(all, [], 5), {next: 4, clearSearch: true});
+  assert.deepEqual(nextAfterDelete([{id: 7}], [{id: 7}], 7), {next: null, clearSearch: true});
 });

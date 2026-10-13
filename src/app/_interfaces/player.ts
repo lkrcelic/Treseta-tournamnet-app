@@ -20,12 +20,14 @@ export const PlayerCreate = z.object({
   last_updated_at: z.date().optional(),
 });
 
+export const BIRTH_DATE_ERROR = "Neispravan datum rođenja.";
+
 // The fields a player (or an admin) changes after sign-up, shared by the profile and "Uredi osobne podatke":
 // a birth date as YYYY-MM-DD that exists (no 31 February) and isn't in the future
 const BirthDateField = z
   .string()
   .regex(DATE_FORMAT, "Neispravan datum.")
-  .refine((d) => isIsoDate(d) && d >= "1900-01-01" && d <= new Date().toISOString().slice(0, 10), "Neispravan datum rođenja.");
+  .refine((d) => isIsoDate(d) && d >= "1900-01-01" && d <= new Date().toISOString().slice(0, 10), BIRTH_DATE_ERROR);
 // a new username, stored lowercase (rules in validation/username.ts)
 const UsernameField = z
   .string()
@@ -78,6 +80,8 @@ export type AdminPlayerUpdate = z.output<typeof AdminPlayerUpdateValidation>;
 export type AdminPlayerUpdateRequest = z.input<typeof AdminPlayerUpdateValidation>;
 // the fields that can come back with their own message under the input (a 409 or a 400)
 export type AdminPlayerField = "first_name" | "last_name" | "username" | "email" | "phone" | "birth_date";
+// ...in the order the panel shows them (the first one with a message gets the focus)
+export const ADMIN_PLAYER_FIELDS: readonly AdminPlayerField[] = ["first_name", "last_name", "username", "email", "phone", "birth_date"];
 
 // Deactivate or activate an account (PATCH /api/admin/players/[id]/active); applies at once, apart from Spremi
 export const PlayerActiveValidation = z.object({

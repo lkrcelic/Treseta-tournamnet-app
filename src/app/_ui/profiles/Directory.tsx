@@ -13,6 +13,7 @@ import {
   DirectoryTeam,
   filterPlayers,
   filterTeams,
+  nextAfterDelete,
   playerDirectorySub,
   teamDirectorySub,
 } from "@/app/_lib/ui/directory";
@@ -46,7 +47,7 @@ import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {Box, useMediaQuery} from "@mui/material";
 import {useParams, usePathname} from "next/navigation";
-import React, {useEffect, useId, useMemo, useRef, useState} from "react";
+import React, {useCallback, useEffect, useId, useMemo, useRef, useState} from "react";
 import {DirectoryFrame, DirectoryFrameContext, PLAYER_GRID, TEAM_GRID, useDirectoryFrame, useShortWindow} from "./PageParts";
 
 // The admin's Ekipe and Igrači (handoff §6 "Desktop admin", design 13h, 13j, Profiles P:153-169): on the desktop, a
@@ -56,6 +57,9 @@ import {DirectoryFrame, DirectoryFrameContext, PLAYER_GRID, TEAM_GRID, useDirect
 // phone, gets the page alone.
 
 type Kind = "teams" | "players";
+
+// DirectoryFrame.nextAfterDelete, as the list beside the page answers it
+type AfterDelete = (id: number) => number | null;
 
 // A narrower window gives the page next to the list two columns instead of three (PageColumns)
 const STACKED = "(max-width: 1359.98px)";
@@ -79,7 +83,10 @@ function DirectoryShell({kind, children}: {kind: Kind; children: React.ReactNode
   useEffect(() => {
     if (selectedId != null) setLastPage(pathname);
   }, [selectedId, pathname]);
-  const frame: DirectoryFrame = useMemo(() => ({stacked, leadSlot, lastPage}), [stacked, leadSlot, lastPage]);
+  // the list beside the page knows what it shows (its search)
+  const afterDelete = useRef<AfterDelete>(() => null);
+  const nextAfterDelete = useCallback((id: number) => afterDelete.current(id), []);
+  const frame: DirectoryFrame = useMemo(() => ({stacked, leadSlot, lastPage, nextAfterDelete}), [stacked, leadSlot, lastPage, nextAfterDelete]);
   return (
     <DesktopShell
       active={kind}
@@ -90,7 +97,7 @@ function DirectoryShell({kind, children}: {kind: Kind; children: React.ReactNode
       lead={<Box ref={setLeadSlot} sx={{display: "contents"}} />}
     >
       <Box sx={{flex: 1, minHeight: 0, display: "flex", gap: "20px"}}>
-        {kind === "teams" ? <TeamDirectory selectedId={selectedId} /> : <PlayerDirectory selectedId={selectedId} />}
+        {kind === "teams" ? <TeamDirectory selectedId={selectedId} /> : <PlayerDirectory selectedId={selectedId} afterDelete={afterDelete} />}
         <DirectoryFrameContext.Provider value={frame}>{children}</DirectoryFrameContext.Provider>
       </Box>
     </DesktopShell>
@@ -242,10 +249,19 @@ function TeamDirectory({selectedId}: {selectedId: number | null}) {
 // button copies the sign-up link for the admin to send
 const SIGNUP_COPIED = "Poveznica za registraciju je kopirana.";
 
-function PlayerDirectory({selectedId}: {selectedId: number | null}) {
+function PlayerDirectory({selectedId, afterDelete}: {selectedId: number | null; afterDelete: React.MutableRefObject<AfterDelete>}) {
   const {list, error, reload} = useAdminPlayers();
   const [query, setQuery] = useRestoredState("dir-players-query", "");
   const visible = useMemo(() => (list ? filterPlayers(list, query) : null), [list, query]);
+  // a player deleted in "Uredi osobne podatke": the next one this list shows opens in its place, so the page and the
+  // selected row stay together; a search that shows no other player is cleared
+  useEffect(() => {
+    afterDelete.current = (id) => {
+      const {next, clearSearch} = nextAfterDelete(list ?? [], query.trim() ? visible : null, id);
+      if (clearSearch) setQuery("");
+      return next;
+    };
+  });
   const [notice, setNotice] = useState<Notice | null>(null);
   useEffect(() => {
     if (!notice) return;

@@ -398,7 +398,8 @@ export type AddOption = {
 // The dashed "Dodaj igrača · ime ili korisničko ime" field at the top of a column (P:207-215): on focus it lists every
 // option, typing filters them, and each hit has a navy Dodaj that adds it at once (the field empties and closes).
 // note is always shown under the field; noHit when the typed text matches nothing. In a short column the list of hits
-// shrinks (and scrolls) to fit under the field instead of running out of the card.
+// shrinks (and scrolls) to fit under the field instead of running out of the card. disabled: nothing can be added now
+// (a deactivated player can't join a team); the field is greyed and the note says why.
 export function SearchAddField({
   placeholder,
   icon,
@@ -406,6 +407,7 @@ export function SearchAddField({
   onAdd,
   note,
   noHit,
+  disabled = false,
   sx,
 }: {
   placeholder: string;
@@ -414,6 +416,7 @@ export function SearchAddField({
   onAdd: (option: AddOption) => void;
   note?: React.ReactNode;
   noHit?: React.ReactNode;
+  disabled?: boolean;
   sx?: SxProps<Theme>;
 }) {
   const [query, setQuery] = useState("");
@@ -442,7 +445,7 @@ export function SearchAddField({
     input.focus();
   };
 
-  const hits = open ? options.filter((o) => matchesQuery(o.search ?? o.name, query)) : [];
+  const hits = open && !disabled ? options.filter((o) => matchesQuery(o.search ?? o.name, query)) : [];
   const typed = query.trim() !== "";
 
   const add = (o: AddOption) => {
@@ -489,7 +492,8 @@ export function SearchAddField({
           border: `1.5px dashed ${tint.navy[35]}`,
           background: color.white,
           boxSizing: "border-box",
-          cursor: "text",
+          cursor: disabled ? "default" : "text",
+          opacity: disabled ? 0.55 : 1,
           transition: "border-color 150ms ease",
           "&:focus-within": {borderColor: color.navy},
           "& > svg": {fontSize: 22, color: color.navy, flex: "none"},
@@ -503,6 +507,7 @@ export function SearchAddField({
           value={query}
           placeholder={placeholder}
           aria-label={placeholder}
+          disabled={disabled}
           aria-controls={listId}
           aria-describedby={note || noHit ? noteId : undefined}
           autoComplete="off"
@@ -525,6 +530,7 @@ export function SearchAddField({
             fontSize: 15,
             color: color.ink,
             "&::placeholder": {color: color.muted, opacity: 1},
+            "&:disabled": {cursor: "default"},
           }}
         />
       </Box>
@@ -647,11 +653,14 @@ function keepTabIn(e: KeyboardEvent, panel: HTMLElement) {
 
 // A panel over the page column, from the right (P:359-390, "Uredi osobne podatke"): a scrim over the page only (the
 // directory next to it stays as it is), a 440 px white panel with its title, the name under it and Zatvori, a body
-// that scrolls and a footer of equal buttons. The page column must be position: relative. Escape and the scrim close it;
-// the focus goes into the panel, Tab stays in it, and the focus goes back to where it was.
+// that scrolls and a footer of equal buttons. The page column must be position: relative. Escape and the scrim close it
+// (not an Escape a control inside already handled: preventDefault); the focus goes into the panel, Tab stays in it,
+// and the focus goes back to where it was. busy: something the panel started is on its way (Spremi), and the panel
+// stays until it answers (Zatvori is disabled, Escape and the scrim do nothing), so its outcome is always seen.
 export function SidePanel({
   open,
   onClose,
+  busy = false,
   title,
   sub,
   children,
@@ -659,6 +668,7 @@ export function SidePanel({
 }: {
   open: boolean;
   onClose: () => void;
+  busy?: boolean;
   title: React.ReactNode;
   sub?: React.ReactNode;
   children: React.ReactNode;
@@ -668,6 +678,11 @@ export function SidePanel({
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
+  const busyRef = useRef(busy);
+  busyRef.current = busy;
+  const close = () => {
+    if (!busyRef.current) closeRef.current();
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -676,7 +691,10 @@ export function SidePanel({
     const onKey = (e: KeyboardEvent) => {
       const panel = panelRef.current;
       if (!panel || inOtherDialog(document.activeElement, panel)) return;
-      if (e.key === "Escape") closeRef.current();
+      // a control in the panel that takes Escape itself (a confirmation it cancels) says so with preventDefault
+      if (e.key === "Escape") {
+        if (!e.defaultPrevented && !busyRef.current) closeRef.current();
+      }
       else if (e.key === "Tab") keepTabIn(e, panel);
     };
     document.addEventListener("keydown", onKey);
@@ -691,7 +709,7 @@ export function SidePanel({
     <>
       <Box
         aria-hidden
-        onClick={onClose}
+        onClick={close}
         sx={{
           position: "absolute",
           inset: "-4px",
@@ -737,13 +755,18 @@ export function SidePanel({
           <IconCircleButton
             label="Zatvori"
             size={40}
-            onClick={onClose}
+            onClick={close}
+            disabled={busy}
             sx={{background: color.paper, boxShadow: "none", "&:hover:not(:disabled)": {background: color.lineFill, boxShadow: "none"}, "& svg": {fontSize: 22}}}
           >
             <CloseRoundedIcon />
           </IconCircleButton>
         </Box>
-        <Box sx={{flex: 1, minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", p: "16px 20px", display: "flex", flexDirection: "column", gap: "14px"}}>
+        {/* short, with a scrollbar of its own: the desktop's round scroll arrows would sit on its switches and buttons */}
+        <Box
+          data-no-scroll-arrows
+          sx={{flex: 1, minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", p: "16px 20px", display: "flex", flexDirection: "column", gap: "14px"}}
+        >
           {children}
         </Box>
         {footer && (

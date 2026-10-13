@@ -1,6 +1,8 @@
-// The admin's Ekipe and Igrači directories (handoff §6 "Desktop admin", design 13h, 13j) and the options of the Team
-// page's search-and-add fields. Framework free so they can be unit tested.
+// The admin's Ekipe and Igrači directories (handoff §6 "Desktop admin", design 13h, 13j), the options of the Team and
+// Player pages' search-and-add fields, and the list updates after a change on those pages. Framework free so they can
+// be unit tested.
 import type {AdminPlayerRow} from "@/app/_interfaces/player";
+import type {PlayerOverviewTeam} from "@/app/_interfaces/profiles";
 import {TEAM_NAME_REQUIRED, TEAM_NAME_TAKEN} from "@/app/_interfaces/team";
 import {leagueEnded} from "@/app/_lib/league";
 import {displayName, fullName} from "@/app/_lib/players/names";
@@ -84,6 +86,12 @@ export function playerAddOptions(players: AdminPlayerRow[], rosterIds: Iterable<
     .map((p) => ({id: p.id, name: p.name, sub: playerDirectorySub(p), search: `${p.name} ${p.username}`}));
 }
 
+// Dodaj u ekipu (Player page, admin): the teams the player isn't in, found by their name, with "3 igrača · 2 lige"
+export function teamAddOptions(teams: DirectoryTeam[], joinedIds: Iterable<number>): AddOptionData[] {
+  const joined = new Set(joinedIds);
+  return teams.filter((t) => !joined.has(t.id)).map((t) => ({id: t.id, name: t.name, sub: teamDirectorySub(t)}));
+}
+
 export type LeagueFacts = {id: number; name: string; season?: string | null; endDate?: string | null; lastNight?: string | null};
 
 // A league's hit: "Jesen 2026 · U tijeku", only the season once it has ended, "U tijeku" for a running league without
@@ -139,6 +147,73 @@ export function renamePlayersTeam(players: AdminPlayerRow[], teamId: number, nam
       ? {...p, teams: sortHr(p.teams.map((t) => (t.team_id === teamId ? {...t, team_name: name} : t)), (t) => t.team_name)}
       : p
   );
+}
+
+// ---------- keeping the lists in step with a change on a Player page ----------
+
+// A team added on the Player page (Dodaj u ekipu), as the page lists it until the server's answer replaces it: its
+// leagues newest first, its players with the player added (the server puts them in rating order)
+export function playerTeamFromDirectory(team: DirectoryTeam, player: DirectoryMember): PlayerOverviewTeam {
+  const members = team.players.some((p) => p.id === player.id) ? team.players : [...team.players, player];
+  return {
+    team_id: team.id,
+    team_name: team.name,
+    leagues: [...team.leagues].sort((a, b) => b.id - a.id).map((l) => ({league_id: l.id, league_name: l.name})),
+    players: members.map((p) => ({id: p.id, first_name: p.first_name, last_name: p.last_name})),
+  };
+}
+
+// Spremi in "Uredi osobne podatke": the new name and username in the Igrači list (in its place by the new name) and in
+// every team that has the player
+export function updateAdminPlayer(players: AdminPlayerRow[], player: Pick<AdminPlayerRow, "id" | "first_name" | "last_name"> & {username?: string}): AdminPlayerRow[] {
+  const changed = players.map((p) =>
+    p.id === player.id
+      ? {...p, first_name: player.first_name, last_name: player.last_name, name: displayName(player), username: player.username ?? p.username}
+      : p
+  );
+  return [...changed].sort((a, b) => a.name.localeCompare(b.name, "hr") || a.id - b.id);
+}
+
+export function updateTeamMember(teams: DirectoryTeam[], player: DirectoryMember): DirectoryTeam[] {
+  return teams.map((t) =>
+    t.players.some((p) => p.id === player.id)
+      ? {...t, players: sortHr(t.players.map((p) => (p.id === player.id ? {...p, ...player} : p)), (p) => displayName(p))}
+      : t
+  );
+}
+
+// Deaktiviraj račun / Aktiviraj račun: the "Neaktivan" tag in the Igrači list, and whether Dodaj igrača offers them
+export function setAdminPlayerActive(players: AdminPlayerRow[], playerId: number, active: boolean): AdminPlayerRow[] {
+  return players.map((p) => (p.id === playerId ? {...p, active} : p));
+}
+
+// Obriši igrača: out of the Igrači list and out of every team
+export function removeAdminPlayer(players: AdminPlayerRow[], playerId: number): AdminPlayerRow[] {
+  return players.filter((p) => p.id !== playerId);
+}
+
+export function removeMemberEverywhere(teams: DirectoryTeam[], playerId: number): DirectoryTeam[] {
+  return teams.map((t) => (t.players.some((p) => p.id === playerId) ? {...t, players: t.players.filter((p) => p.id !== playerId)} : t));
+}
+
+// Where the Igrači directory goes after a player is deleted: the next player of the list, or the one before the last
+// one; null when the list had no other player
+export function neighbourId(list: readonly {id: number}[], id: number): number | null {
+  const at = list.findIndex((p) => p.id === id);
+  if (at < 0) return list[0]?.id ?? null;
+  return (list[at + 1] ?? list[at - 1])?.id ?? null;
+}
+
+// ...with a search on (shown: the rows it shows, null without a search): the next row it shows, so the page and the
+// selected row stay together. When the search shows no other row (only the deleted one, or not even that) it is
+// cleared, and the next row of the whole list opens.
+export function nextAfterDelete(
+  all: readonly {id: number}[],
+  shown: readonly {id: number}[] | null,
+  id: number
+): {next: number | null; clearSearch: boolean} {
+  if (shown && shown.some((p) => p.id === id) && shown.length > 1) return {next: neighbourId(shown, id), clearSearch: false};
+  return {next: neighbourId(all, id), clearSearch: shown != null};
 }
 
 // ---------- the team's name (the pencil on a Team page, "Nova ekipa") ----------

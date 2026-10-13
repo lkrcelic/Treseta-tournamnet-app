@@ -44,24 +44,28 @@ type FieldProps = {
   error?: string;
   children: (props: {id: string; "aria-invalid"?: boolean; "aria-describedby"?: string}) => React.ReactNode;
   sx?: SxProps<Theme>;
+  // the label and the message under the control, restyled (the admin's "Uredi osobne podatke" panel: smaller)
+  labelSx?: SxProps<Theme>;
+  errorSx?: SxProps<Theme>;
 };
 
 // Label + control + error message, wired together for screen readers
-export function Field({label, error, children, sx}: FieldProps) {
+export function Field({label, error, children, sx, labelSx, errorSx}: FieldProps) {
   const id = useId();
   const errorId = `${id}-error`;
   return (
     <Box sx={mergeSx({display: "flex", flexDirection: "column", gap: "6px", minWidth: 0}, sx)}>
-      <Box component="label" htmlFor={id} sx={{fontSize: 14, fontWeight: 600, color: color.ink2, pl: "4px"}}>
+      <Box component="label" htmlFor={id} sx={mergeSx({fontSize: 14, fontWeight: 600, color: color.ink2, pl: "4px"}, labelSx)}>
         {label}
       </Box>
       {children({id, "aria-invalid": error ? true : undefined, "aria-describedby": error ? errorId : undefined})}
       {error && (
+        // a message of two lines keeps its icon at the first one
         <Box
           id={errorId}
-          sx={{display: "flex", alignItems: "center", gap: "6px", pl: "4px", fontSize: 14, fontWeight: 600, color: color.red}}
+          sx={mergeSx({display: "flex", alignItems: "flex-start", gap: "6px", pl: "4px", fontSize: 14, lineHeight: "20px", fontWeight: 600, color: color.red}, errorSx)}
         >
-          <ErrorRoundedIcon sx={{fontSize: 18}} />
+          <ErrorRoundedIcon sx={{flex: "none", fontSize: 18, mt: "1px"}} />
           {error}
         </Box>
       )}

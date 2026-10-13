@@ -2,14 +2,20 @@
 
 import useNavStack from "@/app/_hooks/useNavStack";
 import usePlayerOverview from "@/app/_hooks/usePlayerOverview";
+import useTeams from "@/app/_hooks/useTeams";
 import type {PlayerOverview} from "@/app/_interfaces/profiles";
 import type {RatingNight} from "@/app/_interfaces/ratings";
+import {teamAddOptions} from "@/app/_lib/ui/directory";
 import {playerTeamLeagues, playerTiles, teamInitial} from "@/app/_lib/ui/profiles";
 import {formatChange, shortDate} from "@/app/_lib/ui/ratings";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {color} from "@/app/_styles/tokens";
-import {changeInk, ColumnCard, ColumnHead, ellipsis, EmptyState, InitialsAvatar, ResultPill, tabular, Tag} from "@/app/_ui/sp";
+import {changeInk, ColumnCard, ColumnHead, ellipsis, EmptyState, InitialsAvatar, ResultPill, SearchAddField, tabular, Tag} from "@/app/_ui/sp";
+import GroupAddRoundedIcon from "@mui/icons-material/GroupAddRounded";
+import GroupRemoveRoundedIcon from "@mui/icons-material/GroupRemoveRounded";
 import {Box} from "@mui/material";
+import {useEffect, useMemo, useRef, useState} from "react";
+import {EditPlayerPanel} from "./EditPlayerPanel";
 import {
   DesktopFrame,
   HeaderRating,
@@ -25,13 +31,15 @@ import {
   useShortWindow,
 } from "./PageParts";
 import {PersonalDataCard} from "./PersonalDataCard";
+import {EditDataButton, PlayerTeamsAdmin, usePlayerTeamsAdmin} from "./PlayerAdmin";
 import {ProfileHero} from "./ProfileHero";
+import {AddError, RemoveButton} from "./TeamAdmin";
 import {TeamCards} from "./TeamCards";
 
-// The Player page (/players/[playerId], handoff §6, frames 13c, 13g, 13l): the player's name and rating (to the rating's
-// detail), Osobni podaci (first and last name for everyone, everything for the player and admins: the server sends
-// nothing else), their teams and, on the desktop, their last nights. Read-only; the admin's controls come with the
-// Igrači directory.
+// The Player page (/players/[playerId], handoff §6, frames 13c, 13g, 13j, 13l): the player's name and rating (to the
+// rating's detail), Osobni podaci (first and last name for everyone, everything for the player and admins: the server
+// sends nothing else), their teams and, on the desktop, their last nights. On the desktop an admin also adds the player
+// to teams and takes them out (PlayerAdmin.tsx) and edits their details and account (EditPlayerPanel.tsx).
 
 const NO_TEAMS = "Igrač još nije ni u jednoj ekipi.";
 
@@ -70,12 +78,20 @@ export function PlayerPagePhone({playerId}: {playerId: number}) {
 
 const NIGHTS_GRID = "52px minmax(0,1fr) 44px 48px";
 
-// The desktop Player page (13g). embedded: inside the admin's Igrači directory (13j), which brings its own frame.
+// The desktop Player page (13g). embedded: inside the admin's Igrači directory (13j), which brings its own frame. An
+// admin gets the controls (the server says so in viewer.admin).
 export function PlayerPageDesktop({playerId, embedded = false}: {playerId: number; embedded?: boolean}) {
   const overview = usePlayerOverview(playerId);
   const data = overview.data;
   const nav = useNavStack(data?.player.name ?? null);
   const short = useShortWindow();
+  const actions = usePlayerTeamsAdmin(overview);
+  const admin = data?.viewer.admin ? actions : null;
+  // "Uredi osobne podatke" is open; it closes when another player's page takes this one's place
+  const [editing, setEditing] = useState(false);
+  useEffect(() => {
+    setEditing(false);
+  }, [playerId]);
   return (
     <DesktopFrame embedded={embedded} short={short} nav={nav}>
       {data ? (
@@ -90,10 +106,16 @@ export function PlayerPageDesktop({playerId, embedded = false}: {playerId: numbe
             tiles={playerTiles(data.rating, data.teams)}
           />
           <PageColumns template={PLAYER_GRID} stackedTemplate={PLAYER_STACKED_GRID}>
-            <DesktopTeams teams={data.teams} />
-            <PersonalDataCard player={data.player} full={data.full} desktop />
+            <DesktopTeams data={data} admin={admin} />
+            <PersonalDataCard
+              player={data.player}
+              full={data.full}
+              desktop
+              action={admin && <EditDataButton expanded={editing} onClick={() => setEditing(true)} />}
+            />
             <DesktopNights nights={data.nights} />
           </PageColumns>
+          {admin && editing && <EditPlayerPanel key={data.player.id} data={data} overview={overview} onClose={() => setEditing(false)} />}
         </>
       ) : (
         <PageStatus kind="player" overview={overview} nav={nav} desktop template={PLAYER_GRID} />
@@ -102,15 +124,45 @@ export function PlayerPageDesktop({playerId, embedded = false}: {playerId: numbe
   );
 }
 
-// Ekipe (P:274-297): each team with its leagues, to the team's page
-function DesktopTeams({teams}: {teams: PlayerOverview["teams"]}) {
+// Ekipe (P:274-297): each team with its leagues, to the team's page. An admin also adds the player to a team and takes
+// them out of one.
+function DesktopTeams({data, admin}: {data: PlayerOverview; admin: PlayerTeamsAdmin | null}) {
+  const teams = data.teams;
+  const listRef = useRef<HTMLUListElement>(null);
+  // a removed row takes its focused remove button with it: the focus goes to the next row's (the one before, when it
+  // was the last), or to "Dodaj u ekipu" when no team is left
+  const refocus = useRef<{card: Element | null; to: number | null} | null>(null);
+  const remove = (team: PlayerOverview["teams"][number]) => {
+    const row = document.activeElement?.closest("li[data-team]");
+    if (row?.getAttribute("data-team") === String(team.team_id) && listRef.current?.contains(row)) {
+      const at = teams.findIndex((t) => t.team_id === team.team_id);
+      const to = teams[at + 1] ?? teams[at - 1];
+      refocus.current = {card: listRef.current.closest("section"), to: to?.team_id ?? null};
+    }
+    admin?.removeTeam(team);
+  };
+  useEffect(() => {
+    const target = refocus.current;
+    if (!target) return;
+    refocus.current = null;
+    const next =
+      target.to != null
+        ? listRef.current?.querySelector<HTMLElement>(`li[data-team="${target.to}"] button`)
+        : target.card?.querySelector<HTMLElement>("input:not(:disabled)");
+    next?.focus();
+  }, [teams]);
   return (
-    <ColumnCard title="Ekipe" empty={teams.length === 0 && <EmptyState icon>{NO_TEAMS}</EmptyState>}>
-      <Box component="ul" sx={{listStyle: "none", m: 0, p: 0}}>
+    <ColumnCard
+      title="Ekipe"
+      addField={admin && <TeamsAddField data={data} admin={admin} />}
+      empty={teams.length === 0 && <EmptyState icon>{NO_TEAMS}</EmptyState>}
+    >
+      <Box component="ul" ref={listRef} sx={{listStyle: "none", m: 0, p: 0}}>
         {teams.map((t) => (
           <Box
             component="li"
             key={t.team_id}
+            data-team={t.team_id}
             sx={{
               ...stretchedRow,
               minHeight: 66,
@@ -136,6 +188,7 @@ function DesktopTeams({teams}: {teams: PlayerOverview["teams"]}) {
                 </Box>
               </Box>
             </Box>
+            {admin && <RemoveButton label={`Ukloni iz ekipe ${t.team_name}`} onClick={() => remove(t)} icon={<GroupRemoveRoundedIcon />} />}
             <Box sx={{width: 36, height: 36, flex: "none", display: "flex", alignItems: "center", justifyContent: "center"}}>
               <RowChevron />
             </Box>
@@ -143,6 +196,32 @@ function DesktopTeams({teams}: {teams: PlayerOverview["teams"]}) {
         ))}
       </Box>
     </ColumnCard>
+  );
+}
+
+// "Dodaj u ekipu" (P:276-286): the teams the player isn't in, found by name. A deactivated player can't join a team
+// (the server refuses it), so for them the field is greyed and says why.
+function TeamsAddField({data, admin}: {data: PlayerOverview; admin: PlayerTeamsAdmin}) {
+  const {list, error, reload} = useTeams();
+  const active = data.player.active;
+  const options = useMemo(() => (list && active ? teamAddOptions(list, data.teams.map((t) => t.team_id)) : []), [list, active, data.teams]);
+  return (
+    <>
+      <SearchAddField
+        placeholder="Dodaj u ekipu · ime ekipe"
+        icon={<GroupAddRoundedIcon aria-hidden />}
+        options={options}
+        onAdd={(o) => {
+          const team = list?.find((t) => t.id === o.id);
+          if (team) admin.addTeam(team);
+        }}
+        disabled={!active}
+        note={active ? (list && options.length === 0 ? "Igrač je već u svim ekipama." : undefined) : "Deaktivirani igrač se ne može dodati u ekipu."}
+        noHit="Nema takve ekipe."
+      />
+      {error && !list && <AddError onRetry={reload}>{error}</AddError>}
+      {admin.error && <AddError>{admin.error}</AddError>}
+    </>
   );
 }
 

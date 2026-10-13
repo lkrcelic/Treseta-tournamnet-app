@@ -67,8 +67,15 @@ export function PhoneFrame({eyebrow, nav, children}: {eyebrow: string; nav: NavS
 // The admin's Ekipe and Igrači directories (13h, 13j) hold the Team and Player pages next to their list. stacked: the
 // page column is too narrow for three columns (a window under 1360 px), so the second and third card share a column;
 // leadSlot: the place in the frame's header row for a back pill in a short window; lastPage: the last team's or
-// player's page shown in the frame (/teams/29), where Nova ekipa goes back to.
-export type DirectoryFrame = {stacked: boolean; leadSlot: HTMLElement | null; lastPage: string | null};
+// player's page shown in the frame (/teams/29), where Nova ekipa goes back to; nextAfterDelete(id): the row to open
+// once the open one is deleted (the next one the list shows; a search that would show no other is cleared), null
+// when the list has no other row.
+export type DirectoryFrame = {
+  stacked: boolean;
+  leadSlot: HTMLElement | null;
+  lastPage: string | null;
+  nextAfterDelete: (id: number) => number | null;
+};
 
 export const DirectoryFrameContext = React.createContext<DirectoryFrame | null>(null);
 
