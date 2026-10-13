@@ -63,8 +63,8 @@ export type BurzaPost = {
   night: string | null; // YYYY-MM-DD
   // SUBSTITUTE: the player the substitute plays with ("suigrač: ...")
   with_player: string | null;
-  // SUBSTITUTE: the team players' average rating, in tens
-  team_rating: number | null;
+  // SUBSTITUTE: the suigrač's rating, null before their first rated round
+  with_rating: number | null;
   // PARTNER / AVAILABLE: the author's rating, null before their first rated round
   rating: number | null;
   as_substitute: boolean;

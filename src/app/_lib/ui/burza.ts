@@ -46,12 +46,6 @@ export function availableAs(asSubstitute: boolean, asPartner: boolean): string {
   return [asSubstitute && "zamjenu", asPartner && "novog partnera"].filter(Boolean).join(" i ");
 }
 
-// The average rating in tens ("rejting ekipe oko 1550"), null without ratings
-export function ratingInTens(ratings: number[]): number | null {
-  if (!ratings.length) return null;
-  return Math.round(ratings.reduce((a, b) => a + b, 0) / ratings.length / 10) * 10;
-}
-
 // "upravo", "prije 5 min", "prije 2 h", "jučer", "prije 3 dana", "prije tjedan dana", "prije 2 tjedna", "prije mjesec dana"
 export function timeAgo(iso: string, now: Date = new Date()): string {
   const minutes = Math.floor((now.getTime() - Date.parse(iso)) / 60_000);
@@ -73,17 +67,18 @@ export function postTitle(p: BurzaPost): string {
   return p.kind === "SUBSTITUTE" ? p.team?.name ?? "Ekipa" : p.author.name;
 }
 
-// The line under the headline: "Liga Četvrtak · rejting 1550", "Za zamjenu i novog partnera"
+// The line under the headline: "Liga Četvrtak", "Liga Četvrtak · rejting 1550", "Za zamjenu i novog partnera"
 export function postSub(p: BurzaPost): string {
   if (p.kind === "AVAILABLE") return `Za ${availableAs(p.as_substitute, p.as_partner)}`;
-  const rating = p.kind === "SUBSTITUTE" ? p.team_rating : p.rating;
+  // a substitute ad gives the suigrač's rating in its text
+  const rating = p.kind === "SUBSTITUTE" ? null : p.rating;
   return [p.league?.name, rating != null && `rejting ${rating}`].filter(Boolean).join(" · ");
 }
 
 // The ad's text in the list
 export function postBody(p: BurzaPost): string {
   if (p.kind === "SUBSTITUTE") {
-    return [p.with_player && `Suigrač: ${p.with_player}`, p.team_rating != null && `rejting ekipe oko ${p.team_rating}`].filter(Boolean).join(" · ");
+    return [p.with_player && `Suigrač: ${p.with_player}`, p.with_rating != null && `rejting ${p.with_rating}`].filter(Boolean).join(" · ");
   }
   if (p.kind === "PARTNER") return p.note || "Javi se ako i ti tražiš partnera.";
   return [p.note || "Javi se ako trebate igrača.", p.rating != null && `rejting ${p.rating}`].filter(Boolean).join(" · ");
@@ -103,7 +98,7 @@ export function postDetails(p: BurzaPost): {label: string; value: string}[] {
       {label: "Liga", value: p.league?.name ?? "—"},
       {label: "Večer", value: p.night ? nightLabel(p.night) : "—"},
       {label: "Suigrač", value: p.with_player ?? "—"},
-      {label: "Rejting ekipe", value: p.team_rating != null ? `oko ${p.team_rating}` : "—"},
+      {label: "Rejting suigrača", value: p.with_rating != null ? String(p.with_rating) : p.with_player ? "Još nema" : "—"},
     ];
   }
   if (p.kind === "PARTNER") return [{label: "Liga", value: p.league?.name ?? "—"}, {label: "Rejting", value: rating}];

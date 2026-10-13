@@ -22,7 +22,6 @@ import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {isAdmin} from "@/app/_lib/service/auth/requireUser";
 import {nightValue} from "@/app/_lib/service/league/nights";
 import {displayName} from "@/app/_lib/players/names";
-import {ratingInTens} from "@/app/_lib/ui/burza";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {Player, Prisma} from "@prisma/client";
 
@@ -54,9 +53,9 @@ const postInclude = {
   player: {
     select: {id: true, first_name: true, last_name: true, rating: true, phone: true, _count: {select: {ratingHistory: true}}},
   },
-  withPlayer: {select: {first_name: true, last_name: true}},
+  withPlayer: {select: {first_name: true, last_name: true, rating: true, _count: {select: {ratingHistory: true}}}},
   league: {select: {league_id: true, league_name: true, end_date: true}},
-  team: {select: {team_id: true, team_name: true, teamPlayers: {select: {player: {select: {rating: true}}}}}},
+  team: {select: {team_id: true, team_name: true}},
 } satisfies Prisma.MarketPostInclude;
 
 type PostRow = Prisma.MarketPostGetPayload<{include: typeof postInclude}>;
@@ -141,7 +140,7 @@ function toView(p: PostRow, ctx: ViewContext): BurzaPost {
     league: p.league ? {id: p.league.league_id, name: p.league.league_name} : null,
     night,
     with_player: p.withPlayer ? displayName(p.withPlayer) : null,
-    team_rating: p.team ? ratingInTens(p.team.teamPlayers.map((tp) => tp.player.rating)) : null,
+    with_rating: p.withPlayer && p.withPlayer._count.ratingHistory > 0 ? p.withPlayer.rating : null,
     rating: p.player._count.ratingHistory > 0 ? p.player.rating : null,
     as_substitute: p.as_substitute,
     as_partner: p.as_partner,

@@ -46,7 +46,6 @@ import {
   postDetails,
   postHeadline,
   postSub,
-  ratingInTens,
   repostBlocked,
   repostFormHref,
   repostOpensForm,
@@ -192,9 +191,6 @@ test("Burza counts and names read as Croatian", () => {
   assert.equal(namesAndMore(["Slavonci"]), "Slavonci");
   assert.equal(availableAs(true, true), "zamjenu i novog partnera");
   assert.equal(availableAs(false, true), "novog partnera");
-  assert.equal(ratingInTens([1531, 1542]), 1540);
-  assert.equal(ratingInTens([1500, 1612]), 1560);
-  assert.equal(ratingInTens([]), null);
   assert.equal(busyLine("Dalmatinci"), "Taj dan igraš za ekipu Dalmatinci");
 });
 
@@ -225,7 +221,7 @@ const base: BurzaPost = {
   league: {id: 2, name: "Liga Četvrtak"},
   night: "2026-10-15",
   with_player: "Ante Kovač",
-  team_rating: 1550,
+  with_rating: 1335,
   rating: null,
   as_substitute: false,
   as_partner: false,
@@ -237,15 +233,15 @@ const base: BurzaPost = {
 };
 
 test("ad cards and pages say what each kind needs", () => {
-  assert.equal(postSub(base), "Liga Četvrtak · rejting 1550");
-  assert.equal(postBody(base), "Suigrač: Ante Kovač · rejting ekipe oko 1550");
+  assert.equal(postSub(base), "Liga Četvrtak");
+  assert.equal(postBody(base), "Suigrač: Ante Kovač · rejting 1335");
   assert.equal(postHeadline(base), "Ekipa Slavonci traži zamjenu");
   assert.deepEqual(
     postDetails(base).map((d) => `${d.label}: ${d.value}`),
-    ["Liga: Liga Četvrtak", "Večer: čet 15. 10.", "Suigrač: Ante Kovač", "Rejting ekipe: oko 1550"]
+    ["Liga: Liga Četvrtak", "Večer: čet 15. 10.", "Suigrač: Ante Kovač", "Rejting suigrača: 1335"]
   );
 
-  const partner: BurzaPost = {...base, kind: "PARTNER", team: null, night: null, with_player: null, team_rating: null, author: {id: 8, name: "Antonio Jurić"}};
+  const partner: BurzaPost = {...base, kind: "PARTNER", team: null, night: null, with_player: null, with_rating: null, author: {id: 8, name: "Antonio Jurić"}};
   assert.equal(postSub(partner), "Liga Četvrtak");
   assert.equal(postBody(partner), "Javi se ako i ti tražiš partnera.");
   assert.equal(postHeadline(partner), "Antonio Jurić");
