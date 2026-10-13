@@ -58,7 +58,7 @@ const MOVEMENT_INK: Record<MovementKind, string> = {up: color.green, down: color
 // The three looks of the +/− (design is.league): a desktop table cell; a pill next to a desktop podium medal; a chip
 // after a team's name on the phone. The pill and the chip are as wide as their text, narrower when there's no arrow.
 const MOVEMENT_LOOK = {
-  cell: {fontSize: 15, icon: 26, iconWidth: 24, iconGap: "-3px", shape: null},
+  cell: {fontSize: 15, icon: 26, iconWidth: 26, iconGap: "-5px", shape: null},
   pill: {fontSize: 14, icon: 24, iconWidth: 24, iconGap: "0px", shape: {height: 28, minWidth: 28, padArrow: "3px", pad: "9px", background: tint.white[70]}},
   chip: {fontSize: 13, icon: 22, iconWidth: 22, iconGap: "0px", shape: {height: 20, minWidth: 22, padArrow: "2px", pad: "6px", background: color.paper2}},
 } as const;
