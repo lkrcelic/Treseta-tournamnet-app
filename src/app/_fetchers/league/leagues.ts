@@ -24,13 +24,15 @@ export async function getLeagueTeamsAPI(leagueId: number): Promise<LeagueTeamDet
   return response.json();
 }
 
-export async function addTeamToLeagueAPI(leagueId: number, teamId: number): Promise<void> {
+// smokers: how many of its players smoke (Novo kolo counts them for the smoking tables)
+export async function addTeamToLeagueAPI(leagueId: number, teamId: number): Promise<{smokers: number}> {
   const response = await apiFetch(`/api/leagues/${leagueId}/teams`, {
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify({team_id: teamId}),
   });
   if (!response.ok) throw new Error(await responseErrorMessage(response, "Ekipa nije dodana."));
+  return response.json();
 }
 
 export async function setLeagueTeamActiveAPI(leagueId: number, teamId: number, active: boolean): Promise<void> {

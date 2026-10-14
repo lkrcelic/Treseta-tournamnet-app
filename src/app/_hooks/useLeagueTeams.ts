@@ -3,8 +3,8 @@
 import {getLeagueTeamsAPI} from "@/app/_fetchers/league/leagues";
 import {useCallback, useEffect, useState} from "react";
 
-// smokers: how many of its players smoke (unknown for a team just added on Manage League)
-export type LeagueTeam = {id: number; name: string; players: string[]; active: boolean; conferenceId: number | null; smokers?: number};
+// smokers: how many of its players smoke (counted for the smoking tables in Novo kolo)
+export type LeagueTeam = {id: number; name: string; players: string[]; active: boolean; conferenceId: number | null; smokers: number};
 
 // Teams of a league with their players' usernames, the active flag, the conference and how many of them smoke (admin only)
 export default function useLeagueTeams(leagueId: number | null) {
