@@ -118,7 +118,7 @@ export async function leagueExists(leagueId: number): Promise<boolean> {
 export async function listLeagueTeams(leagueId: number): Promise<LeagueTeamDetails[]> {
   const rows = await prisma.leagueTeam.findMany({
     where: {league_id: leagueId, team_id: {not: BYE_TEAM_ID}},
-    include: {team: {include: {teamPlayers: {include: {player: {select: {id: true, username: true, smoker: true}}}}}}},
+    include: {team: {include: {teamPlayers: {include: {player: {select: {id: true, username: true, smoker: true, active: true}}}}}}},
   });
   return rows
     .map((r) => ({
@@ -127,7 +127,8 @@ export async function listLeagueTeams(leagueId: number): Promise<LeagueTeamDetai
       active: r.active,
       conference_id: r.conference_id,
       players: r.team.teamPlayers.map((tp) => ({id: tp.player.id, username: tp.player.username})),
-      smokers: r.team.teamPlayers.filter((tp) => tp.player.smoker).length,
+      // counted as the pairing counts them (teamSmokers): a deactivated player can't play
+      smokers: r.team.teamPlayers.filter((tp) => tp.player.smoker && tp.player.active).length,
     }))
     .sort((a, b) => a.team_name.localeCompare(b.team_name, "hr"));
 }

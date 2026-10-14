@@ -3,6 +3,7 @@ import {errorResponse} from "@/app/_lib/apiErrors";
 import {isDbId} from "@/app/_lib/helpers/query/dbId";
 import {requireAdmin} from "@/app/_lib/service/auth/requireUser";
 import {addTeamToLeague, leagueExists, listLeagueTeams} from "@/app/_lib/service/league/leagues";
+import {teamSmokers} from "@/app/_lib/service/team/smokers";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {NextRequest, NextResponse} from "next/server";
 
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest, {params}: {params: {id: string}}
   }
 }
 
-// Add an existing team to the league (admin)
+// Add an existing team to the league (admin); with its smokers, so Novo kolo counts them for the smoking tables at once
 export async function POST(request: NextRequest, {params}: {params: {id: string}}) {
   const auth = await requireAdmin(request);
   if (auth.response) return auth.response;
@@ -36,7 +37,8 @@ export async function POST(request: NextRequest, {params}: {params: {id: string}
     if (!(await leagueExists(leagueId))) return leagueNotFound();
     const {team_id} = LeagueTeamAddRequestValidation.parse(await request.json());
     await addTeamToLeague(leagueId, team_id);
-    return NextResponse.json({league_id: leagueId, team_id, active: true}, {status: STATUS.Created});
+    const smokers = (await teamSmokers([team_id])).get(team_id) ?? 0;
+    return NextResponse.json({league_id: leagueId, team_id, active: true, smokers}, {status: STATUS.Created});
   } catch (error) {
     return errorResponse(error, "Ekipa nije dodana.");
   }

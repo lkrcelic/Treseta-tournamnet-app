@@ -1,8 +1,10 @@
 "use client";
 
 import {createMultipleRoundsAPI, RepeatMatchupsError} from "@/app/_fetchers/round/createMultipleRounds";
+import {getCreateRoundDraftAPI, saveCreateRoundDraftAPI} from "@/app/_fetchers/round/createRoundDraft";
 import useLeagueTeams, {LeagueTeam} from "@/app/_hooks/useLeagueTeams";
 import {updateCachedLeague} from "@/app/_hooks/useLeagues";
+import {CreateRoundDraft, isPlaying, MAX_ROUNDS, MAX_WINDOW, switchTeams} from "@/app/_lib/createRoundDraft";
 import {smokingSummary} from "@/app/_lib/ui/smoking";
 import {count, matchesQuery, NOUN, plural} from "@/app/_lib/ui/text";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
@@ -10,62 +12,136 @@ import {buttonBase, Card, EmptyState, ErrorNote, LoadingRows, OutlineButton, Pri
 import useConferences from "@/app/_hooks/useConferences";
 import WarningRoundedIcon from "@mui/icons-material/WarningRounded";
 import {Box, Dialog} from "@mui/material";
-import React, {useEffect, useId, useMemo, useState} from "react";
+import React, {useEffect, useId, useMemo, useRef, useState} from "react";
 import LeagueNotes from "./LeagueNotes";
 import {SmokingPlanOverlay, SmokingTablesCard} from "./SmokingTables";
 
-const MAX_ROUNDS = 5;
-const MAX_WINDOW = 200;
 // the smoking tables picked when the switch goes on and the league remembers none (the design's default)
 const FIRST_SMOKING_TABLES = [1, 2];
+const SAVE_DELAY_MS = 500;
+
+// the league's teams, loaded once by Upravljanje ligom for its Ekipe and Novo kolo views, so a team added on Ekipe is here
+// at once
+export type CreateRoundTeams = Pick<ReturnType<typeof useLeagueTeams>, "teams" | "error" | "loading" | "reload">;
+
+// a save of Novo kolo still on its way, per league: Novo kolo opened again waits for it, so it doesn't show what was
+// there before it
+const savesOnTheWay = new Map<number, Promise<void>>();
 
 // Novo kolo for one league: the options, the smoking tables, the teams present tonight and the create action, laid
 // out by Upravljanje ligom's "Novo kolo" view (desktop only). defaultSmokingTables: the ones of the league's last round
 // creation (the switch starts on with them). The rounds are created as drafts; onCreated gets their night, and
 // Upravljanje ligom opens Skica, where the admin approves and publishes them.
-function useCreateRound(leagueId: number, onCreated: (date: string) => void, defaultRounds?: number, defaultSmokingTables?: number[]) {
-  const [rounds, setRounds] = useState(4);
-  const [windowSize, setWindowSize] = useState(8);
+// What the admin sets up here is saved for them on the server for tonight (a reload, a trip to make a new team or
+// another computer keeps it); until they change something it is the league's defaults.
+function useCreateRound(leagueId: number, teamsData: CreateRoundTeams, onCreated: (date: string) => void, defaultRounds?: number, defaultSmokingTables?: number[]) {
   const [query, setQuery] = useState("");
-  // teams switched away from their default (active teams start on, inactive teams start off)
-  const [flipped, setFlipped] = useState<Set<number>>(new Set());
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   // the pairs that would meet twice today, while the admin decides whether to create the rounds anyway
   const [repeats, setRepeats] = useState<[string, string][] | null>(null);
   // pair every conference on its own, so teams only meet teams of their conference; off until the admin turns it on
   const [withinConferences, setWithinConferences] = useState(false);
-  const [smokingOn, setSmokingOn] = useState(false);
-  const [smokingPicked, setSmokingPicked] = useState<number[]>(FIRST_SMOKING_TABLES);
   const [planOpen, setPlanOpen] = useState(false);
-  const rememberedTables = (defaultSmokingTables ?? []).join(",");
+  // null: nothing changed tonight
+  const [draft, setDraft] = useState<CreateRoundDraft | null>(null);
+  const [draftStatus, setDraftStatus] = useState<"loading" | "loadError" | "ready">("loading");
+  const [draftNonce, setDraftNonce] = useState(0);
+  const [saveError, setSaveError] = useState(false);
+  const timer = useRef<number | undefined>(undefined);
+  const unsaved = useRef<CreateRoundDraft | null>(null);
 
-  const {teams, error: teamsError, loading, reload} = useLeagueTeams(leagueId);
+  const {teams, error: teamsError, loading, reload} = teamsData;
   const inactive = useMemo(() => new Set((teams ?? []).filter((t) => !t.active).map((t) => t.id)), [teams]);
   // the teams' conference dots in the list
   const conferences = useConferences(leagueId);
   const hasConferences = conferences.conferences.length > 0;
 
-  // every active team starts as present, and Rounds starts at the league's rounds per night; switching league starts over
   useEffect(() => {
-    setFlipped(new Set());
-    setQuery("");
-    setCreateError(null);
+    let cancelled = false;
+    setDraftStatus("loading");
+    (savesOnTheWay.get(leagueId) ?? Promise.resolve())
+      .catch(() => {})
+      .then(() => getCreateRoundDraftAPI(leagueId))
+      .then((saved) => {
+        if (cancelled) return;
+        setDraft(saved);
+        setDraftStatus("ready");
+      })
+      .catch(() => {
+        if (!cancelled) setDraftStatus("loadError");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [leagueId, draftNonce]);
+
+  // "Samo unutar konferencija" starts off for every league
+  useEffect(() => {
     setWithinConferences(false);
-    if (defaultRounds) setRounds(Math.min(MAX_ROUNDS, defaultRounds));
-  }, [leagueId, defaultRounds]);
+  }, [leagueId]);
 
-  // the smoking tables start as the league's last round creation left them
+  const save = (value: CreateRoundDraft, keepalive = false) => {
+    unsaved.current = null;
+    // one after another, so an older choice never lands over a newer one; a save while the page closes can't wait
+    const previous = savesOnTheWay.get(leagueId) ?? Promise.resolve();
+    const sending = keepalive ? saveCreateRoundDraftAPI(leagueId, value, true) : previous.catch(() => {}).then(() => saveCreateRoundDraftAPI(leagueId, value));
+    savesOnTheWay.set(leagueId, sending);
+    sending
+      // a newer change may be waiting; its own save says how it went
+      .then(
+        () => unsaved.current == null && setSaveError(false),
+        () => unsaved.current == null && setSaveError(true)
+      )
+      .finally(() => {
+        if (savesOnTheWay.get(leagueId) === sending) savesOnTheWay.delete(leagueId);
+      });
+  };
+
+  // leaving Novo kolo (another view, another page, or closing it) sends a change that is still waiting
   useEffect(() => {
-    const remembered = rememberedTables ? rememberedTables.split(",").map(Number) : [];
-    setSmokingOn(remembered.length > 0);
-    setSmokingPicked(remembered.length ? remembered : FIRST_SMOKING_TABLES);
-    setPlanOpen(false);
-  }, [leagueId, rememberedTables]);
+    const flush = () => {
+      window.clearTimeout(timer.current);
+      if (unsaved.current) save(unsaved.current, true);
+    };
+    window.addEventListener("pagehide", flush);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      flush();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueId]);
 
-  // an inactive team (one that stopped coming) can still be switched on for tonight
-  const onByDefault = (id: number) => !inactive.has(id);
-  const isOn = (t: LeagueTeam) => onByDefault(t.id) !== flipped.has(t.id);
+  // Rounds starts at the league's rounds per night, and the smoking tables as the league's last round creation left them
+  const remembered = defaultSmokingTables ?? [];
+  const rounds = draft?.rounds ?? (defaultRounds ? Math.min(MAX_ROUNDS, defaultRounds) : 4);
+  const windowSize = draft?.window_size ?? 8;
+  const smokingOn = draft?.smoking_on ?? remembered.length > 0;
+  const smokingPicked = draft?.smoking_tables ?? (remembered.length ? remembered : FIRST_SMOKING_TABLES);
+  const sittingOut = useMemo(() => (draft ? new Set(draft.sitting_out) : null), [draft]);
+
+  // the first change takes who sits out now, so the teams' active switches on Ekipe don't move them any more
+  const change = (patch: Partial<CreateRoundDraft>) => {
+    const next: CreateRoundDraft = {
+      rounds,
+      window_size: windowSize,
+      smoking_on: smokingOn,
+      smoking_tables: smokingPicked,
+      sitting_out: draft ? draft.sitting_out : switchTeams(teams ?? [], null, [], true),
+      ...patch,
+    };
+    setDraft(next);
+    unsaved.current = next;
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => save(next), SAVE_DELAY_MS);
+  };
+  const retrySave = () => {
+    window.clearTimeout(timer.current);
+    if (draft) save(draft);
+  };
+
+  // until a change the active teams play; an inactive team (one that stopped coming) can still be switched on for tonight
+  const isOn = (t: LeagueTeam) => isPlaying(t, sittingOut);
   const visible = useMemo(() => (teams ?? []).filter((t) => matchesQuery(t.name, query)), [teams, query]);
   // "Označi sve" is about the active teams on the list (as in the design): an inactive team is switched on only by its
   // own switch, so one click can't pair the teams that stopped coming
@@ -76,22 +152,21 @@ function useCreateRound(leagueId: number, onCreated: (date: string) => void, def
   // a table per two teams; picks above tonight's number of tables wait for a bigger night
   const tableCount = Math.floor(playing / 2);
   const smokingTables = smokingPicked.filter((t) => t <= tableCount).sort((a, b) => a - b);
-  const smokers = selected.reduce((sum, t) => sum + (t.smokers ?? 0), 0);
-  const smokingTeams = selected.filter((t) => (t.smokers ?? 0) > 0).length;
+  const smokers = selected.reduce((sum, t) => sum + t.smokers, 0);
+  const smokingTeams = selected.filter((t) => t.smokers > 0).length;
 
-  const toggle = (id: number) =>
-    setFlipped((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const toggle = (id: number) => {
+    const team = (teams ?? []).find((t) => t.id === id);
+    if (team) change({sitting_out: switchTeams(teams ?? [], sittingOut, [id], !isOn(team))});
+  };
   const toggleAll = () =>
-    setFlipped((prev) => {
-      const next = new Set(prev);
-      // an active team is on by default, so switching it on removes its flip and switching it off adds one
-      activeVisible.forEach((t) => (allOn ? next.add(t.id) : next.delete(t.id)));
-      return next;
+    change({
+      sitting_out: switchTeams(
+        teams ?? [],
+        sittingOut,
+        activeVisible.map((t) => t.id),
+        !allOn
+      ),
     });
 
   const create = async ({window = windowSize, allowRepeats = false}: {window?: number; allowRepeats?: boolean} = {}) => {
@@ -116,7 +191,7 @@ function useCreateRound(leagueId: number, onCreated: (date: string) => void, def
   const expandedWindow = Math.min(MAX_WINDOW, windowSize + 2);
   const canExpand = windowSize < playing && windowSize < MAX_WINDOW;
   const expandWindow = () => {
-    setWindowSize(expandedWindow);
+    change({window_size: expandedWindow});
     create({window: expandedWindow});
   };
   const repeatsDialog = repeats && (
@@ -135,8 +210,8 @@ function useCreateRound(leagueId: number, onCreated: (date: string) => void, def
       <Stepper
         label="Kola"
         value={rounds}
-        onInc={() => setRounds((r) => Math.min(MAX_ROUNDS, r + 1))}
-        onDec={() => setRounds((r) => Math.max(1, r - 1))}
+        onInc={() => change({rounds: Math.min(MAX_ROUNDS, rounds + 1)})}
+        onDec={() => change({rounds: Math.max(1, rounds - 1)})}
         canInc={rounds < MAX_ROUNDS}
         canDec={rounds > 1}
       />
@@ -144,8 +219,8 @@ function useCreateRound(leagueId: number, onCreated: (date: string) => void, def
       <Stepper
         label="Prozor"
         value={windowSize}
-        onInc={() => setWindowSize((w) => Math.min(MAX_WINDOW, w + 2))}
-        onDec={() => setWindowSize((w) => Math.max(2, w - 2))}
+        onInc={() => change({window_size: Math.min(MAX_WINDOW, windowSize + 2)})}
+        onDec={() => change({window_size: Math.max(2, windowSize - 2)})}
         canInc={windowSize < MAX_WINDOW}
         canDec={windowSize > 2}
       />
@@ -168,12 +243,12 @@ function useCreateRound(leagueId: number, onCreated: (date: string) => void, def
     </Box>
   );
 
-  const toggleSmokingTable = (n: number) => setSmokingPicked((prev) => (prev.includes(n) ? prev.filter((t) => t !== n) : [...prev, n]));
+  const toggleSmokingTable = (n: number) => change({smoking_tables: smokingPicked.includes(n) ? smokingPicked.filter((t) => t !== n) : [...smokingPicked, n]});
   const smokingCard = (
     <SmokingTablesCard
       on={smokingOn}
       onToggle={() => {
-        setSmokingOn((on) => !on);
+        change({smoking_on: !smokingOn});
         setPlanOpen(false);
       }}
       tables={smokingTables}
@@ -192,13 +267,20 @@ function useCreateRound(leagueId: number, onCreated: (date: string) => void, def
     </PrimaryButton>
   );
 
-  const teamState = teamsError ? (
+  // nothing can be changed before the teams and the admin's saved choice are here: the first change takes who sits out
+  const blocked = teamsError ? (
     <ErrorNote onRetry={reload} sx={{m: "12px"}}>
       {teamsError}
     </ErrorNote>
-  ) : loading ? (
+  ) : draftStatus === "loadError" ? (
+    <ErrorNote onRetry={() => setDraftNonce((n) => n + 1)} sx={{m: "12px"}}>
+      Odabir za novo kolo se nije učitao.
+    </ErrorNote>
+  ) : loading || draftStatus === "loading" ? (
     <LoadingRows rows={8} height={56} />
-  ) : visible.length === 0 ? (
+  ) : null;
+
+  const teamState = visible.length === 0 ? (
     <EmptyState>{teams?.length ? "Nijedna ekipa ne odgovara pretrazi." : "Ova liga još nema ekipa."}</EmptyState>
   ) : null;
 
@@ -214,6 +296,8 @@ function useCreateRound(leagueId: number, onCreated: (date: string) => void, def
     query,
     setQuery,
     createError,
+    saveError: saveError && <ErrorNote onRetry={retrySave}>Odabir nije spremljen.</ErrorNote>,
+    blocked,
     steppers,
     smokingCard,
     planOpen: showPlan,
@@ -249,17 +333,26 @@ function InactiveBadge() {
 // left; who sits out and every team's switch on the right. The smoking plan opens over both.
 export function CreateRoundView({
   leagueId,
+  teams,
   onCreated,
   defaultRounds,
   defaultSmokingTables,
 }: {
   leagueId: number;
+  teams: CreateRoundTeams;
   // the rounds are drafts on this night (YYYY-MM-DD)
   onCreated: (date: string) => void;
   defaultRounds?: number;
   defaultSmokingTables?: number[];
 }) {
-  const cr = useCreateRound(leagueId, onCreated, defaultRounds, defaultSmokingTables);
+  const cr = useCreateRound(leagueId, teams, onCreated, defaultRounds, defaultSmokingTables);
+  if (cr.blocked) {
+    return (
+      <Card component="section" aria-label="Novo kolo" sx={{flex: 1, minHeight: 0, overflow: "hidden", borderRadius: "24px"}}>
+        {cr.blocked}
+      </Card>
+    );
+  }
   // under the plan the view can't be reached by Tab or a screen reader (React 18 has no inert prop, hence the spread)
   const hidden = cr.planOpen ? ({inert: ""} as object) : {};
   return (
@@ -276,6 +369,7 @@ export function CreateRoundView({
           <LeagueNotes key={leagueId} leagueId={leagueId} />
         </Box>
         <Box sx={{flex: "none", display: "flex", flexDirection: "column", gap: "10px"}}>
+          {cr.saveError}
           {cr.createError && <ErrorNote>{cr.createError}</ErrorNote>}
           {cr.createButton}
         </Box>

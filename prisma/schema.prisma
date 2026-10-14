@@ -68,6 +68,7 @@ model Player {
   sessions                       Session[]
   luciaSessions                  LuciaSession[]
   accounts                       Account[]
+  createRoundDrafts              CreateRoundDraft[]
 }
 
 model Session {
@@ -140,6 +141,7 @@ model League {
   conferences  Conference[]
   nights       LeagueNight[]
   marketPosts  MarketPost[]
+  createRoundDrafts CreateRoundDraft[]
 }
 
 // A group of a league's teams (e.g. "Sjever" and "Jug"): a colored dot before the team's name and its own standings.
@@ -171,6 +173,29 @@ model LeagueNight {
   league League @relation(fields: [league_id], references: [league_id], onDelete: Cascade)
 
   @@id([league_id, night])
+}
+
+// What an admin has set up on Novo kolo for a league tonight, so it survives a reload, a trip to make a new team and
+// another computer; each admin has their own. One row per admin and league: the next night overwrites it.
+// sitting_out: the teams that don't play, taken when the admin first changes something. A team made inactive later keeps
+// playing, one made active stays out until it is switched on, and a team added to the league later plays.
+model CreateRoundDraft {
+  player_id      Int
+  league_id      Int
+  // the league night it is for (before 06:00 still the night before, Zagreb time)
+  night          DateTime @db.Date
+  rounds         Int
+  window_size    Int
+  smoking_on     Boolean
+  smoking_tables Int[]    @default([])
+  sitting_out    Int[]    @default([])
+  updated_at     DateTime @default(now()) @updatedAt
+
+  player Player @relation(fields: [player_id], references: [id], onDelete: Cascade)
+  league League @relation(fields: [league_id], references: [league_id], onDelete: Cascade)
+
+  @@id([player_id, league_id])
+  @@index([league_id])
 }
 
 enum MarketPostKind {
