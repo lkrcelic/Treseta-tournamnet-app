@@ -12,7 +12,7 @@ own; everything else is kept identical to Bela.
 | Last synced Bela commit | `4bf68ad` (8 Oct 2026) |
 | Waiting in Bela | 40 commits up to `1ea2748` (13 Oct 2026), settled under [Bela's work waiting to come over](#belas-work-waiting-to-come-over) |
 | Target branch | `master` |
-| Sync branch | `bela-sync`, rebuilt from `master` by every run, in the worktree the app makes for the run |
+| Sync branch | `bela-sync` in the repo itself (no worktree): created from `master`, or rebased onto it, by every run |
 
 The nightly sync moves the last synced commit forward. The other rows are built into the scheduled task: change the
 task along with them.
@@ -24,14 +24,13 @@ scheduled task **Bela → Treseta sync** (`bela-nightly-sync`; its prompt is
 `~/.claude/scheduled-tasks/bela-nightly-sync/SKILL.md`). It runs while the app is open; a run missed because the app
 was closed or the Mac was asleep starts when it is back. To run it now: Scheduled → Bela → Treseta sync → Run now.
 
-The app starts each run in a new worktree of its own, and the run does all its work there: the sandbox lets a run
-write only inside the folder it started in. (The run of 13 Oct still used a fixed `.claude/worktrees/bela-sync`, every
-write to it was refused, and nothing came over.) The task's permission mode shouldn't wait for approvals, since nobody
-is there to give them; that is its setting in the app's Scheduled screen.
+The run works in the repo folder itself, not in a worktree, so the task must start there (the sandbox lets a run
+write only inside the folder it started in). The run of 13 Oct used a worktree and nothing came over. The
+task's permission mode shouldn't wait for approvals, since nobody is there to give them; both are its settings in the
+app's Scheduled screen. A run that finds uncommitted changes in the repo stops without touching them.
 
-1. Creates `bela-sync` afresh from `master` in its worktree, so your checkout and branch are never touched. An earlier
-   `bela-sync` that wasn't merged is kept as `bela-sync-previous`; nothing is lost, since every run starts again from
-   the last synced Bela commit on `master`.
+1. Switches to `bela-sync`: creates it from `master`, or, when it exists, rebases it onto `master`, so an earlier
+   run's unmerged commits stay and the sync continues after them. A rebase conflict stops the run.
 2. Takes each new commit on Bela's `development`, oldest first, with `git cherry-pick -x`. A change to a shared file
    comes over as it is; a change to one of the differences below is handled as its kind says, and the commits under
    [Bela's work waiting to come over](#belas-work-waiting-to-come-over) as that section decides.
@@ -39,7 +38,7 @@ is there to give them; that is its setting in the app's Scheduled screen.
 4. Checks the result: unit tests, ESLint, `tsc` (no new errors), `next build`, and the migration SQL against the schema.
 5. Records the Bela commit it reached (above, and in the [log](#sync-log)), and reports every file that differs from
    Bela without being listed below (drift).
-6. Detaches its worktree from `bela-sync`, so you can merge the branch and the next run can rebuild it.
+6. Switches back to the branch the repo was on, leaving `bela-sync` for you to merge.
 
 It never commits to `master`, never pushes, never changes the Bela repo, and never connects to a
 database.
@@ -51,8 +50,8 @@ git log --oneline master..bela-sync
 git merge --ff-only bela-sync
 ```
 
-`bela-sync` is only a branch once the run is done; look at it with `git log` / `git diff`. Merge it before the next run,
-which rebuilds it from `master` (keeping an unmerged one as `bela-sync-previous`).
+Look at `bela-sync` with `git log` / `git diff`. If you don't merge it, the next run rebases it onto `master` and
+carries on from where it stopped.
 
 **A night that brings a migration** reports it untested, since the run has no database. Before it reaches `master`
 (the Vercel build applies migrations to production), test it as the transition did: apply all migrations to a fresh
@@ -237,7 +236,7 @@ A hand is 11 points, or a custom hand typed freely; a match goes to 41; a round 
 | `_lib/rating/glicko2.ts` | One comment: "for teams of two" (Bela: "for Bela teams of two") |
 | `next.config.mjs` (root) | Redirects the old `/match/:id` to `/` |
 | `package.json`, `package-lock.json` (root) | The name `treseta-tournament-app`. On a lock file conflict, take Bela's lock file and put the two names back |
-| `.gitignore` (root) | Also ignores `.env`, `/backups/` and `.claude/worktrees/` |
+| `.gitignore` (root) | Also ignores `.env`, `/backups/` and `/.claude/` |
 
 ### Branding
 
