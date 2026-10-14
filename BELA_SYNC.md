@@ -12,7 +12,7 @@ own; everything else is kept identical to Bela.
 | Last synced Bela commit | `4bf68ad` (8 Oct 2026) |
 | Waiting in Bela | 40 commits up to `1ea2748` (13 Oct 2026), settled under [Bela's work waiting to come over](#belas-work-waiting-to-come-over) |
 | Target branch | `master` |
-| Sync branch | `bela-sync`, in the worktree `.claude/worktrees/bela-sync` |
+| Sync branch | `bela-sync`, rebuilt from `master` by every run, in the worktree the app makes for the run |
 
 The nightly sync moves the last synced commit forward. The other rows are built into the scheduled task: change the
 task along with them.
@@ -24,13 +24,14 @@ scheduled task **Bela → Treseta sync** (`bela-nightly-sync`; its prompt is
 `~/.claude/scheduled-tasks/bela-nightly-sync/SKILL.md`). It runs while the app is open; a run missed because the app
 was closed or the Mac was asleep starts when it is back. To run it now: Scheduled → Bela → Treseta sync → Run now.
 
-The task has to start in the Treseta repo itself, not in a worktree of its own, and in a permission mode that doesn't
-wait for approvals: the sandbox lets a run write only inside the folder it started in, and nobody is there to approve
-anything. Both are the task's settings in the app's Scheduled screen. The run of 13 Oct started in its own worktree
-(`.claude/worktrees/jovial-sutherland-f6018a`), every write to `.claude/worktrees/bela-sync` was refused, and nothing
-came over.
+The app starts each run in a new worktree of its own, and the run does all its work there: the sandbox lets a run
+write only inside the folder it started in. (The run of 13 Oct still used a fixed `.claude/worktrees/bela-sync`, every
+write to it was refused, and nothing came over.) The task's permission mode shouldn't wait for approvals, since nobody
+is there to give them; that is its setting in the app's Scheduled screen.
 
-1. Puts `bela-sync` on top of the target branch, in its own worktree, so your checkout and branch are never touched.
+1. Creates `bela-sync` afresh from `master` in its worktree, so your checkout and branch are never touched. An earlier
+   `bela-sync` that wasn't merged is kept as `bela-sync-previous`; nothing is lost, since every run starts again from
+   the last synced Bela commit on `master`.
 2. Takes each new commit on Bela's `development`, oldest first, with `git cherry-pick -x`. A change to a shared file
    comes over as it is; a change to one of the differences below is handled as its kind says, and the commits under
    [Bela's work waiting to come over](#belas-work-waiting-to-come-over) as that section decides.
@@ -38,8 +39,9 @@ came over.
 4. Checks the result: unit tests, ESLint, `tsc` (no new errors), `next build`, and the migration SQL against the schema.
 5. Records the Bela commit it reached (above, and in the [log](#sync-log)), and reports every file that differs from
    Bela without being listed below (drift).
+6. Detaches its worktree from `bela-sync`, so you can merge the branch and the next run can rebuild it.
 
-It never commits to the target branch or `master`, never pushes, never changes the Bela repo, and never connects to a
+It never commits to `master`, never pushes, never changes the Bela repo, and never connects to a
 database.
 
 **In the morning,** read the run's report in the app, then on `master`:
@@ -49,8 +51,8 @@ git log --oneline master..bela-sync
 git merge --ff-only bela-sync
 ```
 
-`bela-sync` is checked out in the worktree, so don't check it out in your own checkout: open the worktree folder or
-use `git log` / `git diff` to look at it.
+`bela-sync` is only a branch once the run is done; look at it with `git log` / `git diff`. Merge it before the next run,
+which rebuilds it from `master` (keeping an unmerged one as `bela-sync-previous`).
 
 **A night that brings a migration** reports it untested, since the run has no database. Before it reaches `master`
 (the Vercel build applies migrations to production), test it as the transition did: apply all migrations to a fresh
@@ -320,7 +322,7 @@ The database part (the `Conference` table and `LeagueTeam.conference_id`) is und
 
 ### Adding a difference
 
-1. Make the change on the target branch, as small as it can be: a constant in `_lib/game/scoring.ts` or a field in
+1. Make the change on `master`, as small as it can be: a constant in `_lib/game/scoring.ts` or a field in
    `_lib/brand.ts` beats an edited shared file.
 2. Add it to the table of its kind: the Treseta path, the Bela counterpart and what stays different. A file that
    differs from Bela without a row here is reported as drift every night.
