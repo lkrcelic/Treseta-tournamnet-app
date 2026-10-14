@@ -248,8 +248,9 @@ function TeamDirectory({selectedId}: {selectedId: number | null}) {
 // ---------- Igrači ----------
 
 // "Pozovi igrača" (not designed; plan Q12): a player needs an account before an admin can add them to a team, so the
-// button copies the sign-up link for the admin to send
-const SIGNUP_COPIED = "Poveznica za registraciju je kopirana.";
+// button copies a link for the admin to send. It is the login page: its Google login makes the account in one step (the
+// better way in), and it still leads to the sign-up form.
+const LOGIN_COPIED = "Poveznica za prijavu je kopirana.";
 
 function PlayerDirectory({selectedId, afterDelete}: {selectedId: number | null; afterDelete: React.MutableRefObject<AfterDelete>}) {
   const {list, error, reload} = useAdminPlayers();
@@ -272,13 +273,13 @@ function PlayerDirectory({selectedId, afterDelete}: {selectedId: number | null; 
   }, [notice]);
 
   const invite = async () => {
-    const link = `${window.location.origin}/signup`;
+    const link = `${window.location.origin}/login`;
     try {
       await navigator.clipboard.writeText(link);
-      setNotice({text: SIGNUP_COPIED, done: true});
+      setNotice({text: LOGIN_COPIED, done: true});
     } catch {
       // no clipboard (an insecure origin, a refused permission): the link to copy by hand
-      setNotice({text: `Poveznica za registraciju: ${link}`, done: false});
+      setNotice({text: `Poveznica za prijavu: ${link}`, done: false});
     }
   };
 
