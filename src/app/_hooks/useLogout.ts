@@ -1,6 +1,7 @@
 "use client";
 
 import {useCallback, useState} from "react";
+import {runBeforeLogout} from "@/app/_utils/beforeLogout";
 import {resetAllStores} from "@/app/_utils/resetStores";
 import {logoutUser} from "../_fetchers/authentication/logout";
 
@@ -13,6 +14,8 @@ export default function useLogout() {
       setLoggingOut(true);
 
       try {
+        // a save still waiting goes out while the session is still there
+        await runBeforeLogout();
         resetAllStores();
 
         await logoutUser();

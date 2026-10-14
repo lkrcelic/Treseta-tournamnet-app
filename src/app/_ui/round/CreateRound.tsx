@@ -5,6 +5,7 @@ import {getCreateRoundDraftAPI, saveCreateRoundDraftAPI} from "@/app/_fetchers/r
 import useLeagueTeams, {LeagueTeam} from "@/app/_hooks/useLeagueTeams";
 import {updateCachedLeague} from "@/app/_hooks/useLeagues";
 import {CreateRoundDraft, isPlaying, MAX_ROUNDS, MAX_WINDOW, switchTeams} from "@/app/_lib/createRoundDraft";
+import {onBeforeLogout} from "@/app/_utils/beforeLogout";
 import {smokingSummary} from "@/app/_lib/ui/smoking";
 import {count, matchesQuery, NOUN, plural} from "@/app/_lib/ui/text";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
@@ -98,14 +99,21 @@ function useCreateRound(leagueId: number, teamsData: CreateRoundTeams, onCreated
       });
   };
 
-  // leaving Novo kolo (another view, another page, or closing it) sends a change that is still waiting
+  // leaving Novo kolo (another view, another page, or closing it) sends a change that is still waiting; logging out
+  // waits for it, since it can't be saved once the session is gone
   useEffect(() => {
     const flush = () => {
       window.clearTimeout(timer.current);
       if (unsaved.current) save(unsaved.current, true);
     };
+    const offLogout = onBeforeLogout(async () => {
+      window.clearTimeout(timer.current);
+      if (unsaved.current) save(unsaved.current);
+      await savesOnTheWay.get(leagueId);
+    });
     window.addEventListener("pagehide", flush);
     return () => {
+      offLogout();
       window.removeEventListener("pagehide", flush);
       flush();
     };
