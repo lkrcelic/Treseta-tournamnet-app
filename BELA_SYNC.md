@@ -9,8 +9,8 @@ own; everything else is kept identical to Bela.
 | | |
 |---|---|
 | Bela branch | `development`, read through the remote `bela` (the local Bela repo). Only commits come over, never Bela's uncommitted work |
-| Last synced Bela commit | `4bf68ad` (8 Oct 2026) |
-| Waiting in Bela | 40 commits up to `1ea2748` (13 Oct 2026), settled under [Bela's work waiting to come over](#belas-work-waiting-to-come-over) |
+| Last synced Bela commit | `e39abc1` (14 Oct 2026) |
+| Waiting in Bela | Nothing settled ahead (see [Bela's work waiting to come over](#belas-work-waiting-to-come-over)) |
 | Target branch | `master` |
 | Sync branch | `bela-sync` in the repo itself (no worktree): created from `master`, or rebased onto it, by every run |
 
@@ -72,120 +72,9 @@ Treseta directly only for what has to differ, and add it below.
 
 ## Bela's work waiting to come over
 
-Bela's `development` has 40 commits after `4bf68ad`, up to `1ea2748` (13 Oct 2026). All of it comes to Treseta: league
-nights with start times and Raspored, Burza igrača, smokers and smoking tables, deactivated and deleted players, the
-Team and Player pages with the admin's Ekipe and Igrači (Manage Team is gone), every screen and message in Croatian,
-every colour from the design tokens, Croatian 404 and error pages, and Rejting 50 players at a time. This section
-settles where those commits meet Treseta's differences. Once they are on `master` it goes, and what lasts moves to
-Differences.
-
-Conferences stay exactly as they are (see [Conferences](#conferences)): every Bela change is merged around them, and
-the changes below to conference code are only the mechanical ones Bela's commits force (token names, where the palette
-lives, the error class). A Bela change that can't come over without changing what conferences do, look like or say
-stops the sync at that commit.
-
-### Migrations
-
-All six come over with Bela's SQL: the tables they touch (`Player`, `League`, `Round`, `RoundPlayer`, `LeagueRound`,
-`Team`) are the same in both schemas. Only the first is renamed, since Treseta already has
-`20261011120000_match_like_bela`:
-
-| Bela | Treseta |
-|---|---|
-| `20261011120000_league_nights_burza` | `20261011233000_league_nights_burza` |
-| `20261012120000_smokers`, `20261012130000_player_active`, `20261012140000_round_player_team_key`, `20261013120000_burza_with_player`, `20261013150000_night_start_time` | the same names |
-
-Their data steps fit Treseta's data (checked on 13 Oct 2026): the nights backfill gives IV. Trešeta Liga 26/27 its
-Wednesdays from 14 Oct 2026 to 7 Apr 2027 (`play_day` 2) and III. Sezona Treseta Lige the dates of its rounds, and
-`RoundPlayer`'s new key (round, team, player) contains the old one. `schema.prisma` takes Bela's model changes around
-Treseta's own parts. As for every migration, test them on a copy of production before they reach `master`.
-
-The seed (own version) gives its league nights the way Bela's seed does: 16 weekly nights from five weeks before the
-last play day, with the start and end dates taken from them, on the league's Thursday (`play_day` 3).
-
-### Design tokens (`de9ef11`)
-
-Bela's new test `_lib/__tests__/tokens.test.ts` fails on any hex, `rgb()` or `hsl()` value in `src/app` outside
-`_styles/`, and `_styles/tokens.ts` drops some names. The renames, as Bela made them:
-
-| Old | New |
-|---|---|
-| `color.card` | `color.white` |
-| `color.inkSoft` | `color.ink2` |
-| `color.tableHead`, `color.paperSoft` | `color.paper2` |
-| `color.paperDeep`, `color.pressed` | `color.lineFill` |
-| `color.placeholder` | `color.faint` |
-| `color.live` | `color.red` |
-| `color.mine`, `color.creamSoft` | `color.cream2` |
-| `color.lineStrong` | `tint.navy[12]` |
-| `color.hover` | `tint.navy[8]` |
-| `color.switchOff` | `tint.navy[20]` (`color.borderControl`) |
-| `color.scrim` | `tint.scrim[32]` or `tint.scrim[42]`, as Bela picks for the backdrop |
-| `color.medalRow` | `color.medalBg` |
-
-Treseta's own colour values become tints: `rgba(60,74,103,.25)` → `tint.navy[25]`, `rgba(188,71,73,.35)` →
-`tint.red[35]`, `rgba(188,71,73,.07)` → `tint.red[6]`, `rgba(255,255,255,.6)` → `tint.white[62]`, `#FFFFFF` →
-`color.white`. The conference palette moves, with the same six colors and names, from `_lib/conferences.ts` to a new
-Treseta-only `_styles/conferences.ts` (the test skips `_styles/`), which `_lib/conferences.ts` imports. Every
-conference screen looks as it does now. Files to change: `_lib/conferences.ts`,
-`_ui/sp/TeamDot.tsx`, `_ui/league/ConferenceEditor.tsx`, `league/[leagueId]/manage/ConferenceParts.tsx` and
-`league/[leagueId]/manage/ConferencesCard.tsx`. The game-rule files take Bela's token changes like any design change.
-Treseta's edits inside shared files have no colour values.
-
-### Croatian (`6829f76`, `d9c2aca`, `e1c404c`, `8b687f5`)
-
-Shared screens and messages come over in Croatian. Treseta's own wording is Croatian already (13 Oct 2026): the
-conference screens and messages, the "Samo unutar konferencija" switch, the hand-entry messages (in Bela's words,
-"Igra ne postoji.", "Ovaj meč je već završen.") and Custom, which is "Ručno" on the keypad and "Ručni unos" in hints
-and on the admin scorepad, as in Bela. The sync keeps that wording as it is. The game-rule files take Bela's other
-wording changes for what they share with Bela; its sentences about zvanja, štiglja and the trump caller stay out,
-`0ab49f8`'s `CALLER_MISSING` too.
-
-### Create Round (`d895a53`, `f5b3d0f`, `8b687f5`, `6829f76`)
-
-- Round creation goes in this order: pairing, the repeats check, then seating. Pairing is where conferences act: with
-  `withinConferences` in a league with conferences it is `generateGroupedRoundPairings(conferenceGroups(…))`, so every
-  table has two teams of one conference, otherwise Bela's `generateMultipleRoundPairings` call. Smoking comes last:
-  Bela's `seatRounds` only decides which pair sits at which table, from the smokers and the smoking tables, and never
-  changes who plays whom, so the conference pairs stay together. It already handles several byes in a round (one per
-  conference with an odd count). `insertRoundBatch` follows as Bela has it.
-- Bela's pairing throws `InvalidResultError` for impossible settings, and the route no longer catches it (a 400
-  through `errorResponse`). `generateGroupedRoundPairings` throws `InvalidResultError` too, with its sentence ("{name}
-  večeras ima {n} ekipe, premalo za {k} kola unutar konferencije.") and the group name "Ekipe bez konferencije" as
-  they are, so a conference with too few teams stays a 400 and not a 500.
-- The request has both `smoking_tables` and `withinConferences`. `createMultipleRoundsAPI` takes Bela's
-  `smokingTables` after `allowRepeats`, then Treseta's `withinConferences`. The switch stays under Rounds and Window,
-  next to Bela's smoking tables.
-
-### Standings and tables (`617c83b`)
-
-`toStandingsRows` takes Bela's options object (`{myTeamNames, highlightTeamId}`); Treseta's `conferenceOf` becomes a
-field of it, and its callers and `conferences.test.ts` follow. `toTableRows` keeps Treseta's third parameter.
-
-### Manage League and Create League (`48cb3dd`, `7084838`, `d43e0c2`, `7bbfae2`, `1ea2748`)
-
-- Manage League is Bela's page (the Datumi view, a desktop-only note on the phone, no `LeagueNameCard`, Create team to
-  `/teams?new=1&league=<id>`) with Treseta's conference parts as they are: the conference filter, the picker under each
-  team's name, the Distribute card in the side panel, and `ConferencesCard` as `LeagueDetailsView`'s `aside` (Bela's
-  Details still leaves the second column empty). Treseta's phone placements of the conference cards go with Bela's
-  phone layout.
-- Create League is Bela's (nights, start time, optional play day) with Treseta's Conferences switch and editor.
-  `LeagueCreateRequestValidation` has Bela's night fields and `conferences`; `createLeague` creates the nights and the
-  conferences in the one nested create; `listLeagueTeams` returns Bela's `smokers` and Treseta's `conference_id`, and
-  `useLeagueTeams` keeps both.
-
-### Branding and the hand-entry counterparts
-
-- Bela's new text with "Piatnik Bela Liga" reads `BRAND.name`, as `layout.tsx` does: `_ui/profiles/PageParts.tsx`
-  (the `DesktopShell` eyebrow), `_ui/sp/PageMessage.tsx` (the page title) and `global-error.tsx` (the title). They join
-  the Branding table. `_lib/navStack.ts`'s storage key `bela.navStack` stays Bela's: the apps have separate origins.
-- Carried into Treseta's counterparts: the 404 for a malformed id (`isDbId`, `12b185d`) in
-  `api/ongoing-result/[id]/route.ts`, and `6829f76`'s `apiFetch` / `responseErrorMessage` in `_fetchers/ongoingResult/*`
-  (their Croatian messages are already there).
-  Treseta's `_fetchers/league/conferences.ts` moves to `apiFetch` too (its messages unchanged), so a 401 there starts
-  the session check as everywhere else.
-- Not copied, under the rules below: `DECISIONS.md`, `prisma/usefulQueries/burzaTestData.sql` (it names Bela's teams)
-  and `prisma/seedHelpers.ts`.
+Nothing: every Bela commit up to `e39abc1` (14 Oct 2026) came over on 14 Oct 2026, and what lasts from the decisions
+settled for them is under Differences. Decisions for Bela work that touches Treseta's differences before it comes
+over go here.
 
 ## Differences from Bela
 
@@ -250,11 +139,13 @@ winner (`Match.winner_side`); everything else is worked out by replaying the han
 | File | Treseta's |
 |---|---|
 | `_lib/brand.ts` (Treseta only) | "Trešeta Liga" and its accusative, no line above the name (Bela: "Piatnik"), the icon letters "TL" |
-| `layout.tsx`, `_ui/auth/AuthFrame.tsx`, `_ui/sp/DesktopShell.tsx`, `_ui/install/InstallSheet.tsx`, `_hooks/useLeagues.ts` | Bela's "Bela Liga", "Piatnik Bela Liga", "Piatnik" and "BL" read from `BRAND` |
+| `layout.tsx`, `global-error.tsx`, `_ui/auth/AuthFrame.tsx`, `_ui/sp/DesktopShell.tsx`, `_ui/sp/PageMessage.tsx`, `_ui/profiles/PageParts.tsx`, `_ui/install/InstallSheet.tsx`, `_hooks/useLeagues.ts`, `league/[leagueId]/standings/page.tsx` (two comments) | Bela's "Bela Liga", "Piatnik Bela Liga", "Piatnik" and "BL" read from `BRAND` (the Brand block shows no eyebrow while `BRAND.eyebrow` is empty) |
 | `public/manifest.webmanifest` (root) | `name`, `short_name`, `description` |
 | `public/icons/*` (root) | The "TL" icons, drawn like Bela's "BL" |
 
-New Bela text with the app's name or the sponsor uses `BRAND` here, and its file joins this table.
+New Bela text with the app's name or the sponsor uses `BRAND` here, and its file joins this table. Example league
+names in Bela's tests and comments stay as they are, and `_lib/navStack.ts`'s storage key `bela.navStack` stays Bela's:
+the apps have separate origins.
 
 ### Conferences
 
@@ -272,8 +163,9 @@ New files (Treseta only):
 
 | Treseta | What it holds |
 |---|---|
-| `_lib/conferences.ts` | The palette, the rules for a league's list (none or 2–6, names and colors unique), the lookup the screens use, tonight's teams by conference for Create Round, and "Distribute evenly". Pure, unit tested in `_lib/__tests__/conferences.test.ts` |
+| `_lib/conferences.ts` | The palette (re-exported from `_styles/conferences.ts`), the rules for a league's list (none or 2–6, names and colors unique), the lookup the screens use, tonight's teams by conference for Create Round, and "Distribute evenly". Pure, unit tested in `_lib/__tests__/conferences.test.ts` |
 | `_lib/service/league/conferences.ts`, `api/leagues/[id]/conferences/route.ts`, `api/leagues/[id]/conferences/teams/route.ts`, `_fetchers/league/conferences.ts` | Reading a league's conferences (public) and saving them and the teams' conferences (admin) |
+| `_styles/conferences.ts` | The six conference colors, kept in `_styles/` with the design tokens (the tokens test skips it) |
 | `_hooks/useConferences.ts`, `_hooks/useConferenceFilter.ts` | A league's conferences for the screens, and the conference picked on Daily and League standings |
 | `_ui/sp/TeamDot.tsx` | The dot before a team's name, taken from the Start Game card |
 | `_ui/league/ConferenceEditor.tsx`, `_ui/league/ConferenceFilter.tsx`, `league/[leagueId]/manage/ConferencesCard.tsx`, `league/[leagueId]/manage/ConferenceParts.tsx` | The editor, the filter chips, and Manage League's conference cards and team picker |
@@ -284,12 +176,12 @@ edit:
 | File | Treseta's edit |
 |---|---|
 | `_interfaces/league.ts`, `_lib/service/league/leagues.ts`, `_fetchers/league/leagues.ts`, `_hooks/useLeagueTeams.ts`, `api/leagues/[id]/teams/[teamId]/route.ts` | Create League takes conferences; a league's team list has each team's `conference_id`, and the team PATCH sets it |
-| `_interfaces/round.ts`, `api/rounds/generate-multiple/route.ts`, `_fetchers/round/createMultipleRounds.ts`, `_ui/round/CreateRound.tsx`, `createRound/page.tsx` | Create Round: the "Only within conferences" switch (`withinConferences`) and the team list's dots |
-| `_lib/matching/multipleRoundMatching.ts` | `generateGroupedRoundPairings` at the end of the file, which pairs every conference on its own with the unchanged pairing |
+| `_interfaces/round.ts`, `api/rounds/generate-multiple/route.ts`, `_fetchers/round/createMultipleRounds.ts`, `_ui/round/CreateRound.tsx` | Create Round (desktop): the "Samo unutar konferencija" switch (`withinConferences`, under Rounds and Window, next to the smoking tables; the fetcher sends it after `smokingTables`) and the team list's dots. The route pairs (by conference when asked), checks repeats, then Bela's `seatRounds` only places the pairs at tables |
+| `_lib/matching/multipleRoundMatching.ts` | `generateGroupedRoundPairings` at the end of the file, which pairs every conference on its own with the unchanged pairing; a conference with too few teams throws `InvalidResultError` (a 400) |
 | `api/rounds/open/route.ts`, `_fetchers/round/getOpenByPlayerId.ts`, `_hooks/useOpenTable.ts`, `_ui/home/PhoneHome.tsx` | The Start Game card shows the two teams' conference colors (green and red in a league without conferences) |
-| `_lib/ui/standings.ts`, `_lib/ui/tables.ts`, `_ui/sp/Standings.tsx`, `_ui/sp/Controls.tsx`, `_ui/sp/index.ts` | Standings and table rows carry each team's conference, the standings draw its dot, a tab item can have a dot, and the kit exports `TeamDot` |
-| `league/[leagueId]/daily-standings/page.tsx`, `league/[leagueId]/daily-standings/ui/RoundTables.tsx`, `league/[leagueId]/standings/page.tsx`, `_ui/home/DesktopHome.tsx`, `round/pairings/[roundNumber]/page.tsx` | The dots, and the conference filter on Daily's night table and League standings |
-| `league/new/page.tsx`, `league/[leagueId]/manage/page.tsx`, `league/[leagueId]/manage/LeagueDetailsView.tsx` | Create League's Conferences switch; Manage League's team picker, filter and cards (Details shows the conferences card in its second column) |
+| `_lib/ui/standings.ts`, `_lib/ui/tables.ts`, `_ui/sp/Standings.tsx`, `_ui/sp/Controls.tsx`, `_ui/sp/index.ts`, `_lib/__tests__/conferences.test.ts` | Standings and table rows carry each team's conference (`conferenceOf` is a field of `toStandingsRows`' options; `toTableRows` has it as a third parameter), the standings draw its dot before the linked name, a tab item can have a dot, and the kit exports `TeamDot` |
+| `league/[leagueId]/daily-standings/page.tsx`, `league/[leagueId]/daily-standings/ui/RoundTables.tsx`, `league/[leagueId]/standings/page.tsx`, `_ui/home/DesktopHome.tsx`, `league/[leagueId]/manage/DraftView.tsx` | The dots (also on Skica's tables, which replaced the pairings page), and the conference filter on Daily's night table and League standings. Ukupni poredak's +/− shows on the whole league's table only, not in a conference's view |
+| `league/new/page.tsx`, `league/[leagueId]/manage/page.tsx`, `league/[leagueId]/manage/LeagueDetailsView.tsx` | Nova liga's Conferences switch and editor (and their count in its summary); Upravljanje ligom's team picker, filter and Distribute card (Podaci shows the conferences card as its `aside`) |
 
 The database part (the `Conference` table and `LeagueTeam.conference_id`) is under Database.
 
@@ -298,8 +190,8 @@ The database part (the `Conference` table and `LeagueTeam.conference_id`) is und
 | Path (root) | Kind | Treseta's |
 |---|---|---|
 | `prisma/schema.prisma` | Own version | Bela's schema with Treseta's hand tables (`Result`, `OngoingResult`: `team1_game_points`, `team2_game_points`, `custom`, `dosta_side`) and `Match.winner_side` and without Bela's tournament and announcement tables. Bela's changes to the other models are merged in. The datasource also has `directUrl = env("DATABASE_URL_UNPOOLED")`, so migrations use Neon's direct connection (Bela has only `url`). Treseta also has the `Conference` table and `LeagueTeam.conference_id` (see Conferences) |
-| `prisma/migrations/**` | Treseta only | This database's history. Bela's migrations are never copied: a Bela schema change gets a Treseta migration with Bela's SQL adapted to this schema, named with a timestamp after the newest migration here. Bela's names can collide with Treseta's: Bela's `20261011120000_league_nights_burza` has the timestamp of Treseta's `20261011120000_match_like_bela` (see [Migrations](#migrations)) |
-| `prisma/seed.ts` | Own version | The Treseta seed (users `admin` and `player`, a league of 8 teams in two conferences). Seed data for new Bela tables is added here |
+| `prisma/migrations/**` | Treseta only | This database's history. Bela's migrations are never copied: a Bela schema change gets a Treseta migration with Bela's SQL adapted to this schema, named with a timestamp after the newest migration here. Bela's names can collide with Treseta's: Bela's `20261011120000_league_nights_burza` has the timestamp of Treseta's `20261011120000_match_like_bela`, so it came as `20261011233000_league_nights_burza`, and Bela's `20261014120000_round_status` has the timestamp of Treseta's `20261014120000_s_ovim_dosta`, so it came as `20261014130000_round_status` |
+| `prisma/seed.ts` | Own version | The Treseta seed (users `admin` and `player`, a league of 8 teams in two conferences, playing 16 Thursday nights from five weeks before the last Thursday). Seed data for new Bela tables is added here |
 | `prisma/usefulQueries/**` | Own version | Treseta's queries, with `transition_checks.sql`. Bela's aren't copied |
 
 ### Repository files
@@ -308,7 +200,6 @@ The database part (the `Conference` table and `LeagueTeam.conference_id`) is und
 |---|---|
 | `README.md`, `ProcessFlow.md`, `Task.md`, `.windsurfrules` | Own version |
 | `BELA_SYNC.md`, `TRANSITION_PLAN.md`, `CONFERENCES_PLAN.md`, `.env.example` | Treseta only |
-| `vercel.json` | Treseta only for now: the same file as Bela's `9ecdaae`, which is on Bela's GitHub `master` but not yet on `development`. Shared once it reaches `development` |
 | `public/card.png` | Treseta only, left from the old app and unused |
 
 ### Not copied from Bela
@@ -343,3 +234,4 @@ The nightly sync adds a row when it brings something over or stops.
 |---|---|---|
 | 11 Oct 2026 | up to `4bf68ad` | The transition ([TRANSITION_PLAN.md](TRANSITION_PLAN.md)) |
 | 13 Oct 2026 | none | Stopped before the first commit: the run started in its own worktree and couldn't write to `.claude/worktrees/bela-sync` |
+| 14 Oct 2026 | `4bf68ad..e39abc1` (45) | 41 came over, 3 skipped (decision logs, Burza test data), the Frankfurt merge already here; 7 migrations, untested |
