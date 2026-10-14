@@ -38,10 +38,14 @@ app's Scheduled screen. A run that finds uncommitted changes in the repo stops w
 4. Checks the result: unit tests, ESLint, `tsc` (no new errors), `next build`, and the migration SQL against the schema.
 5. Records the Bela commit it reached (above, and in the [log](#sync-log)), and reports every file that differs from
    Bela without being listed below (drift).
-6. Switches back to the branch the repo was on, leaving `bela-sync` for you to merge.
+6. Last, a must whenever `bela-sync` is ahead of `master`: on a fresh local database (`bela_sync_check` on the local
+   Postgres at `localhost:5433`) it applies every migration, checks for drift against the schema, runs the seed,
+   starts the built app on port 3100 (`bela-sync-check` in `.claude/launch.json`) and clicks through it as `admin` and
+   `player`, then drops the database. A failure there, or a local Postgres that isn't running, heads the report.
+7. Switches back to the branch the repo was on, leaving `bela-sync` for you to merge.
 
-It never commits to `master`, never pushes, never changes the Bela repo, and never connects to a
-database.
+It never commits to `master`, never pushes, never changes the Bela repo, and connects to no database but its own
+throwaway `bela_sync_check`.
 
 **In the morning,** read the run's report in the app, then on `master`:
 
@@ -53,7 +57,7 @@ git merge --ff-only bela-sync
 Look at `bela-sync` with `git log` / `git diff`. If you don't merge it, the next run rebases it onto `master` and
 carries on from where it stopped.
 
-**A night that brings a migration** reports it untested, since the run has no database. Before it reaches `master`
+**A night that brings a migration** tests it on a fresh local database, not on production's data. Before it reaches `master`
 (the Vercel build applies migrations to production), test it as the transition did: apply all migrations to a fresh
 local database and check for drift, then apply them to a restored copy of production and compare
 `prisma/usefulQueries/transition_checks.sql` before and after.
