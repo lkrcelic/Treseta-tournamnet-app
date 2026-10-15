@@ -53,3 +53,13 @@ export function toAdminHand(s: EntryState): AdminHand {
 export function fromPadHand(h: PadHand): EntryState {
   return {...blankEntry(h.custom ? "man" : "std"), points: [h.total1, h.total2]};
 }
+
+// Custom on the admin's phone (Bela's Ručni unos): each team's points as typed, 0 to CUSTOM_HAND_MAX. bad: a field
+// holds something that isn't such a number ("Upiši broj od 0 do 99."); points: both fields are numbers and at least one
+// isn't 0, so the hand can be saved.
+export function manualFields(a: string, b: string): {bad: boolean; points: [number, number] | null} {
+  const ok = (v: string) => /^\d{1,2}$/.test(v) && Number(v) <= CUSTOM_HAND_MAX;
+  const bad = (a !== "" && !ok(a)) || (b !== "" && !ok(b));
+  const points: [number, number] | null = ok(a) && ok(b) && Number(a) + Number(b) > 0 ? [Number(a), Number(b)] : null;
+  return {bad, points};
+}

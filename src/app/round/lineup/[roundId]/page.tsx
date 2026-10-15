@@ -42,7 +42,10 @@ export default function LineupPage() {
   const router = useTransitionRouter();
   const isDesktop = useIsDesktop();
   const adminPhone = useAdminPhone();
-  const padLeague = Number(useSearchParams().get("league")) || null;
+  const search = useSearchParams();
+  const padLeague = Number(search.get("league")) || null;
+  // the admin's phone opened it with Tko igra on the table's board (rather than on the way into a table not started)
+  const fromPad = search.get("from") === "pad";
   const [lineup, setLineup] = useState<Lineup | null>(null);
   // the viewer's team first; selection per team, slot by slot
   const [teams, setTeams] = useState<LineupTeam[]>([]);
@@ -83,7 +86,9 @@ export default function LineupPage() {
     try {
       await saveLineupAPI(id, {teams: teams.map((t, i) => ({team_id: t.id, player_ids: selected[i]}))});
       if (padLeague) {
-        router.replace(`/league/${padLeague}/daily-standings/table/${id}${isDesktop ? "" : "?mec=1"}`);
+        // back to the board it was opened from (which loads the table again), or on to the table's board
+        if (fromPad && !isDesktop && window.history.length > 1) router.back();
+        else router.replace(`/league/${padLeague}/daily-standings/table/${id}`);
         return;
       }
       const match = await createOngoingMatchAPI({round_id: id, score_threshold: MATCH_THRESHOLD});

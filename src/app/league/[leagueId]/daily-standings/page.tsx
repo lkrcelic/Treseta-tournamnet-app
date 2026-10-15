@@ -11,10 +11,13 @@ import useMyTeams from "@/app/_hooks/useMyTeams";
 import useConferences from "@/app/_hooks/useConferences";
 import useConferenceFilter from "@/app/_hooks/useConferenceFilter";
 import useNavStack from "@/app/_hooks/useNavStack";
+import useOpenTable, {OpenTable} from "@/app/_hooks/useOpenTable";
+import useStartGame from "@/app/_hooks/useStartGame";
+import useAuthStore from "@/app/_store/authStore";
 import {useDailyData, useRoundDates} from "@/app/_hooks/useStandings";
 import {leagueDateString} from "@/app/_lib/dates";
 import {inConference, splitPodium, standingsTeamHref, toStandingsRows} from "@/app/_lib/ui/standings";
-import {filterTables, liveCount, splitColumns, TableFilter, tableColumns, toTableRows} from "@/app/_lib/ui/tables";
+import {filterTables, liveCount, splitColumns, TableFilter, tableColumns, TableRow, toTableRows} from "@/app/_lib/ui/tables";
 import {ConferenceFilter} from "@/app/_ui/league/ConferenceFilter";
 import {count, displayDate, NOUN} from "@/app/_lib/ui/text";
 import {color, font, shadow} from "@/app/_styles/tokens";
@@ -42,7 +45,7 @@ import {
   TabItem,
   tabPanelProps,
 } from "@/app/_ui/sp";
-import {DesktopTableRow, PhoneRoundTables, TABLE_ROW_HEIGHT} from "@/app/league/[leagueId]/daily-standings/ui/RoundTables";
+import {DesktopTableRow, PhoneRoundTables, TABLE_ROW_HEIGHT, TableTarget} from "@/app/league/[leagueId]/daily-standings/ui/RoundTables";
 import {ConfirmRemove, EditToggle, NewTableButton, PairDialog, PairSheet, RoundAdmin, RowActions, useTableEdits} from "@/app/league/[leagueId]/daily-standings/ui/RoundEditing";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
@@ -68,10 +71,14 @@ export default function DailyStandings() {
   const leagues = useLeagues(leagueId);
   const {teams} = useMyTeams();
   const myTeamNames = useMemo(() => teams.map((t) => t.team_name), [teams]);
-  // the name a Team page opened from a row shows on its back pill
-  const nav = useNavStack("Dnevni poredak");
-  // the night's table: Back from a team's page finds it where it was left
+  // the night's table and a round's tables: Back from a team's or a table's page finds them where they were left
   const scroller = useScrollMemory("daily");
+  const roundScroller = useScrollMemory("daily-round");
+  // signed in: tables and team names open (signed out, nothing does)
+  const signedIn = useAuthStore((s) => s.user != null);
+  // the player's own table still to be played opens straight into the game (Nastavi igru / Započni igru)
+  const {table: openTable} = useOpenTable();
+  const game = useStartGame();
 
   // the night shown: ?date= when it is one the league played, otherwise the latest one
   const {dates, error: datesError, reload: reloadDates} = useRoundDates(leagueId);
@@ -116,6 +123,8 @@ export default function DailyStandings() {
     // the tab is in the address, so Back from a table (or a team) comes back to it
     if (date) replaceAddress(`/league/${leagueId}/daily-standings?date=${date}${k ? `&round=${k}` : ""}`);
   };
+  // the name a Team or table page opened from here shows on its back pill: "‹ Kolo 3" from a round's tab
+  const nav = useNavStack(tab ? `Kolo ${tab}` : "Dnevni poredak");
   const tabs: TabItem<number>[] = [{key: 0, label: "Tablica okupljanja"}, ...roundNumbers.map((n) => ({key: n, label: `Kolo ${n}`, live: roundsLive(n)}))];
   const roundRows = useMemo(
     () => toTableRows((daily.data?.rounds ?? []).filter((r) => r.round_number === tab), myTeamNames, conferences.of),
@@ -232,12 +241,14 @@ export default function DailyStandings() {
             )}
           </ScrollCard>
         ) : (
-          <ScrollArea bleed sx={{gap: "10px"}}>
+          <ScrollArea ref={roundScroller.ref} bleed sx={{gap: "10px"}}>
             {phoneEdit.edits.actionError && <ErrorNote>{phoneEdit.edits.actionError}</ErrorNote>}
+            {game.error && <ErrorNote>{game.error}</ErrorNote>}
             <PhoneRoundTables
               title={adminPhone ? `Kolo ${tab} · ${count(roundRows.length, NOUN.stol)}` : `Kolo ${tab}`}
               rows={roundRows}
-              hrefOf={adminPhone ? (t) => (t.bye ? undefined : `/league/${leagueId}/daily-standings/table/${t.id}`) : undefined}
+              tableTarget={signedIn ? (t) => phoneTableTarget(t, {leagueId, adminPhone, openTable, startGame: game.start}) : undefined}
+              teamHref={signedIn ? (id) => `/teams/${id}` : undefined}
               fresh={phoneEdit.editing ? phoneEdit.edits.freshTable : null}
               edit={
                 adminPhone && phoneEdit.editing
@@ -557,4 +568,16 @@ function usePhoneEdit(admin: RoundAdmin | null, tab: number) {
     edits.reset();
   };
   return {editing: admin != null && editing, toggle, edits, teams};
+}
+
+// Where a table card on the phone goes: the admin's scorepad of the table, or for a player their own table still to
+// be played straight into the game (the table Početna offers), and any other table its Pregled stola
+function phoneTableTarget(
+  t: TableRow,
+  {leagueId, adminPhone, openTable, startGame}: {leagueId: number; adminPhone: boolean; openTable: OpenTable | null; startGame: () => void}
+): TableTarget {
+  if (!adminPhone && openTable?.roundId === t.id && !t.done) {
+    return {cue: t.started ? "Nastavi igru" : "Započni igru", onClick: startGame};
+  }
+  return {href: `/league/${leagueId}/daily-standings/table/${t.id}`};
 }
