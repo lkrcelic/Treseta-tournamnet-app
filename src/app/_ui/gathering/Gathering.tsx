@@ -29,7 +29,8 @@ export function ExceptionMark({label, size = 20}: {label: string | null; size?: 
 
 // "19:30 · Caffe bar Kartaš" under a night's date, with "!" when the night has its own time or place. A night's own
 // time or place is bold and darker and the league's is muted (Datumi); `plain` keeps both muted and marks the night
-// with `mark` (Raspored, which knows only that the night differs). Nothing when the night has neither.
+// with `mark` (Raspored, which knows only that the night differs). It stays on one line, cut with "…", unless `wrap`
+// (Raspored, where the player needs the whole place). Nothing when the night has neither.
 export function GatheringLine({
   time,
   place,
@@ -37,6 +38,7 @@ export function GatheringLine({
   ownPlace = false,
   plain = false,
   mark,
+  wrap = false,
   size = 13,
   sx,
 }: {
@@ -46,6 +48,7 @@ export function GatheringLine({
   ownPlace?: boolean;
   plain?: boolean;
   mark?: string | null;
+  wrap?: boolean;
   size?: number;
   sx?: SxProps<Theme>;
 }) {
@@ -53,7 +56,10 @@ export function GatheringLine({
   const part = (own: boolean) => (own && !plain ? {fontWeight: 700, color: color.ink} : {fontWeight: 400, color: color.muted});
   return (
     <Box component="span" sx={mergeSx({display: "flex", alignItems: "center", gap: "6px", minWidth: 0, fontSize: size, lineHeight: 1.3}, sx)}>
-      <Box component="span" sx={{minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: color.muted}}>
+      <Box
+        component="span"
+        sx={{minWidth: 0, color: color.muted, ...(wrap ? {overflowWrap: "anywhere"} : {overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"})}}
+      >
         {time && (
           <Box component="span" sx={{...part(ownTime), ...tabular}}>
             {time}

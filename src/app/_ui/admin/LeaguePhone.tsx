@@ -565,7 +565,7 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
             settingsTab="Postavke"
             onSave={(change) => ld.update(opened.date, change)}
             saving={ld.saving === opened.date}
-            error={ld.actionError}
+            error={ld.saveError}
             inputSx={{height: 52, borderRadius: "14px", fontSize: 16}}
           >
             {!opened.played && (
