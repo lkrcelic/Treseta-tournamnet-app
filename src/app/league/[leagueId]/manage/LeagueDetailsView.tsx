@@ -12,11 +12,11 @@ import RemoveRoundedIcon from "@mui/icons-material/RemoveRounded";
 import {Box} from "@mui/material";
 import React, {useState} from "react";
 
-const DAYS = ["Pon", "Uto", "Sri", "Čet", "Pet", "Sub", "Ned"];
-const DAY_NAMES = ["ponedjeljak", "utorak", "srijeda", "četvrtak", "petak", "subota", "nedjelja"];
+export const DAYS = ["Pon", "Uto", "Sri", "Čet", "Pet", "Sub", "Ned"];
+export const DAY_NAMES = ["ponedjeljak", "utorak", "srijeda", "četvrtak", "petak", "subota", "nedjelja"];
 
 // time: when the nights start, "HH:MM" ("": none)
-type Details = {name: string; season: string; start: string; end: string; day: number | null; time: string; rounds: number};
+export type Details = {name: string; season: string; start: string; end: string; day: number | null; time: string; rounds: number};
 
 const fromLeague = (l: LeagueOption | undefined): Details => ({
   name: l?.name ?? "",
@@ -28,10 +28,10 @@ const fromLeague = (l: LeagueOption | undefined): Details => ({
   rounds: l?.roundsPerNight ?? 3,
 });
 
-// Upravljanje ligom (desktop) · Podaci: the league's name, season, dates, play day, start time and default rounds per
-// night. Save stays off until something changes; the name can't be empty or another league's (any case). aside: the
-// second column (the league's conferences).
-export default function LeagueDetailsView({leagueId, leagues, aside}: {leagueId: number; leagues: LeagueOption[]; aside?: React.ReactNode}) {
+// The league's details being edited (Podaci on the desktop, Postavke on the admin's phone): the form's values over the
+// league's, what is wrong with them, and saving. Save stays off until something changes; the name can't be empty or
+// another league's (any case).
+export function useLeagueDetails(leagueId: number, leagues: LeagueOption[]) {
   const base = fromLeague(leagues.find((l) => l.id === leagueId));
   const [draft, setDraft] = useState<Partial<Details>>({});
   const [saving, setSaving] = useState(false);
@@ -92,6 +92,17 @@ export default function LeagueDetailsView({leagueId, leagues, aside}: {leagueId:
     setSaving(false);
   };
 
+  const discard = () => {
+    setDraft({});
+    setServerError(null);
+  };
+  return {d, set, error, dirty, canSave, save, saving, saved, serverError, discard};
+}
+
+// Upravljanje ligom (desktop) · Podaci: the league's name, season, dates, play day, start time and default rounds per
+// night. aside: the second column (the league's conferences).
+export default function LeagueDetailsView({leagueId, leagues, aside}: {leagueId: number; leagues: LeagueOption[]; aside?: React.ReactNode}) {
+  const {d, set, error, dirty, canSave, save, saving, saved, serverError, discard} = useLeagueDetails(leagueId, leagues);
   const inputSx = {height: 52, borderRadius: "14px", fontSize: 16};
 
   return (
@@ -180,10 +191,7 @@ export default function LeagueDetailsView({leagueId, leagues, aside}: {leagueId:
           <Box sx={{display: "flex", gap: "10px", alignItems: "center"}}>
             <OutlineButton
               height={56}
-              onClick={() => {
-                setDraft({});
-                setServerError(null);
-              }}
+              onClick={discard}
               disabled={!dirty || saving}
               sx={{flex: 1, fontSize: 16, border: `1.5px solid ${tint.navy[25]}`, "&:disabled": {opacity: 0.4}}}
             >

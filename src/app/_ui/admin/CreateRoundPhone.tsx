@@ -7,23 +7,22 @@ import {createRoundNight, MAX_ROUNDS, MAX_WINDOW} from "@/app/_lib/createRoundDr
 import {nightLabel} from "@/app/_lib/nights";
 import {count, NOUN, plural} from "@/app/_lib/ui/text";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
-import {color, font, shadow, tint} from "@/app/_styles/tokens";
+import {color, font, tint} from "@/app/_styles/tokens";
 import {useCreateRound} from "@/app/_ui/round/CreateRound";
 import LeagueNotes from "@/app/_ui/round/LeagueNotes";
 import {SmokingTablesCard} from "@/app/_ui/round/SmokingTables";
+import {adminCardSx, adminLabelSx, PhoneStepper} from "./AdminParts";
 import {BottomSheet, buttonBase, EmptyState, ErrorNote, PrimaryButton, Screen, ScrollArea, SearchInput, Segmented, SolidButton, SwitchRow, tabular, TopBar} from "@/app/_ui/sp";
 import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
-import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import RemoveRoundedIcon from "@mui/icons-material/RemoveRounded";
 import {Box} from "@mui/material";
 import React, {useMemo, useState} from "react";
 
 // Why a team doesn't play tonight: inactive in Upravljanje ligom, or switched off here
 const OUT = {inactive: "Neaktivna", off: "Isključena"} as const;
 
-const cardSx = {flex: "none", background: color.white, borderRadius: "22px", p: "16px", display: "flex", flexDirection: "column", gap: "12px", boxShadow: shadow.card} as const;
-const labelSx = {fontSize: 15, fontWeight: 600, color: color.ink} as const;
+const cardSx = adminCardSx;
+const labelSx = adminLabelSx;
 
 // Novo kolo on the phone (admin-mobile 06, 07, 07b): how many rounds, the window, who plays tonight (changed in a
 // sheet), the smoking tables and the league's notes, then Kreiraj. The choices are the desktop's (useCreateRound),
@@ -72,7 +71,8 @@ export default function CreateRoundPhone({leagueId}: {leagueId: number}) {
               <Box component="span" sx={{...labelSx, mt: "4px"}}>
                 Veličina prozora
               </Box>
-              <WindowStepper value={cr.windowSize} onChange={cr.setWindow} />
+              {/* the pairing needs an even window */}
+              <PhoneStepper label="Veličina prozora" value={cr.windowSize} onChange={cr.setWindow} min={2} max={MAX_WINDOW} step={2} less="Smanji prozor" more="Povećaj prozor" />
               <Box component="p" sx={{m: 0, fontSize: 14, lineHeight: 1.5, color: color.ink2}}>
                 Ekipa se sparuje s ekipama do {cr.windowSize} mjesta iznad ili ispod sebe na poretku, uz izbjegavanje ponovljenih parova.
               </Box>
@@ -239,37 +239,5 @@ export default function CreateRoundPhone({leagueId}: {leagueId: number}) {
         />
       </BottomSheet>
     </Screen>
-  );
-}
-
-// − 8 + on a beige track (the window must stay even, so it steps by two)
-function WindowStepper({value, onChange}: {value: number; onChange: (n: number) => void}) {
-  const btn = {
-    ...buttonBase,
-    width: 48,
-    height: 44,
-    flex: "none",
-    borderRadius: "12px",
-    background: color.white,
-    color: color.navy,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    boxShadow: shadow.raised,
-    "&:disabled": {opacity: 0.4},
-    "& svg": {fontSize: 24},
-  } as const;
-  return (
-    <Box role="group" aria-label="Veličina prozora" sx={{display: "flex", alignItems: "center", gap: "8px", p: "4px", borderRadius: "16px", background: color.lineFill}}>
-      <Box component="button" type="button" aria-label="Smanji prozor" onClick={() => onChange(value - 2)} disabled={value <= 2} sx={btn}>
-        <RemoveRoundedIcon />
-      </Box>
-      <Box component="span" aria-live="polite" sx={{flex: 1, textAlign: "center", fontFamily: font.display, fontSize: 26, fontWeight: 800, ...tabular}}>
-        {value}
-      </Box>
-      <Box component="button" type="button" aria-label="Povećaj prozor" onClick={() => onChange(value + 2)} disabled={value >= MAX_WINDOW} sx={btn}>
-        <AddRoundedIcon />
-      </Box>
-    </Box>
   );
 }
