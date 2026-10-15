@@ -44,8 +44,9 @@ const PILL: Record<NightStatus, {bg: string; ink: string}> = {
   upcoming: {bg: color.paper, ink: color.ink2},
 };
 
-// defaultTime: the league's start time (Podaci), "HH:MM" or null
-export default function DatesView({leagueId, defaultTime, data}: {leagueId: number; defaultTime: string | null; data: ReturnType<typeof useLeagueNights>}) {
+// A league's nights being edited (Datumi on the desktop and on the admin's phone): adding a night, removing one that
+// has no rounds, and a night's own start time. defaultTime: the league's start time (Podaci), "HH:MM" or null.
+export function useLeagueDates(leagueId: number, defaultTime: string | null, data: ReturnType<typeof useLeagueNights>) {
   const {nights, setNights, error, reload} = data;
   const today = leagueDateString();
   const [draft, setDraft] = useState("");
@@ -71,8 +72,7 @@ export default function DatesView({leagueId, defaultTime, data}: {leagueId: numb
   const duplicate = isIsoDate(draft) && (draft === takenNight || list.some((n) => n.date === draft));
   const canAdd = isIsoDate(draft) && !duplicate && !adding;
 
-  const add = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const add = async () => {
     if (!canAdd) return;
     setAdding(true);
     setActionError(null);
@@ -127,6 +127,16 @@ export default function DatesView({leagueId, defaultTime, data}: {leagueId: numb
     setSavingTime(null);
   };
 
+  // a new date: the night the server had (by now the fetched list has it) no longer marks it
+  const changeDraft = (value: string) => {
+    setDraft(value);
+    setTakenNight(null);
+  };
+  return {nights, list, error, reload, today, nextIndex, played, toGo, draft, setDraft: changeDraft, draftTime, setDraftTime, savingTime, adding, removing, actionError, duplicate, canAdd, add, remove, setTime};
+}
+
+export default function DatesView({leagueId, defaultTime, data}: {leagueId: number; defaultTime: string | null; data: ReturnType<typeof useLeagueNights>}) {
+  const {nights, list, error, reload, today, nextIndex, played, toGo, draft, setDraft, draftTime, setDraftTime, savingTime, adding, removing, actionError, duplicate, canAdd, add, remove, setTime} = useLeagueDates(leagueId, defaultTime, data);
   return (
     <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1.5fr) minmax(0,1fr)", gap: "20px"}}>
       <Card component="section" aria-labelledby="league-nights" sx={{minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderRadius: "24px"}}>
@@ -210,7 +220,10 @@ export default function DatesView({leagueId, defaultTime, data}: {leagueId: numb
         )}
       </Card>
       <Box sx={{minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: "16px"}}>
-        <Box component="form" onSubmit={add} noValidate aria-labelledby="add-night" sx={{...cardSx, flex: "none", borderRadius: "24px", p: "20px", display: "flex", flexDirection: "column", gap: "12px"}}>
+        <Box component="form" onSubmit={(e: React.FormEvent) => {
+            e.preventDefault();
+            add();
+          }} noValidate aria-labelledby="add-night" sx={{...cardSx, flex: "none", borderRadius: "24px", p: "20px", display: "flex", flexDirection: "column", gap: "12px"}}>
           <Box component="h2" id="add-night" sx={{m: 0, fontFamily: font.display, fontSize: 22, fontWeight: 800}}>
             Dodaj večer
           </Box>
@@ -220,11 +233,7 @@ export default function DatesView({leagueId, defaultTime, data}: {leagueId: numb
               type="date"
               aria-label="Datum večeri"
               value={draft}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                setDraft(e.target.value);
-                // by now the fetched list has that night
-                setTakenNight(null);
-              }}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDraft(e.target.value)}
               aria-invalid={duplicate || undefined}
               sx={{...dateInputFix, width: "100%", height: 52, boxSizing: "border-box", borderRadius: "14px", border: `1.5px solid ${duplicate ? color.red : color.border}`, background: color.paper2, px: "14px", font: "inherit", fontSize: 16, color: color.ink, outline: "none", "&:focus": {borderColor: color.navy, background: color.white}}}
             />

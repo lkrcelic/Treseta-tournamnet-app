@@ -4,14 +4,16 @@ import useLeagueRounds from "@/app/_hooks/useLeagueRounds";
 import {isIsoDate} from "@/app/_lib/nights";
 import {draftNight} from "@/app/_lib/ui/adminTonight";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
-import {DesktopOnlyNote, EmptyState, ErrorNote, PrimaryButton, Screen, TopBar} from "@/app/_ui/sp";
+import {EmptyState, ErrorNote, PrimaryButton, Screen, TopBar} from "@/app/_ui/sp";
 import useNavStack from "@/app/_hooks/useNavStack";
 import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
 import {useParams, useSearchParams} from "next/navigation";
 import CreateRoundPhone from "./CreateRoundPhone";
 import DraftPhone from "./DraftPhone";
+import LeaguePhone, {isLeagueTab} from "./LeaguePhone";
 
-// Upravljanje ligom on the admin's phone: ?view=create is Novo kolo, ?view=draft(&date=) Skica kola
+// Upravljanje ligom on the admin's phone: ?view=create is Novo kolo, ?view=draft(&date=) Skica kola, and the league's
+// tabs ?view=teams|rounds|dates|details
 export default function ManagePhone() {
   const params = useParams<{leagueId: string}>();
   const leagueId = Number(params.leagueId);
@@ -20,7 +22,7 @@ export default function ManagePhone() {
   const date = searchParams.get("date");
   if (view === "create") return <CreateRoundPhone key={leagueId} leagueId={leagueId} />;
   if (view === "draft") return date && isIsoDate(date) ? <DraftPhone key={`${leagueId}|${date}`} leagueId={leagueId} date={date} /> : <LatestDraft leagueId={leagueId} />;
-  return <DesktopOnlyNote />;
+  return <LeaguePhone key={leagueId} leagueId={leagueId} view={isLeagueTab(view) ? view : "teams"} />;
 }
 
 // Skica kola without a night: the latest night with rounds still to publish, or nothing to publish (Novo kolo)

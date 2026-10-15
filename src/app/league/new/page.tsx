@@ -1,6 +1,8 @@
 "use client";
 
+import useAdminPhone from "@/app/_hooks/useAdminPhone";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
+import NewLeaguePhone from "@/app/_ui/admin/NewLeaguePhone";
 import {TeamExtendedResponse} from "@/app/_interfaces/team";
 import {isByeTeam} from "@/app/_lib/bye";
 import {count, matchesQuery, NOUN} from "@/app/_lib/ui/text";
@@ -43,10 +45,13 @@ const DAY_NAMES = ["ponedjeljak", "utorak", "srijeda", "četvrtak", "petak", "su
 
 type TeamItem = {id: number; name: string; players: string};
 
-// Nova liga is made on the desktop only (handoff §2: no admin editing on mobile); the phone says so
+// Nova liga: the desktop's, or the admin's phone screen (DECISIONS #59); anyone else on the phone is told it is made on
+// the computer
 export default function CreateLeague() {
   const isDesktop = useIsDesktop();
-  return isDesktop ? <CreateLeagueDesktop /> : <DesktopOnlyNote />;
+  const adminPhone = useAdminPhone();
+  if (isDesktop) return <CreateLeagueDesktop />;
+  return adminPhone ? <NewLeaguePhone /> : <DesktopOnlyNote />;
 }
 
 function CreateLeagueDesktop() {
