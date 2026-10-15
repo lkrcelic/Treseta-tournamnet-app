@@ -1,7 +1,8 @@
 "use client";
 
 import {chooseLeague, LeagueOption} from "@/app/_hooks/useLeagues";
-import {color, shadow} from "@/app/_styles/tokens";
+import {color, shadow, tint} from "@/app/_styles/tokens";
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import EmojiEventsRoundedIcon from "@mui/icons-material/EmojiEventsRounded";
@@ -13,15 +14,18 @@ import {buttonBase, ellipsis} from "./base";
 import {BottomSheet} from "./Sheet";
 import {IconTile} from "./Surface";
 
-// Phone: the league name as a small uppercase button above the title, opening a bottom sheet
+// Phone: the league name as a small uppercase button above the title, opening a bottom sheet. The admin's sheet
+// (admin-mobile 02) says the choice holds for every screen and ends with "Nova liga" (onNewLeague).
 export function LeagueEyebrowButton({
   leagues,
   value,
   onChange,
+  onNewLeague,
 }: {
   leagues: LeagueOption[];
   value: number;
   onChange: (id: number) => void;
+  onNewLeague?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const current = leagues.find((l) => l.id === value) ?? leagues[0];
@@ -58,7 +62,12 @@ export function LeagueEyebrowButton({
         </Box>
         <ExpandMoreRoundedIcon />
       </Box>
-      <BottomSheet open={open} onClose={() => setOpen(false)} title="Odaberi ligu">
+      <BottomSheet open={open} onClose={() => setOpen(false)} title="Odaberi ligu" closable={onNewLeague != null}>
+        {onNewLeague && (
+          <Box component="p" sx={{m: 0, fontSize: 14, lineHeight: 1.45, color: color.ink2}}>
+            Odabrana liga vrijedi za sve ekrane dok je ne promijeniš.
+          </Box>
+        )}
         <Box role="listbox" aria-label="Lige" sx={{display: "flex", flexDirection: "column", gap: "4px"}}>
           {leagues.map((l) => {
             const on = l.id === value;
@@ -104,6 +113,34 @@ export function LeagueEyebrowButton({
             );
           })}
         </Box>
+        {onNewLeague && (
+          <Box
+            component="button"
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onNewLeague();
+            }}
+            sx={{
+              ...buttonBase,
+              height: 54,
+              flex: "none",
+              borderRadius: "16px",
+              border: `1.5px dashed ${tint.navy[35]}`,
+              color: color.navy,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              fontSize: 16,
+              fontWeight: 600,
+              "& svg": {fontSize: 22},
+            }}
+          >
+            <AddRoundedIcon />
+            Nova liga
+          </Box>
+        )}
       </BottomSheet>
     </>
   );
