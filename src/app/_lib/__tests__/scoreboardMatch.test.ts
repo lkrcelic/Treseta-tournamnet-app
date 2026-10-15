@@ -113,7 +113,7 @@ test("s ovim dosta: the custom hand, then the question; the calling team wins wi
   assert.equal(m.winner, 2); // until the question is answered
   m.callDosta(1);
   assert.equal(m.winner, 1);
-  assert.throws(() => m.play({typedFor: 1, typed: "6"}), /already over/);
+  assert.throws(() => m.play({typedFor: 1, typed: "6"}), /Meč je gotov/);
 });
 
 test("s ovim dosta at 41 : 41 wins; without it the target goes to 51", () => {
