@@ -2,11 +2,11 @@
 
 import {getLeagueNotesAPI, saveLeagueNotesAPI} from "@/app/_fetchers/league/leagues";
 import {color, shadow} from "@/app/_styles/tokens";
-import {SectionLabel} from "@/app/_ui/sp";
+import {mergeSx, SectionLabel} from "@/app/_ui/sp";
 import CloudDoneRoundedIcon from "@mui/icons-material/CloudDoneRounded";
 import CloudOffRoundedIcon from "@mui/icons-material/CloudOffRounded";
 import SyncRoundedIcon from "@mui/icons-material/SyncRounded";
-import {Box} from "@mui/material";
+import {Box, SxProps, Theme} from "@mui/material";
 import {useEffect, useId, useRef, useState} from "react";
 
 const SAVE_DELAY_MS = 600;
@@ -15,8 +15,9 @@ const SAVE_DELAY_MS = 600;
 type Status = "loading" | "loadError" | "saved" | "saving" | "error";
 
 // Novo kolo · Bilješke: the admins' notes for a league (who's away next week, table changes, reminders). Saved on
-// their own a moment after typing stops; whatever is still waiting goes out when the view closes.
-export default function LeagueNotes({leagueId}: {leagueId: number}) {
+// their own a moment after typing stops; whatever is still waiting goes out when the view closes. The phone's Večer
+// lige and Novo kolo call them "Bilješke lige" and give the box its own height (sx).
+export default function LeagueNotes({leagueId, label = "Bilješke", sx}: {leagueId: number; label?: string; sx?: SxProps<Theme>}) {
   const [text, setText] = useState("");
   const [status, setStatus] = useState<Status>("loading");
   const labelId = useId();
@@ -80,10 +81,10 @@ export default function LeagueNotes({leagueId}: {leagueId: number}) {
   }[status];
 
   return (
-    <Box component="section" aria-labelledby={labelId} sx={{flex: 1, minHeight: 150, display: "flex", flexDirection: "column", gap: "8px"}}>
+    <Box component="section" aria-labelledby={labelId} sx={mergeSx({flex: 1, minHeight: 150, display: "flex", flexDirection: "column", gap: "8px"}, sx)}>
       <Box sx={{px: "6px", display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "8px"}}>
         <SectionLabel id={labelId} sx={{px: 0}}>
-          Bilješke
+          {label}
         </SectionLabel>
         <Box component="span" role="status" sx={{display: "flex", alignItems: "center", gap: "4px", fontSize: 12, fontWeight: 600, color: state.ink, "& svg": {fontSize: 16}}}>
           {state.icon}

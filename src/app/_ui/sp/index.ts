@@ -2,6 +2,7 @@
 export * from "./base";
 export * from "./BackPill";
 export * from "./Buttons";
+export * from "./ConfirmSheet";
 export * from "./Controls";
 export * from "./DesktopOnly";
 export * from "./DesktopShell";

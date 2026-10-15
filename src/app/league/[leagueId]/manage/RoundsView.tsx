@@ -1,6 +1,7 @@
 "use client";
 
-import {deleteLeagueRoundAPI, getLeagueRoundsAPI, LeagueRoundSummary} from "@/app/_fetchers/admin/daily";
+import {deleteLeagueRoundAPI, LeagueRoundSummary} from "@/app/_fetchers/admin/daily";
+import useLeagueRounds from "@/app/_hooks/useLeagueRounds";
 import {count, displayDate, NOUN} from "@/app/_lib/ui/text";
 import {color, font, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, EmptyState, ErrorNote, InfoNote, LoadingRows} from "@/app/_ui/sp";
@@ -31,27 +32,6 @@ function warning(r: LeagueRoundSummary): string {
   if (r.status === "new") return `Još se ništa nije odigralo. Uklonit će se ${count(r.tables, NOUN.par)}.`;
   if (r.status === "live") return `Ovo kolo je u tijeku. Uklonit će se ${count(r.tables, NOUN.stol)} i njihove igre.`;
   return `Uklonit će se ${count(r.tables, NOUN.stol)} i svi upisani rezultati. Poredak i rejting se ponovno izračunaju.`;
-}
-
-export function useLeagueRounds(leagueId: number) {
-  const [rounds, setRounds] = useState<LeagueRoundSummary[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [nonce, setNonce] = useState(0);
-  useEffect(() => {
-    let cancelled = false;
-    setError(null);
-    getLeagueRoundsAPI(leagueId)
-      .then((r) => {
-        if (!cancelled) setRounds(r);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Kola se nisu učitala.");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [leagueId, nonce]);
-  return {rounds, setRounds, error, reload: () => setNonce((n) => n + 1)};
 }
 
 type Pending = {round: LeagueRoundSummary; index: number; timer: number};

@@ -1,6 +1,8 @@
 "use client";
 
 import useBurza from "@/app/_hooks/useBurza";
+import useIsAdmin from "@/app/_hooks/useIsAdmin";
+import useAdminViewStore from "@/app/_store/adminViewStore";
 import {useSelectedLeagueId} from "@/app/_hooks/useLeagues";
 import useMySchedule from "@/app/_hooks/useMySchedule";
 import useOpenTable, {OpenTable} from "@/app/_hooks/useOpenTable";
@@ -13,6 +15,7 @@ import InstallSheet from "@/app/_ui/install/InstallSheet";
 import {SmokingMark} from "@/app/_ui/smoking/SmokingParts";
 import {buttonBase, ellipsis, ErrorNote, IconCircleButton, Screen, Spinner, TeamDot} from "@/app/_ui/sp";
 import AccountCircleRoundedIcon from "@mui/icons-material/AccountCircleRounded";
+import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import EventRoundedIcon from "@mui/icons-material/EventRounded";
 import EmojiEventsRoundedIcon from "@mui/icons-material/EmojiEventsRounded";
@@ -23,7 +26,8 @@ import {Box} from "@mui/material";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 
 // Početna on the phone, the only Home (handoff §2; Claude Design "Burza v2" screen "home"): the top card, the Burza
-// igrača card and the 2×2 tiles. Nothing is edited here; admins manage leagues, rounds and teams on the desktop.
+// igrača card and the 2×2 tiles. Nothing is edited here. An admin sees it after "Prikaz igrača" on Večer lige
+// (admin-mobile 04), with an Admin button next to Moj profil that switches back.
 export default function PhoneHome() {
   const router = useTransitionRouter();
   const leagueId = useSelectedLeagueId();
@@ -32,6 +36,8 @@ export default function PhoneHome() {
   const {schedule, error: scheduleError} = useMySchedule();
   const next = nextNight(schedule);
   const {posts} = useBurza();
+  const isAdmin = useIsAdmin();
+  const setAdminView = useAdminViewStore((st) => st.setView);
 
   return (
     <Screen gap={12}>
@@ -40,9 +46,37 @@ export default function PhoneHome() {
         <Box component="h1" sx={{m: 0, fontWeight: "inherit"}}>
           <Brand variant="home" />
         </Box>
-        <IconCircleButton label="Moj profil" onClick={() => router.push("/profile")}>
-          <AccountCircleRoundedIcon />
-        </IconCircleButton>
+        <Box sx={{flex: "none", display: "flex", alignItems: "center", gap: "8px"}}>
+          {isAdmin && (
+            <Box
+              component="button"
+              type="button"
+              onClick={() => setAdminView("admin")}
+              title="Natrag na admin"
+              sx={{
+                ...buttonBase,
+                height: 44,
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                p: "0 14px 0 11px",
+                borderRadius: "22px",
+                background: color.navy,
+                color: color.white,
+                fontSize: 14,
+                fontWeight: 700,
+                boxShadow: shadow.raised,
+                "& svg": {fontSize: 20},
+              }}
+            >
+              <AdminPanelSettingsRoundedIcon aria-hidden />
+              Admin
+            </Box>
+          )}
+          <IconCircleButton label="Moj profil" onClick={() => router.push("/profile")}>
+            <AccountCircleRoundedIcon />
+          </IconCircleButton>
+        </Box>
       </Box>
 
       {/* the table to play tonight; the rest of the week, the team's next night. While the open round loads, the

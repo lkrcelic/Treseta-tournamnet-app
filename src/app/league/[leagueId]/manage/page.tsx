@@ -44,9 +44,10 @@ import {Box} from "@mui/material";
 import {useParams, useSearchParams} from "next/navigation";
 import LeagueDetailsView from "./LeagueDetailsView";
 import DatesView from "./DatesView";
-import RoundsView, {useLeagueRounds} from "./RoundsView";
+import RoundsView from "./RoundsView";
+import useLeagueRounds from "@/app/_hooks/useLeagueRounds";
 import DraftView from "./DraftView";
-import {LeagueRoundSummary} from "@/app/_fetchers/admin/daily";
+import {draftNight, DraftNightTab} from "@/app/_lib/ui/adminTonight";
 import {isIsoDate} from "@/app/_lib/nights";
 import EditCalendarRoundedIcon from "@mui/icons-material/EditCalendarRounded";
 import TaskAltRoundedIcon from "@mui/icons-material/TaskAltRounded";
@@ -117,7 +118,7 @@ function ManageLeagueDesktop() {
     firstLeague.current = leagueId;
     setShownNight(null);
   }, [leagueId]);
-  const draft = draftTab(leagueRounds.rounds, shownNight);
+  const draft = draftNight(leagueRounds.rounds, shownNight);
   const leagueNights = useLeagueNights(leagueId);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [pending, setPending] = useState<PendingRemoval | null>(null);
@@ -679,23 +680,6 @@ function AddTeamCard({exclude, onAdd, onCreate}: {exclude: number[]; onAdd: (t: 
   );
 }
 
-// Skica's tab: the night it shows, how many of its rounds aren't published yet (none: "Objavljeno" with a check)
-type DraftTab = {date: string; waiting: number};
-
-// The night for Skica: `shown` (the night just created, or ?date=) while the league has rounds that night, else the
-// latest night with rounds not published yet; null for none
-function draftTab(rounds: LeagueRoundSummary[] | null, shown: string | null): DraftTab | null {
-  if (!rounds) return null;
-  const waiting = (date: string) => rounds.filter((r) => r.date === date && (r.status === "draft" || r.status === "approved")).length;
-  if (shown && rounds.some((r) => r.date === shown)) return {date: shown, waiting: waiting(shown)};
-  const latest = rounds
-    .filter((r) => r.status === "draft" || r.status === "approved")
-    .map((r) => r.date)
-    .sort()
-    .pop();
-  return latest ? {date: latest, waiting: waiting(latest)} : null;
-}
-
 function ViewSwitch({
   view,
   onChange,
@@ -706,7 +690,7 @@ function ViewSwitch({
 }: {
   view: View;
   onChange: (v: View) => void;
-  draft: DraftTab | null;
+  draft: DraftNightTab | null;
   teams: number;
   rounds: number | null;
   nights: number | null;
