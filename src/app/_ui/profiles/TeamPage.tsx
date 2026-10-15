@@ -1,5 +1,6 @@
 "use client";
 
+import useAdminPhone from "@/app/_hooks/useAdminPhone";
 import useAdminPlayers from "@/app/_hooks/useAdminPlayers";
 import {reloadLeagues, useLeagueList} from "@/app/_hooks/useLeagues";
 import useNavStack from "@/app/_hooks/useNavStack";
@@ -106,17 +107,22 @@ function PlayerNames({player, teamName, desktop}: {player: TeamOverviewPlayer; t
 
 // ---------- phone ----------
 
+// The admin's phone (admin-mobile 33) gets the desktop's controls: the pencil on the name, Dodaj igrača with a remove
+// button per player, and Dodaj u ligu
 export function TeamPagePhone({teamId}: {teamId: number}) {
   const overview = useTeamOverview(teamId);
   const team = overview.data;
   const nav = useNavStack(team?.team.name ?? null);
+  const adminPhone = useAdminPhone();
+  const actions = useTeamAdmin(overview);
+  const admin = adminPhone && team?.viewer.admin ? actions : null;
   return (
     <PhoneFrame eyebrow="Ekipa" nav={nav}>
       {team ? (
         <>
-          <Hero team={team} desktop={false} />
-          <PhonePlayers team={team} />
-          <PhoneLeagues team={team} />
+          <Hero team={team} desktop={false} rename={admin?.rename} />
+          <PhonePlayers team={team} admin={admin} />
+          <PhoneLeagues team={team} admin={admin} />
           <PhoneNights nights={team.nights} />
         </>
       ) : (
@@ -150,10 +156,16 @@ const phoneRowLink = {
   "&:focus-visible": rowFocus,
 } as const;
 
-function PhonePlayers({team}: {team: TeamOverview}) {
+function PhonePlayers({team, admin}: {team: TeamOverview; admin: TeamAdmin | null}) {
+  const pending = admin?.pending.filter((p) => !team.players.some((x) => x.id === p.id)) ?? [];
   return (
     <PhoneSection title="Igrači">
-      {team.players.length === 0 ? (
+      {admin && (
+        <Box sx={{p: "12px 12px 4px"}}>
+          <PlayersAddField team={team} admin={admin} />
+        </Box>
+      )}
+      {team.players.length === 0 && pending.length === 0 ? (
         <EmptyState icon>{EMPTY.players}</EmptyState>
       ) : (
         <>
@@ -162,23 +174,55 @@ function PhonePlayers({team}: {team: TeamOverview}) {
             <span>Rejting</span>
           </PhoneListHead>
           <Box component="ul" sx={phoneRows}>
-            {team.players.map((p) => (
-              <Box component="li" key={p.id}>
+            {team.players.map((p) =>
+              admin ? (
+                // the row opens the player; the remove button sits above the link
                 <Box
-                  component={TransitionLink}
-                  href={playerHref(p)}
-                  sx={{...phoneRowLink, height: 62, p: "0 10px 0 14px", background: p.me ? color.cream2 : undefined, boxShadow: p.me ? shadow.mineBar : undefined}}
+                  component="li"
+                  key={p.id}
+                  sx={{...stretchedRow, height: 62, display: "flex", alignItems: "center", gap: "12px", p: "0 4px 0 14px", background: p.me ? color.cream2 : undefined, boxShadow: p.me ? shadow.mineBar : undefined}}
                 >
-                  <InitialsAvatar name={p.name} size={38} variant="paper" />
-                  <PlayerNames player={p} teamName={team.team.name} desktop={false} />
-                  <Box component="span" sx={{flex: "none", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "3px"}}>
-                    <Box component="span" sx={{fontFamily: font.display, fontSize: 22, fontWeight: 800, lineHeight: 1, color: color.ink, ...tabular}}>
+                  <Box component={TransitionLink} href={playerHref(p)} sx={{...stretchedLink, flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: "12px"}}>
+                    <InitialsAvatar name={p.name} size={38} variant="paper" />
+                    <PlayerNames player={p} teamName={team.team.name} desktop={false} />
+                    <Box component="span" sx={{flex: "none", fontFamily: font.display, fontSize: 22, fontWeight: 800, lineHeight: 1, color: color.ink, ...tabular}}>
                       {p.rating}
                     </Box>
-                    {p.provisional && <ProvisionalTag size="sm" />}
                   </Box>
-                  <RowChevron />
+                  <RemoveButton label={`Ukloni ${p.name} iz ekipe`} onClick={() => admin.removePlayer(p)} size={44} />
                 </Box>
+              ) : (
+                <Box component="li" key={p.id}>
+                  <Box
+                    component={TransitionLink}
+                    href={playerHref(p)}
+                    sx={{...phoneRowLink, height: 62, p: "0 10px 0 14px", background: p.me ? color.cream2 : undefined, boxShadow: p.me ? shadow.mineBar : undefined}}
+                  >
+                    <InitialsAvatar name={p.name} size={38} variant="paper" />
+                    <PlayerNames player={p} teamName={team.team.name} desktop={false} />
+                    <Box component="span" sx={{flex: "none", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "3px"}}>
+                      <Box component="span" sx={{fontFamily: font.display, fontSize: 22, fontWeight: 800, lineHeight: 1, color: color.ink, ...tabular}}>
+                        {p.rating}
+                      </Box>
+                      {p.provisional && <ProvisionalTag size="sm" />}
+                    </Box>
+                    <RowChevron />
+                  </Box>
+                </Box>
+              )
+            )}
+            {pending.map((p) => (
+              <Box component="li" key={`pending-${p.id}`} aria-busy="true" sx={{height: 62, display: "flex", alignItems: "center", gap: "12px", p: "0 14px"}}>
+                <InitialsAvatar name={p.name} size={38} variant="paper" />
+                <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "1px"}}>
+                  <Box component="span" sx={{fontSize: 16, fontWeight: 600, color: color.ink, ...ellipsis}}>
+                    {p.name}
+                  </Box>
+                  <Box component="span" sx={{fontSize: 13, color: color.muted}}>
+                    Dodajem u ekipu…
+                  </Box>
+                </Box>
+                <Spinner size={22} />
               </Box>
             ))}
           </Box>
@@ -188,9 +232,14 @@ function PhonePlayers({team}: {team: TeamOverview}) {
   );
 }
 
-function PhoneLeagues({team}: {team: TeamOverview}) {
+function PhoneLeagues({team, admin}: {team: TeamOverview; admin: TeamAdmin | null}) {
   return (
     <PhoneSection title="Lige">
+      {admin && (
+        <Box sx={{p: "12px 12px 4px"}}>
+          <LeaguesAddField team={team} admin={admin} />
+        </Box>
+      )}
       {team.leagues.length === 0 ? (
         <EmptyState icon>{EMPTY.leagues}</EmptyState>
       ) : (

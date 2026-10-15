@@ -101,6 +101,9 @@ export type AdminPlayerRow = {
   // in Croatian name order
   teams: {team_id: number; team_name: string}[];
   active: boolean;
+  // an admin; the rating rounded (the admin's phone Igrači list)
+  admin?: boolean;
+  rating?: number;
 };
 
 export type PlayerCreateInterface = z.infer<typeof PlayerCreate>;

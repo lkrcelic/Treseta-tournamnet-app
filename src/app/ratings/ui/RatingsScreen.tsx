@@ -1,5 +1,7 @@
 "use client";
 
+import useAdminPhone from "@/app/_hooks/useAdminPhone";
+import {AdminTabBar} from "@/app/_ui/admin/AdminTabBar";
 import {getPlayerRatingAPI} from "@/app/_fetchers/ratings";
 import {type ScrollMemory, useRestoredState, useScrollMemory} from "@/app/_hooks/useBackRestore";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
@@ -152,6 +154,7 @@ function useSearch(setQuery: (q: string) => void, scroller: ScrollMemory) {
 
 function PhoneList({all, visible, me, error, reload, query, setQuery, onMore}: ListProps) {
   const router = useTransitionRouter();
+  const adminPhone = useAdminPhone();
   const [info, setInfo] = useState<InfoView | null>(null);
   // Back from a player's detail finds the list where it was left
   const scroller = useScrollMemory("ratings");
@@ -198,9 +201,14 @@ function PhoneList({all, visible, me, error, reload, query, setQuery, onMore}: L
         </Box>
         {body}
       </Card>
-      <PrimaryButton icon={<HomeRoundedIcon />} onClick={() => router.push("/", "back")}>
-        Početni zaslon
-      </PrimaryButton>
+      {/* the admin's phone has its bottom bar here instead (admin-mobile 30) */}
+      {adminPhone ? (
+        <AdminTabBar active="rejting" />
+      ) : (
+        <PrimaryButton icon={<HomeRoundedIcon />} onClick={() => router.push("/", "back")}>
+          Početni zaslon
+        </PrimaryButton>
+      )}
       <InfoSheet view={info} onChange={setInfo} />
     </Screen>
   );

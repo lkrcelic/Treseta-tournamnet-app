@@ -96,6 +96,9 @@ type DirectoryPlayer = {
   username: string;
   active: boolean;
   teams: {team_id: number; team_name: string}[];
+  // the admin's phone Igrači list shows them (admin-mobile 34)
+  admin?: boolean;
+  rating?: number;
 };
 
 // The Igrači directory rows (GET /api/admin/players): by name in Croatian order (the database's collation puts "Č"

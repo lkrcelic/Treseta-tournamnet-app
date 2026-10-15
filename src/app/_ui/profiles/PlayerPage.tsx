@@ -1,5 +1,6 @@
 "use client";
 
+import useAdminPhone from "@/app/_hooks/useAdminPhone";
 import useNavStack from "@/app/_hooks/useNavStack";
 import usePlayerOverview from "@/app/_hooks/usePlayerOverview";
 import useShortWindow from "@/app/_hooks/useShortWindow";
@@ -31,6 +32,7 @@ import {
   stretchedRow,
 } from "./PageParts";
 import {PersonalDataCard} from "./PersonalDataCard";
+import {AdminNameTag, PlayerAccountPhone, PlayerDetailsSheet, PlayerTeamsPhone} from "./PlayerAdminPhone";
 import {EditDataButton, PlayerTeamsAdmin, usePlayerTeamsAdmin} from "./PlayerAdmin";
 import {ProfileHero} from "./ProfileHero";
 import {AddError, RemoveButton} from "./TeamAdmin";
@@ -48,11 +50,19 @@ const ratingHref = (p: PlayerOverview) => (p.rating.rank != null ? ratingPath(p.
 
 // ---------- phone ----------
 
-// The phone Player page (13c): laid out like Moj profil
+// The phone Player page (13c): laid out like Moj profil. The admin's phone (admin-mobile 35–39) also gets Uredi
+// podatke (a sheet), the teams with Dodaj u ekipu, the Admin switch and Račun (PlayerAdminPhone.tsx).
 export function PlayerPagePhone({playerId}: {playerId: number}) {
   const overview = usePlayerOverview(playerId);
   const data = overview.data;
   const nav = useNavStack(data?.player.name ?? null);
+  const adminPhone = useAdminPhone();
+  const actions = usePlayerTeamsAdmin(overview);
+  const admin = adminPhone && data?.viewer.admin ? actions : null;
+  const [editing, setEditing] = useState(false);
+  useEffect(() => {
+    setEditing(false);
+  }, [playerId]);
   return (
     <PhoneFrame eyebrow="Igrač" nav={nav}>
       {data ? (
@@ -62,10 +72,12 @@ export function PlayerPagePhone({playerId}: {playerId: number}) {
             avatarName={data.player.name}
             rating={data.rating}
             ratingHref={ratingHref(data)}
-            tag={data.player.active ? undefined : <Tag variant="inactive" size="sm" />}
+            tag={!data.player.active ? <Tag variant="inactive" size="sm" /> : admin && data.player.is_admin ? <AdminNameTag /> : undefined}
           />
-          <PersonalDataCard player={data.player} full={data.full} />
-          <TeamCards title="Ekipe" empty={NO_TEAMS} emptyIcon teams={data.teams} />
+          <PersonalDataCard player={data.player} full={data.full} action={admin && <EditDataButton expanded={editing} onClick={() => setEditing(true)} />} />
+          {admin ? <PlayerTeamsPhone data={data} admin={admin} /> : <TeamCards title="Ekipe" empty={NO_TEAMS} emptyIcon teams={data.teams} />}
+          {admin && <PlayerAccountPhone data={data} overview={overview} />}
+          {admin && editing && <PlayerDetailsSheet key={data.player.id} data={data} overview={overview} onClose={() => setEditing(false)} />}
         </>
       ) : (
         <PageStatus kind="player" overview={overview} nav={nav} />

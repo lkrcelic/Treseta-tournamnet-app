@@ -40,8 +40,10 @@ const ADMIN_NOTE = "Administrator upravlja ligama, ekipama, kolima i igračima."
 // an admin editing themself (the switch can't be changed)
 const SELF_ADMIN_NOTE = `${ADMIN_NOTE} Svoja administratorska prava ne možeš ukloniti.`;
 
-// Mounted while the panel is open: the form starts from the player as the page shows them (data, the page of overview)
-export function EditPlayerPanel({data, overview, onClose}: {data: PlayerOverview; overview: Overview<PlayerOverview>; onClose: () => void}) {
+// The form of "Uredi osobne podatke" (the desktop panel, the phone's sheet): it starts from the player as the page shows
+// them (data, the page of overview). save sends the fields that changed in one request (what is wrong shows under its
+// field) and calls onDone when it went through (or nothing changed).
+export function usePlayerForm(data: PlayerOverview, overview: Overview<PlayerOverview>, onDone: () => void) {
   const player = data.player;
   const self = data.viewer.self;
   const [initial] = useState(() => playerDraft(player));
@@ -49,10 +51,6 @@ export function EditPlayerPanel({data, overview, onClose}: {data: PlayerOverview
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  // a Račun action is on its way
-  const [accountBusy, setAccountBusy] = useState(false);
-  const busy = saving || accountBusy;
-  const formId = useId();
   const inputs = useRef<Partial<Record<AdminPlayerField, HTMLInputElement | null>>>({});
   const formErrorRef = useRef<HTMLDivElement>(null);
 
@@ -71,9 +69,9 @@ export function EditPlayerPanel({data, overview, onClose}: {data: PlayerOverview
     if (formError) formErrorRef.current?.scrollIntoView({block: "nearest"});
   }, [formError]);
 
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (busy) return;
+  const save = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (saving) return;
     const changes = draftChanges(initial, draft);
     // a date input with a part of the date missing gives "" as if it were emptied
     const found = draftErrors(changes, {birthDateIncomplete: inputs.current.birth_date?.validity.badInput === true});
@@ -85,7 +83,7 @@ export function EditPlayerPanel({data, overview, onClose}: {data: PlayerOverview
       return;
     }
     if (!hasChanges(changes)) {
-      onClose();
+      onDone();
       return;
     }
     setSaving(true);
@@ -99,7 +97,7 @@ export function EditPlayerPanel({data, overview, onClose}: {data: PlayerOverview
       // the menu's user card
       overview.reload();
       if (self) void refreshUser();
-      onClose();
+      onDone();
     } catch (err) {
       const fields = playerFieldErrors(err);
       const field = firstErrorField(fields);
@@ -121,6 +119,17 @@ export function EditPlayerPanel({data, overview, onClose}: {data: PlayerOverview
     spellCheck: false,
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => change(field, e.target.value),
   });
+
+  return {player, self, draft, change, errors, formError, formErrorRef, saving, save, fieldProps};
+}
+
+// Mounted while the panel is open
+export function EditPlayerPanel({data, overview, onClose}: {data: PlayerOverview; overview: Overview<PlayerOverview>; onClose: () => void}) {
+  const {player, self, draft, change, errors, formError, formErrorRef, saving, save, fieldProps} = usePlayerForm(data, overview, onClose);
+  // a Račun action is on its way
+  const [accountBusy, setAccountBusy] = useState(false);
+  const busy = saving || accountBusy;
+  const formId = useId();
 
   return (
     <SidePanel
@@ -255,6 +264,26 @@ function PanelSwitch({
 
 // ---------- Račun ----------
 
+// Deaktiviraj račun / Aktiviraj račun: the account changes at once, and the page and the Igrači list with it
+export async function changePlayerActive(playerId: number, overview: Overview<PlayerOverview>, active: boolean) {
+  await setPlayerActiveAPI(playerId, active);
+  overview.setData((d) => ({...d, player: {...d.player, active}}));
+  adminPlayersList.update((list) => setAdminPlayerActive(list, playerId, active));
+  overview.reload();
+}
+
+// A deleted player leaves the Igrači list and every team of the Ekipe list
+export function forgetPlayer(playerId: number) {
+  adminPlayersList.update((list) => removeAdminPlayer(list, playerId));
+  teamsList.update((list) => removeMemberEverywhere(list, playerId));
+}
+
+// The copy of the confirmations, for the phone's sheets (the panel has its own, CONFIRM)
+export const ACCOUNT_TEXT = {
+  admin: ADMIN_NOTE,
+  selfAdmin: SELF_ADMIN_NOTE,
+} as const;
+
 const outlineButton = {
   ...buttonBase,
   height: 46,
@@ -342,12 +371,8 @@ function AccountSection({
     setBusy(true);
     setError(null);
     if (ask === "active") {
-      const active = !player.active;
       try {
-        await setPlayerActiveAPI(player.id, active);
-        overview.setData((d) => ({...d, player: {...d.player, active}}));
-        adminPlayersList.update((list) => setAdminPlayerActive(list, player.id, active));
-        overview.reload();
+        await changePlayerActive(player.id, overview, !player.active);
         returnTo.current = "active";
         setAsk(null);
       } catch (e) {
@@ -368,8 +393,7 @@ function AccountSection({
     const here = mounted.current && window.location.pathname === pathname;
     // where the directory goes: the next player the list shows (asked while it still has the deleted one)
     const next = !here ? null : frame ? frame.nextAfterDelete(player.id) : neighbourId(adminPlayersList.peek() ?? [], player.id);
-    adminPlayersList.update((list) => removeAdminPlayer(list, player.id));
-    teamsList.update((list) => removeMemberEverywhere(list, player.id));
+    forgetPlayer(player.id);
     if (!here) return;
     // the player's page is gone: the next one opens in its place, as picked from the list (no Back to the deleted one)
     const to = next != null ? `/players/${next}` : "/players";

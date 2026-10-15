@@ -61,8 +61,8 @@ function PersonalDataList({player, full, desktop}: {player: PlayerView; full: bo
 }
 
 // "Osobni podaci" of a Player page: first and last name for everyone, all seven rows for the player and admins (full;
-// the server sends nothing else). On the phone a section with a card (13c), on the desktop a column (13g) whose header
-// can hold an action (the admin's "Uredi podatke").
+// the server sends nothing else). On the phone a section with a card (13c), on the desktop a column (13g); both can
+// hold an action next to the title (the admin's "Uredi podatke").
 export function PersonalDataCard({player, full, desktop = false, action}: {player: PlayerView; full: boolean; desktop?: boolean; action?: React.ReactNode}) {
   const titleId = useId();
   if (desktop) {
@@ -74,7 +74,15 @@ export function PersonalDataCard({player, full, desktop = false, action}: {playe
   }
   return (
     <Box component="section" aria-labelledby={titleId} sx={{display: "flex", flexDirection: "column", gap: "8px"}}>
-      <SectionLabel id={titleId}>Osobni podaci</SectionLabel>
+      {action ? (
+        // the admin's phone: "Uredi podatke" at the end of the label's row
+        <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", minHeight: 44}}>
+          <SectionLabel id={titleId}>Osobni podaci</SectionLabel>
+          {action}
+        </Box>
+      ) : (
+        <SectionLabel id={titleId}>Osobni podaci</SectionLabel>
+      )}
       <Card sx={{overflow: "hidden", "& dl > div:last-of-type": full ? {borderBottom: "none"} : undefined}}>
         <PersonalDataList player={player} full={full} desktop={false} />
       </Card>

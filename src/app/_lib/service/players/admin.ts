@@ -28,10 +28,14 @@ export async function listAdminPlayers(): Promise<AdminPlayerRow[]> {
       last_name: true,
       username: true,
       active: true,
+      player_role: true,
+      rating: true,
       teamPlayers: {select: {team: {select: {team_id: true, team_name: true}}}},
     },
   });
-  return adminPlayerRows(players.map(({teamPlayers, ...p}) => ({...p, teams: teamPlayers.map((tp) => tp.team)})));
+  return adminPlayerRows(
+    players.map(({teamPlayers, player_role, rating, ...p}) => ({...p, admin: isAdminRole({player_role}), rating, teams: teamPlayers.map((tp) => tp.team)}))
+  );
 }
 
 // The fields the privacy filter reads (playerView), for the answer to Spremi
