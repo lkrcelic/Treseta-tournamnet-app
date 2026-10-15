@@ -51,3 +51,4 @@ tmp-file.ts
 
 # Claude's local settings and worktrees (the nightly Bela sync runs in one, BELA_SYNC.md)
 /.claude/
+skills-lock.json
