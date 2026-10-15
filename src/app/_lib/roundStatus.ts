@@ -29,6 +29,11 @@ export function visibleRounds(admin: boolean): {status?: "PUBLISHED"} {
   return admin ? {} : PUBLISHED_ROUND;
 }
 
+// The rounds "Odobri sva" approves: the drafts; approved and published rounds stay as they are
+export function roundsToApprove<T extends {status: RoundStatus}>(rounds: T[]): T[] {
+  return rounds.filter((r) => r.status === "DRAFT");
+}
+
 // The rounds "Objavi odobrena kola" publishes: the approved ones; drafts stay drafts
 export function roundsToPublish<T extends {status: RoundStatus}>(rounds: T[]): T[] {
   return rounds.filter((r) => r.status === "APPROVED");
@@ -91,4 +96,10 @@ export function publishedAtLabel(iso: string): string {
   }).formatToParts(new Date(iso));
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? "";
   return `${part("day")}.${part("month")}. u ${part("hour")}:${part("minute")}`;
+}
+
+// The time the night's rounds went out, in league time: "18:42" (Skica kola on the phone: "Igrači vide svoje stolove
+// od 18:42.")
+export function publishedTimeLabel(iso: string): string {
+  return new Intl.DateTimeFormat("hr-HR", {timeZone: LEAGUE_TIME_ZONE, hour: "2-digit", minute: "2-digit", hourCycle: "h23"}).format(new Date(iso));
 }

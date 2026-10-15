@@ -7,12 +7,14 @@ import {
   draftCounts,
   NOTHING_APPROVED,
   publishedAtLabel,
+  publishedTimeLabel,
   publishLabel,
   publishNote,
   PUBLISHED_ROUND,
   ROUND_ALREADY_PUBLISHED,
   RoundStatus,
   roundStatusOf,
+  roundsToApprove,
   roundsToDiscard,
   roundsToPublish,
   visibleRounds,
@@ -42,6 +44,25 @@ test("publishing takes the approved rounds only: drafts stay drafts, published o
   ];
   assert.deepEqual(roundsToPublish(night).map((r) => r.round), [5, 7]);
   assert.deepEqual(roundsToPublish(night.filter((r) => r.status !== "APPROVED")), [], NOTHING_APPROVED);
+});
+
+test("Odobri sva approves the drafts only: approved and published rounds stay as they are", () => {
+  const night = [
+    {round: 1, status: "PUBLISHED" as RoundStatus},
+    {round: 2, status: "APPROVED" as RoundStatus},
+    {round: 3, status: "DRAFT" as RoundStatus},
+    {round: 4, status: "DRAFT" as RoundStatus},
+  ];
+  assert.deepEqual(roundsToApprove(night).map((r) => r.round), [3, 4]);
+  // then only approved rounds go out: the ones approved now and the one approved before
+  const approved = night.map((r) => (roundsToApprove(night).includes(r) ? {...r, status: "APPROVED" as RoundStatus} : r));
+  assert.deepEqual(roundsToPublish(approved).map((r) => r.round), [2, 3, 4]);
+  assert.deepEqual(roundsToApprove([{status: "PUBLISHED" as RoundStatus}, {status: "APPROVED" as RoundStatus}]), []);
+});
+
+test("the phone's Skica says when the rounds went out, in league time", () => {
+  assert.equal(publishedTimeLabel("2026-10-15T16:42:00.000Z"), "18:42");
+  assert.equal(publishedTimeLabel("2026-01-15T17:05:00.000Z"), "18:05");
 });
 
 test("discarding the draft deletes every round not published yet, approved ones too; published rounds stay", () => {

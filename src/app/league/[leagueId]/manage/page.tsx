@@ -1,6 +1,8 @@
 "use client";
 
+import useAdminPhone from "@/app/_hooks/useAdminPhone";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
+import ManagePhone from "@/app/_ui/admin/ManagePhone";
 import useLeagues from "@/app/_hooks/useLeagues";
 import useLeagueNights from "@/app/_hooks/useLeagueNights";
 import useLeagueTeams from "@/app/_hooks/useLeagueTeams";
@@ -85,10 +87,13 @@ function removalNote(played: number | null): string {
   return `Uklanja ekipu i ${plural(played, "njezino", "njezina", "njezinih")} ${count(played, NOUN.odigranoKolo)} iz poretka ove lige. ${stay}`;
 }
 
-// Upravljanje ligom is edited on the desktop only (handoff §2: no admin editing on mobile); the phone says so
+// Upravljanje ligom: the desktop's, or the admin's phone screens (DECISIONS #59); anyone else on the phone is told it
+// is edited on the computer
 export default function ManageLeague() {
   const isDesktop = useIsDesktop();
-  return isDesktop ? <ManageLeagueDesktop /> : <DesktopOnlyNote />;
+  const adminPhone = useAdminPhone();
+  if (isDesktop) return <ManageLeagueDesktop />;
+  return adminPhone ? <ManagePhone /> : <DesktopOnlyNote />;
 }
 
 function ManageLeagueDesktop() {

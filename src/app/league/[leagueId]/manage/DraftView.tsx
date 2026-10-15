@@ -1,8 +1,8 @@
 "use client";
 
 import useConferences from "@/app/_hooks/useConferences";
-import {discardDraftAPI, getDraftNightAPI, publishNightAPI, setRoundApprovalAPI} from "@/app/_fetchers/round/publication";
-import {DraftNight, DraftRound} from "@/app/_interfaces/round";
+import useNightDraft from "@/app/_hooks/useNightDraft";
+import {DraftRound} from "@/app/_interfaces/round";
 import {ConferenceOf} from "@/app/_lib/conferences";
 import {draftCounts, publishedAtLabel, publishLabel, publishNote, RoundStatus} from "@/app/_lib/roundStatus";
 import {count, NOUN, weekdayDate} from "@/app/_lib/ui/text";
@@ -36,27 +36,6 @@ const STATUS_LOOK: Record<RoundStatus, {label: string; icon: React.ReactNode; in
   PUBLISHED: {label: "Objavljeno", icon: <VisibilityRoundedIcon />, ink: color.green, bg: tint.green[12]},
 };
 
-function useDraftNight(leagueId: number, date: string) {
-  const [night, setNight] = useState<DraftNight | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [nonce, setNonce] = useState(0);
-  useEffect(() => {
-    let cancelled = false;
-    setError(null);
-    getDraftNightAPI(leagueId, date)
-      .then((n) => {
-        if (!cancelled) setNight(n);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Kola se nisu učitala.");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [leagueId, date, nonce]);
-  return {night, setNight, error, reload: () => setNonce((n) => n + 1)};
-}
-
 export default function DraftView({
   leagueId,
   date,
@@ -72,78 +51,10 @@ export default function DraftView({
   onDiscarded: () => void;
 }) {
   const router = useTransitionRouter();
-  const {night, setNight, error, reload} = useDraftNight(leagueId, date);
+  const {night, error, reload, cur, setCur, busy, actionError, toggleApproval, approveAll, publish, discard} = useNightDraft(leagueId, date, {onChanged, onDiscarded});
   // the teams' conference dots, as on the night's tables
   const conferences = useConferences(leagueId);
-  // the round shown on the left (the view is keyed by its night, so this starts over for another one)
-  const [cur, setCur] = useState<number | null>(null);
-  const [busy, setBusy] = useState<"publish" | "discard" | null>(null);
   const [askDiscard, setAskDiscard] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
-
-  // it opens on the first round still waiting (on the first one when every round is out)
-  useEffect(() => {
-    if (night && cur == null) setCur(Math.max(0, night.rounds.findIndex((r) => r.status !== "PUBLISHED")));
-  }, [night, cur]);
-
-  const setStatuses = (change: (r: DraftRound) => RoundStatus) =>
-    setNight((n) => (n ? {...n, rounds: n.rounds.map((r) => ({...r, status: change(r)}))} : n));
-
-  // optimistic: the round shows approved (or a draft again) at once, and goes back if the server refuses
-  const toggleApproval = async (round: DraftRound) => {
-    if (round.status === "PUBLISHED") return;
-    const approve = round.status === "DRAFT";
-    setActionError(null);
-    setStatuses((r) => (r.roundNumber === round.roundNumber ? (approve ? "APPROVED" : "DRAFT") : r.status));
-    try {
-      await setRoundApprovalAPI(round.id, approve);
-      onChanged();
-    } catch (e) {
-      setStatuses((r) => (r.roundNumber === round.roundNumber ? round.status : r.status));
-      setActionError(e instanceof Error ? e.message : "Kolo nije odobreno.");
-    }
-  };
-
-  const approveAll = async () => {
-    if (!night) return;
-    const waiting = night.rounds.filter((r) => r.status === "DRAFT");
-    setActionError(null);
-    setStatuses((r) => (r.status === "DRAFT" ? "APPROVED" : r.status));
-    try {
-      for (const r of waiting) await setRoundApprovalAPI(r.id, true);
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Kola nisu odobrena.");
-      reload();
-    }
-    onChanged();
-  };
-
-  const publish = async () => {
-    setBusy("publish");
-    setActionError(null);
-    try {
-      await publishNightAPI(leagueId, date);
-      reload();
-      onChanged();
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Kola nisu objavljena.");
-      reload();
-    }
-    setBusy(null);
-  };
-
-  const discard = async () => {
-    setBusy("discard");
-    setActionError(null);
-    try {
-      await discardDraftAPI(leagueId, date);
-      onDiscarded();
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Skica nije odbačena.");
-      setBusy(null);
-      reload();
-    }
-  };
 
   const grid = {flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) 380px", [NARROW_DESKTOP]: {gridTemplateColumns: "minmax(0,1fr) 340px"}, gap: "20px"} as const;
 
