@@ -3,26 +3,28 @@ import {DATE_FORMAT_ERROR, LeagueNightUpdateRequestValidation} from "@/app/_inte
 import {isDbId} from "@/app/_lib/helpers/query/dbId";
 import {isIsoDate} from "@/app/_lib/nights";
 import {requireAdmin} from "@/app/_lib/service/auth/requireUser";
-import {removeLeagueNight, setLeagueNightTime} from "@/app/_lib/service/league/nights";
+import {removeLeagueNight, updateLeagueNight} from "@/app/_lib/service/league/nights";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {NextRequest, NextResponse} from "next/server";
 
 // A new response each time: a response body can only be sent once
 const nightNotFound = () => NextResponse.json({error: "Liga nema tu večer."}, {status: STATUS.NotFound});
 
-// A night's own start time, or null for the league's; only a night still to be played (admin)
+// A night's own start time and place, or null for the league's; only a night still to be played (admin). Returns the
+// night as Datumi shows it.
 export async function PATCH(request: NextRequest, {params}: {params: {id: string; date: string}}) {
   const auth = await requireAdmin(request);
   if (auth.response) return auth.response;
   if (!isIsoDate(params.date)) return NextResponse.json({error: DATE_FORMAT_ERROR}, {status: STATUS.BadRequest});
 
   try {
-    const {start_time} = LeagueNightUpdateRequestValidation.parse(await request.json());
+    const change = LeagueNightUpdateRequestValidation.parse(await request.json());
     const leagueId = Number(params.id);
-    if (!isDbId(leagueId) || !(await setLeagueNightTime(leagueId, params.date, start_time))) return nightNotFound();
-    return NextResponse.json({date: params.date, start_time}, {status: STATUS.OK});
+    const night = isDbId(leagueId) ? await updateLeagueNight(leagueId, params.date, change) : null;
+    if (!night) return nightNotFound();
+    return NextResponse.json(night, {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Početak večeri nije spremljen.");
+    return errorResponse(error, "Okupljanje večeri nije spremljeno.");
   }
 }
 

@@ -4,19 +4,31 @@ import {updateLeagueAPI} from "@/app/_fetchers/league/leagues";
 import {LeagueOption, updateCachedLeague} from "@/app/_hooks/useLeagues";
 import {END_DATE_ERROR, endsAfterStart, LEAGUE_NAME_TAKEN, leagueNameTaken, START_TIME_ERROR} from "@/app/_interfaces/league";
 import {isStartTime} from "@/app/_lib/nights";
+import {PlaceFields, placeOfDraft, placePayload, TIME_LABEL} from "@/app/_ui/admin/GatheringForm";
 import {color, font, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, ErrorNote, IconCircleButton, OutlineButton, PrimaryButton, TextField, TimeField} from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ErrorRoundedIcon from "@mui/icons-material/ErrorRounded";
 import RemoveRoundedIcon from "@mui/icons-material/RemoveRounded";
-import {Box} from "@mui/material";
+import {Box, SxProps, Theme} from "@mui/material";
 import React, {useState} from "react";
 
 export const DAYS = ["Pon", "Uto", "Sri", "Čet", "Pet", "Sub", "Ned"];
 export const DAY_NAMES = ["ponedjeljak", "utorak", "srijeda", "četvrtak", "petak", "subota", "nedjelja"];
 
-// time: when the nights start, "HH:MM" ("": none)
-export type Details = {name: string; season: string; start: string; end: string; day: number | null; time: string; rounds: number};
+// time: when the nights start, "HH:MM" ("": none); place, address, url: where they are played ("": none)
+export type Details = {
+  name: string;
+  season: string;
+  start: string;
+  end: string;
+  day: number | null;
+  time: string;
+  place: string;
+  address: string;
+  url: string;
+  rounds: number;
+};
 
 const fromLeague = (l: LeagueOption | undefined): Details => ({
   name: l?.name ?? "",
@@ -25,6 +37,9 @@ const fromLeague = (l: LeagueOption | undefined): Details => ({
   end: l?.endDate ?? "",
   day: l?.playDay ?? null,
   time: l?.startTime ?? "",
+  place: l?.location?.name ?? "",
+  address: l?.location?.address ?? "",
+  url: l?.location?.url ?? "",
   rounds: l?.roundsPerNight ?? 3,
 });
 
@@ -66,6 +81,7 @@ export function useLeagueDetails(leagueId: number, leagues: LeagueOption[]) {
     setSaving(true);
     setServerError(null);
     try {
+      const place = {name: d.place, address: d.address, url: d.url};
       await updateLeagueAPI(leagueId, {
         league_name: name,
         season: d.season.trim() || null,
@@ -73,6 +89,7 @@ export function useLeagueDetails(leagueId: number, leagues: LeagueOption[]) {
         end_date: d.end || null,
         play_day: d.day,
         start_time: d.time || null,
+        ...placePayload(place),
         rounds_per_night: d.rounds,
       });
       updateCachedLeague(leagueId, {
@@ -82,6 +99,7 @@ export function useLeagueDetails(leagueId: number, leagues: LeagueOption[]) {
         endDate: d.end || null,
         playDay: d.day,
         startTime: d.time || null,
+        location: placeOfDraft(place),
         roundsPerNight: d.rounds,
       });
       setDraft({});
@@ -99,8 +117,39 @@ export function useLeagueDetails(leagueId: number, leagues: LeagueOption[]) {
   return {d, set, error, dirty, canSave, save, saving, saved, serverError, discard};
 }
 
-// Upravljanje ligom (desktop) · Podaci: the league's name, season, dates, play day, start time and default rounds per
-// night. aside: the second column (the league's conferences).
+// Okupljanje of the league being edited: Vrijeme okupljanja, Ime mjesta, Adresa and Link na Google Mape, the defaults of
+// every night (Podaci on the desktop, Postavke on the admin's phone). timeSx: the time field's box (narrower on the
+// desktop).
+export function LeagueGatheringFields({
+  d,
+  set,
+  inputSx,
+  timeSx,
+}: {
+  d: Details;
+  set: <K extends keyof Details>(k: K, v: Details[K]) => void;
+  inputSx: SxProps<Theme>;
+  timeSx?: SxProps<Theme>;
+}) {
+  return (
+    <>
+      <TimeField label={TIME_LABEL} value={d.time} onChange={(v) => set("time", v)} clearLabel="Ukloni vrijeme okupljanja" soft sx={timeSx} inputSx={inputSx} />
+      <PlaceFields
+        value={{name: d.place, address: d.address, url: d.url}}
+        onChange={(p) => {
+          if (p.name !== d.place) set("place", p.name);
+          if (p.address !== d.address) set("address", p.address);
+          if (p.url !== d.url) set("url", p.url);
+        }}
+        inputSx={inputSx}
+      />
+    </>
+  );
+}
+
+// Upravljanje ligom (desktop) · Podaci: the league's name, season, dates, play day and default rounds per night, and on
+// the right Okupljanje, the time and place of its nights; one Spremi promjene saves both. aside: under Okupljanje (the
+// league's conferences).
 export default function LeagueDetailsView({leagueId, leagues, aside}: {leagueId: number; leagues: LeagueOption[]; aside?: React.ReactNode}) {
   const {d, set, error, dirty, canSave, save, saving, saved, serverError, discard} = useLeagueDetails(leagueId, leagues);
   const inputSx = {height: 52, borderRadius: "14px", fontSize: 16};
@@ -156,10 +205,6 @@ export default function LeagueDetailsView({leagueId, leagues, aside}: {leagueId:
               ))}
             </Box>
           </Box>
-          <Box sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "12px", alignItems: "end"}}>
-            <TimeField label="Početak večeri · neobavezno" value={d.time} onChange={(v) => set("time", v)} clearLabel="Ukloni početak večeri" soft inputSx={inputSx} />
-            <Box sx={{fontSize: 13, lineHeight: 1.45, color: color.muted, pb: "6px"}}>Zadano za sve večeri. Pojedinoj večeri promijeni ga na kartici Datumi.</Box>
-          </Box>
           <Box role="group" aria-labelledby="ld-rpn" sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", p: "12px 14px", borderRadius: "16px", background: color.paper2}}>
             <Box sx={{display: "flex", flexDirection: "column"}}>
               <Box id="ld-rpn" component="span" sx={{fontSize: 15, fontWeight: 600}}>
@@ -203,7 +248,30 @@ export default function LeagueDetailsView({leagueId, leagues, aside}: {leagueId:
           </Box>
         </Box>
       </Card>
-      {aside}
+      <Box sx={{display: "flex", flexDirection: "column", gap: "20px", minWidth: 0}}>
+        <Card component="section" aria-labelledby="ld-gathering" sx={{borderRadius: "24px", p: "26px"}}>
+          <Box
+            component="form"
+            onSubmit={(e: React.FormEvent) => {
+              e.preventDefault();
+              save();
+            }}
+            noValidate
+            sx={{display: "flex", flexDirection: "column", gap: "18px"}}
+          >
+            <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
+              <Box component="h2" id="ld-gathering" sx={{m: 0, fontFamily: font.display, fontSize: 24, fontWeight: 800}}>
+                Okupljanje
+              </Box>
+              <Box sx={{fontSize: 14, lineHeight: 1.45, color: color.muted}}>
+                Zadano vrijeme i mjesto za sve večeri lige. Iznimku za pojedinu večer postavi u Datumima. Sprema se gumbom Spremi promjene.
+              </Box>
+            </Box>
+            <LeagueGatheringFields d={d} set={set} inputSx={inputSx} timeSx={{maxWidth: "calc(50% - 6px)"}} />
+          </Box>
+        </Card>
+        {aside}
+      </Box>
     </Box>
   );
 }

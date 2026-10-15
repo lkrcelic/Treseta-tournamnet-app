@@ -1,5 +1,5 @@
 import {DATE_FORMAT_ERROR} from "@/app/_interfaces/league";
-import {isIsoDate} from "@/app/_lib/nights";
+import {isIsoDate, NightLocation} from "@/app/_lib/nights";
 import {isValidPhone, PHONE_ERROR} from "@/app/_lib/phone";
 import {z} from "zod";
 
@@ -119,6 +119,10 @@ export type MyLeague = {
   played: string[]; // the nights that have rounds
   // when each night starts (its own time or the league's), "HH:MM"; a night without a time isn't in it
   times: Record<string, string>;
+  // where each night is played (its own place or the league's); a night without a place isn't in it
+  places: Record<string, NightLocation>;
+  // the nights with their own start time or place (Raspored marks them)
+  ownPlace: string[];
 };
 
 export type MySchedule = {today: string; leagues: MyLeague[]};

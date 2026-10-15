@@ -10,7 +10,7 @@ import useLeagues from "@/app/_hooks/useLeagues";
 import useNavStack from "@/app/_hooks/useNavStack";
 import {useLeagueStandings} from "@/app/_hooks/useStandings";
 import {createRoundNight, isPlaying} from "@/app/_lib/createRoundDraft";
-import {NIGHT_STATUS_LABEL, NightStatus, nightLabel, nightsLeftLabel, nightStatus} from "@/app/_lib/nights";
+import {exceptionLabel, gatheringLabel, NIGHT_STATUS_LABEL, NightStatus, nightLabel, nightsLeftLabel, nightStatus} from "@/app/_lib/nights";
 import {count, NOUN} from "@/app/_lib/ui/text";
 import {replaceAddress, TransitionLink, useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
@@ -31,12 +31,12 @@ import {
   Screen,
   ScrollArea,
   SearchAddField,
+  SectionLabel,
   Segmented,
   SolidButton,
   SwitchTrack,
   tabular,
   TextField,
-  TimeField,
 } from "@/app/_ui/sp";
 import {searchTeams} from "@/app/_ui/teams/teamSearch";
 import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
@@ -51,9 +51,11 @@ import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import {Box} from "@mui/material";
 import React, {useEffect, useMemo, useState} from "react";
-import {useLeagueDetails} from "@/app/league/[leagueId]/manage/LeagueDetailsView";
-import {useLeagueDates} from "@/app/league/[leagueId]/manage/DatesView";
+import {LeagueGatheringFields, useLeagueDetails} from "@/app/league/[leagueId]/manage/LeagueDetailsView";
+import {defaultGatheringLabel, gatheringDefaults, GatheringDefaults, nightEditable, useLeagueDates} from "@/app/league/[leagueId]/manage/DatesView";
 import {adminCardSx, adminLabelSx, DayPicker, PhoneStepper} from "./AdminParts";
+import {NightGatheringForm} from "./GatheringForm";
+import {GatheringLine} from "@/app/_ui/gathering/Gathering";
 
 type Tab = "teams" | "rounds" | "dates" | "details";
 const TABS: {key: Tab; label: string}[] = [
@@ -107,7 +109,7 @@ export default function LeaguePhone({leagueId, view}: {leagueId: number; view: T
         ) : tab === "rounds" ? (
           <RoundsTab leagueId={leagueId} />
         ) : tab === "dates" ? (
-          <DatesTab leagueId={leagueId} defaultTime={leagues.find((l) => l.id === leagueId)?.startTime ?? null} />
+          <DatesTab leagueId={leagueId} defaults={gatheringDefaults(leagues.find((l) => l.id === leagueId))} />
         ) : (
           <SettingsTab leagueId={leagueId} />
         )}
@@ -437,14 +439,14 @@ const NIGHT_PILL: Record<NightStatus, {bg: string; ink: string}> = {
   upcoming: {bg: color.lineFill, ink: color.ink2},
 };
 
-function DatesTab({leagueId, defaultTime}: {leagueId: number; defaultTime: string | null}) {
+function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDefaults}) {
   const data = useLeagueNights(leagueId);
-  const ld = useLeagueDates(leagueId, defaultTime, data);
-  // the night opened to change its start time or to take it out
+  const ld = useLeagueDates(leagueId, defaults, data);
+  // the night opened to change its time and place or to take it out
   const [open, setOpen] = useState<string | null>(null);
-  const [time, setTime] = useState("");
   const next = ld.nextIndex >= 0 ? ld.list[ld.nextIndex] : null;
   const opened = ld.list.find((n) => n.date === open) ?? null;
+  const defaultLabel = defaultGatheringLabel(defaults);
 
   return (
     <>
@@ -485,6 +487,11 @@ function DatesTab({leagueId, defaultTime}: {leagueId: number; defaultTime: strin
       </Box>
       {ld.duplicate && <ErrorNote>Ta večer je već na popisu.</ErrorNote>}
       {ld.actionError && !open && <ErrorNote>{ld.actionError}</ErrorNote>}
+      {ld.list.length > 0 && (
+        <Box component="p" sx={{flex: "none", m: 0, px: "6px", fontSize: 13.5, lineHeight: 1.45, color: color.muted}}>
+          {defaultLabel ? `Zadano okupljanje: ${defaultLabel}. ` : ""}Dodirni nadolazeću večer za drugo vrijeme ili mjesto.
+        </Box>
+      )}
 
       {ld.error && !ld.nights ? (
         <ErrorNote onRetry={ld.reload}>{ld.error}</ErrorNote>
@@ -500,38 +507,39 @@ function DatesTab({leagueId, defaultTime}: {leagueId: number; defaultTime: strin
             const isNext = i === ld.nextIndex;
             const status = nightStatus(n.date, isNext, ld.today, n.played);
             const future = n.date >= ld.today;
+            // a night still to be played opens in a sheet; one with rounds or one that has passed keeps its time and
+            // place
+            const editable = nightEditable(n, ld.today);
+            const gathering = gatheringLabel(n.time, n.place);
+            const own = exceptionLabel(n.start_time != null, n.location != null);
             const row = (
               <>
                 <Box component="span" sx={{width: 28, flex: "none", fontSize: 14, fontWeight: 600, color: color.muted, ...tabular}}>
                   {i + 1}
                 </Box>
-                <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", alignItems: "baseline", gap: "8px"}}>
+                <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "1px"}}>
                   <Box component="span" sx={{fontSize: 16, fontWeight: isNext ? 700 : 600, color: future ? color.ink : color.muted}}>
                     {nightLabel(n.date)}
                   </Box>
-                  {n.time && (
-                    <Box component="span" sx={{fontSize: 13, color: color.muted, ...tabular}}>
-                      {n.time}
-                    </Box>
-                  )}
+                  <GatheringLine time={n.time} place={n.place} ownTime={n.start_time != null} ownPlace={n.location != null} size={12.5} />
                 </Box>
                 <Box component="span" sx={{flex: "none", height: 26, display: "flex", alignItems: "center", px: "9px", borderRadius: "8px", background: NIGHT_PILL[status].bg, color: NIGHT_PILL[status].ink, fontSize: 13, fontWeight: 700}}>
                   {NIGHT_STATUS_LABEL[status]}
                 </Box>
               </>
             );
-            const rowSx = {minHeight: 56, display: "flex", alignItems: "center", gap: "10px", pl: "16px", pr: "12px", background: isNext ? color.cream2 : "transparent", boxShadow: isNext ? shadow.mineBar : "none"} as const;
+            const rowSx = {minHeight: 58, py: "7px", boxSizing: "border-box", display: "flex", alignItems: "center", gap: "10px", pl: "16px", pr: "12px", background: isNext ? color.cream2 : "transparent", boxShadow: isNext ? shadow.mineBar : "none"} as const;
             return (
               <Box component="li" key={n.date} sx={{borderTop: i ? `1px solid ${color.line}` : "none"}}>
-                {future ? (
+                {editable ? (
                   <Box
                     component="button"
                     type="button"
                     aria-haspopup="dialog"
-                    aria-label={`${nightLabel(n.date)}${n.time ? `, ${n.time}` : ""}: ${NIGHT_STATUS_LABEL[status].toLowerCase()}. Promijeni`}
+                    aria-label={`${nightLabel(n.date)}${gathering ? `, ${gathering}` : ""}${own ? ` (${own.toLowerCase()})` : ""}: ${NIGHT_STATUS_LABEL[status].toLowerCase()}. Promijeni okupljanje`}
                     onClick={() => {
                       setOpen(n.date);
-                      setTime(n.time ?? "");
+                      ld.clearError();
                     }}
                     sx={{...buttonBase, ...rowSx, width: "100%", textAlign: "left"}}
                   >
@@ -547,36 +555,24 @@ function DatesTab({leagueId, defaultTime}: {leagueId: number; defaultTime: strin
         </Box>
       )}
 
-      <BottomSheet open={opened != null} onClose={() => setOpen(null)} title={opened ? nightLabel(opened.date) : ""} closable busy={ld.savingTime != null || ld.removing != null}>
+      <BottomSheet open={opened != null} onClose={() => setOpen(null)} title={opened ? `Okupljanje · ${nightLabel(opened.date)}` : ""} closable tall busy={ld.saving != null || ld.removing != null}>
         {opened && (
-          <>
-            <TimeField
-              label="Početak večeri"
-              value={time}
-              onChange={setTime}
-              clearLabel={defaultTime ? `Vrati zadani početak (${defaultTime})` : "Ukloni početak"}
-            />
-            <Box component="p" sx={{m: 0, fontSize: 13.5, lineHeight: 1.45, color: color.ink2}}>
-              {defaultTime ? `Zadani početak lige je ${defaultTime}. Prazno polje vraća zadani.` : "Liga nema zadani početak. Postavi ga u Postavkama."}
-            </Box>
-            {ld.actionError && <ErrorNote>{ld.actionError}</ErrorNote>}
-            <SolidButton
-              height={54}
-              loading={ld.savingTime === opened.date}
-              disabled={(time || null) === (opened.time ?? null)}
-              onClick={async () => {
-                await ld.setTime(opened.date, time || null);
-                setOpen(null);
-              }}
-              sx={{fontSize: 16}}
-            >
-              Spremi početak
-            </SolidButton>
+          <NightGatheringForm
+            key={opened.date}
+            night={opened}
+            leagueTime={defaults.time}
+            leaguePlace={defaults.location}
+            settingsTab="Postavke"
+            onSave={(change) => ld.update(opened.date, change)}
+            saving={ld.saving === opened.date}
+            error={ld.actionError}
+            inputSx={{height: 52, borderRadius: "14px", fontSize: 16}}
+          >
             {!opened.played && (
               <OutlineButton
-                height={54}
+                height={52}
                 tone={color.red}
-                disabled={ld.removing != null}
+                disabled={ld.removing != null || ld.saving != null}
                 onClick={async () => {
                   await ld.remove(opened.date);
                   setOpen(null);
@@ -587,7 +583,7 @@ function DatesTab({leagueId, defaultTime}: {leagueId: number; defaultTime: strin
                 Makni večer
               </OutlineButton>
             )}
-          </>
+          </NightGatheringForm>
         )}
       </BottomSheet>
     </>
@@ -601,30 +597,30 @@ function SettingsTab({leagueId}: {leagueId: number}) {
   const f = useLeagueDetails(leagueId, leagues);
   const inputSx = {height: 52, borderRadius: "14px", fontSize: 16};
   return (
-    <Box
-      component="form"
-      noValidate
-      onSubmit={(e: React.FormEvent) => (e.preventDefault(), f.save())}
-      sx={{...adminCardSx, gap: "14px"}}
-    >
-      <TextField label="Naziv lige" value={f.d.name} onChange={(e) => f.set("name", e.target.value)} soft inputSx={inputSx} />
-      <TextField label="Sezona" value={f.d.season} onChange={(e) => f.set("season", e.target.value)} soft inputSx={inputSx} />
-      <Box sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "10px"}}>
-        <TextField label="Početak" type="date" value={f.d.start} onChange={(e) => f.set("start", e.target.value)} soft inputSx={inputSx} />
-        <TextField label="Kraj" type="date" value={f.d.end} min={f.d.start || undefined} onChange={(e) => f.set("end", e.target.value)} soft inputSx={inputSx} />
-      </Box>
-      <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
-        <Box id="st-day" sx={{fontSize: 14, fontWeight: 600, color: color.ink2, pl: "4px"}}>
-          Dan igranja · neobavezno
+    <Box component="form" noValidate onSubmit={(e: React.FormEvent) => (e.preventDefault(), f.save())} sx={{flex: "none", display: "flex", flexDirection: "column", gap: "12px"}}>
+      <Box sx={{...adminCardSx, gap: "14px"}}>
+        <TextField label="Naziv lige" value={f.d.name} onChange={(e) => f.set("name", e.target.value)} soft inputSx={inputSx} />
+        <TextField label="Sezona" value={f.d.season} onChange={(e) => f.set("season", e.target.value)} soft inputSx={inputSx} />
+        <Box sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "10px"}}>
+          <TextField label="Početak" type="date" value={f.d.start} onChange={(e) => f.set("start", e.target.value)} soft inputSx={inputSx} />
+          <TextField label="Kraj" type="date" value={f.d.end} min={f.d.start || undefined} onChange={(e) => f.set("end", e.target.value)} soft inputSx={inputSx} />
         </Box>
-        <DayPicker value={f.d.day} onChange={(v) => f.set("day", v)} labelId="st-day" />
-      </Box>
-      <TimeField label="Početak večeri · neobavezno" value={f.d.time} onChange={(v) => f.set("time", v)} clearLabel="Ukloni početak večeri" soft inputSx={inputSx} />
-      <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
-        <Box component="span" sx={{...adminLabelSx, fontSize: 14, color: color.ink2, pl: "4px"}}>
-          Kola po večeri
+        <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
+          <Box id="st-day" sx={{fontSize: 14, fontWeight: 600, color: color.ink2, pl: "4px"}}>
+            Dan igranja · neobavezno
+          </Box>
+          <DayPicker value={f.d.day} onChange={(v) => f.set("day", v)} labelId="st-day" />
         </Box>
-        <PhoneStepper label="Kola po večeri" value={f.d.rounds} onChange={(n) => f.set("rounds", n)} min={1} max={6} less="Manje kola po večeri" more="Više kola po večeri" />
+        <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
+          <Box component="span" sx={{...adminLabelSx, fontSize: 14, color: color.ink2, pl: "4px"}}>
+            Kola po večeri
+          </Box>
+          <PhoneStepper label="Kola po večeri" value={f.d.rounds} onChange={(n) => f.set("rounds", n)} min={1} max={6} less="Manje kola po večeri" more="Više kola po večeri" />
+        </Box>
+      </Box>
+      <SectionLabel id="st-gathering" sx={{mt: "4px"}}>Okupljanje</SectionLabel>
+      <Box role="group" aria-labelledby="st-gathering" sx={{...adminCardSx, gap: "14px"}}>
+        <LeagueGatheringFields d={f.d} set={f.set} inputSx={inputSx} />
       </Box>
       {f.error && f.dirty && (
         <Box role="alert" sx={{fontSize: 14, fontWeight: 600, color: color.red, display: "flex", alignItems: "center", gap: "6px", "& svg": {fontSize: 18}}}>

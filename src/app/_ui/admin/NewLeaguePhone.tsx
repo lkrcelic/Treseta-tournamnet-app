@@ -15,10 +15,12 @@ import EmojiEventsRoundedIcon from "@mui/icons-material/EmojiEventsRounded";
 import {Box} from "@mui/material";
 import React, {useMemo, useState} from "react";
 import {adminCardSx, DayPicker, PhoneStepper} from "./AdminParts";
+import {EMPTY_PLACE, PlaceDraft, PlaceFields, placePayload, TIME_LABEL} from "./GatheringForm";
 
-// Nova liga on the admin's phone (admin-mobile 13): the name, season, dates, play day, when the nights start and the
-// rounds per night, then the league's nights, filled in from the dates and the play day (a night can be taken out or
-// added). Teams join afterwards on Upravljanje ligom · Ekipe, where Kreiraj ligu opens. The rules are the desktop's.
+// Nova liga on the admin's phone (admin-mobile 13, 13b): the name, season, dates, play day and the rounds per night,
+// then the league's nights, filled in from the dates and the play day (a night can be taken out or added), and last
+// Okupljanje, when and where the nights gather. Teams join afterwards on Upravljanje ligom · Ekipe, where Kreiraj ligu
+// opens. The rules are the desktop's.
 export default function NewLeaguePhone() {
   const router = useTransitionRouter();
   const nav = useNavStack("Nova liga", "/");
@@ -29,6 +31,7 @@ export default function NewLeaguePhone() {
   const [endDate, setEndDate] = useState("");
   const [playDay, setPlayDay] = useState<number | null>(null);
   const [startTime, setStartTime] = useState("");
+  const [place, setPlace] = useState<PlaceDraft>(EMPTY_PLACE);
   const [rounds, setRounds] = useState(3);
   const [removed, setRemoved] = useState<string[]>([]);
   const [extra, setExtra] = useState<string[]>([]);
@@ -58,6 +61,7 @@ export default function NewLeaguePhone() {
         end_date: endDate || null,
         play_day: playDay,
         start_time: startTime || null,
+        ...placePayload(place),
         rounds_per_night: rounds,
         team_ids: [],
         nights,
@@ -90,7 +94,6 @@ export default function NewLeaguePhone() {
             </Box>
             <DayPicker value={playDay} onChange={setPlayDay} labelId="nl-day" />
           </Box>
-          <TimeField label="Početak večeri · neobavezno" value={startTime} onChange={setStartTime} clearLabel="Ukloni početak večeri" soft inputSx={inputSx} />
           <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
             <Box component="span" sx={{fontSize: 14, fontWeight: 600, color: color.ink2, pl: "4px"}}>
               Kola po večeri
@@ -154,6 +157,12 @@ export default function NewLeaguePhone() {
               Dodaj
             </SolidButton>
           </Box>
+        </Box>
+
+        <SectionLabel id="nl-gathering">Okupljanje</SectionLabel>
+        <Box role="group" aria-labelledby="nl-gathering" sx={{...adminCardSx, gap: "14px"}}>
+          <TimeField label={TIME_LABEL} value={startTime} onChange={setStartTime} clearLabel="Ukloni vrijeme okupljanja" soft inputSx={inputSx} />
+          <PlaceFields value={place} onChange={setPlace} inputSx={inputSx} />
         </Box>
       </ScrollArea>
       <Box sx={{flex: "none", display: "flex", flexDirection: "column", gap: "10px"}}>

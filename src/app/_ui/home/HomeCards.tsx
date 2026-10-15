@@ -1,16 +1,19 @@
 "use client";
 
 import {BurzaPost, MyLeague, MySchedule} from "@/app/_interfaces/burza";
-import {nextNightIndex, nightTimeLabel} from "@/app/_lib/nights";
+import {gatheringLabel, isSafeUrl, nextNightIndex, NightLocation, nightLabel, nightTimeLabel} from "@/app/_lib/nights";
 import {adCount, namesAndMore, teamsAsking, teamsLooking} from "@/app/_lib/ui/burza";
 import {initials} from "@/app/_lib/ui/text";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
+import {mapLinkProps} from "@/app/_ui/gathering/Gathering";
 import {buttonBase, ellipsis} from "@/app/_ui/sp";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import EventRoundedIcon from "@mui/icons-material/EventRounded";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
+import MapRoundedIcon from "@mui/icons-material/MapRounded";
 import PersonSearchRoundedIcon from "@mui/icons-material/PersonSearchRounded";
+import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
 import {Box, Skeleton} from "@mui/material";
 import React from "react";
 
@@ -26,11 +29,46 @@ export function nextNight(schedule: MySchedule | null): {league: MyLeague; night
   return null;
 }
 
-// Sljedeća večer: the team, its players and the night (opening Raspored); Nađi zamjenu opens the substitute form
+// Where the night gathers, on the navy card: a pin, "19:30 · Caffe bar Kartaš", the address, and Karta when the place
+// has a link (it opens Google Maps in a new tab or the Maps app)
+export function GatheringRow({time, place}: {time: string | null | undefined; place: NightLocation}) {
+  const map = place.url && isSafeUrl(place.url) ? place.url : null;
+  return (
+    <Box sx={{display: "flex", alignItems: "center", gap: "10px", p: "10px 10px 10px 12px", borderRadius: "14px", background: tint.creamOnNavy[16]}}>
+      <PlaceRoundedIcon aria-hidden sx={{flex: "none", fontSize: 22, color: color.cream}} />
+      <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "1px"}}>
+        <Box component="span" sx={{fontSize: 15, fontWeight: 700, lineHeight: 1.3, overflowWrap: "anywhere"}}>
+          {gatheringLabel(time, place)}
+        </Box>
+        {place.address && (
+          <Box component="span" sx={{fontSize: 13, lineHeight: 1.3, color: color.cream, overflowWrap: "anywhere"}}>
+            {place.address}
+          </Box>
+        )}
+      </Box>
+      {map && (
+        <Box
+          component="a"
+          {...mapLinkProps(map)}
+          aria-label={`Karta: ${place.name}`}
+          sx={{...buttonBase, flex: "none", height: 44, display: "flex", alignItems: "center", gap: "6px", px: "14px", borderRadius: "22px", background: color.white, color: color.navy, fontSize: 14, fontWeight: 700, textDecoration: "none", "& svg": {fontSize: 20}}}
+        >
+          <MapRoundedIcon aria-hidden />
+          Karta
+        </Box>
+      )}
+    </Box>
+  );
+}
+
+// Sljedeća večer: the team, its players, where and when it gathers, and the night (opening Raspored); Nađi zamjenu
+// opens the substitute form
 export function NextNightCard({league, night, today}: {league: MyLeague; night: string; today: string}) {
   const tonight = night === today;
-  // "sri 14. 10. · 19:00", or only the date when the night has no start time
-  const when = nightTimeLabel(night, league.times[night]);
+  const time = league.times[night];
+  const place = league.places?.[night];
+  // "sri 14. 10. · 19:00", or only the date when the night has no start time; with a place, the time is in its row
+  const when = place ? nightLabel(night) : nightTimeLabel(night, time);
   return (
     <Box
       component="section"
@@ -69,6 +107,7 @@ export function NextNightCard({league, night, today}: {league: MyLeague; night: 
           </Box>
         ))}
       </Box>
+      {place && <GatheringRow time={time} place={place} />}
       <Box
         component={TransitionLink}
         href={`/burza/novi/zamjena?from=home&league=${league.league_id}&night=${night}`}

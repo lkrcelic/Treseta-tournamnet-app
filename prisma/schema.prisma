@@ -126,6 +126,10 @@ model League {
   // Postgres TIME: Prisma reads TIME as a DateTime on 1970-01-01, which a time zone can shift, and a wall-clock time
   // needs no date or zone. A night's own start_time wins over this one.
   start_time       String?   @db.VarChar(5)
+  // where its nights are played; all optional. A night's own location wins over this one.
+  location_name    String?   @db.VarChar(100)
+  location_address String?   @db.VarChar(200)
+  location_url     String?   @db.VarChar(500) // a Google Maps share link
   // default "Rounds" in Create Round
   rounds_per_night Int       @default(3)
   // the admins' notes, shown next to Create Round (never in the public league list)
@@ -169,6 +173,11 @@ model LeagueNight {
   night      DateTime @db.Date
   // this night's own start time, "HH:MM", when it differs from the league's start_time (null: the league's)
   start_time String?  @db.VarChar(5)
+  // this night's own location when it is played somewhere else (null location_name: the league's; address and link
+  // are then null too)
+  location_name    String? @db.VarChar(100)
+  location_address String? @db.VarChar(200)
+  location_url     String? @db.VarChar(500)
 
   league League @relation(fields: [league_id], references: [league_id], onDelete: Cascade)
 

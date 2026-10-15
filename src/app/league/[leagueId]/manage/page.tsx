@@ -45,7 +45,7 @@ import WarningRoundedIcon from "@mui/icons-material/WarningRounded";
 import {Box} from "@mui/material";
 import {useParams, useSearchParams} from "next/navigation";
 import LeagueDetailsView from "./LeagueDetailsView";
-import DatesView from "./DatesView";
+import DatesView, {gatheringDefaults} from "./DatesView";
 import RoundsView from "./RoundsView";
 import useLeagueRounds from "@/app/_hooks/useLeagueRounds";
 import DraftView from "./DraftView";
@@ -425,7 +425,7 @@ function ManageLeagueDesktop() {
       ) : shown === "rounds" ? (
         <RoundsView leagueId={leagueId} data={leagueRounds} />
       ) : shown === "dates" ? (
-        <DatesView leagueId={leagueId} defaultTime={leagues.find((l) => l.id === leagueId)?.startTime ?? null} data={leagueNights} />
+        <DatesView leagueId={leagueId} defaults={gatheringDefaults(leagues.find((l) => l.id === leagueId))} data={leagueNights} />
       ) : (
         <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) 380px", [NARROW_DESKTOP]: {gridTemplateColumns: "minmax(0,1fr) 320px"}, gap: "20px"}}>
           <Card component="section" aria-label={`Ekipe lige ${leagueName}`} sx={{minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderRadius: "24px"}}>
