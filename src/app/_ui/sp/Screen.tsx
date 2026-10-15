@@ -43,9 +43,13 @@ export function Screen({
 }
 
 // Takes the remaining height of a fill screen and scrolls its content
-export function ScrollArea({children, sx, bleed = false}: {children: React.ReactNode; sx?: SxProps<Theme>; bleed?: boolean}) {
+export const ScrollArea = React.forwardRef<HTMLDivElement, {children: React.ReactNode; sx?: SxProps<Theme>; bleed?: boolean}>(function ScrollArea(
+  {children, sx, bleed = false},
+  ref
+) {
   return (
     <Box
+      ref={ref}
       sx={mergeSx(
         {
           flex: 1,
@@ -63,4 +67,4 @@ export function ScrollArea({children, sx, bleed = false}: {children: React.React
       {children}
     </Box>
   );
-}
+});

@@ -10,10 +10,11 @@ import useShortWindow from "@/app/_hooks/useShortWindow";
 import {blankEntry, EntryState, fromPadHand, toAdminHand} from "@/app/_lib/ui/adminEntry";
 import {dostaCallers, MATCH_THRESHOLD, PlayedHand, Side} from "@/app/_lib/game/scoring";
 import {color, shadow, teamColor, tint} from "@/app/_styles/tokens";
-import {buttonBase, Card, CenteredSpinner, DesktopOnlyNote, DesktopShell, EmptyState, ErrorNote} from "@/app/_ui/sp";
+import {buttonBase, Card, CenteredSpinner, DesktopShell, EmptyState, ErrorNote} from "@/app/_ui/sp";
 import {HandList, ScorePanel} from "@/app/ongoing-match/ui/BoardParts";
 import AdminEntryPanel from "@/app/league/[leagueId]/daily-standings/table/AdminEntryPanel";
 import {DostaPrompt, DostaTeam, TargetFlag} from "@/app/ongoing-match/ui/MatchEnd";
+import TablePreview from "@/app/league/[leagueId]/daily-standings/table/TablePreview";
 import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
 import HistoryEduRoundedIcon from "@mui/icons-material/HistoryEduRounded";
 import {Box} from "@mui/material";
@@ -26,14 +27,16 @@ const THRESHOLD = MATCH_THRESHOLD;
 const playedHands = (m: PadMatch): PlayedHand[] =>
   m.hands.map((h) => ({team1_game_points: h.total1, team2_game_points: h.total2, dosta_side: h.dosta}));
 
-// The admin scorepad of one Dnevni poredak table: every hand of its matches, finished or being played, can be added,
-// changed or deleted, also as a custom hand ("Custom"). The admin's phone has its own screens for it (TablePhone);
-// anyone else on the phone gets the note and never loads the pad.
+// One Dnevni poredak table. For an admin it is the table's scorepad: every hand of its matches, finished or being
+// played, can be added, changed or deleted, also as a custom hand ("Custom"); the admin's phone has its own layout of
+// it (TablePhone). Anyone else gets Pregled stola, read-only, and the player whose own table it is, still to be
+// played, goes into the game.
 export default function TableScorepad() {
   const isDesktop = useIsDesktop();
+  const isAdmin = useIsAdmin();
   const adminPhone = useAdminPhone();
-  if (isDesktop) return <TableScorepadDesktop />;
-  return adminPhone ? <TablePhone /> : <DesktopOnlyNote />;
+  if (isDesktop && isAdmin) return <TableScorepadDesktop />;
+  return adminPhone ? <TablePhone /> : <TablePreview />;
 }
 
 function TableScorepadDesktop() {

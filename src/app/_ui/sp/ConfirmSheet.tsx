@@ -20,6 +20,7 @@ export function ConfirmSheet({
   danger = true,
   busy = false,
   error,
+  eyebrow,
 }: {
   open: boolean;
   onClose: () => void;
@@ -31,10 +32,11 @@ export function ConfirmSheet({
   danger?: boolean;
   busy?: boolean;
   error?: string | null;
+  eyebrow?: string;
 }) {
   const ink = danger ? color.red : color.navy;
   return (
-    <BottomSheet open={open} onClose={onClose} title={title} closable busy={busy}>
+    <BottomSheet open={open} onClose={onClose} title={title} eyebrow={eyebrow} closable busy={busy}>
       <Box
         sx={{
           flex: "none",

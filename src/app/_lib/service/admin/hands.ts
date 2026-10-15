@@ -94,6 +94,7 @@ export async function getTablePad(roundId: number): Promise<TablePad> {
     roundNumber: round.round_number,
     date: round.round_date ? round.round_date.toISOString().slice(0, 10) : null,
     table: round.table_number,
+    smoking: round.smoking_table,
     team1: {id: round.team1.team_id, name: teamLabel(round.team1.team_id, round.team1.team_name)},
     team2: {id: round.team2.team_id, name: teamLabel(round.team2.team_id, round.team2.team_name)},
     done: !round.open,

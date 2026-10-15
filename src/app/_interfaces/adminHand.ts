@@ -51,6 +51,8 @@ export type TablePad = {
   roundNumber: number | null;
   date: string | null;
   table: number | null;
+  // smoking is allowed at the table
+  smoking: boolean;
   team1: {id: number; name: string};
   team2: {id: number; name: string};
   // the round is finished (both matches played, or settled by hand)
@@ -60,3 +62,7 @@ export type TablePad = {
   hasLineup: boolean;
   matches: PadMatch[];
 };
+
+// A table as anyone signed in may see it (Pregled stola): the matches with each hand's totals only
+export type OverviewMatch = Omit<PadMatch, "hands"> & {hands: {id: number; total1: number; total2: number}[]};
+export type TableOverview = Omit<TablePad, "hasLineup" | "matches"> & {matches: OverviewMatch[]};

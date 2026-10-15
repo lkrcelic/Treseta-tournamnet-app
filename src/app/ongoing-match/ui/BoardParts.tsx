@@ -1,12 +1,15 @@
 "use client";
 
 import {count, NOUN} from "@/app/_lib/ui/text";
-import {color, ease, font, teamColor, teamTint, teamTrack} from "@/app/_styles/tokens";
-import {buttonBase, Card, ellipsis, EmptyState, tabular, visuallyHidden} from "@/app/_ui/sp";
+import {color, ease, font, shadow, teamColor, teamTint, teamTrack} from "@/app/_styles/tokens";
+import {buttonBase, Card, ellipsis, EmptyState, rowFocus, Segmented, tabular, visuallyHidden} from "@/app/_ui/sp";
+import {TransitionLink} from "@/app/_lib/viewTransitions";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import {Box, SxProps, Theme} from "@mui/material";
 import React from "react";
 
-// One team's running total: name, round-win pips, big score and progress towards the threshold
+// One team's running total: name, round-win pips, big score and progress towards the threshold.
+// href: the name opens the team (Pregled stola); mine: the viewer's own team, cream with a navy ring.
 export function ScorePanel({
   index,
   name,
@@ -17,6 +20,8 @@ export function ScorePanel({
   celebrate,
   popPip,
   size = "phone",
+  href,
+  mine = false,
 }: {
   index: 0 | 1;
   name: string;
@@ -28,6 +33,8 @@ export function ScorePanel({
   celebrate: boolean;
   popPip?: boolean;
   size?: "phone" | "desktop";
+  href?: string;
+  mine?: boolean;
 }) {
   const c = teamColor[index];
   const desk = size === "desktop";
@@ -43,12 +50,45 @@ export function ScorePanel({
         flexDirection: "column",
         gap: desk ? "8px" : "6px",
         minWidth: 0,
+        ...(mine && {background: color.cream2, boxShadow: `${shadow.card}, ${shadow.selectRing}`}),
       }}
     >
       <Box aria-hidden sx={{position: "absolute", inset: 0, background: teamTint[index], opacity: celebrate ? 1 : 0, transition: "opacity 500ms ease"}} />
       <Box sx={{position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px"}}>
-        <Box component="h2" sx={{m: 0, fontSize: desk ? 17 : 15, fontWeight: 600, ...ellipsis}}>
-          {name}
+        <Box component="h2" sx={{m: 0, minWidth: 0, display: "flex", fontSize: desk ? 17 : 15, fontWeight: 600}}>
+          {href ? (
+            // the name and its chevron, 44 px high for the thumb (it reaches into the card's padding)
+            <Box
+              component={TransitionLink}
+              href={href}
+              aria-label={`Otvori ekipu ${name}`}
+              sx={{
+                minWidth: 0,
+                height: 44,
+                my: "-12px",
+                mx: "-6px",
+                px: "6px",
+                display: "flex",
+                alignItems: "center",
+                gap: "2px",
+                borderRadius: "10px",
+                color: color.ink,
+                textDecoration: "none",
+                "&:active": {background: color.lineFill},
+                "&:focus-visible": {...rowFocus, outlineOffset: 0},
+                "& svg": {flex: "none", fontSize: 18, color: color.muted},
+              }}
+            >
+              <Box component="span" sx={ellipsis}>
+                {name}
+              </Box>
+              <ChevronRightRoundedIcon aria-hidden />
+            </Box>
+          ) : (
+            <Box component="span" sx={ellipsis}>
+              {name}
+            </Box>
+          )}
         </Box>
         <Box role="img" aria-label={`${wins} od 2 pobjede u kolu`} sx={{display: "flex", gap: desk ? "6px" : "5px", flex: "none"}}>
           {[0, 1].map((k) => (
@@ -96,17 +136,20 @@ export function ScorePanel({
 
 export type HandRow = {id: number | null; left: number; right: number; animate?: "in" | "flash"};
 
-// The list of hands; tapping one opens it for editing
+// The list of hands; tapping one opens it for editing (without onOpen the list is only read: Pregled stola).
+// empty: what an empty list says instead of "Još nema upisanih igara".
 export function HandList({
   rows,
   onOpen,
   selectedId,
   size = "phone",
   listRef,
+  empty,
   sx,
 }: {
   rows: HandRow[];
-  onOpen: (id: number) => void;
+  onOpen?: (id: number) => void;
+  empty?: React.ReactNode;
   selectedId?: number | null;
   size?: "phone" | "desktop";
   listRef?: React.Ref<HTMLDivElement>;
@@ -123,16 +166,16 @@ export function HandList({
       ]}
     >
       {rows.length === 0 ? (
-        <EmptyState>Još nema upisanih igara</EmptyState>
+        empty ?? <EmptyState>Još nema upisanih igara</EmptyState>
       ) : (
         <Box component="ol" sx={{listStyle: "none", m: 0, p: 0}}>
           {rows.map((r, i) => (
             <Box component="li" key={r.id ?? `i${i}`}>
               <Box
-                component="button"
-                type="button"
-                onClick={() => r.id != null && onOpen(r.id)}
-                aria-label={`Igra ${i + 1}: ${r.left} prema ${r.right}. Uredi`}
+                component={onOpen ? "button" : "div"}
+                type={onOpen ? "button" : undefined}
+                onClick={onOpen ? () => r.id != null && onOpen(r.id) : undefined}
+                aria-label={`Igra ${i + 1}: ${r.left} prema ${r.right}${onOpen ? ". Uredi" : ""}`}
                 aria-current={selectedId != null && selectedId === r.id ? "true" : undefined}
                 sx={{
                   ...buttonBase,
@@ -151,8 +194,7 @@ export function HandList({
                   ...tabular,
                   animation:
                     r.animate === "in" ? `spRowIn 420ms ${ease} both` : r.animate === "flash" ? "spRowFlash 900ms ease-out" : "none",
-                  "&:active": {background: color.lineFill},
-                  "&:hover": desk ? {background: color.paper2} : undefined,
+                  ...(onOpen && {"&:active": {background: color.lineFill}, "&:hover": desk ? {background: color.paper2} : undefined}),
                 }}
               >
                 <span>{r.left}</span>
@@ -166,5 +208,35 @@ export function HandList({
         </Box>
       )}
     </Card>
+  );
+}
+
+export type MatchTab = {number: number; sub: string; live?: boolean};
+
+// Meč 1 · Meč 2 above a table's hands (Pregled stola, the admin's scorepad): each match with what it stands at
+// under its name ("1034 : 748 · Purgeri", "u tijeku", "nije počeo"); a live one in red
+export function MatchTabs({tabs, value, onChange}: {tabs: MatchTab[]; value: number; onChange: (n: number) => void}) {
+  return (
+    <Segmented
+      variant="track"
+      size={50}
+      label="Meč"
+      asTabs={false}
+      value={value}
+      onChange={onChange}
+      items={tabs.map((t) => ({
+        key: t.number,
+        label: (
+          <Box component="span" sx={{minWidth: 0, maxWidth: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: "1px", lineHeight: 1.2}}>
+            <Box component="span" sx={{fontSize: 15, color: color.ink}}>
+              Meč {t.number}
+            </Box>
+            <Box component="span" sx={{maxWidth: "100%", fontSize: 12, fontWeight: 600, color: t.live ? color.red : color.muted, ...ellipsis, ...tabular}}>
+              {t.sub}
+            </Box>
+          </Box>
+        ),
+      }))}
+    />
   );
 }

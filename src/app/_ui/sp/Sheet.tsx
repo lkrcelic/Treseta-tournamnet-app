@@ -12,6 +12,7 @@ import {IconCircleButton} from "./Buttons";
 // tall: the sheet is 88% of the screen high whatever it holds, and stays above the on-screen keyboard (it moves up by
 // the keyboard and shrinks to what is left above it); the caller lets one part take the remaining height and scroll
 // (a list) and keeps its search field last, so the field is right above the keyboard (Tko igra večeras?).
+// eyebrow: a small line over the title of a closable sheet ("Meč 2 · nova igra").
 export function BottomSheet({
   open,
   onClose,
@@ -20,6 +21,7 @@ export function BottomSheet({
   closable = false,
   busy = false,
   tall = false,
+  eyebrow,
   children,
 }: {
   open: boolean;
@@ -29,6 +31,7 @@ export function BottomSheet({
   closable?: boolean;
   busy?: boolean;
   tall?: boolean;
+  eyebrow?: string;
   children: React.ReactNode;
 }) {
   const titleId = useId();
@@ -91,7 +94,16 @@ export function BottomSheet({
       <Box aria-hidden sx={{flex: "none", alignSelf: "center", width: withClose ? 36 : 40, height: 5, borderRadius: "3px", background: color.hairline, mb: withClose ? 0 : "10px"}} />
       {withClose ? (
         <Box sx={{flex: "none", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px"}}>
-          {heading}
+          {eyebrow ? (
+            <Box sx={{minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
+              <Box component="span" sx={{fontSize: 13, fontWeight: 600, color: color.muted}}>
+                {eyebrow}
+              </Box>
+              {heading}
+            </Box>
+          ) : (
+            heading
+          )}
           <IconCircleButton
             label="Zatvori"
             size={44}
