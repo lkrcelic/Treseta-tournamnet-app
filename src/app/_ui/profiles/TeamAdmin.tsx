@@ -381,12 +381,13 @@ export function useNameFocus(editing: boolean) {
 // ---------- remove ----------
 
 // The remove button at the end of a player's row (P:224): over the row's link, so it takes its own clicks
-export function RemoveButton({label, onClick, icon = <PersonRemoveRoundedIcon />}: {label: string; onClick: () => void; icon?: React.ReactNode}) {
+// size: 44 on the phone (a finger's target)
+export function RemoveButton({label, onClick, icon = <PersonRemoveRoundedIcon />, size = 36}: {label: string; onClick: () => void; icon?: React.ReactNode; size?: number}) {
   return (
     <GhostIconButton
       label={label}
       title="Ukloni iz ekipe"
-      size={36}
+      size={size}
       onClick={onClick}
       sx={{
         position: "relative",

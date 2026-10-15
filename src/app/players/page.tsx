@@ -1,9 +1,12 @@
 "use client";
 
+import useAdminPhone from "@/app/_hooks/useAdminPhone";
+import {PlayersDirectoryPhone} from "@/app/_ui/admin/DirectoryPhone";
 import {AdminIndex} from "@/app/_ui/profiles/Directory";
 
-// Igrači (admin, desktop; the nav drawer's "Igrači"): the directory opens the first player in it. Players get Početna,
-// an admin on the phone the "on the computer" note.
+// Igrači (admin; the nav drawer's "Igrači"): on the desktop the directory opens the first player in it; an admin's
+// phone gets its own Igrači list (DECISIONS #59). Players get Početna.
 export default function PlayersRoute() {
-  return <AdminIndex kind="players" />;
+  const adminPhone = useAdminPhone();
+  return adminPhone ? <PlayersDirectoryPhone /> : <AdminIndex kind="players" />;
 }
