@@ -82,7 +82,7 @@ export default function DraftPhone({leagueId, date}: {leagueId: number; date: st
 
           <Box sx={{flex: "none", display: "flex", alignItems: "center", gap: "10px", minHeight: 44}}>
             <StatusPill status={round.status} />
-            <Box component="span" sx={{flex: 1, minWidth: 0, fontSize: 15, color: color.ink2, ...ellipsis}}>
+            <Box component="span" sx={{flex: 1, minWidth: 0, fontSize: 15, color: color.ink2, whiteSpace: "nowrap"}}>
               {count(round.tables.length, NOUN.stol)}
             </Box>
             {round.status !== "PUBLISHED" && <ApproveButton approved={round.status === "APPROVED"} onClick={() => d.toggleApproval(round)} round={round.roundNumber} />}
@@ -237,12 +237,20 @@ function RoundSwitch({rounds, index, onPick}: {rounds: DraftRound[]; index: numb
   );
 }
 
+// the round's status; on a phone under 375 px only its icon, so the tables' count and Odobri keep their room
 function StatusPill({status}: {status: RoundStatus}) {
   const look = LOOK[status];
   return (
-    <Box component="span" sx={{flex: "none", height: 32, display: "flex", alignItems: "center", gap: "5px", px: "10px", borderRadius: "10px", background: look.bg, color: look.ink, fontSize: 14, fontWeight: 700, "& svg": {fontSize: 18}}}>
+    <Box
+      component="span"
+      role="img"
+      aria-label={look.label}
+      sx={{flex: "none", height: 32, display: "flex", alignItems: "center", gap: "5px", px: "10px", borderRadius: "10px", background: look.bg, color: look.ink, fontSize: 14, fontWeight: 700, "& svg": {fontSize: 18}, "@media (max-width: 374.98px)": {px: "7px"}}}
+    >
       {look.icon}
-      {look.label}
+      <Box component="span" aria-hidden sx={{"@media (max-width: 374.98px)": {display: "none"}}}>
+        {look.label}
+      </Box>
     </Box>
   );
 }

@@ -6,6 +6,7 @@ import useLeagues, {useLeagueList} from "@/app/_hooks/useLeagues";
 import useMyTeams from "@/app/_hooks/useMyTeams";
 import useConferences from "@/app/_hooks/useConferences";
 import useConferenceFilter from "@/app/_hooks/useConferenceFilter";
+import useAdminPhone from "@/app/_hooks/useAdminPhone";
 import useNavStack from "@/app/_hooks/useNavStack";
 import useShortWindow from "@/app/_hooks/useShortWindow";
 import {useLeagueStandings} from "@/app/_hooks/useStandings";
@@ -21,6 +22,7 @@ import {
   Display,
   EmptyState,
   ErrorNote,
+  IconCircleButton,
   LeagueEyebrowButton,
   LeagueMenuButton,
   LoadingRows,
@@ -35,6 +37,7 @@ import {
   StandingsRows,
 } from "@/app/_ui/sp";
 import {DesktopFrame} from "@/app/_ui/profiles/PageParts";
+import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import LoginRoundedIcon from "@mui/icons-material/LoginRounded";
 import useAuthStore from "@/app/_store/authStore";
@@ -62,6 +65,7 @@ function LeagueStandings() {
   const highlightTeamId = highlightParam(useSearchParams().get("team"));
   const router = useTransitionRouter();
   const isDesktop = useIsDesktop();
+  const adminPhone = useAdminPhone();
   const short = useShortWindow();
   const leagues = useLeagues(leagueId);
   const {teams} = useMyTeams();
@@ -224,6 +228,14 @@ function LeagueStandings() {
 
   return (
     <Screen fill>
+      {/* the admin's phone (admin-mobile 03): Back to Večer lige at the top instead of Početni zaslon at the bottom */}
+      {adminPhone && (
+        <Box sx={{flex: "none", mx: "-6px"}}>
+          <IconCircleButton label="Natrag" size={44} onClick={nav.back} sx={{"& svg": {fontSize: 26}}}>
+            <ChevronLeftRoundedIcon />
+          </IconCircleButton>
+        </Box>
+      )}
       <Box component="header" sx={{display: "flex", flexDirection: "column", gap: "6px", px: "4px", minWidth: 0}}>
         <LeagueEyebrowButton leagues={leagues} value={leagueId} onChange={changeLeague} />
         <Display size={36} sx={{lineHeight: 1}}>
@@ -232,7 +244,7 @@ function LeagueStandings() {
       </Box>
       {filter}
       {content(false)}
-      {signedIn ? (
+      {adminPhone ? null : signedIn ? (
         <PrimaryButton icon={<HomeRoundedIcon />} onClick={() => router.push("/", "back")}>
           Početni zaslon
         </PrimaryButton>
