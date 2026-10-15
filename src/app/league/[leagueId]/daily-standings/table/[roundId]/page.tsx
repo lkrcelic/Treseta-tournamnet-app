@@ -2,7 +2,9 @@
 
 import {addHandAPI, deleteHandAPI, finishTableMatchAPI, getTablePadAPI, HandTarget, updateHandAPI} from "@/app/_fetchers/admin/daily";
 import {PadHand, PadMatch, TablePad} from "@/app/_interfaces/adminHand";
+import useAdminPhone from "@/app/_hooks/useAdminPhone";
 import useIsAdmin from "@/app/_hooks/useIsAdmin";
+import TablePhone from "@/app/_ui/admin/TablePhone";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useShortWindow from "@/app/_hooks/useShortWindow";
 import {blankEntry, EntryState, fromPadHand, toAdminHand} from "@/app/_lib/ui/adminEntry";
@@ -25,11 +27,13 @@ const playedHands = (m: PadMatch): PlayedHand[] =>
   m.hands.map((h) => ({team1_game_points: h.total1, team2_game_points: h.total2, dosta_side: h.dosta}));
 
 // The admin scorepad of one Dnevni poredak table: every hand of its matches, finished or being played, can be added,
-// changed or deleted, also as a custom hand ("Custom"). Desktop only, like the design (handoff §2: no
-// admin editing on mobile): the phone gets the note and never loads the pad, nor goes on to the lineup.
+// changed or deleted, also as a custom hand ("Custom"). The admin's phone has its own screens for it (TablePhone);
+// anyone else on the phone gets the note and never loads the pad.
 export default function TableScorepad() {
   const isDesktop = useIsDesktop();
-  return isDesktop ? <TableScorepadDesktop /> : <DesktopOnlyNote />;
+  const adminPhone = useAdminPhone();
+  if (isDesktop) return <TableScorepadDesktop />;
+  return adminPhone ? <TablePhone /> : <DesktopOnlyNote />;
 }
 
 function TableScorepadDesktop() {

@@ -2,8 +2,10 @@
 
 import {createOngoingMatchAPI} from "@/app/_fetchers/ongoingMatch/create";
 import {getLineupAPI, saveLineupAPI} from "@/app/_fetchers/round/lineup";
+import useAdminPhone from "@/app/_hooks/useAdminPhone";
 import {MATCH_THRESHOLD} from "@/app/_lib/game/scoring";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
+import AdminBadge from "@/app/_ui/admin/AdminBadge";
 import type {Lineup, LineupMember, LineupTeam} from "@/app/_lib/service/round/lineup";
 import {initials} from "@/app/_lib/ui/text";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
@@ -23,7 +25,8 @@ import React, {useCallback, useEffect, useState} from "react";
 // scoreboard of the round's first match: two players per team, suggested from the team's last round in the league
 // (or its founders in the league's first round). A slot opens to swap in a teammate who isn't playing.
 // With ?league=, an admin is opening the table's scorepad from Dnevni poredak: confirming goes on to that scorepad, where
-// the admin's first hand starts the match. That is admin editing, so on a phone it only gets the desktop-only note.
+// the admin's first hand starts the match (on the admin's phone, to the first match's board; admin-mobile 24). Anyone
+// else on the phone gets the desktop-only note there.
 
 const TITLE = "Tko igra ovu rundu?";
 // the slot's background while it is open, per side (viewer's team green, opponent red)
@@ -38,6 +41,7 @@ export default function LineupPage() {
   const id = Number(roundId);
   const router = useTransitionRouter();
   const isDesktop = useIsDesktop();
+  const adminPhone = useAdminPhone();
   const padLeague = Number(useSearchParams().get("league")) || null;
   const [lineup, setLineup] = useState<Lineup | null>(null);
   // the viewer's team first; selection per team, slot by slot
@@ -79,7 +83,7 @@ export default function LineupPage() {
     try {
       await saveLineupAPI(id, {teams: teams.map((t, i) => ({team_id: t.id, player_ids: selected[i]}))});
       if (padLeague) {
-        router.replace(`/league/${padLeague}/daily-standings/table/${id}`);
+        router.replace(`/league/${padLeague}/daily-standings/table/${id}${isDesktop ? "" : "?mec=1"}`);
         return;
       }
       const match = await createOngoingMatchAPI({round_id: id, score_threshold: MATCH_THRESHOLD});
@@ -92,7 +96,15 @@ export default function LineupPage() {
   };
 
   const label = lineup ? [lineup.table != null && `Stol ${lineup.table}`, lineup.roundNumber != null && `Runda ${lineup.roundNumber}`].filter(Boolean).join(" · ") : "";
-  const back = () => router.push(padLeague ? `/league/${padLeague}/daily-standings` : "/", "back");
+  const back = () => {
+    // the admin's phone came from the table: back to it
+    if (padLeague && !isDesktop) {
+      if (window.history.length > 1) router.back();
+      else router.push(`/league/${padLeague}/daily-standings/table/${id}`, "back");
+      return;
+    }
+    router.push(padLeague ? `/league/${padLeague}/daily-standings` : "/", "back");
+  };
 
   const slots = (t: LineupTeam, ti: number, big: boolean) => (
     <TeamSlots team={t} side={ti} selected={selected[ti]} openSlot={openSlot} onToggle={setOpenSlot} onPick={(s, p) => pick(ti, s, p)} big={big} />
@@ -117,7 +129,7 @@ export default function LineupPage() {
     </Box>
   );
 
-  if (padLeague && !isDesktop) return <DesktopOnlyNote />;
+  if (padLeague && !isDesktop && !adminPhone) return <DesktopOnlyNote />;
   if (isDesktop) {
     return (
       <DesktopShell
@@ -165,6 +177,7 @@ export default function LineupPage() {
         <Box sx={{textAlign: "center", fontSize: 12, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"}}>
           {label}
         </Box>
+        {padLeague && <AdminBadge />}
       </Box>
       <ScrollArea sx={{px: "20px", pt: "2px", pb: "12px"}}>
         <Box component="h1" sx={{m: 0, px: "4px", fontFamily: font.display, fontSize: 32, fontWeight: 800, lineHeight: 1.02, letterSpacing: "-.02em", textWrap: "pretty"}}>
