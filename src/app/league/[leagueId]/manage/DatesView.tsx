@@ -72,6 +72,8 @@ export function useLeagueDates(leagueId: number, defaults: GatheringDefaults, da
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  // why a night's time and place weren't saved (shown in Okupljanje večeri, apart from adding and removing nights)
+  const [saveError, setSaveError] = useState<string | null>(null);
   // a night the server already had (another admin added it meanwhile), until the list is fetched again or the date
   // changes
   const [takenNight, setTakenNight] = useState<string | null>(null);
@@ -134,13 +136,13 @@ export function useLeagueDates(leagueId: number, defaults: GatheringDefaults, da
   // a night's own time and place (null: the league's); resolves to whether they were saved
   const update = async (date: string, change: LeagueNightUpdate): Promise<boolean> => {
     setSaving(date);
-    setActionError(null);
+    setSaveError(null);
     try {
       const night = await updateLeagueNightAPI(leagueId, date, change);
       setNights((prev) => prev?.map((n) => (n.date === date ? {...n, start_time: night.start_time, location: night.location} : n)) ?? prev);
       return true;
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Okupljanje večeri nije spremljeno.");
+      setSaveError(err instanceof Error ? err.message : "Okupljanje večeri nije spremljeno.");
       return false;
     } finally {
       setSaving(null);
@@ -152,7 +154,10 @@ export function useLeagueDates(leagueId: number, defaults: GatheringDefaults, da
     setDraft(value);
     setTakenNight(null);
   };
-  const clearError = () => setActionError(null);
+  const clearError = () => {
+    setActionError(null);
+    setSaveError(null);
+  };
   return {
     nights,
     list,
@@ -170,6 +175,7 @@ export function useLeagueDates(leagueId: number, defaults: GatheringDefaults, da
     adding,
     removing,
     actionError,
+    saveError,
     clearError,
     duplicate,
     canAdd,
@@ -185,12 +191,12 @@ export function defaultGatheringLabel(defaults: GatheringDefaults): string | nul
 }
 
 export default function DatesView({leagueId, defaults, data}: {leagueId: number; defaults: GatheringDefaults; data: ReturnType<typeof useLeagueNights>}) {
-  const {nights, list, error, reload, today, nextIndex, played, toGo, draft, setDraft, draftTime, setDraftTime, saving, adding, removing, actionError, clearError, duplicate, canAdd, add, remove, update} =
+  const {nights, list, error, reload, today, nextIndex, played, toGo, draft, setDraft, draftTime, setDraftTime, saving, adding, removing, actionError, saveError, clearError, duplicate, canAdd, add, remove, update} =
     useLeagueDates(leagueId, defaults, data);
-  // the night whose time and place are shown in Okupljanje večeri: the one clicked, else the next one
+  // the night whose time and place are shown in Okupljanje večeri: the one clicked, else the next one still to be
+  // played (tonight's night with rounds is past changing, so the one after it)
   const [picked, setPicked] = useState<string | null>(null);
-  const next = nextIndex >= 0 ? list[nextIndex] : null;
-  const selected = list.find((n) => n.date === picked && nightEditable(n, today)) ?? (next && nightEditable(next, today) ? next : null);
+  const selected = list.find((n) => n.date === picked && nightEditable(n, today)) ?? list.find((n) => nightEditable(n, today)) ?? null;
   const pick = (date: string) => {
     if (date === selected?.date) return;
     setPicked(date);
@@ -325,7 +331,7 @@ export default function DatesView({leagueId, defaults, data}: {leagueId: number;
               settingsTab="Podaci"
               onSave={(change) => update(selected.date, change)}
               saving={saving === selected.date}
-              error={actionError}
+              error={saveError}
               inputSx={{height: 48, borderRadius: "14px", fontSize: 15}}
             />
           </Card>
@@ -364,7 +370,7 @@ export default function DatesView({leagueId, defaults, data}: {leagueId: number;
               {NIGHT_TAKEN}
             </Box>
           )}
-          {actionError && !selected && <ErrorNote>{actionError}</ErrorNote>}
+          {actionError && <ErrorNote>{actionError}</ErrorNote>}
           <Box
             component="button"
             type="submit"

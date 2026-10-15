@@ -307,7 +307,7 @@ function Schedule({shown, today, desktop}: {shown: Shown; today: string; desktop
                     {dateLabel(night)}
                   </Box>
                   {place ? (
-                    <GatheringLine time={shown.times[night]} place={place} plain mark={own ? "Drugo vrijeme ili mjesto" : null} size={12.5} />
+                    <GatheringLine time={shown.times[night]} place={place} plain wrap mark={own ? "Drugo vrijeme ili mjesto" : null} size={12.5} />
                   ) : null}
                 </Box>
                 {pill && (
