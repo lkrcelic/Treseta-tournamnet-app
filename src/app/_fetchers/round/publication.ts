@@ -16,6 +16,10 @@ export const getDraftNightAPI = (leagueId: number, date: string) =>
 export const setRoundApprovalAPI = (roundId: number, approve: boolean) =>
   send<{status: string}>(`/api/rounds/${roundId}/${approve ? "approve" : "unapprove"}`, "PATCH", approve ? "Kolo nije odobreno." : "Odobrenje nije poništeno.");
 
+// "Odobri sva": approves every draft round of the night
+export const approveNightAPI = (leagueId: number, date: string) =>
+  send<{rounds: number[]}>(`/api/leagues/${leagueId}/nights/${date}/approve`, "POST", "Kola nisu odobrena.");
+
 export const publishNightAPI = (leagueId: number, date: string) =>
   send<{rounds: number[]; publishedAt: string}>(`/api/leagues/${leagueId}/nights/${date}/publish`, "POST", "Kola nisu objavljena.");
 

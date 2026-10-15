@@ -23,6 +23,7 @@ export function SmokingTablesCard({
   onToggleTable,
   summary,
   onOpenPlan,
+  phone = false,
 }: {
   on: boolean;
   onToggle: () => void;
@@ -31,14 +32,17 @@ export function SmokingTablesCard({
   tableCount: number;
   onToggleTable: (table: number) => void;
   summary: string;
-  onOpenPlan: () => void;
+  // the Pušački raspored (desktop); without it there is no button
+  onOpenPlan?: () => void;
+  // the phone's card: 22 px corners, six 44 px table buttons a row (admin-mobile 06)
+  phone?: boolean;
 }) {
   const titleId = useId();
   return (
     <Box
       component="section"
       aria-labelledby={titleId}
-      sx={{flex: "none", background: color.white, borderRadius: "18px", p: "14px", display: "flex", flexDirection: "column", gap: "12px", boxShadow: shadow.card}}
+      sx={{flex: "none", background: color.white, borderRadius: phone ? "22px" : "18px", p: phone ? "16px" : "14px", display: "flex", flexDirection: "column", gap: "12px", boxShadow: shadow.card}}
     >
       <Box sx={{display: "flex", alignItems: "center", gap: "12px"}}>
         <IconTile size={40} radius={12}>
@@ -61,7 +65,7 @@ export function SmokingTablesCard({
           {tableCount > 0 ? (
             <>
               <Box sx={{fontSize: 12.5, color: color.ink2}}>Odaberi stolove za kojima se smije pušiti.</Box>
-              <Box role="group" aria-label="Pušački stolovi" sx={{display: "grid", gridTemplateColumns: "repeat(8, minmax(0,1fr))", gap: "5px"}}>
+              <Box role="group" aria-label="Pušački stolovi" sx={{display: "grid", gridTemplateColumns: `repeat(${phone ? 6 : 8}, minmax(0,1fr))`, gap: phone ? "8px" : "5px"}}>
                 {Array.from({length: tableCount}, (_, k) => k + 1).map((n) => {
                   const picked = tables.includes(n);
                   return (
@@ -74,9 +78,9 @@ export function SmokingTablesCard({
                       onClick={() => onToggleTable(n)}
                       sx={{
                         ...buttonBase,
-                        height: 34,
+                        height: phone ? 44 : 34,
                         minWidth: 0,
-                        borderRadius: "10px",
+                        borderRadius: phone ? "12px" : "10px",
                         border: `1.5px solid ${picked ? color.navy : color.borderControl}`,
                         background: picked ? color.navy : color.white,
                         color: picked ? color.white : color.navy,
@@ -95,30 +99,32 @@ export function SmokingTablesCard({
           ) : (
             <Box sx={{fontSize: 12.5, color: color.ink2}}>Uključi barem dvije ekipe da odabereš stolove.</Box>
           )}
-          <Box
-            component="button"
-            type="button"
-            onClick={onOpenPlan}
-            sx={{
-              ...buttonBase,
-              height: 40,
-              borderRadius: "12px",
-              background: color.paper,
-              color: color.navy,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              pl: "14px",
-              pr: "8px",
-              fontSize: 14,
-              fontWeight: 600,
-              "&:hover": {background: color.lineFill},
-              "& svg": {fontSize: 20},
-            }}
-          >
-            Pušački raspored · rotacija
-            <ChevronRightRoundedIcon aria-hidden />
-          </Box>
+          {onOpenPlan && (
+            <Box
+              component="button"
+              type="button"
+              onClick={onOpenPlan}
+              sx={{
+                ...buttonBase,
+                height: 40,
+                borderRadius: "12px",
+                background: color.paper,
+                color: color.navy,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                pl: "14px",
+                pr: "8px",
+                fontSize: 14,
+                fontWeight: 600,
+                "&:hover": {background: color.lineFill},
+                "& svg": {fontSize: 20},
+              }}
+            >
+              Pušački raspored · rotacija
+              <ChevronRightRoundedIcon aria-hidden />
+            </Box>
+          )}
         </>
       )}
     </Box>

@@ -30,12 +30,12 @@ export type CreateRoundTeams = Pick<ReturnType<typeof useLeagueTeams>, "teams" |
 const savesOnTheWay = new Map<number, Promise<void>>();
 
 // Novo kolo for one league: the options, the smoking tables, the teams present tonight and the create action, laid
-// out by Upravljanje ligom's "Novo kolo" view (desktop only). defaultSmokingTables: the ones of the league's last round
+// out by Upravljanje ligom's "Novo kolo" view (the desktop takes its ready parts, the phone's Novo kolo the values). defaultSmokingTables: the ones of the league's last round
 // creation (the switch starts on with them). The rounds are created as drafts; onCreated gets their night, and
 // Upravljanje ligom opens Skica, where the admin approves and publishes them.
 // What the admin sets up here is saved for them on the server for tonight (a reload, a trip to make a new team or
 // another computer keeps it); until they change something it is the league's defaults.
-function useCreateRound(leagueId: number, teamsData: CreateRoundTeams, onCreated: (date: string) => void, defaultRounds?: number, defaultSmokingTables?: number[]) {
+export function useCreateRound(leagueId: number, teamsData: CreateRoundTeams, onCreated: (date: string) => void, defaultRounds?: number, defaultSmokingTables?: number[]) {
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -252,17 +252,19 @@ function useCreateRound(leagueId: number, teamsData: CreateRoundTeams, onCreated
   );
 
   const toggleSmokingTable = (n: number) => change({smoking_tables: smokingPicked.includes(n) ? smokingPicked.filter((t) => t !== n) : [...smokingPicked, n]});
+  const toggleSmoking = () => {
+    change({smoking_on: !smokingOn});
+    setPlanOpen(false);
+  };
+  const smokingText = smokingSummary(smokingOn, smokingTables, smokers, smokingTeams);
   const smokingCard = (
     <SmokingTablesCard
       on={smokingOn}
-      onToggle={() => {
-        change({smoking_on: !smokingOn});
-        setPlanOpen(false);
-      }}
+      onToggle={toggleSmoking}
       tables={smokingTables}
       tableCount={tableCount}
       onToggleTable={toggleSmokingTable}
-      summary={smokingSummary(smokingOn, smokingTables, smokers, smokingTeams)}
+      summary={smokingText}
       onOpenPlan={() => setPlanOpen(true)}
     />
   );
@@ -293,6 +295,25 @@ function useCreateRound(leagueId: number, teamsData: CreateRoundTeams, onCreated
   ) : null;
 
   return {
+    // the values, for a layout of its own (the phone)
+    rounds,
+    setRounds: (n: number) => change({rounds: Math.min(MAX_ROUNDS, Math.max(1, n))}),
+    windowSize,
+    setWindow: (n: number) => change({window_size: Math.min(MAX_WINDOW, Math.max(2, n))}),
+    // "Samo unutar konferencija", for the phone's own switch (Treseta)
+    hasConferences,
+    withinConferences,
+    setWithinConferences,
+    smokingOn,
+    toggleSmoking,
+    smokingTables,
+    tableCount,
+    toggleSmokingTable,
+    smokingText,
+    playing,
+    creating,
+    create: () => create(),
+    ready: !blocked,
     teams,
     visible,
     inactive,

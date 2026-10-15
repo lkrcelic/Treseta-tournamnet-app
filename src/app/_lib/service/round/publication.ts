@@ -5,7 +5,7 @@ import {recalcTeamScores} from "@/app/_lib/service/admin/recalc";
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {nightValue} from "@/app/_lib/service/league/nights";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
-import {approvalStatus, NO_DRAFT, NOTHING_APPROVED, RoundStatus, roundStatusOf, roundsToDiscard, roundsToPublish} from "@/app/_lib/roundStatus";
+import {approvalStatus, NO_DRAFT, NOTHING_APPROVED, RoundStatus, roundStatusOf, roundsToApprove, roundsToDiscard, roundsToPublish} from "@/app/_lib/roundStatus";
 import {DraftNight, DraftRound} from "@/app/_interfaces/round";
 
 // Upravljanje ligom · Skica: approving, publishing and discarding a night's rounds (the rules are in
@@ -89,6 +89,20 @@ export async function setRoundApproval(roundId: number, approve: boolean): Promi
       data: {status: next.status},
     });
     return {leagueId: link.league_id, date, roundNumber: table.round_number, status: next.status};
+  });
+}
+
+// "Odobri sva": every draft round of the night is approved at once (one request, so a phone on a weak connection
+// doesn't stop halfway); approved and published rounds stay. Returns the round numbers approved (none: nothing was
+// left to approve). A night without rounds not published yet is NotFoundError (NO_DRAFT).
+export async function approveNight(leagueId: number, date: string): Promise<{rounds: number[]}> {
+  return prisma.$transaction(async (tx) => {
+    await lockLeague(tx, leagueId);
+    const tables = await tx.round.findMany({where: nightTables(leagueId, date), select: {id: true, round_number: true, status: true}});
+    if (roundsToDiscard(tables).length === 0) throw new NotFoundError(NO_DRAFT);
+    const drafts = roundsToApprove(tables);
+    if (drafts.length) await tx.round.updateMany({where: {id: {in: drafts.map((t) => t.id)}}, data: {status: "APPROVED"}});
+    return {rounds: roundNumbers(drafts)};
   });
 }
 
