@@ -60,6 +60,48 @@ export function effectiveTime(own: string | null | undefined, leagueTime: string
   return own || leagueTime || null;
 }
 
+// Where a night is played: a place's name, its address and a Google Maps link (both optional)
+export type NightLocation = {name: string; address: string | null; url: string | null};
+
+// The location columns of League and LeagueNight
+export type LocationColumns = {location_name: string | null; location_address: string | null; location_url: string | null};
+
+// A row's location, or null without a name (a night without a name of its own uses the league's)
+export function locationOf(row: LocationColumns): NightLocation | null {
+  return row.location_name ? {name: row.location_name, address: row.location_address || null, url: row.location_url || null} : null;
+}
+
+// Where a night is played: its own location, else the league's, else none
+export function effectiveLocation(night: LocationColumns, league: LocationColumns): NightLocation | null {
+  return locationOf(night) ?? locationOf(league);
+}
+
+// Only http(s) links are shown as links (a "javascript:" link would run on a click)
+export const isSafeUrl = (v: string | null | undefined) => !!v && /^https?:\/\//i.test(v.trim());
+
+// "19:30 · Caffe bar Kartaš", "19:30", "Caffe bar Kartaš", or null when there is neither (Datumi, Raspored, Početna)
+export function gatheringLabel(time: string | null | undefined, loc: NightLocation | null | undefined): string | null {
+  return [time, loc?.name].filter(Boolean).join(" · ") || null;
+}
+
+// The mark of a night with its own time or place (Datumi, Raspored): what it says to a screen reader; null for a
+// night that follows the league
+export function exceptionLabel(ownTime: boolean, ownPlace: boolean): string | null {
+  if (ownTime && ownPlace) return "Drugo vrijeme i mjesto";
+  if (ownTime) return "Drugo vrijeme";
+  return ownPlace ? "Drugo mjesto" : null;
+}
+
+// The night's own start time as it is saved: one equal to the league's isn't kept (the night then follows a later
+// change of the league's), and an empty one is the league's
+export const ownTimeOf = (time: string | null | undefined, leagueTime: string | null | undefined) => (time && time !== leagueTime ? time : null);
+
+// Two locations are the same place (null: none)
+export function sameLocation(a: NightLocation | null | undefined, b: NightLocation | null | undefined): boolean {
+  if (!a || !b) return !a && !b;
+  return a.name === b.name && (a.address ?? null) === (b.address ?? null) && (a.url ?? null) === (b.url ?? null);
+}
+
 // "sri 14. 10. · 19:00" (Raspored, Početna); a night without a time is only its date
 export function nightTimeLabel(iso: string, time: string | null | undefined): string {
   return time ? `${nightLabel(iso)} · ${time}` : nightLabel(iso);

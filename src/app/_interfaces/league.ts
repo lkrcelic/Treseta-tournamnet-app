@@ -1,4 +1,4 @@
-import {isIsoDate, isStartTime, MAX_NIGHTS} from "@/app/_lib/nights";
+import {isIsoDate, isSafeUrl, isStartTime, MAX_NIGHTS, NightLocation} from "@/app/_lib/nights";
 import {count, NOUN} from "@/app/_lib/ui/text";
 import {z} from "zod";
 import {CONFERENCE_NAME_MAX, MAX_CONFERENCES} from "@/app/_lib/conferences";
@@ -17,6 +17,18 @@ const ConferenceInputValidation = z.object({
   name: z.string().trim().min(1).max(CONFERENCE_NAME_MAX),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
 });
+// Where the nights are played (Okupljanje): a place's name, its address and a link to Google Maps. The link isn't
+// checked to be a Google Maps one; it only has to be http(s), so it can't run a script when clicked. An empty string
+// is saved as null.
+const locName = z.string().trim().max(100, "Ime mjesta može imati najviše 100 znakova.");
+const locAddress = z.string().trim().max(200, "Adresa može imati najviše 200 znakova.");
+export const LOCATION_URL_ERROR = "Link mora počinjati s https://.";
+const locUrl = z
+  .string()
+  .trim()
+  .max(500, "Link može imati najviše 500 znakova.")
+  .refine((v) => v === "" || isSafeUrl(v), LOCATION_URL_ERROR);
+export const LOCATION_NAME_REQUIRED = "Ime mjesta je obavezno.";
 
 export const END_DATE_ERROR = "Kraj mora biti nakon početka.";
 // Two leagues can't share a name (any case): it is shown on standings and the league pickers
@@ -43,6 +55,10 @@ export const LeagueCreateRequestValidation = z
     play_day: z.number().int().min(0).max(6).optional().nullable(),
     // when the nights start; optional
     start_time: startTime.optional(),
+    // where the nights are played; optional
+    location_name: locName.nullable().optional(),
+    location_address: locAddress.nullable().optional(),
+    location_url: locUrl.nullable().optional(),
     rounds_per_night: z.number().int().min(1).max(6).default(3),
     team_ids: z.array(z.number().int()).default([]),
     conferences: z.array(ConferenceInputValidation).max(MAX_CONFERENCES).default([]),
@@ -62,6 +78,9 @@ export const LeagueUpdateRequestValidation = z.object({
   end_date: isoDate.nullable().optional(),
   play_day: z.number().int().min(0).max(6).nullable().optional(),
   start_time: startTime.optional(),
+  location_name: locName.nullable().optional(),
+  location_address: locAddress.nullable().optional(),
+  location_url: locUrl.nullable().optional(),
   rounds_per_night: z.number().int().min(1).max(6).optional(),
 });
 
@@ -75,17 +94,34 @@ export const LeagueNightAddRequestValidation = z.object({
   start_time: startTime.optional(),
 });
 
-// Upravljanje ligom · Datumi: a night's own start time; null goes back to the league's
-export const LeagueNightUpdateRequestValidation = z.object({
-  start_time: startTime,
-});
+// Upravljanje ligom · Datumi (Okupljanje večeri): a night's own start time and place. Either can be left out (it stays
+// as it is); null goes back to the league's.
+export const LeagueNightUpdateRequestValidation = z
+  .object({
+    start_time: startTime.optional(),
+    location: z
+      .object({name: locName.min(1, LOCATION_NAME_REQUIRED), address: locAddress.nullable().optional(), url: locUrl.nullable().optional()})
+      .nullable()
+      .optional(),
+  })
+  .refine((b) => b.start_time !== undefined || b.location !== undefined, "Nema promjene.");
 
-// The start time of a night that has rounds or has passed doesn't change
-export const PAST_NIGHT_TIME_ERROR = "Početak se mijenja samo večerima koje još nisu odigrane.";
+export type LeagueNightUpdate = z.infer<typeof LeagueNightUpdateRequestValidation>;
+
+// The start time and place of a night that has rounds or has passed don't change
+export const PAST_NIGHT_ERROR = "Vrijeme i mjesto mijenjaju se samo večerima koje još nisu odigrane.";
 
 // A league night and whether it has rounds (a played night can't be removed). start_time: its own start time (null:
-// the league's); time: when it starts, its own or the league's (null: no time).
-export type LeagueNightRow = {date: string; played: boolean; start_time: string | null; time: string | null};
+// the league's); time: when it starts, its own or the league's (null: no time). location: its own place (null: the
+// league's); place: where it is played, its own or the league's (null: nowhere set).
+export type LeagueNightRow = {
+  date: string;
+  played: boolean;
+  start_time: string | null;
+  time: string | null;
+  location: NightLocation | null;
+  place: NightLocation | null;
+};
 
 export const LeagueTeamAddRequestValidation = z.object({
   team_id: z.number().int(),
@@ -124,6 +160,10 @@ export type LeagueSummary = {
   end_date: string | null;
   play_day: number | null;
   start_time: string | null; // "HH:MM", when the nights start unless a night has its own
+  // where the nights are played unless a night has its own place (null name: no place)
+  location_name: string | null;
+  location_address: string | null;
+  location_url: string | null;
   rounds_per_night: number;
   // the smoking tables of its last Create Round (empty: none)
   smoking_tables: number[];

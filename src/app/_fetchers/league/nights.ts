@@ -1,5 +1,5 @@
 import {apiFetch, responseErrorMessage} from "@/app/_fetchers/errorMessage";
-import {LeagueNightRow} from "@/app/_interfaces/league";
+import {LeagueNightRow, LeagueNightUpdate} from "@/app/_interfaces/league";
 
 // A league's nights with whether each has rounds and when it starts (public)
 export async function getLeagueNightsAPI(leagueId: number): Promise<LeagueNightRow[]> {
@@ -18,14 +18,16 @@ export async function addLeagueNightAPI(leagueId: number, date: string, startTim
   if (!response.ok) throw new Error(await responseErrorMessage(response, "Večer nije dodana."));
 }
 
-// A night's own start time; null goes back to the league's
-export async function setLeagueNightTimeAPI(leagueId: number, date: string, startTime: string | null): Promise<void> {
+// A night's own start time and place (Okupljanje večeri); either left out stays as it is, null goes back to the
+// league's. Returns the night as saved.
+export async function updateLeagueNightAPI(leagueId: number, date: string, change: LeagueNightUpdate): Promise<LeagueNightRow> {
   const response = await apiFetch(`/api/leagues/${leagueId}/nights/${date}`, {
     method: "PATCH",
     headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({start_time: startTime}),
+    body: JSON.stringify(change),
   });
-  if (!response.ok) throw new Error(await responseErrorMessage(response, "Početak večeri nije spremljen."));
+  if (!response.ok) throw new Error(await responseErrorMessage(response, "Okupljanje večeri nije spremljeno."));
+  return response.json();
 }
 
 export async function removeLeagueNightAPI(leagueId: number, date: string): Promise<void> {

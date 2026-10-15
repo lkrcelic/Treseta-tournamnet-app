@@ -1,6 +1,6 @@
-import {LeagueNightRow, MAX_NIGHTS_ERROR, NIGHT_TAKEN, PAST_NIGHT_TIME_ERROR} from "@/app/_interfaces/league";
+import {LeagueNightRow, LeagueNightUpdate, MAX_NIGHTS_ERROR, NIGHT_TAKEN, PAST_NIGHT_ERROR} from "@/app/_interfaces/league";
 import {leagueDateString} from "@/app/_lib/dates";
-import {effectiveTime, MAX_NIGHTS} from "@/app/_lib/nights";
+import {effectiveLocation, effectiveTime, locationOf, MAX_NIGHTS} from "@/app/_lib/nights";
 import {prisma} from "@/app/_lib/prisma";
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
@@ -26,18 +26,27 @@ export async function playedNightKeys(leagueIds: number[]): Promise<Set<string>>
   return new Set(rows.map((r) => `${r.league_id}|${isoDate(r.night)}`));
 }
 
-// A league's nights in date order, each with whether it has rounds and when it starts; null when the league doesn't
-// exist
+const LOCATION = {location_name: true, location_address: true, location_url: true} as const;
+
+// A league's nights in date order, each with whether it has rounds, when it starts and where it is played; null when
+// the league doesn't exist
 export async function listLeagueNights(leagueId: number): Promise<LeagueNightRow[] | null> {
   const league = await prisma.league.findUnique({
     where: {league_id: leagueId},
-    select: {start_time: true, nights: {select: {night: true, start_time: true}, orderBy: {night: "asc"}}},
+    select: {start_time: true, ...LOCATION, nights: {select: {night: true, start_time: true, ...LOCATION}, orderBy: {night: "asc"}}},
   });
   if (!league) return null;
   const played = await playedNightKeys([leagueId]);
   return league.nights.map((n) => {
     const date = isoDate(n.night);
-    return {date, played: played.has(`${leagueId}|${date}`), start_time: n.start_time, time: effectiveTime(n.start_time, league.start_time)};
+    return {
+      date,
+      played: played.has(`${leagueId}|${date}`),
+      start_time: n.start_time,
+      time: effectiveTime(n.start_time, league.start_time),
+      location: locationOf(n),
+      place: effectiveLocation(n, league),
+    };
   });
 }
 
@@ -69,16 +78,39 @@ export async function removeLeagueNight(leagueId: number, date: string): Promise
   return count > 0;
 }
 
-// Sets a night's own start time, or with null goes back to the league's. Only a night still to be played: one that
-// has passed or has rounds keeps its time. Returns false when the league doesn't have that night.
-export async function setLeagueNightTime(leagueId: number, date: string, startTime: string | null): Promise<boolean> {
+// Sets a night's own start time and place (Okupljanje večeri); either left out stays as it is, and null goes back to
+// the league's (a null location clears all three location fields). Only a night still to be played: one that has
+// passed or has rounds keeps its time and place. Returns the night as Datumi shows it, or null when the league doesn't
+// have that night.
+export async function updateLeagueNight(leagueId: number, date: string, change: LeagueNightUpdate): Promise<LeagueNightRow | null> {
   const night = nightValue(date);
   const exists = await prisma.leagueNight.count({where: {league_id: leagueId, night}});
-  if (!exists) return false;
+  if (!exists) return null;
   const rounds = await prisma.round.count({where: {round_date: night, leagueRounds: {some: {league_id: leagueId}}}});
-  if (rounds || date < leagueDateString()) throw new InvalidResultError(PAST_NIGHT_TIME_ERROR);
-  await prisma.leagueNight.update({where: {league_id_night: {league_id: leagueId, night}}, data: {start_time: startTime}});
-  return true;
+  if (rounds || date < leagueDateString()) throw new InvalidResultError(PAST_NIGHT_ERROR);
+  const {location} = change;
+  const updated = await prisma.leagueNight.update({
+    where: {league_id_night: {league_id: leagueId, night}},
+    data: {
+      start_time: change.start_time,
+      ...(location === undefined
+        ? {}
+        : {
+            location_name: location?.name.trim() || null,
+            location_address: (location && location.address?.trim()) || null,
+            location_url: (location && location.url?.trim()) || null,
+          }),
+    },
+    select: {start_time: true, ...LOCATION, league: {select: {start_time: true, ...LOCATION}}},
+  });
+  return {
+    date,
+    played: false,
+    start_time: updated.start_time,
+    time: effectiveTime(updated.start_time, updated.league.start_time),
+    location: locationOf(updated),
+    place: effectiveLocation(updated, updated.league),
+  };
 }
 
 // A round created on a date the league hadn't planned adds that night, so Raspored shows it as played

@@ -5,12 +5,26 @@ import useLeagueNights from "@/app/_hooks/useLeagueNights";
 import useLeagues, {useSelectedLeagueId} from "@/app/_hooks/useLeagues";
 import useMySchedule from "@/app/_hooks/useMySchedule";
 import {leagueDateString} from "@/app/_lib/dates";
-import {nextNightIndex, nightsCountLabel, nightsLeftLabel, nightTimeLabel, RASPORED_PILL, rasporedPill, RasporedPill} from "@/app/_lib/nights";
+import {
+  gatheringLabel,
+  isSafeUrl,
+  nextNightIndex,
+  NightLocation,
+  nightLabel,
+  nightsCountLabel,
+  nightsLeftLabel,
+  nightTimeLabel,
+  RASPORED_PILL,
+  rasporedPill,
+  RasporedPill,
+} from "@/app/_lib/nights";
 import {TransitionLink, useTransitionRouter} from "@/app/_lib/viewTransitions";
-import {color, font, shadow} from "@/app/_styles/tokens";
+import {color, font, shadow, tint} from "@/app/_styles/tokens";
+import {GatheringLine, mapLinkProps, MapButton} from "@/app/_ui/gathering/Gathering";
 import {buttonBase, Card, CenteredSpinner, DesktopShell, ellipsis, EmptyState, ErrorNote, InitialsAvatar, PillTabs, Screen, Segmented, tabPanelProps, tabular, TopBar} from "@/app/_ui/sp";
 import EventRoundedIcon from "@mui/icons-material/EventRounded";
 import PersonSearchRoundedIcon from "@mui/icons-material/PersonSearchRounded";
+import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
 import {Box} from "@mui/material";
 import {useSearchParams} from "next/navigation";
 import React, {useMemo} from "react";
@@ -27,6 +41,10 @@ type Shown = {
   played: Set<string>;
   // when each night starts, "HH:MM" (a night without a time isn't in it)
   times: Record<string, string>;
+  // where each night gathers (a night without a place isn't in it)
+  places: Record<string, NightLocation>;
+  // the nights with their own time or place (marked with "!")
+  own: Set<string>;
   // the team's next night can get a substitute
   canAsk: boolean;
 };
@@ -82,6 +100,8 @@ export default function RasporedPage() {
       nights: current.nights,
       played: new Set(current.played),
       times: current.times,
+      places: current.places ?? {},
+      own: new Set(current.ownPlace ?? []),
       canAsk: current.active,
     };
   } else if (otherId != null && other.nights) {
@@ -93,6 +113,8 @@ export default function RasporedPage() {
       nights: other.nights.map((n) => n.date),
       played: new Set(other.nights.filter((n) => n.played).map((n) => n.date)),
       times: Object.fromEntries(other.nights.flatMap((n) => (n.time ? [[n.date, n.time]] : []))),
+      places: Object.fromEntries(other.nights.flatMap((n) => (n.place ? [[n.date, n.place]] : []))),
+      own: new Set(other.nights.filter((n) => n.start_time || n.location).map((n) => n.date)),
       canAsk: false,
     };
   }
@@ -173,7 +195,47 @@ export default function RasporedPage() {
   );
 }
 
+// "19:30 · Caffe bar Kartaš ↗" on the navy card: a link to Google Maps when the place has one, else only the text
+function PlacePill({time, place}: {time: string | undefined; place: NightLocation}) {
+  const map = place.url && isSafeUrl(place.url) ? place.url : null;
+  const label = gatheringLabel(time, place);
+  const sx = {
+    alignSelf: "flex-start",
+    maxWidth: "100%",
+    boxSizing: "border-box",
+    minHeight: 36,
+    mt: "6px",
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    px: "12px",
+    py: "6px",
+    borderRadius: "18px",
+    background: tint.creamOnNavy[16],
+    color: color.white,
+    fontSize: 13.5,
+    fontWeight: 700,
+    lineHeight: 1.3,
+    textDecoration: "none",
+    "& svg": {fontSize: 18, color: color.cream, flex: "none"},
+  } as const;
+  return map ? (
+    <Box component="a" {...mapLinkProps(map)} aria-label={`${label}, otvori kartu`} sx={{...buttonBase, ...sx, "&:hover": {background: tint.creamOnNavy[24]}}}>
+      <PlaceRoundedIcon aria-hidden />
+      <span>{label} ↗</span>
+    </Box>
+  ) : (
+    <Box component="span" sx={sx}>
+      <PlaceRoundedIcon aria-hidden />
+      <span>{label}</span>
+    </Box>
+  );
+}
+
 function Schedule({shown, today, desktop}: {shown: Shown; today: string; desktop: boolean}) {
+  // with a place, a night's time goes with it on the line under the date; without one it stays after the date, as
+  // before
+  const dateLabel = (night: string) => (shown.places[night] ? nightLabel(night) : nightTimeLabel(night, shown.times[night]));
   const nextIndex = nextNightIndex(shown.nights, today);
   const next = nextIndex >= 0 ? shown.nights[nextIndex] : null;
   const playedCount = shown.nights.filter((n) => shown.played.has(n)).length;
@@ -191,11 +253,12 @@ function Schedule({shown, today, desktop}: {shown: Shown; today: string; desktop
           {cardTitle}
         </Box>
         <Box component="span" sx={{fontFamily: font.display, fontSize: 26, fontWeight: 800, lineHeight: 1.05}}>
-          {nightTimeLabel(cardNight, shown.times[cardNight])}
+          {dateLabel(cardNight)}
         </Box>
         <Box component="span" sx={{fontSize: 14, color: color.cream}}>
           {nightsLeftLabel(left)}
         </Box>
+        {shown.places[cardNight] && <PlacePill time={shown.times[cardNight]} place={shown.places[cardNight]} />}
       </Box>
       <EventRoundedIcon aria-hidden sx={{fontSize: 34, color: color.cream}} />
     </Box>
@@ -227,18 +290,25 @@ function Schedule({shown, today, desktop}: {shown: Shown; today: string; desktop
             const isNext = i === nextIndex;
             const pill = rasporedPill(night, isNext, i === shown.nights.length - 1, today, shown.played.has(night));
             const past = night < today;
+            const place = shown.places[night];
+            const own = shown.own.has(night);
             return (
               <Box
                 component="li"
                 key={night}
                 aria-current={isNext ? "date" : undefined}
-                sx={{height: 56, display: "flex", alignItems: "center", gap: "12px", px: "16px", borderBottom: i < shown.nights.length - 1 ? `1px solid ${color.line}` : "none", background: isNext ? color.cream2 : "transparent", boxShadow: isNext ? shadow.mineBar : "none"}}
+                sx={{minHeight: 56, boxSizing: "border-box", py: "6px", display: "flex", alignItems: "center", gap: "12px", px: "16px", borderBottom: i < shown.nights.length - 1 ? `1px solid ${color.line}` : "none", background: isNext ? color.cream2 : "transparent", boxShadow: isNext ? shadow.mineBar : "none"}}
               >
                 <Box component="span" sx={{width: 26, flex: "none", fontSize: 14, fontWeight: 700, color: color.muted, ...tabular}}>
                   {i + 1}
                 </Box>
-                <Box component="span" sx={{flex: 1, fontSize: 16, fontWeight: isNext ? 700 : 600, color: past ? color.muted : color.ink}}>
-                  {nightTimeLabel(night, shown.times[night])}
+                <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "1px"}}>
+                  <Box component="span" sx={{fontSize: 16, fontWeight: isNext ? 700 : 600, color: past ? color.muted : color.ink}}>
+                    {dateLabel(night)}
+                  </Box>
+                  {place ? (
+                    <GatheringLine time={shown.times[night]} place={place} plain mark={own ? "Drugo vrijeme ili mjesto" : null} size={12.5} />
+                  ) : null}
                 </Box>
                 {pill && (
                   <Box
@@ -259,6 +329,7 @@ function Schedule({shown, today, desktop}: {shown: Shown; today: string; desktop
                     {RASPORED_PILL[pill]}
                   </Box>
                 )}
+                {!past && <MapButton place={place} label={`Karta: ${place?.name ?? ""}, ${nightLabel(night)}`} />}
               </Box>
             );
           })

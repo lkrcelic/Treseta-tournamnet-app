@@ -12,6 +12,8 @@ import {recalcTeamScores} from "@/app/_lib/service/admin/recalc";
 
 const dateString = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 const dateValue = (d?: string | null) => (d ? new Date(`${d}T00:00:00.000Z`) : null);
+// An empty location field is saved as null; one left out (undefined) stays as it is
+const optionalText = (v?: string | null) => (v === undefined ? undefined : v?.trim() || null);
 
 // Every league, newest first, with its number of teams (the bye team is not counted), its latest night with published
 // rounds, its last scheduled night and which one is being played now
@@ -41,6 +43,9 @@ export async function listLeagues(): Promise<LeagueSummary[]> {
     end_date: dateString(l.end_date),
     play_day: l.play_day,
     start_time: l.start_time,
+    location_name: l.location_name,
+    location_address: l.location_address,
+    location_url: l.location_url,
     rounds_per_night: l.rounds_per_night,
     smoking_tables: l.smoking_tables,
     team_count: l._count.leagueTeams,
@@ -86,6 +91,9 @@ export async function createLeague(req: LeagueCreateRequest): Promise<LeagueSumm
       end_date: dateValue(req.end_date),
       play_day: req.play_day ?? null,
       start_time: req.start_time ?? null,
+      location_name: optionalText(req.location_name) ?? null,
+      location_address: optionalText(req.location_address) ?? null,
+      location_url: optionalText(req.location_url) ?? null,
       rounds_per_night: req.rounds_per_night,
       leagueTeams: {create: teamIds.map((team_id) => ({team_id}))},
       conferences: {create: req.conferences.map((c, position) => ({name: c.name.trim(), color: c.color.toUpperCase(), position}))},
@@ -101,6 +109,9 @@ export async function createLeague(req: LeagueCreateRequest): Promise<LeagueSumm
     end_date: dateString(league.end_date),
     play_day: league.play_day,
     start_time: league.start_time,
+    location_name: league.location_name,
+    location_address: league.location_address,
+    location_url: league.location_url,
     rounds_per_night: league.rounds_per_night,
     smoking_tables: league.smoking_tables,
     team_count: teamIds.length,
@@ -153,6 +164,9 @@ export async function updateLeague(leagueId: number, req: LeagueUpdateRequest): 
       end_date: req.end_date === undefined ? undefined : dateValue(req.end_date),
       play_day: req.play_day,
       start_time: req.start_time,
+      location_name: optionalText(req.location_name),
+      location_address: optionalText(req.location_address),
+      location_url: optionalText(req.location_url),
       rounds_per_night: req.rounds_per_night,
     },
   });
