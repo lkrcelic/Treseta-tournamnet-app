@@ -1,11 +1,11 @@
 "use client";
 
 import {ScrollMemory, useScrollMemory} from "@/app/_hooks/useBackRestore";
+import useAdminPhone from "@/app/_hooks/useAdminPhone";
 import useIsAdmin from "@/app/_hooks/useIsAdmin";
 import useElementHeight from "@/app/_hooks/useElementHeight";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useLeagueTeams from "@/app/_hooks/useLeagueTeams";
-import {addTableAPI, removeTableAPI, setTablePairAPI} from "@/app/_fetchers/admin/daily";
 import useLeagues from "@/app/_hooks/useLeagues";
 import useMyTeams from "@/app/_hooks/useMyTeams";
 import useConferences from "@/app/_hooks/useConferences";
@@ -20,6 +20,7 @@ import {count, displayDate, NOUN} from "@/app/_lib/ui/text";
 import {color, font, shadow} from "@/app/_styles/tokens";
 import {
   Card,
+  ConfirmSheet,
   DesktopShell,
   Display,
   EmptyState,
@@ -42,13 +43,17 @@ import {
   tabPanelProps,
 } from "@/app/_ui/sp";
 import {DesktopTableRow, PhoneRoundTables, TABLE_ROW_HEIGHT} from "@/app/league/[leagueId]/daily-standings/ui/RoundTables";
-import {ConfirmRemove, EditToggle, NewTableButton, PairDialog, PairTarget, RowActions} from "@/app/league/[leagueId]/daily-standings/ui/RoundEditing";
+import {ConfirmRemove, EditToggle, NewTableButton, PairDialog, PairSheet, RoundAdmin, RowActions, useTableEdits} from "@/app/league/[leagueId]/daily-standings/ui/RoundEditing";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
+import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
+import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import {Box} from "@mui/material";
 import {useParams, useSearchParams} from "next/navigation";
-import {useTransitionRouter} from "@/app/_lib/viewTransitions";
+import {replaceAddress, useTransitionRouter} from "@/app/_lib/viewTransitions";
 import React, {useEffect, useMemo, useRef, useState} from "react";
 
 export default function DailyStandings() {
@@ -58,11 +63,13 @@ export default function DailyStandings() {
   const searchParams = useSearchParams();
   const isDesktop = useIsDesktop();
   const isAdmin = useIsAdmin();
+  // the admin's phone (admin-mobile 18–22): Back, Osvježi, editing the round's tables, and the tables open
+  const adminPhone = useAdminPhone();
   const leagues = useLeagues(leagueId);
   const {teams} = useMyTeams();
   const myTeamNames = useMemo(() => teams.map((t) => t.team_name), [teams]);
   // the name a Team page opened from a row shows on its back pill
-  useNavStack("Dnevni poredak");
+  const nav = useNavStack("Dnevni poredak");
   // the night's table: Back from a team's page finds it where it was left
   const scroller = useScrollMemory("daily");
 
@@ -106,6 +113,8 @@ export default function DailyStandings() {
   const pickTab = (k: number) => {
     setTab(k);
     setTabTouched(true);
+    // the tab is in the address, so Back from a table (or a team) comes back to it
+    if (date) replaceAddress(`/league/${leagueId}/daily-standings?date=${date}${k ? `&round=${k}` : ""}`);
   };
   const tabs: TabItem<number>[] = [{key: 0, label: "Tablica okupljanja"}, ...roundNumbers.map((n) => ({key: n, label: `Kolo ${n}`, live: roundsLive(n)}))];
   const roundRows = useMemo(
@@ -118,6 +127,9 @@ export default function DailyStandings() {
   // before the league's first night there is no date to show
   const dateTitle = date ? displayDate(date) : noNights ? "Dnevni poredak" : "—";
   const loadError = datesError ?? daily.error;
+
+  const phoneEdit = usePhoneEdit(adminPhone ? {leagueId, date: date || "", roundNumber: tab, onChanged: daily.refresh} : null, tab);
+  const removeRow = roundRows.find((r) => r.id === phoneEdit.edits.confirmId) ?? null;
 
   const arrows = (
     <Box sx={{display: "flex", gap: "8px", flex: "none"}}>
@@ -178,6 +190,15 @@ export default function DailyStandings() {
 
   return (
     <Screen fill>
+      {adminPhone && (
+        <AdminTopRow
+          onBack={nav.back}
+          refreshedAt={daily.data}
+          onRefresh={daily.refresh}
+          editing={tab > 0 ? phoneEdit.editing : null}
+          onEdit={phoneEdit.toggle}
+        />
+      )}
       <Box component="header" sx={{display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "12px", px: "4px"}}>
         <Box sx={{display: "flex", flexDirection: "column", gap: "6px", minWidth: 0}}>
           <LeagueEyebrowButton leagues={leagues} value={leagueId} onChange={changeLeague} />
@@ -212,15 +233,101 @@ export default function DailyStandings() {
           </ScrollCard>
         ) : (
           <ScrollArea bleed sx={{gap: "10px"}}>
-            <PhoneRoundTables title={`Kolo ${tab}`} rows={roundRows} />
+            {phoneEdit.edits.actionError && <ErrorNote>{phoneEdit.edits.actionError}</ErrorNote>}
+            <PhoneRoundTables
+              title={adminPhone ? `Kolo ${tab} · ${count(roundRows.length, NOUN.stol)}` : `Kolo ${tab}`}
+              rows={roundRows}
+              hrefOf={adminPhone ? (t) => (t.bye ? undefined : `/league/${leagueId}/daily-standings/table/${t.id}`) : undefined}
+              fresh={phoneEdit.editing ? phoneEdit.edits.freshTable : null}
+              edit={
+                adminPhone && phoneEdit.editing
+                  ? {
+                      onPair: (t) => phoneEdit.edits.setPair({kind: "edit", row: t}),
+                      onRemove: (t) => phoneEdit.edits.setConfirmId(t.id),
+                      onAdd: () => phoneEdit.edits.setPair({kind: "new", tableNumber: roundRows.reduce((m, r) => Math.max(m, r.table), 0) + 1}),
+                    }
+                  : undefined
+              }
+            />
           </ScrollArea>
         )}
       </Box>
 
-      <PrimaryButton icon={<HomeRoundedIcon />} onClick={() => router.push("/", "back")}>
-        Početni zaslon
-      </PrimaryButton>
+      {/* the admin goes back with the arrow at the top, as on every admin screen (no button that only closes) */}
+      {!adminPhone && (
+        <PrimaryButton icon={<HomeRoundedIcon />} onClick={() => router.push("/", "back")}>
+          Početni zaslon
+        </PrimaryButton>
+      )}
+
+      {adminPhone && phoneEdit.edits.pair && (
+        <PairSheet target={phoneEdit.edits.pair} rows={roundRows} teams={phoneEdit.teams ?? []} onClose={() => phoneEdit.edits.setPair(null)} onSave={phoneEdit.edits.savePair} />
+      )}
+      {adminPhone && (
+        <ConfirmSheet
+          open={removeRow != null}
+          onClose={() => phoneEdit.edits.setConfirmId(null)}
+          onConfirm={() => removeRow && phoneEdit.edits.remove(removeRow.id)}
+          title="Ukloniti stol?"
+          text={removeRow ? `Stol ${removeRow.table} miče se iz ovog kola, a upisane igre za taj stol se brišu.` : ""}
+          action="Ukloni stol"
+          icon={<DeleteRoundedIcon />}
+          busy={phoneEdit.edits.removing}
+          error={removeRow ? phoneEdit.edits.actionError : null}
+        />
+      )}
     </Screen>
+  );
+}
+
+// The admin's top row on the phone Dnevni poredak: Back, when the tables last came in with Osvježi, and on a round's
+// tab the pencil that starts editing its tables (a check while editing)
+function AdminTopRow({
+  onBack,
+  refreshedAt,
+  onRefresh,
+  editing,
+  onEdit,
+}: {
+  onBack: () => void;
+  // the data, which changes on every load
+  refreshedAt: unknown;
+  onRefresh: () => void;
+  editing: boolean | null;
+  onEdit: () => void;
+}) {
+  const [time, setTime] = useState<string | null>(null);
+  useEffect(() => {
+    if (!refreshedAt) return;
+    const d = new Date();
+    setTime(`${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`);
+  }, [refreshedAt]);
+  return (
+    <Box sx={{flex: "none", display: "flex", alignItems: "center", gap: "8px", mx: "-6px"}}>
+      <IconCircleButton label="Natrag" size={44} onClick={onBack} sx={{"& svg": {fontSize: 26}}}>
+        <ChevronLeftRoundedIcon />
+      </IconCircleButton>
+      <Box sx={{flex: 1}} />
+      {time && (
+        <Box component="span" sx={{fontSize: 13, color: color.muted, whiteSpace: "nowrap"}}>
+          Osvježeno {time}
+        </Box>
+      )}
+      <IconCircleButton label="Osvježi" size={44} onClick={onRefresh} sx={{"& svg": {fontSize: 22}}}>
+        <RefreshRoundedIcon />
+      </IconCircleButton>
+      {editing != null && (
+        <IconCircleButton
+          label={editing ? "Završi uređivanje stolova" : "Uredi stolove"}
+          aria-pressed={editing}
+          size={44}
+          onClick={onEdit}
+          sx={{...(editing && {background: color.navy, color: color.white}), "& svg": {fontSize: 22}}}
+        >
+          {editing ? <CheckRoundedIcon /> : <EditRoundedIcon />}
+        </IconCircleButton>
+      )}
+    </Box>
   );
 }
 
@@ -325,19 +432,12 @@ function DesktopNightTable({rows, date, scroller}: {rows: ReturnType<typeof toSt
 
 // Desktop round view: every table at once, in 1–3 columns, with status filters and a search. One column while every
 // table fits the height on screen, so a short round reads straight down.
-type RoundAdmin = {leagueId: number; date: string; roundNumber: number; onChanged: () => void};
-
 // admin: edit mode (re-pair, remove and add tables), and every table opens its scorepad
 function DesktopRound({title, rows, admin}: {title: string; rows: ReturnType<typeof toTableRows>; admin: RoundAdmin | null}) {
   const [filter, setFilter] = useState<TableFilter>("all");
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState(false);
-  const [confirmId, setConfirmId] = useState<number | null>(null);
-  const [removing, setRemoving] = useState(false);
-  const [pair, setPair] = useState<PairTarget | null>(null);
-  // the number of the table added last, highlighted until editing ends
-  const [freshTable, setFreshTable] = useState<number | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
+  const {pair, setPair, confirmId, setConfirmId, removing, remove, savePair, freshTable, actionError, setActionError, reset} = useTableEdits(admin);
   const {teams: leagueTeams} = useLeagueTeams(admin && editing ? admin.leagueId : null);
   const visible = filterTables(rows, filter, query);
   const [areaRef, areaHeight] = useElementHeight<HTMLDivElement>();
@@ -352,32 +452,7 @@ function DesktopRound({title, rows, admin}: {title: string; rows: ReturnType<typ
 
   const toggleEdit = () => {
     setEditing((e) => !e);
-    setConfirmId(null);
-    setFreshTable(null);
-    setActionError(null);
-  };
-  const remove = async (id: number) => {
-    if (!admin) return;
-    setRemoving(true);
-    setActionError(null);
-    try {
-      await removeTableAPI(id);
-      setConfirmId(null);
-      admin.onChanged();
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Stol nije uklonjen.");
-    }
-    setRemoving(false);
-  };
-  const savePair = async (team1Id: number, team2Id: number) => {
-    if (!admin || !pair) return;
-    if (pair.kind === "edit") await setTablePairAPI(pair.row.id, team1Id, team2Id);
-    else {
-      await addTableAPI(admin.leagueId, admin.date, admin.roundNumber, team1Id, team2Id);
-      setFreshTable(pair.tableNumber);
-    }
-    setPair(null);
-    admin.onChanged();
+    reset();
   };
   const nextTable = rows.reduce((m, r) => Math.max(m, r.table), 0) + 1;
 
@@ -466,4 +541,20 @@ function DesktopRound({title, rows, admin}: {title: string; rows: ReturnType<typ
       )}
     </Box>
   );
+}
+
+// Editing a round's tables on the admin's phone: on while the pencil is pressed, off again on another tab
+function usePhoneEdit(admin: RoundAdmin | null, tab: number) {
+  const [editing, setEditing] = useState(false);
+  const edits = useTableEdits(admin);
+  const {teams} = useLeagueTeams(admin && editing ? admin.leagueId : null);
+  useEffect(() => {
+    setEditing(false);
+    edits.reset();
+  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
+  const toggle = () => {
+    setEditing((e) => !e);
+    edits.reset();
+  };
+  return {editing: admin != null && editing, toggle, edits, teams};
 }

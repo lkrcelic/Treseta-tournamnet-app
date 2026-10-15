@@ -2,67 +2,144 @@
 
 import {TableRow} from "@/app/_lib/ui/tables";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
-import {Card, Eyebrow, LiveDot, LiveLabel, LivePill, tabular, TeamLabel} from "@/app/_ui/sp";
+import {buttonBase, Card, Eyebrow, LiveDot, LiveLabel, LivePill, rowFocus, stretchedArea, tabular, TeamLabel} from "@/app/_ui/sp";
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
+import SwapHorizRoundedIcon from "@mui/icons-material/SwapHorizRounded";
 import {SmokingMark} from "@/app/_ui/smoking/SmokingParts";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {Box} from "@mui/material";
 import React from "react";
 
-// Phone: one card per table, both teams with their wins (and live match points while playing)
-export function PhoneRoundTables({title, rows}: {title: string; rows: TableRow[]}) {
+// Phone: one card per table, both teams with their wins (and live match points while playing). The admin's phone
+// (admin-mobile 19, 20): hrefOf makes a card a link to its table; edit gives every card Uredi par and Ukloni stol, and
+// "Dodaj stol s dvije ekipe" above them (and no links). A table just added (fresh) is cream.
+export function PhoneRoundTables({
+  title,
+  rows,
+  hrefOf,
+  edit,
+  fresh,
+}: {
+  title: string;
+  rows: TableRow[];
+  hrefOf?: (t: TableRow) => string | undefined;
+  edit?: {onPair: (t: TableRow) => void; onRemove: (t: TableRow) => void; onAdd: () => void};
+  fresh?: number | null;
+}) {
   const live = rows.filter((r) => r.live).length;
+  const action = {
+    ...buttonBase,
+    height: 48,
+    borderRadius: "14px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "6px",
+    fontSize: 15,
+    fontWeight: 600,
+    "& svg": {fontSize: 20},
+  } as const;
   return (
     <>
       <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", p: "2px 4px", minHeight: 28}}>
         <Eyebrow>{title}</Eyebrow>
         {live > 0 && <LivePill>UŽIVO: {live}</LivePill>}
       </Box>
+      {edit && (
+        <Box
+          component="button"
+          type="button"
+          onClick={edit.onAdd}
+          sx={{...action, flex: "none", height: 56, borderRadius: "18px", border: `1.5px dashed ${tint.navy[35]}`, color: color.navy, fontSize: 16, "& svg": {fontSize: 22}}}
+        >
+          <AddRoundedIcon aria-hidden />
+          Dodaj stol s dvije ekipe
+        </Box>
+      )}
       <Box component="ul" sx={{listStyle: "none", m: 0, p: 0, display: "flex", flexDirection: "column", gap: "10px"}}>
-        {rows.map((t) => (
-          <Card
-            component="li"
-            key={t.id}
-            aria-label={`Stol ${t.table}${t.smoking ? ", pušački" : ""}: ${t.teamA} ${t.winsA}, ${t.teamB} ${t.winsB}${t.live ? ", uživo" : ""}`}
-            aria-current={t.mine ? "true" : undefined}
-            // the player's own table: cream with a navy ring
-            sx={{p: "12px 16px 6px", display: "flex", flexDirection: "column", background: t.mine ? color.cream2 : color.white, ...(t.mine && {boxShadow: `${shadow.card}, ${shadow.selectRing}`})}}
-          >
-            <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", height: 24}}>
-              <Box component="span" sx={{display: "flex", alignItems: "center", gap: "6px", fontSize: 13, fontWeight: 600, color: color.muted}}>
-                Stol {t.table}
-                {t.smoking && <SmokingMark />}
-              </Box>
-              {t.live && <LiveLabel />}
-            </Box>
-            {(
-              [
-                [t.teamA, t.winsA, t.pointsA, t.winsA > t.winsB, t.conferenceA],
-                [t.teamB, t.winsB, t.pointsB, t.winsB > t.winsA, t.conferenceB],
-              ] as const
-            ).map(([name, wins, pts, ahead, conference], k) => (
-              <Box
-                key={k}
-                aria-hidden
-                sx={{
-                  height: 44,
-                  display: "grid",
-                  gridTemplateColumns: "minmax(0,1fr) auto 32px",
-                  alignItems: "center",
-                  gap: "10px",
-                  borderTop: k ? `1px solid ${color.line}` : "none",
-                }}
-              >
-                <TeamLabel name={name} conference={conference} sx={{fontSize: 16, fontWeight: !t.live && ahead ? 700 : 500}} />
-                <Box component="span" sx={{fontSize: 14, fontWeight: 600, color: color.muted, ...tabular}}>
-                  {t.live && pts != null ? `(${pts})` : ""}
+        {rows.map((t) => {
+          const href = edit ? undefined : hrefOf?.(t);
+          const label = `Stol ${t.table}${t.smoking ? ", pušački" : ""}: ${t.teamA} ${t.winsA}, ${t.teamB} ${t.winsB}${t.live ? ", uživo" : ""}`;
+          return (
+            <Card
+              component="li"
+              key={t.id}
+              aria-label={href || edit ? undefined : label}
+              aria-current={t.mine ? "true" : undefined}
+              // the player's own table: cream with a navy ring
+              sx={{
+                position: "relative",
+                p: edit ? "12px 16px 14px" : "12px 16px 6px",
+                display: "flex",
+                flexDirection: "column",
+                background: t.mine || t.table === fresh ? color.cream2 : color.white,
+                ...(t.mine && {boxShadow: `${shadow.card}, ${shadow.selectRing}`}),
+                ...(href && {"&:has(a:focus-visible)": rowFocus, "&:active": {background: color.paper2}}),
+              }}
+            >
+              {href && <Box component={TransitionLink} href={href} aria-label={label} sx={{...stretchedArea, position: "static", borderRadius: "inherit", "&:focus-visible": {outline: "none"}}} />}
+              <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", height: 24}}>
+                <Box component="span" sx={{display: "flex", alignItems: "center", gap: "6px", fontSize: 13, fontWeight: 600, color: color.muted}}>
+                  Stol {t.table}
+                  {t.smoking && <SmokingMark />}
                 </Box>
-                <Box component="span" sx={{textAlign: "right", fontFamily: font.display, fontSize: 26, fontWeight: 800, ...tabular}}>
-                  {wins}
-                </Box>
+                {t.live && <LiveLabel />}
               </Box>
-            ))}
-          </Card>
-        ))}
+              {(
+                [
+                  [t.teamA, t.winsA, t.pointsA, t.winsA > t.winsB, t.conferenceA],
+                  [t.teamB, t.winsB, t.pointsB, t.winsB > t.winsA, t.conferenceB],
+                ] as const
+              ).map(([name, wins, pts, ahead, conference], k) => (
+                <Box
+                  key={k}
+                  aria-hidden
+                  sx={{
+                    height: 44,
+                    display: "grid",
+                    gridTemplateColumns: "minmax(0,1fr) auto 32px",
+                    alignItems: "center",
+                    gap: "10px",
+                    borderTop: k ? `1px solid ${color.line}` : "none",
+                  }}
+                >
+                  <TeamLabel name={name} conference={conference} sx={{fontSize: 16, fontWeight: !t.live && ahead ? 700 : 500}} />
+                  <Box component="span" sx={{fontSize: 14, fontWeight: 600, color: color.muted, ...tabular}}>
+                    {t.live && pts != null ? `(${pts})` : ""}
+                  </Box>
+                  <Box component="span" sx={{textAlign: "right", fontFamily: font.display, fontSize: 26, fontWeight: 800, ...tabular}}>
+                    {wins}
+                  </Box>
+                </Box>
+              ))}
+              {edit && (
+                <Box sx={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", pt: "8px"}}>
+                  <Box
+                    component="button"
+                    type="button"
+                    onClick={() => edit.onPair(t)}
+                    aria-label={`Uredi par za stolom ${t.table}`}
+                    sx={{...action, border: `1.5px solid ${color.borderControl}`, color: color.navy}}
+                  >
+                    <SwapHorizRoundedIcon aria-hidden />
+                    Uredi par
+                  </Box>
+                  <Box
+                    component="button"
+                    type="button"
+                    onClick={() => edit.onRemove(t)}
+                    aria-label={`Ukloni stol ${t.table}`}
+                    sx={{...action, border: `1.5px solid ${tint.red[35]}`, color: color.red}}
+                  >
+                    <DeleteRoundedIcon aria-hidden />
+                    Ukloni stol
+                  </Box>
+                </Box>
+              )}
+            </Card>
+          );
+        })}
       </Box>
     </>
   );
