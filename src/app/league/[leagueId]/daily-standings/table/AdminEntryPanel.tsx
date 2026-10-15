@@ -141,7 +141,7 @@ export default function AdminEntryPanel({
       <Box sx={{display: "flex", alignItems: "flex-start", gap: "10px", p: "10px 12px", borderRadius: "12px", background: "rgba(60,74,103,.07)", fontSize: 13, lineHeight: 1.4, "& svg": {fontSize: 18, color: color.navy, flex: "none"}}}>
         <InfoRoundedIcon />
         {custom
-          ? "Upiši bodove za obje ekipe, npr. s akužama. Bez ograničenja na 11."
+          ? "Upiši bodove za obje ekipe, npr. kad se zove „s ovim dosta”. Bez ograničenja na 11."
           : "Upiši bodove jedne ekipe, druga dobiva ostatak do 11."}
       </Box>
 

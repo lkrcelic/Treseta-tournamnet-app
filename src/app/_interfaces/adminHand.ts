@@ -1,12 +1,15 @@
 import {z} from "zod";
 import {CUSTOM_HAND_MAX} from "@/app/_lib/game/scoring";
+import {TeamSide, TeamSideValidation} from "@/app/_interfaces/side";
 
 // A hand entered by an admin on the Daily scorepad: each team's points, either a normal hand (adding up to 11) or a
-// custom one (typed freely, as with the "Custom" key on the players' keypad).
+// custom one (typed freely, as with the "Custom" key on the players' keypad), and the team that called
+// "s ovim dosta" on it, if any.
 export const AdminHandValidation = z.object({
   custom: z.boolean(),
   points1: z.number().int().min(0).max(CUSTOM_HAND_MAX),
   points2: z.number().int().min(0).max(CUSTOM_HAND_MAX),
+  dosta: TeamSideValidation.nullable().optional(),
 });
 export type AdminHand = z.infer<typeof AdminHandValidation>;
 
@@ -27,6 +30,7 @@ export type PadHand = {
   total1: number;
   total2: number;
   custom: boolean;
+  dosta: TeamSide | null;
 };
 
 export type PadMatch = {
@@ -35,6 +39,7 @@ export type PadMatch = {
   number: number;
   score1: number;
   score2: number;
+  // the points to reach: 41, raised by a tie
   threshold: number;
   winner: 1 | 2 | null;
   hands: PadHand[];

@@ -1,6 +1,6 @@
 import {prisma} from "@/app/_lib/prisma";
 import {MatchAllIncluded, transformMatch} from "@/app/_lib/helpers/databaseHelpers";
-import {MATCH_THRESHOLD, matchWinner} from "@/app/_lib/game/scoring";
+import {MATCH_THRESHOLD, matchState} from "@/app/_lib/game/scoring";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {closeRound, lockRound, MATCHES_PER_ROUND} from "@/app/_lib/service/round/finish";
 import {combineDateAndTime} from "@/app/_lib/dates";
@@ -35,14 +35,14 @@ export async function finishOngoingMatch(ongoingMatchId: number): Promise<Finish
     });
 
     const threshold = ongoingMatch.score_threshold ?? MATCH_THRESHOLD;
-    const winner = matchWinner(ongoingMatch.player_pair1_score, ongoingMatch.player_pair2_score, threshold);
+    const {winner, target} = matchState(ongoingMatch.results, threshold);
     if (winner === null) {
-      throw new InvalidResultError(`Neither team has reached ${threshold} yet.`);
+      throw new InvalidResultError(`Neither team has reached ${target} yet.`);
     }
 
     await tx.match.create({
       data: {
-        ...transformMatch(ongoingMatch as MatchAllIncluded),
+        ...transformMatch(ongoingMatch as MatchAllIncluded, winner),
         // the ongoing match stores only the time of day; the finished match keeps a full timestamp
         start_time: combineDateAndTime(ongoingMatch.match_date, ongoingMatch.start_time),
         end_time: new Date(),
@@ -67,6 +67,7 @@ export async function finishOngoingMatch(ongoingMatchId: number): Promise<Finish
       return {roundId, roundFinished: true, nextOngoingMatchId: null};
     }
 
+    // the next match starts from the round's threshold again (41), whatever this one was raised to
     const now = new Date();
     const nextMatch = await tx.ongoingMatch.create({
       data: {round_id: roundId, score_threshold: threshold, match_date: now, start_time: now},

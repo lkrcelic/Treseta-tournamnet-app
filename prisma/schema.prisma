@@ -264,6 +264,9 @@ model Match {
   player_pair1_score Int       @default(0)
   player_pair2_score Int       @default(0)
   score_threshold    Int?
+  // 1 or 2: the team that won ("s ovim dosta" can win with fewer points); null when an edit left it without a
+  // winner. CHECK constraint added in the migration script
+  winner_side        Int?
   start_time         DateTime?
   end_time           DateTime?
   match_date         DateTime? @default(now()) @db.Date
@@ -286,14 +289,16 @@ model OngoingMatch {
   results OngoingResult[]
 }
 
-// One hand of a finished match. Normally the two teams' points add up to 11; a custom hand (akuže and the like) is
-// typed freely.
+// One hand of a finished match. Normally the two teams' points add up to 11; a custom hand (one cut short by
+// "s ovim dosta", or a correction) is typed freely.
 model Result {
   result_id         Int     @id @default(autoincrement())
   match_id          Int
   team1_game_points Int     @default(0)
   team2_game_points Int     @default(0)
   custom            Boolean @default(false)
+  // 1 or 2: the team that called "s ovim dosta" on this hand; CHECK constraint added in the migration script
+  dosta_side        Int?
 
   match Match @relation(fields: [match_id], references: [id], onDelete: Cascade)
 }
@@ -305,6 +310,7 @@ model OngoingResult {
   team1_game_points Int     @default(0)
   team2_game_points Int     @default(0)
   custom            Boolean @default(false)
+  dosta_side        Int?
 
   match OngoingMatch @relation(fields: [match_id], references: [id], onDelete: Cascade)
 }

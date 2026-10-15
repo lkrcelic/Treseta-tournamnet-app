@@ -2,6 +2,7 @@ import {Prisma} from "@prisma/client";
 import {BYE_TEAM_ID, isByeTeam} from "@/app/_lib/bye";
 import {RatedRound, replaySeason} from "@/app/_lib/rating/season";
 import {ratedPlayerIds} from "@/app/_lib/lineup";
+import {ratedMatch} from "@/app/_lib/game/scoring";
 
 // Recalculation after an admin changes results that were already counted (edited hands of a finished match, a table
 // re-paired or removed, a round deleted).
@@ -51,7 +52,7 @@ export async function replayRatings(tx: Prisma.TransactionClient) {
       team1: {select: {teamPlayers: {select: {player_id: true}}}},
       team2: {select: {teamPlayers: {select: {player_id: true}}}},
       roundPlayers: {select: {player_id: true, team_id: true}},
-      matches: {select: {player_pair1_score: true, player_pair2_score: true}, orderBy: {id: "asc"}},
+      matches: {select: {player_pair1_score: true, player_pair2_score: true, winner_side: true}, orderBy: {id: "asc"}},
     },
   });
 
@@ -59,7 +60,7 @@ export async function replayRatings(tx: Prisma.TransactionClient) {
     night: r.round_date!.toISOString().slice(0, 10),
     teamA: ratedPlayerIds(r.roundPlayers, r.team1_id, r.team1.teamPlayers.map((p) => p.player_id)),
     teamB: ratedPlayerIds(r.roundPlayers, r.team2_id, r.team2.teamPlayers.map((p) => p.player_id)),
-    matches: r.matches.map((m) => [m.player_pair1_score, m.player_pair2_score]),
+    matches: r.matches.map(ratedMatch),
     wins: [r.team1_wins, r.team2_wins],
   }));
   const {ratings, history} = replaySeason(players.map((p) => p.id), rated);

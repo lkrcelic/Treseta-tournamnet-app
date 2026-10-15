@@ -6,6 +6,7 @@ interface ResultTransformed {
   team1_game_points: number,
   team2_game_points: number,
   custom: boolean,
+  dosta_side: number | null,
 }
 
 export function transformResult(result: ResultCreateRequest): ResultTransformed {
@@ -14,6 +15,7 @@ export function transformResult(result: ResultCreateRequest): ResultTransformed 
     team1_game_points: result.team1_game_points,
     team2_game_points: result.team2_game_points,
     custom: result.custom ?? false,
+    dosta_side: result.dosta_side ?? null,
   };
 }
 
@@ -34,6 +36,7 @@ export interface MatchAllIncluded {
     team1_game_points: number,
     team2_game_points: number,
     custom: boolean,
+    dosta_side: number | null,
   }[]
 }
 
@@ -42,18 +45,20 @@ interface MatchTransformed {
   player_pair1_score: number,
   player_pair2_score: number,
   score_threshold: number | null,
+  winner_side: number,
   start_time: Date | null,
   end_time: Date | null,
   match_date: Date | null,
   results: object
 }
 
-export function transformMatch(match: MatchAllIncluded): MatchTransformed {
+export function transformMatch(match: MatchAllIncluded, winnerSide: number): MatchTransformed {
   return {
     round_id: match.round_id,
     player_pair1_score: match.player_pair1_score,
     player_pair2_score: match.player_pair2_score,
     score_threshold: match.score_threshold,
+    winner_side: winnerSide,
     start_time: match.start_time,
     end_time: match.end_time,
     match_date: match.match_date,
@@ -62,6 +67,7 @@ export function transformMatch(match: MatchAllIncluded): MatchTransformed {
         team1_game_points: res.team1_game_points,
         team2_game_points: res.team2_game_points,
         custom: res.custom,
+        dosta_side: res.dosta_side,
       })),
     },
   };

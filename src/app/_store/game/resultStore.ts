@@ -5,7 +5,7 @@ import {CUSTOM_HAND_MAX, HAND_POINTS} from "@/app/_lib/game/scoring";
 
 // The hand being entered on the scoreboard (phone screen or desktop panel). Persisted, so a reload mid-entry keeps it.
 //   normal: the active team's points are typed, the other team gets the rest of 11
-//   custom: the "Custom" key, each team's points are typed on their own (akuže and the like)
+//   custom: the "Custom" key, each team's points are typed on their own (a hand cut short by "s ovim dosta")
 
 type ResultTypeExtended = Partial<ResultResponse> & {
   team1_game_points: number;

@@ -5,11 +5,12 @@ import {PadHand, PadMatch, TablePad} from "@/app/_interfaces/adminHand";
 import useIsAdmin from "@/app/_hooks/useIsAdmin";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import {blankEntry, EntryState, fromPadHand, toAdminHand} from "@/app/_lib/ui/adminEntry";
-import {MATCH_THRESHOLD} from "@/app/_lib/game/scoring";
+import {dostaCallers, MATCH_THRESHOLD, PlayedHand, Side} from "@/app/_lib/game/scoring";
 import {color, teamColor} from "@/app/_styles/tokens";
 import {buttonBase, Card, CenteredSpinner, DesktopShell, EmptyState, ErrorNote, Screen} from "@/app/_ui/sp";
 import {HandList, ScorePanel} from "@/app/ongoing-match/ui/BoardParts";
 import AdminEntryPanel from "@/app/league/[leagueId]/daily-standings/table/AdminEntryPanel";
+import {DostaPrompt, DostaTeam, TargetFlag} from "@/app/ongoing-match/ui/MatchEnd";
 import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
 import HistoryEduRoundedIcon from "@mui/icons-material/HistoryEduRounded";
 import {Box} from "@mui/material";
@@ -18,6 +19,9 @@ import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import React, {useCallback, useEffect, useState} from "react";
 
 const THRESHOLD = MATCH_THRESHOLD;
+
+const playedHands = (m: PadMatch): PlayedHand[] =>
+  m.hands.map((h) => ({team1_game_points: h.total1, team2_game_points: h.total2, dosta_side: h.dosta}));
 
 // The admin scorepad of one Daily table: every hand of its matches, finished or being played, can be added,
 // changed or deleted, also as a custom hand ("Custom"). Desktop only, like the design.
@@ -36,6 +40,9 @@ export default function TableScorepad() {
   const [editing, setEditing] = useState<PadHand | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // after a custom hand: ask about "s ovim dosta" on the match's last hand (null: the hand just added)
+  const [askDosta, setAskDosta] = useState<{match: number; hand: number | null} | null>(null);
+  const [dostaError, setDostaError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -81,13 +88,14 @@ export default function TableScorepad() {
     setError(null);
   };
 
-  const run = async (action: () => Promise<unknown>, fallback: string) => {
+  const run = async (action: () => Promise<unknown>, fallback: string, after?: () => void) => {
     setSaving(true);
     setError(null);
     try {
       await action();
       await load();
       resetEntry();
+      after?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : fallback);
     }
@@ -96,9 +104,10 @@ export default function TableScorepad() {
   const save = () => {
     if (!match || saving) return;
     const hand = toAdminHand(entry);
-    if (editing) return run(() => updateHandAPI(match.kind, editing.id, hand), "Igra nije spremljena.");
+    const ask = hand.custom ? () => setAskDosta({match: match.number, hand: editing?.id ?? null}) : undefined;
+    if (editing) return run(() => updateHandAPI(match.kind, editing.id, hand), "Igra nije spremljena.", ask);
     const target: HandTarget = match.kind === "finished" ? {kind: "finished", matchId: match.id} : {kind: "ongoing"};
-    return run(() => addHandAPI(roundId, target, hand), "Igra nije spremljena.");
+    return run(() => addHandAPI(roundId, target, hand), "Igra nije spremljena.", ask);
   };
   const remove = () => {
     if (!match || !editing) return;
@@ -109,6 +118,34 @@ export default function TableScorepad() {
       await finishTableMatchAPI(roundId);
       setSelected(null); // show the next match (or the last one when the round is over)
     }, "Meč nije završen.");
+
+  const names: [string, string] = pad ? [pad.team1.name, pad.team2.name] : ["", ""];
+
+  // the teams that reached the target with that custom hand (none: nothing to ask)
+  const askMatch = askDosta ? matches.find((m) => m.number === askDosta.match) : undefined;
+  const askHand = askMatch?.hands[askMatch.hands.length - 1];
+  const dostaTeams: DostaTeam[] =
+    askMatch && askHand?.custom && !askHand.dosta && (askDosta?.hand == null || askDosta.hand === askHand.id)
+      ? dostaCallers(playedHands(askMatch), THRESHOLD).map((side) => ({side, name: names[side - 1], color: teamColor[side - 1]}))
+      : [];
+  const pickDosta = async (side: Side) => {
+    if (!askMatch || !askHand) return;
+    setSaving(true);
+    setDostaError(null);
+    try {
+      const hand = {custom: true, points1: askHand.total1, points2: askHand.total2, dosta: side};
+      await updateHandAPI(askMatch.kind, askHand.id, hand);
+      await load();
+      setAskDosta(null);
+    } catch (e) {
+      setDostaError(e instanceof Error ? e.message : "Nije spremljeno.");
+    }
+    setSaving(false);
+  };
+  const skipDosta = () => {
+    setAskDosta(null);
+    setDostaError(null);
+  };
 
   if (!isDesktop) {
     return (
@@ -121,7 +158,6 @@ export default function TableScorepad() {
   }
 
   const back = pad?.date && pad.roundNumber ? {label: `Round ${pad.roundNumber}`, href: `/league/${leagueId}/daily-standings?date=${pad.date}&round=${pad.roundNumber}`} : {label: "Daily", href: `/league/${leagueId}/daily-standings`};
-  const names: [string, string] = pad ? [pad.team1.name, pad.team2.name] : ["", ""];
   const state = !pad ? "" : pad.done ? `Meč ${match?.number ?? 1} · završeno` : match?.kind === "ongoing" && match.id === 0 && match.number === 1 ? "nije počelo" : "uživo";
 
   return (
@@ -131,9 +167,12 @@ export default function TableScorepad() {
       eyebrow={pad ? `Stol ${pad.table ?? "–"} · Round ${pad.roundNumber ?? "–"} · ${state}` : "Admin"}
       title={pad ? `${pad.team1.name} vs ${pad.team2.name}` : "Stol"}
       right={
-        <Box sx={{height: 36, display: "flex", alignItems: "center", gap: "6px", pl: "10px", pr: "14px", borderRadius: "18px", background: color.navy, color: "#FFFFFF", fontSize: 13, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", whiteSpace: "nowrap", "& svg": {fontSize: 18}}}>
-          <AdminPanelSettingsRoundedIcon />
-          Admin · uređivanje
+        <Box sx={{display: "flex", alignItems: "center", gap: "10px"}}>
+          {match && dostaTeams.length === 0 && <TargetFlag target={match.threshold} />}
+          <Box sx={{height: 36, display: "flex", alignItems: "center", gap: "6px", pl: "10px", pr: "14px", borderRadius: "18px", background: color.navy, color: "#FFFFFF", fontSize: 13, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", whiteSpace: "nowrap", "& svg": {fontSize: 18}}}>
+            <AdminPanelSettingsRoundedIcon />
+            Admin · uređivanje
+          </Box>
         </Box>
       }
     >
@@ -156,7 +195,8 @@ export default function TableScorepad() {
               <Box sx={{display: "grid", gridTemplateColumns: `repeat(${matches.length}, minmax(0,1fr))${pad.done ? " minmax(0,1.3fr)" : ""}`, gap: "10px", alignItems: "stretch"}}>
                 {matches.map((m) => {
                   const on = m.number === match.number;
-                  const sub = m.kind === "ongoing" ? (m.id ? "U tijeku" : "Nije počeo") : m.winner ? `Pobjeda: ${names[m.winner - 1]}` : "Bez pobjednika";
+                  const result = m.kind === "ongoing" ? (m.id ? "U tijeku" : "Nije počeo") : m.winner ? `Pobjeda: ${names[m.winner - 1]}` : "Bez pobjednika";
+                  const sub = m.threshold > MATCH_THRESHOLD ? `${result} · do ${m.threshold}` : result;
                   return (
                     <Box
                       key={m.number}
@@ -237,6 +277,7 @@ export default function TableScorepad() {
           />
         </Box>
       )}
+      <DostaPrompt teams={dostaTeams} onPick={pickDosta} onSkip={skipDosta} busy={saving} error={dostaError} />
     </DesktopShell>
   );
 }

@@ -18,7 +18,7 @@ npm run dev:reset       # migrates, seeds the users admin / player (password: si
 ## Shared code with the Bela app
 
 Most of the code is the Bela app's (`../Bela-Treseta-Tournamnet-app`, "Piatnik Bela Liga"), with Treseta's game rules:
-11 points a hand (or a custom hand), matches to 41, two matches a round.
+11 points a hand (or a custom hand), matches to 41 (51, 61 … after a tie), "s ovim dosta", two matches a round.
 
 The Bela app is primary. A scheduled Claude Code task brings its new commits here every night at 04:00, onto the branch
 `bela-sync`, and keeps what Treseta does differently. [BELA_SYNC.md](BELA_SYNC.md) has the Bela commit it has

@@ -41,22 +41,32 @@ export function discardHand() {
 }
 
 // Saves the entered hand (new, or an update of `resultId`). Throws with the server's message when it is refused.
+// Saving a hand clears its "s ovim dosta" call: the scoreboard asks again after a custom hand.
 export async function saveHand(matchId: number, resultId?: number | string | null) {
   const {team1_game_points, team2_game_points, custom} = useResultStore.getState().resultData;
   const data = {match_id: matchId, team1_game_points, team2_game_points, custom};
 
   if (resultId) {
     await updateOngoingResultAPI({resultId: String(resultId), result: data});
-    markHand(matchId, {flash: Number(resultId)});
+    markHand(matchId, {flash: Number(resultId), askDosta: custom ? Number(resultId) : undefined});
   } else {
     const saved = await createOngoingResultAPI({result: data});
-    markHand(matchId, {added: saved?.result_id ?? null});
+    const added = saved?.result_id ?? null;
+    markHand(matchId, {added, askDosta: custom && added != null ? added : undefined});
   }
   discardHand();
 }
 
-// Remembers which hand was just added or edited, so the scoreboard can animate it when it loads again
-type Mark = {added?: number | null; flash?: number};
+// Marks a saved custom hand (its points unchanged) as the one where `side` called "s ovim dosta"
+export async function callDosta(matchId: number, resultId: number, points: [number, number], side: 1 | 2) {
+  const [team1_game_points, team2_game_points] = points;
+  const data = {match_id: matchId, team1_game_points, team2_game_points, custom: true, dosta_side: side};
+  await updateOngoingResultAPI({resultId: String(resultId), result: data});
+}
+
+// Remembers which hand was just added or edited, so the scoreboard can animate it when it loads again, and the
+// custom hand to ask "s ovim dosta" about
+type Mark = {added?: number | null; flash?: number; askDosta?: number};
 const marks = new Map<number, Mark & {at: number}>();
 
 function markHand(matchId: number, mark: Mark) {

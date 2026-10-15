@@ -72,12 +72,12 @@ test("whatever the scorepad lets an admin save, the server accepts, and the othe
 });
 
 test("a saved hand opens with its points, a custom one as custom", () => {
-  const std = fromPadHand({id: 1, total1: 7, total2: 4, custom: false});
+  const std = fromPadHand({id: 1, total1: 7, total2: 4, custom: false, dosta: null});
   assert.equal(std.mode, "std");
   assert.deepEqual(std.points, [7, 4]);
   assert.equal(std.fresh, true);
 
-  const custom = fromPadHand({id: 2, total1: 14, total2: 3, custom: true});
+  const custom = fromPadHand({id: 2, total1: 14, total2: 3, custom: true, dosta: 1});
   assert.equal(custom.mode, "man");
   assert.deepEqual(custom.points, [14, 3]);
 });

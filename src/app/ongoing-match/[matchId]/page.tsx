@@ -5,7 +5,7 @@ import {getOngoingMatchAPI, OngoingMatchGoneError} from "@/app/_fetchers/ongoing
 import {getRoundDataAPI} from "@/app/_fetchers/round/getOne";
 import useCountUp from "@/app/_hooks/useCountUp";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
-import {MATCH_THRESHOLD, matchWinner} from "@/app/_lib/game/scoring";
+import {dostaCallers, MATCH_THRESHOLD, matchState, PlayedHand, Side} from "@/app/_lib/game/scoring";
 import useRoundStore from "@/app/_store/RoundStore";
 import useOngoingMatchStore from "@/app/_store/ongoingMatchStore";
 import {color, teamColor} from "@/app/_styles/tokens";
@@ -13,7 +13,8 @@ import {buttonBase, CenteredSpinner, DesktopShell, ErrorNote, Eyebrow, PrimaryBu
 import {currentRoundPath} from "@/app/ongoing-match/ui/currentRoundPath";
 import {HandList, HandRow, ScorePanel} from "@/app/ongoing-match/ui/BoardParts";
 import HandEntryPanel from "@/app/ongoing-match/ui/HandEntryPanel";
-import {markEntryOpened, openHandForEdit, previousTotals, rememberTotals, startNewHand, takeHandMark} from "@/app/ongoing-match/ui/handFlow";
+import {callDosta, markEntryOpened, openHandForEdit, previousTotals, rememberTotals, startNewHand, takeHandMark} from "@/app/ongoing-match/ui/handFlow";
+import {DostaPrompt, DostaTeam, TargetFlag} from "@/app/ongoing-match/ui/MatchEnd";
 import useMatchSides from "@/app/ongoing-match/ui/useMatchSides";
 import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
 import DoneRoundedIcon from "@mui/icons-material/DoneRounded";
@@ -45,6 +46,10 @@ export default function ScoreBoardPage() {
   const [opening, setOpening] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [mark, setMark] = useState<ReturnType<typeof takeHandMark>>(null);
+  // the custom hand just saved here, to ask "s ovim dosta" about
+  const [dostaHand, setDostaHand] = useState<number | null>(null);
+  const [dostaBusy, setDostaBusy] = useState(false);
+  const [dostaError, setDostaError] = useState<string | null>(null);
   const [popPip] = useState(() => {
     const p = pipPops.get(matchId);
     pipPops.delete(matchId);
@@ -65,7 +70,10 @@ export default function ScoreBoardPage() {
       const m = await getOngoingMatchAPI(matchId);
       setOngoingMatch(m);
       if (m.round_id) setRoundData(await getRoundDataAPI(Number(m.round_id)));
-      setMark(takeHandMark(matchId));
+      const handMark = takeHandMark(matchId);
+      setMark(handMark);
+      // only set, never cleared here: the mark is read once, and a second load (React's dev double mount) finds none
+      if (handMark?.askDosta != null) setDostaHand(handMark.askDosta);
     } catch (error) {
       if (error instanceof OngoingMatchGoneError) {
         await followFinishedMatch();
@@ -106,9 +114,30 @@ export default function ScoreBoardPage() {
 
   const p = (side: 1 | 2) => (side === 1 ? match.player_pair1_score : match.player_pair2_score) ?? 0;
   const totals: [number, number] = [p(sides.left), p(sides.right)];
-  const threshold = match.score_threshold ?? MATCH_THRESHOLD;
-  const winnerSide = loading ? null : matchWinner(match.player_pair1_score ?? 0, match.player_pair2_score ?? 0, threshold);
-  const winner = winnerSide == null ? null : winnerSide === sides.left ? 0 : 1;
+  // the rules play the hands in order: the target goes up on a tie, and "s ovim dosta" decides the winner
+  const results = match.results ?? [];
+  const hands: PlayedHand[] = results.map((r) => ({
+    team1_game_points: r.team1_game_points,
+    team2_game_points: r.team2_game_points,
+    dosta_side: r.dosta_side,
+  }));
+  const firstTarget = match.score_threshold ?? MATCH_THRESHOLD;
+  const state = matchState(hands, firstTarget);
+  const threshold = state.target;
+  const indexOf = (side: Side): 0 | 1 => (side === sides.left ? 0 : 1);
+
+  // after a custom hand that took a team to the target: did anyone call "s ovim dosta"? (only on this phone)
+  const lastHand = results[results.length - 1];
+  const dostaTeams: DostaTeam[] =
+    dostaHand != null && lastHand?.result_id === dostaHand && !lastHand.dosta_side
+      ? dostaCallers(hands, firstTarget)
+          .map((side) => ({side, name: sides.names[indexOf(side)], color: teamColor[indexOf(side)]}))
+          .sort((a, b) => indexOf(a.side) - indexOf(b.side))
+      : [];
+  const asking = dostaTeams.length > 0;
+
+  const winnerSide = loading || asking ? null : state.winner;
+  const winner = winnerSide == null ? null : indexOf(winnerSide);
 
   // totals only count up when they change while watching (or right after saving a hand), not on first open
   const firstView = useRef(true);
@@ -174,6 +203,29 @@ export default function ScoreBoardPage() {
       setFinishing(false);
     }
   };
+
+  const pickDosta = async (side: Side) => {
+    if (!lastHand) return;
+    setDostaBusy(true);
+    setDostaError(null);
+    try {
+      await callDosta(matchId, lastHand.result_id, [lastHand.team1_game_points, lastHand.team2_game_points], side);
+      setOngoingMatch(await getOngoingMatchAPI(matchId));
+      setDostaHand(null);
+    } catch (error) {
+      setDostaError(error instanceof Error ? error.message : "Nije spremljeno. Pokušaj ponovo.");
+    }
+    setDostaBusy(false);
+  };
+  const skipDosta = () => {
+    setDostaHand(null);
+    setDostaError(null);
+  };
+  const dostaPrompt = (
+    <DostaPrompt teams={dostaTeams} onPick={pickDosta} onSkip={skipDosta} busy={dostaBusy} error={dostaError} />
+  );
+  // shown once the question is answered
+  const targetFlag = !asking && <TargetFlag target={state.target} />;
 
   const openPhone = async (resultId: number) => {
     if (opening != null) return;
@@ -252,15 +304,18 @@ export default function ScoreBoardPage() {
         eyebrow={matchLabel}
         title={`${sides.names[0]} vs ${sides.names[1]}`}
         right={
-          sides.tableNumber != null && (
-            <Box
-              sx={{display: "flex", alignItems: "center", gap: "10px", height: 44, px: "16px", borderRadius: "22px", background: color.card, fontSize: 15, fontWeight: 600, boxShadow: "0 1px 3px rgba(31,36,51,.06)"}}
-            >
-              <TableRestaurantRoundedIcon sx={{fontSize: 20, color: color.navy}} />
-              Stol {sides.tableNumber}
-              {sides.roundNumber != null && ` · Round ${sides.roundNumber}`}
-            </Box>
-          )
+          <Box sx={{display: "flex", alignItems: "center", gap: "10px"}}>
+            {targetFlag}
+            {sides.tableNumber != null && (
+              <Box
+                sx={{display: "flex", alignItems: "center", gap: "10px", height: 44, px: "16px", borderRadius: "22px", background: color.card, fontSize: 15, fontWeight: 600, boxShadow: "0 1px 3px rgba(31,36,51,.06)"}}
+              >
+                <TableRestaurantRoundedIcon sx={{fontSize: 20, color: color.navy}} />
+                Stol {sides.tableNumber}
+                {sides.roundNumber != null && ` · Round ${sides.roundNumber}`}
+              </Box>
+            )}
+          </Box>
         }
       >
         <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) 460px", gap: "20px"}}>
@@ -273,7 +328,8 @@ export default function ScoreBoardPage() {
               <Box sx={{p: "20px", borderRadius: "24px", background: color.card, display: "flex", flexDirection: "column", gap: "8px"}}>
                 <Eyebrow>Kraj meča</Eyebrow>
                 <Box sx={{fontSize: 17, fontWeight: 600}}>
-                  Pobjednik meča: {sides.names[winner]}. Klikni na igru za ispravak ili završi meč.
+                  Pobjednik meča: {sides.names[winner]}
+                  {state.calledBy != null && " (s ovim dosta)"}. Klikni na igru za ispravak ili završi meč.
                 </Box>
               </Box>
               {finishError && <ErrorNote>{finishError}</ErrorNote>}
@@ -294,6 +350,7 @@ export default function ScoreBoardPage() {
             />
           )}
         </Box>
+        {dostaPrompt}
       </DesktopShell>
     );
   }
@@ -328,6 +385,7 @@ export default function ScoreBoardPage() {
             <HomeRoundedIcon />
           </Box>
           <Eyebrow>{matchLabel}</Eyebrow>
+          <Box sx={{position: "absolute", right: "-6px", top: "6px"}}>{targetFlag}</Box>
         </Box>
         <Box sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "12px"}}>{panels("phone")}</Box>
       </Box>
@@ -340,6 +398,7 @@ export default function ScoreBoardPage() {
           </PrimaryButton>
         )}
       </Box>
+      {dostaPrompt}
     </Screen>
   );
 }

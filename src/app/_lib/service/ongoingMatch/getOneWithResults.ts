@@ -16,6 +16,8 @@ export async function getOngoingMatchWithResults(id: number): Promise<OngoingMat
           result_id: true,
           team1_game_points: true,
           team2_game_points: true,
+          custom: true,
+          dosta_side: true,
         },
       },
     },

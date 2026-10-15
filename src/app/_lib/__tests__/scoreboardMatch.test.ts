@@ -4,22 +4,29 @@ import {test} from "node:test";
 import {TeamSide} from "@/app/_interfaces/side";
 import {RoundExtendedResponse} from "@/app/_interfaces/round";
 import {myTeamIsTeam1} from "@/app/_hooks/useOpenTable";
-import {HAND_POINTS, MATCH_THRESHOLD, matchWinner} from "@/app/_lib/game/scoring";
+import {dostaCallers, HAND_POINTS, matchState, PlayedHand} from "@/app/_lib/game/scoring";
 import {InvalidResultError, normalizeResult} from "@/app/_lib/validation/validateResult";
 import {enterHand, HandPlan} from "./helpers/handEntry";
 
 // The scoreboard end to end without a database: hands are entered through the same store steps as the screens,
-// checked like the API does (normalizeResult), and added to the match score like createResult does, which refuses
-// hands once the match has a winner.
+// checked like the API does (normalizeResult), and played like createResult does: the hands replayed in order
+// (matchState), refused once the match has a winner. "s ovim dosta" is the scoreboard's question after a custom hand.
 
 class Match {
-  scores: [number, number] = [0, 0];
-  hands: [number, number][] = [];
+  hands: PlayedHand[] = [];
 
   constructor(readonly id = 1) {}
 
+  get state() {
+    return matchState(this.hands);
+  }
+
+  get scores(): [number, number] {
+    return [this.state.score1, this.state.score2];
+  }
+
   get winner(): TeamSide | null {
-    return matchWinner(this.scores[0], this.scores[1], MATCH_THRESHOLD);
+    return this.state.winner;
   }
 
   play(plan: HandPlan) {
@@ -28,9 +35,14 @@ class Match {
     const saved = normalizeResult(sent);
     // what the phone showed is what the server stores
     assert.deepEqual(saved, sent, `client and server disagree on ${JSON.stringify(plan)}`);
-    this.scores = [this.scores[0] + saved.team1_game_points, this.scores[1] + saved.team2_game_points];
-    this.hands.push([saved.team1_game_points, saved.team2_game_points]);
+    this.hands.push({team1_game_points: saved.team1_game_points, team2_game_points: saved.team2_game_points});
     return saved;
+  }
+
+  // the answer to "Je li netko zvao 's ovim dosta'?" after the last hand
+  callDosta(side: TeamSide) {
+    if (!dostaCallers(this.hands).includes(side)) throw new InvalidResultError("This team can't have called it.");
+    this.hands[this.hands.length - 1] = {...this.hands[this.hands.length - 1], dosta_side: side};
   }
 }
 
@@ -58,7 +70,7 @@ test("a whole match: the first team over 41 wins and no more hands are taken", (
   const hands: HandPlan[] = [
     {typedFor: 1, typed: "8"}, // 8 : 3
     {typedFor: 2, typed: "6"}, // 5 : 6
-    {custom: ["14", "3"]}, // 14 : 3 with akuže
+    {custom: ["14", "3"]}, // 14 : 3 typed by hand
     {typedFor: 1, typed: "11"}, // 11 : 0
     {typedFor: 1, typed: "0"}, // 0 : 11
   ];
@@ -73,14 +85,63 @@ test("a whole match: the first team over 41 wins and no more hands are taken", (
   assert.equal(m.hands.length, 6);
 });
 
-test("both teams over 41 in the same hand: the higher score wins; a tie plays on", () => {
+test("both teams over 41 in the same hand: the higher score wins; a tie plays on to 51", () => {
   const m = new Match();
-  m.scores = [38, 39];
+  m.play({custom: ["38", "39"]});
   m.play({custom: ["4", "3"]}); // 42 : 42
-  assert.equal(m.winner, null);
+  assert.deepEqual([m.winner, m.state.target], [null, 51]);
   m.play({typedFor: 2, typed: "5"}); // 6 : 5
   assert.deepEqual(m.scores, [48, 47]);
+  assert.equal(m.winner, null);
+  m.play({typedFor: 1, typed: "4"}); // 4 : 7
+  assert.deepEqual(m.scores, [52, 54]);
+  assert.equal(m.winner, 2);
+});
+
+test("a tie from normal hands: no question, the match plays on to 51", () => {
+  const m = new Match();
+  for (const typed of ["6", "5", "6", "5", "6", "5", "6", "5"]) m.play({typedFor: 1, typed}); // 44 : 44
+  assert.deepEqual(m.scores, [44, 44]);
+  assert.deepEqual([m.winner, m.state.target], [null, 51]);
+});
+
+test("s ovim dosta: the custom hand, then the question; the calling team wins with fewer points", () => {
+  const m = new Match();
+  m.play({custom: ["30", "40"]});
+  m.play({custom: ["11", "4"]}); // 41 : 44, the hand stopped when team 1 called
+  assert.deepEqual(dostaCallers(m.hands), [1, 2]);
+  assert.equal(m.winner, 2); // until the question is answered
+  m.callDosta(1);
   assert.equal(m.winner, 1);
+  assert.throws(() => m.play({typedFor: 1, typed: "6"}), /already over/);
+});
+
+test("s ovim dosta at 41 : 41 wins; without it the target goes to 51", () => {
+  const called = new Match();
+  called.play({custom: ["35", "35"]});
+  called.play({custom: ["6", "6"]});
+  called.callDosta(2);
+  assert.equal(called.winner, 2);
+
+  const notCalled = new Match();
+  notCalled.play({custom: ["35", "35"]});
+  notCalled.play({custom: ["6", "6"]});
+  assert.deepEqual([notCalled.winner, notCalled.state.target], [null, 51]);
+});
+
+test("only a team that reached the target can have called it", () => {
+  const m = new Match();
+  m.play({custom: ["30", "20"]});
+  m.play({custom: ["11", "4"]}); // 41 : 24
+  assert.deepEqual(dostaCallers(m.hands), [1]);
+  assert.throws(() => m.callDosta(2), /can't have called/);
+});
+
+test("the server takes s ovim dosta only on a custom hand", () => {
+  const normal = {...enterHand(1, {typedFor: 1, typed: "6"}), dosta_side: 1 as const};
+  assert.throws(() => normalizeResult(normal), /ručnim unosom/);
+  const custom = {...enterHand(1, {custom: ["11", "4"]}), dosta_side: 1 as const};
+  assert.equal(normalizeResult(custom).dosta_side, 1);
 });
 
 test("phone and server agree on every possible hand", () => {

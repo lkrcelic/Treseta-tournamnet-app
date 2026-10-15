@@ -3,6 +3,7 @@ import {BYE_TEAM_ID} from "@/app/_lib/bye";
 import {ratedPlayerIds} from "@/app/_lib/lineup";
 import {PROVISIONAL_ROUNDS} from "@/app/_lib/rating/glicko2";
 import {roundGames} from "@/app/_lib/rating/season";
+import {ratedMatch} from "@/app/_lib/game/scoring";
 import {RATINGS_FROM} from "@/app/_lib/service/admin/recalc";
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {PlayerRatingDetail, RatingNight, RatingRow, RatingsList} from "@/app/_interfaces/ratings";
@@ -103,7 +104,7 @@ async function lastNights(playerId: number, nights: {night: Date; change: number
       team1: {select: {team_name: true, teamPlayers: {select: {player_id: true}}}},
       team2: {select: {team_name: true, teamPlayers: {select: {player_id: true}}}},
       roundPlayers: {select: {player_id: true, team_id: true}},
-      matches: {select: {player_pair1_score: true, player_pair2_score: true}, orderBy: {id: "asc"}},
+      matches: {select: {player_pair1_score: true, player_pair2_score: true, winner_side: true}, orderBy: {id: "asc"}},
     },
   });
 
@@ -120,7 +121,7 @@ async function lastNights(playerId: number, nights: {night: Date; change: number
         night: out.night,
         teamA,
         teamB,
-        matches: r.matches.map((m) => [m.player_pair1_score, m.player_pair2_score]),
+        matches: r.matches.map(ratedMatch),
         wins: [r.team1_wins, r.team2_wins],
       });
       for (const g of games) {
