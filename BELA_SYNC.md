@@ -9,7 +9,7 @@ own; everything else is kept identical to Bela.
 | | |
 |---|---|
 | Bela branch | `development`, read through the remote `bela` (the local Bela repo). Only commits come over, never Bela's uncommitted work |
-| Last synced Bela commit | `e39abc1` (14 Oct 2026) |
+| Last synced Bela commit | `07a790f` (15 Oct 2026) |
 | Waiting in Bela | Nothing settled ahead (see [Bela's work waiting to come over](#belas-work-waiting-to-come-over)) |
 | Target branch | `master` |
 | Sync branch | `bela-sync` in the repo itself (no worktree): created from `master`, or rebased onto it, by every run |
@@ -31,7 +31,9 @@ app's Scheduled screen. A run that finds uncommitted changes in the repo stops w
 
 1. Switches to `bela-sync`: creates it from `master`, or, when it exists, rebases it onto `master`, so an earlier
    run's unmerged commits stay and the sync continues after them. A rebase conflict stops the run.
-2. Takes each new commit on Bela's `development`, oldest first, with `git cherry-pick -x`. A change to a shared file
+2. Takes each new commit on Bela's `development`, oldest first, with `git cherry-pick -x`. Only Bela's changes count,
+   not its shas: when Bela's history is rewritten, the last synced commit is found again by its tree (or its subject
+   and date), as on 16 Oct 2026, when `e39abc1` became `b9afd0e`. A change to a shared file
    comes over as it is; a change to one of the differences below is handled as its kind says, and the commits under
    [Bela's work waiting to come over](#belas-work-waiting-to-come-over) as that section decides.
 3. Stops at the first commit it can't bring over with confidence, keeps the ones before it, and says why.
@@ -76,7 +78,7 @@ Treseta directly only for what has to differ, and add it below.
 
 ## Bela's work waiting to come over
 
-Nothing: every Bela commit up to `e39abc1` (14 Oct 2026) came over on 14 Oct 2026, and what lasts from the decisions
+Nothing: every Bela commit up to `07a790f` (15 Oct 2026) came over on 16 Oct 2026, and what lasts from the decisions
 settled for them is under Differences. Decisions for Bela work that touches Treseta's differences before it comes
 over go here.
 
@@ -117,15 +119,16 @@ winner (`Match.winner_side`); everything else is worked out by replaying the han
 | `ongoing-match/[matchId]/ongoing-result/layout.tsx`, `…/ui/WizardHeader.tsx`, `…/ui/pages/ScorePage.tsx` | same paths, plus the trump-caller and announcement steps | Hand entry in one step: the team boxes and the keypad with Custom where Bela has Štiglja. The `new/score` and `[resultId]/score` pages are shared |
 | `ongoing-match/ui/handFlow.ts`, `ongoing-match/ui/HandEntryPanel.tsx`, `ongoing-match/[matchId]/page.tsx` | same paths | The desktop entry panel and the hand rows, without "Tko je zvao" and zvanja; after a custom hand the scoreboard asks "Je li netko zvao „s ovim dosta”?", and a raised target shows as the "Do 51" flag |
 | `ongoing-match/ui/MatchEnd.tsx` (Treseta only) | none | The "s ovim dosta" question (a bottom sheet) and the "Do 51" flag, used by the scoreboard and the admin scorepad |
-| `_lib/ui/adminEntry.ts`, `league/[leagueId]/daily-standings/table/AdminEntryPanel.tsx` | same paths | The admin scorepad: Normal and Custom, where Bela has "Ručni unos"; Custom's hint names "s ovim dosta" |
+| `_lib/ui/adminEntry.ts`, `league/[leagueId]/daily-standings/table/AdminEntryPanel.tsx` | same paths | The admin scorepad: Normal and Custom, where Bela has "Ručni unos"; Custom's hint names "s ovim dosta". `manualFields` (the phone's Custom sheet) takes 0 to `CUSTOM_HAND_MAX` (Bela: 0 to 9999) |
+| `_ui/admin/TablePhone.tsx` | same path | The admin's phone scorepad on Bela's board and sheets: one keypad step (the 11-split) where Bela has the trump caller, zvanja and points; Custom (0 to 99, a custom hand) where Bela has Ručno and Ručni unos; after a custom hand the "s ovim dosta" question (`DostaPrompt`), and the "Do 51" flag on the board |
 | `_bootstrap/refreshUser.ts`, `_utils/resetStores.ts` | same paths | No announcement store |
-| `_lib/__tests__/`: `scoring`, `serverHand`, `handEntryStores`, `scoreboardMatch`, `adminEntry` tests, `helpers/handEntry.ts` | same names | Tests of Treseta's rules |
+| `_lib/__tests__/`: `scoring`, `serverHand`, `handEntryStores`, `scoreboardMatch`, `adminEntry`, `tableOverview` tests, `helpers/handEntry.ts` | same names | Tests of Treseta's rules (`tableOverview`: Treseta's hands, 41 and Custom's 0–99) |
 
 ### Shared files with a small edit
 
 | File | Treseta's edit |
 |---|---|
-| `_hooks/useStartGame.ts`, `round/lineup/[roundId]/page.tsx` | `1001` → `MATCH_THRESHOLD` |
+| `_hooks/useStartGame.ts`, `round/lineup/[roundId]/page.tsx`, `league/[leagueId]/daily-standings/table/TablePreview.tsx` | `1001` → `MATCH_THRESHOLD` |
 | `league/[leagueId]/daily-standings/table/[roundId]/page.tsx` | `1001` → `MATCH_THRESHOLD` (the comment says "Custom" for "Ručni unos"); after a custom hand `save` passes `run` an `after` that opens the "s ovim dosta" question (`DostaPrompt`, `askDosta` and `pickDosta`); the "Do 51" flag (`TargetFlag`) next to the admin pill; a match tab adds "· do 51" |
 | `_lib/service/admin/recalc.ts`, `_lib/service/ratings/ratings.ts` | The ratings read each match's `winner_side` through `ratedMatch`, so a "s ovim dosta" win with fewer points is a win (Bela compares the points). `recalc.ts` also has `RATINGS_FROM`, below |
 | `_lib/service/round/insertPairRounds.ts` | Bye matches `BYE_MATCH_POINTS : 0` (Bela: `301 : 0`), threshold `MATCH_THRESHOLD` |
@@ -179,13 +182,14 @@ edit:
 
 | File | Treseta's edit |
 |---|---|
-| `_interfaces/league.ts`, `_lib/service/league/leagues.ts`, `_fetchers/league/leagues.ts`, `_hooks/useLeagueTeams.ts`, `api/leagues/[id]/teams/[teamId]/route.ts` | Create League takes conferences; a league's team list has each team's `conference_id`, and the team PATCH sets it |
-| `_interfaces/round.ts`, `api/rounds/generate-multiple/route.ts`, `_fetchers/round/createMultipleRounds.ts`, `_ui/round/CreateRound.tsx` | Create Round (desktop): the "Samo unutar konferencija" switch (`withinConferences`, under Rounds and Window, next to the smoking tables; the fetcher sends it after `smokingTables`) and the team list's dots. The route pairs (by conference when asked), checks repeats, then Bela's `seatRounds` only places the pairs at tables |
+| `_interfaces/league.ts`, `_lib/service/league/leagues.ts`, `_fetchers/league/leagues.ts`, `_hooks/useLeagueTeams.ts`, `api/leagues/[id]/teams/[teamId]/route.ts`, `_ui/admin/LeaguePhone.tsx` | Create League takes conferences; a league's team list has each team's `conference_id`, and the team PATCH sets it (a team added on the phone's league screen starts with `conferenceId: null`) |
+| `_interfaces/round.ts`, `api/rounds/generate-multiple/route.ts`, `_fetchers/round/createMultipleRounds.ts`, `_ui/round/CreateRound.tsx` | Create Round (desktop): the "Samo unutar konferencija" switch (`withinConferences`, under Rounds and Window, next to the smoking tables; the fetcher sends it after `smokingTables`) and the team list's dots. The switch is local state, off for every league, outside Bela's saved Novo kolo draft; `useCreateRound` also returns `hasConferences`, `withinConferences` and `setWithinConferences` for the phone. The route pairs (by conference when asked), checks repeats, then Bela's `seatRounds` only places the pairs at tables |
+| `_ui/admin/CreateRoundPhone.tsx`, `_ui/admin/DraftPhone.tsx` | The admin's phone: Novo kolo has the "Samo unutar konferencija" switch under the window, and Skica kola the teams' dots |
 | `_lib/matching/multipleRoundMatching.ts` | `generateGroupedRoundPairings` at the end of the file, which pairs every conference on its own with the unchanged pairing; a conference with too few teams throws `InvalidResultError` (a 400) |
 | `api/rounds/open/route.ts`, `_fetchers/round/getOpenByPlayerId.ts`, `_hooks/useOpenTable.ts`, `_ui/home/PhoneHome.tsx` | The Start Game card shows the two teams' conference colors (green and red in a league without conferences) |
 | `_lib/ui/standings.ts`, `_lib/ui/tables.ts`, `_ui/sp/Standings.tsx`, `_ui/sp/Controls.tsx`, `_ui/sp/index.ts`, `_lib/__tests__/conferences.test.ts` | Standings and table rows carry each team's conference (`conferenceOf` is a field of `toStandingsRows`' options; `toTableRows` has it as a third parameter), the standings draw its dot before the linked name, a tab item can have a dot, and the kit exports `TeamDot` |
 | `league/[leagueId]/daily-standings/page.tsx`, `league/[leagueId]/daily-standings/ui/RoundTables.tsx`, `league/[leagueId]/standings/page.tsx`, `_ui/home/DesktopHome.tsx`, `league/[leagueId]/manage/DraftView.tsx` | The dots (also on Skica's tables, which replaced the pairings page), and the conference filter on Daily's night table and League standings. Ukupni poredak's +/− shows on the whole league's table only, not in a conference's view |
-| `league/new/page.tsx`, `league/[leagueId]/manage/page.tsx`, `league/[leagueId]/manage/LeagueDetailsView.tsx` | Nova liga's Conferences switch and editor (and their count in its summary); Upravljanje ligom's team picker, filter and Distribute card (Podaci shows the conferences card as its `aside`) |
+| `league/new/page.tsx`, `league/[leagueId]/manage/page.tsx`, `league/[leagueId]/manage/LeagueDetailsView.tsx` | Nova liga's Conferences switch and editor before Okupljanje (and their count in its summary); Upravljanje ligom's team picker, filter and Distribute card (Podaci shows the conferences card as its `aside`, under Okupljanje in the right column) |
 
 The database part (the `Conference` table and `LeagueTeam.conference_id`) is under Database.
 
@@ -239,3 +243,4 @@ The nightly sync adds a row when it brings something over or stops.
 | 11 Oct 2026 | up to `4bf68ad` | The transition ([TRANSITION_PLAN.md](TRANSITION_PLAN.md)) |
 | 13 Oct 2026 | none | Stopped before the first commit: the run started in its own worktree and couldn't write to `.claude/worktrees/bela-sync` |
 | 14 Oct 2026 | `4bf68ad..e39abc1` (45) | 41 came over, 3 skipped (decision logs, Burza test data), the Frankfurt merge already here; 7 migrations, untested |
+| 16 Oct 2026 | `b9afd0e..07a790f` (14) | Bela's history was rewritten (`e39abc1` is now `b9afd0e`, same tree). All 14 came over: the admin's phone screens, with Treseta's hands on TablePhone and the conference switch and dots on the phone; 2 migrations (`create_round_draft`, `night_location`) |
