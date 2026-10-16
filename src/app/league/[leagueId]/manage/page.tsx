@@ -59,12 +59,15 @@ import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import ViewListRoundedIcon from "@mui/icons-material/ViewListRounded";
 import {CreateRoundView} from "@/app/_ui/round/CreateRound";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
+import HandshakeRoundedIcon from "@mui/icons-material/HandshakeRounded";
+import {useLeagueSponsors} from "@/app/_hooks/useSponsors";
+import {LeagueSponsorsDesktop} from "@/app/_ui/sponsors/LeagueSponsors";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {ReactNode, useCallback, useEffect, useMemo, useRef, useState} from "react";
 
 type Filter = "all" | "active" | "inactive";
-type View = "draft" | "create" | "teams" | "rounds" | "dates" | "details";
-const VIEWS: View[] = ["draft", "create", "teams", "rounds", "dates", "details"];
+type View = "draft" | "create" | "teams" | "rounds" | "dates" | "details" | "sponsors";
+const VIEWS: View[] = ["draft", "create", "teams", "rounds", "dates", "details", "sponsors"];
 type Row = {id: number; name: string; players: string[]; played: number | null; active: boolean; conferenceId: number | null};
 // the conference filter of the team list: every team, one conference's (its id), or the teams without one
 const ALL_CONFERENCES = 0;
@@ -125,6 +128,8 @@ function ManageLeagueDesktop() {
   }, [leagueId]);
   const draft = draftNight(leagueRounds.rounds, shownNight);
   const leagueNights = useLeagueNights(leagueId);
+  // the count on the Sponzori tab
+  const leagueSponsors = useLeagueSponsors(leagueId);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [pending, setPending] = useState<PendingRemoval | null>(null);
   const pendingRef = useRef<PendingRemoval | null>(null);
@@ -387,6 +392,7 @@ function ManageLeagueDesktop() {
         teams={rows.length}
         rounds={leagueRounds.rounds?.length ?? null}
         nights={leagueNights.nights?.length ?? null}
+        sponsors={leagueSponsors?.length ?? null}
       />
       {shown === "draft" && draft ? (
         <DraftView
@@ -426,6 +432,8 @@ function ManageLeagueDesktop() {
         <RoundsView leagueId={leagueId} data={leagueRounds} />
       ) : shown === "dates" ? (
         <DatesView leagueId={leagueId} defaults={gatheringDefaults(leagues.find((l) => l.id === leagueId))} data={leagueNights} />
+      ) : shown === "sponsors" ? (
+        <LeagueSponsorsDesktop key={leagueId} leagueId={leagueId} leagueName={leagueName} />
       ) : (
         <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) 380px", [NARROW_DESKTOP]: {gridTemplateColumns: "minmax(0,1fr) 320px"}, gap: "20px"}}>
           <Card component="section" aria-label={`Ekipe lige ${leagueName}`} sx={{minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderRadius: "24px"}}>
@@ -692,6 +700,7 @@ function ViewSwitch({
   teams,
   rounds,
   nights,
+  sponsors,
 }: {
   view: View;
   onChange: (v: View) => void;
@@ -699,6 +708,7 @@ function ViewSwitch({
   teams: number;
   rounds: number | null;
   nights: number | null;
+  sponsors: number | null;
 }) {
   const items: {key: View; label: string; icon: ReactNode; count: number | null}[] = [
     ...(draft
@@ -713,6 +723,7 @@ function ViewSwitch({
     {key: "rounds", label: "Kola", icon: <ViewListRoundedIcon />, count: rounds},
     {key: "dates", label: "Datumi", icon: <CalendarMonthRoundedIcon />, count: nights},
     {key: "details", label: "Podaci", icon: <TuneRoundedIcon />, count: null},
+    {key: "sponsors", label: "Sponzori", icon: <HandshakeRoundedIcon />, count: sponsors},
   ];
   return (
     <Box role="tablist" aria-label="Prikaz" sx={{flex: "none", alignSelf: "flex-start", display: "flex", gap: "4px", p: "4px", borderRadius: "16px", background: color.white, boxShadow: shadow.card}}>

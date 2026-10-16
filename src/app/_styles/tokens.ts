@@ -79,6 +79,7 @@ export const color = {
   green: "#386641", // team 1, positive change
   red: "#BC4749", // team 2, negative change, destructive, live
   white: "#FFFFFF", // cards; text and icons on navy, green and red
+  logoPlate: "#15181F", // the dark plate under a light sponsor logo without a background
   medal: ["#B8901C", "#8A9099", "#A0643A"],
   medalBg: ["rgba(212,168,44,.26)", "rgba(160,166,176,.26)", "rgba(176,112,64,.24)"],
   // lines and borders (navy alphas)

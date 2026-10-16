@@ -79,6 +79,9 @@ export const NOUN = {
   // "1 odabrana", "2 odabrane", "0 odabrano" (ekipe, design "0 odabrano")
   odabrana: ["odabrana", "odabrane", "odabrano"],
   znak: ["znak", "znaka", "znakova"],
+  sponzor: ["sponzor", "sponzora", "sponzora"],
+  prikaz: ["prikaz", "prikaza", "prikaza"],
+  otvaranje: ["otvaranje", "otvaranja", "otvaranja"],
 } as const satisfies Record<string, NounForms>;
 
 // A number with its noun in the right form: count(2, NOUN.ekipa) -> "2 ekipe", count(5, NOUN.igrač) -> "5 igrača"

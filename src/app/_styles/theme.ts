@@ -63,6 +63,8 @@ const themeOptions: ThemeOptions = {
           "100%": {transform: "scale(1)"},
         },
         "@keyframes spSpin": {to: {transform: "rotate(360deg)"}},
+        // the sponsors' band: slides by half its length (one of its two equal halves), so it loops without a seam
+        "@keyframes spBand": {from: {transform: "translateX(0)"}, to: {transform: "translateX(-50%)"}},
         "@keyframes spStepIn": {from: {transform: "translateX(28px)", opacity: 0}, to: {transform: "none", opacity: 1}},
         "@keyframes spStepBack": {from: {transform: "translateX(-28px)", opacity: 0}, to: {transform: "none", opacity: 1}},
         "@keyframes spFadeUp": {from: {transform: "translateY(14px)", opacity: 0}, to: {transform: "none", opacity: 1}},

@@ -8,6 +8,8 @@ import EventOutlinedIcon from "@mui/icons-material/EventOutlined";
 import EventRoundedIcon from "@mui/icons-material/EventRounded";
 import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
+import HandshakeOutlinedIcon from "@mui/icons-material/HandshakeOutlined";
+import HandshakeRoundedIcon from "@mui/icons-material/HandshakeRounded";
 import LeaderboardOutlinedIcon from "@mui/icons-material/LeaderboardOutlined";
 import LeaderboardRoundedIcon from "@mui/icons-material/LeaderboardRounded";
 import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
@@ -15,20 +17,21 @@ import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import {Box} from "@mui/material";
 import React from "react";
 
-export type AdminTab = "vecer" | "rejting" | "ekipe" | "igraci";
+export type AdminTab = "vecer" | "rejting" | "ekipe" | "igraci" | "sponzori";
 
 const TABS: {key: AdminTab; label: string; href: string; icon: React.ReactNode; iconOn: React.ReactNode}[] = [
   {key: "vecer", label: "Večer", href: "/", icon: <EventOutlinedIcon />, iconOn: <EventRoundedIcon />},
   {key: "rejting", label: "Rejting", href: "/ratings", icon: <LeaderboardOutlinedIcon />, iconOn: <LeaderboardRoundedIcon />},
   {key: "ekipe", label: "Ekipe", href: "/teams", icon: <GroupsOutlinedIcon />, iconOn: <GroupsRoundedIcon />},
   {key: "igraci", label: "Igrači", href: "/players", icon: <PersonOutlineRoundedIcon />, iconOn: <PersonRoundedIcon />},
+  {key: "sponzori", label: "Sponzori", href: "/sponzori", icon: <HandshakeOutlinedIcon />, iconOn: <HandshakeRoundedIcon />},
 ];
 
 // The bar's height above the safe area (the home indicator)
 const BAR = 58;
 
-// The admin's bottom bar on the phone (admin-mobile design): Večer, Rejting, Ekipe and Igrači. It is on the four
-// screens it opens; the screens under them have Back instead. Each tab starts the page stack afresh, like the desktop
+// The admin's bottom bar on the phone (admin-mobile design): Večer, Rejting, Ekipe, Igrači and Sponzori. It is on the
+// five screens it opens; the screens under them have Back instead. Each tab starts the page stack afresh, like the desktop
 // menu. A spacer of the bar's height keeps the end of the page clear of it (put it last in the screen).
 export function AdminTabBar({active}: {active: AdminTab}) {
   return (

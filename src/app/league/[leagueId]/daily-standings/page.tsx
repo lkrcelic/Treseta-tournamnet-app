@@ -13,6 +13,8 @@ import useConferenceFilter from "@/app/_hooks/useConferenceFilter";
 import useNavStack from "@/app/_hooks/useNavStack";
 import useOpenTable, {OpenTable} from "@/app/_hooks/useOpenTable";
 import useStartGame from "@/app/_hooks/useStartGame";
+import {useLeagueSponsors} from "@/app/_hooks/useSponsors";
+import LiveRoundSponsors from "@/app/_ui/sponsors/LiveRoundSponsors";
 import useAuthStore from "@/app/_store/authStore";
 import {useDailyData, useRoundDates} from "@/app/_hooks/useStandings";
 import {leagueDateString} from "@/app/_lib/dates";
@@ -131,6 +133,10 @@ export default function DailyStandings() {
     [daily.data, tab, myTeamNames, conferences]
   );
 
+  // the league's sponsors slide along the bottom of a round's tab on the admin's computer (the bar's screen); never on
+  // the night's table or anywhere on the phone
+  const sponsors = useLeagueSponsors(isDesktop && isAdmin ? leagueId : null);
+
   const changeLeague = (id: number) => router.router.push(`/league/${id}/daily-standings`);
   const noNights = dates != null && dates.length === 0;
   // before the league's first night there is no date to show
@@ -164,6 +170,7 @@ export default function DailyStandings() {
             {arrows}
           </>
         }
+        footer={isAdmin && tab > 0 && sponsors?.length ? <LiveRoundSponsors leagueId={leagueId} sponsors={sponsors} /> : undefined}
       >
         <Box {...tabPanelProps("daily", tab)} sx={{flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: "20px"}}>
           {tab === 0 && !loadError && !noNights && <ConferenceFilter conferences={conferences.conferences} value={conf} onChange={setConf} sx={{flex: "none"}} />}

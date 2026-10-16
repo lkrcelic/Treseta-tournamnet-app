@@ -56,18 +56,20 @@ import {defaultGatheringLabel, gatheringDefaults, GatheringDefaults, nightEditab
 import {adminCardSx, adminLabelSx, DayPicker, PhoneStepper} from "./AdminParts";
 import {NightGatheringForm} from "./GatheringForm";
 import {GatheringLine} from "@/app/_ui/gathering/Gathering";
+import {LeagueSponsorsPhone} from "@/app/_ui/sponsors/LeagueSponsors";
 
-type Tab = "teams" | "rounds" | "dates" | "details";
+type Tab = "teams" | "rounds" | "dates" | "details" | "sponsors";
 const TABS: {key: Tab; label: string}[] = [
   {key: "teams", label: "Ekipe"},
   {key: "rounds", label: "Kola"},
   {key: "dates", label: "Datumi"},
   {key: "details", label: "Postavke"},
+  {key: "sponsors", label: "Sponzori"},
 ];
 export const isLeagueTab = (v: string | null): v is Tab => TABS.some((t) => t.key === v);
 
 // Upravljanje ligom on the admin's phone (admin-mobile 05, 08–12): Novo kolo first, then the league's teams, rounds,
-// nights and settings. The tab is in the address (?view=), so Back and a reload keep it. Every rule and call is the
+// nights, settings and sponsors. The tab is in the address (?view=), so Back and a reload keep it. Every rule and call is the
 // desktop's; a delete is asked in a sheet.
 export default function LeaguePhone({leagueId, view}: {leagueId: number; view: Tab}) {
   const router = useTransitionRouter();
@@ -110,6 +112,8 @@ export default function LeaguePhone({leagueId, view}: {leagueId: number; view: T
           <RoundsTab leagueId={leagueId} />
         ) : tab === "dates" ? (
           <DatesTab leagueId={leagueId} defaults={gatheringDefaults(leagues.find((l) => l.id === leagueId))} />
+        ) : tab === "sponsors" ? (
+          <LeagueSponsorsPhone leagueId={leagueId} leagueName={leagues.find((l) => l.id === leagueId)?.name ?? ""} />
         ) : (
           <SettingsTab leagueId={leagueId} />
         )}

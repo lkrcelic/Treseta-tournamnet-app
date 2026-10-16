@@ -146,6 +146,8 @@ model League {
   nights       LeagueNight[]
   marketPosts  MarketPost[]
   createRoundDrafts CreateRoundDraft[]
+  sponsors     LeagueSponsor[]
+  sponsorStats SponsorDailyStat[]
 }
 
 // A group of a league's teams (e.g. "Sjever" and "Jug"): a colored dot before the team's name and its own standings.
@@ -244,6 +246,59 @@ model MarketPost {
   team       Team?   @relation(fields: [team_id], references: [team_id], onDelete: Cascade)
 
   @@index([closed_at, kind])
+}
+
+// A sponsor on the admin's one list (Sponzori). Each league picks its sponsors from it (LeagueSponsor); their logos
+// slide along Početna on the phone and along the bottom of a live round on the admin's computer. All sponsors are
+// equal: there is no main sponsor.
+model Sponsor {
+  id         Int      @id @default(autoincrement())
+  name       String   @db.VarChar(100)
+  // the sponsor's page, opened from its card ("Otvori stranicu"); http(s) only
+  url        String?  @db.VarChar(500)
+  // shown to the players on its card; up to 80 characters (CHECK in the migration script)
+  message    String   @default("") @db.VarChar(80)
+  // the logo goes on a dark plate (a light logo without a background)
+  dark       Boolean  @default(false)
+  // the logo itself, shrunk to at most 512 px by the admin's browser: PNG, JPEG or WebP, up to 1 MB
+  logo       Bytes
+  logo_type  String   @db.VarChar(20)
+  logo_width  Int
+  logo_height Int
+  created_at DateTime @default(now())
+  // also the logo's version in its address, so a changed logo isn't served from the cache
+  updated_at DateTime @default(now()) @updatedAt
+
+  leagues LeagueSponsor[]
+  stats   SponsorDailyStat[]
+}
+
+// A league's sponsors in the order the admin arranged them (they slide in this order)
+model LeagueSponsor {
+  league_id  Int
+  sponsor_id Int
+  position   Int
+
+  league  League  @relation(fields: [league_id], references: [league_id], onDelete: Cascade)
+  sponsor Sponsor @relation(fields: [sponsor_id], references: [id], onDelete: Cascade)
+
+  @@id([league_id, sponsor_id])
+}
+
+// For the sponsors: how often their logo was shown and their page opened, per league and day. A view is one opening
+// of Početna or of a live round with the logo on it; nothing about who looked is kept.
+model SponsorDailyStat {
+  sponsor_id Int
+  league_id  Int
+  day        DateTime @db.Date
+  views      Int      @default(0)
+  clicks     Int      @default(0)
+
+  sponsor Sponsor @relation(fields: [sponsor_id], references: [id], onDelete: Cascade)
+  league  League  @relation(fields: [league_id], references: [league_id], onDelete: Cascade)
+
+  @@id([sponsor_id, league_id, day])
+  @@index([league_id])
 }
 
 model Team {

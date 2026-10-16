@@ -11,6 +11,7 @@ import {currentLeagueHref} from "@/app/_lib/league";
 import {color, font, shadow, teamOnNavy, tint} from "@/app/_styles/tokens";
 import {Brand} from "@/app/_ui/auth/AuthFrame";
 import {BurzaHomeCard, HomeTile, NextNightCard, NextNightPlaceholder, nextNight} from "@/app/_ui/home/HomeCards";
+import HomeSponsors from "@/app/_ui/home/HomeSponsors";
 import InstallSheet from "@/app/_ui/install/InstallSheet";
 import {SmokingMark} from "@/app/_ui/smoking/SmokingParts";
 import {buttonBase, ellipsis, ErrorNote, IconCircleButton, Screen, Spinner, TeamDot} from "@/app/_ui/sp";
@@ -26,7 +27,7 @@ import {Box} from "@mui/material";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 
 // Početna on the phone, the only Home (handoff §2; Claude Design "Burza v2" screen "home"): the top card, the Burza
-// igrača card and the 2×2 tiles. Nothing is edited here. An admin sees it after "Prikaz igrača" on Večer lige
+// igrača card, the 2×2 tiles and the league's sponsors. Nothing is edited here. An admin sees it after "Prikaz igrača" on Večer lige
 // (admin-mobile 04), with an Admin button next to Moj profil that switches back.
 export default function PhoneHome() {
   const router = useTransitionRouter();
@@ -108,6 +109,8 @@ export default function PhoneHome() {
         <HomeTile href={currentLeagueHref("standings", leagueId)} icon={<EmojiEventsRoundedIcon />} label="Ukupni poredak" />
         <HomeTile href="/ratings" icon={<LeaderboardRoundedIcon />} label="Rejting" />
       </Box>
+
+      <HomeSponsors leagueId={leagueId} />
 
       <InstallSheet />
     </Screen>
