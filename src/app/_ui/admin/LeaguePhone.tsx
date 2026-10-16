@@ -198,7 +198,7 @@ function TeamsTab({leagueId, data}: {leagueId: number; data: ReturnType<typeof u
     setActionError(null);
     try {
       const {smokers} = await addTeamToLeagueAPI(leagueId, Number(o.id));
-      setTeams((prev) => [{id: Number(o.id), name: o.name, players: [], active: true, smokers}, ...(prev ?? [])]);
+      setTeams((prev) => [{id: Number(o.id), name: o.name, players: [], active: true, conferenceId: null, smokers}, ...(prev ?? [])]);
       setJustAdded(Number(o.id));
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Ekipu nije moguće dodati.");
