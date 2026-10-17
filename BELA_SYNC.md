@@ -9,7 +9,7 @@ own; everything else is kept identical to Bela.
 | | |
 |---|---|
 | Bela branch | `development`, read through the remote `bela` (the local Bela repo). Only commits come over, never Bela's uncommitted work |
-| Last synced Bela commit | `07a790f` (15 Oct 2026) |
+| Last synced Bela commit | `91f1537` (16 Oct 2026) |
 | Waiting in Bela | Nothing settled ahead (see [Bela's work waiting to come over](#belas-work-waiting-to-come-over)) |
 | Target branch | `master` |
 | Sync branch | `bela-sync` in the repo itself (no worktree): created from `master`, or rebased onto it, by every run |
@@ -78,7 +78,7 @@ Treseta directly only for what has to differ, and add it below.
 
 ## Bela's work waiting to come over
 
-Nothing: every Bela commit up to `07a790f` (15 Oct 2026) came over on 16 Oct 2026, and what lasts from the decisions
+Nothing: every Bela commit up to `91f1537` (16 Oct 2026) came over by 17 Oct 2026, and what lasts from the decisions
 settled for them is under Differences. Decisions for Bela work that touches Treseta's differences before it comes
 over go here.
 
@@ -245,3 +245,4 @@ The nightly sync adds a row when it brings something over or stops.
 | 13 Oct 2026 | none | Stopped before the first commit: the run started in its own worktree and couldn't write to `.claude/worktrees/bela-sync` |
 | 14 Oct 2026 | `4bf68ad..e39abc1` (45) | 41 came over, 3 skipped (decision logs, Burza test data), the Frankfurt merge already here; 7 migrations, untested |
 | 16 Oct 2026 | `b9afd0e..07a790f` (14) | Bela's history was rewritten (`e39abc1` is now `b9afd0e`, same tree). All 14 came over: the admin's phone screens, with Treseta's hands on TablePhone and the conference switch and dots on the phone; 2 migrations (`create_round_draft`, `night_location`) |
+| 17 Oct 2026 | `07a790f..91f1537` (1) | Sponsors came over (Sponzori under Admin, a league's Sponzori tab, logos on Početna and a live round), the conference code kept around Upravljanje ligom's new tab; 1 migration (`sponsors`) |
