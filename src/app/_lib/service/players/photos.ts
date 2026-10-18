@@ -166,3 +166,24 @@ export async function ownPhoto(id: number, viewer: Viewer): Promise<OwnPhoto | n
     ...(viewer.id === id && {has_google_photo: isGooglePhotoUrl(p.image)}),
   };
 }
+
+// ---------- photos for whole lists (Rejting, the standings) ----------
+
+// The addresses of these players' photos the viewer may see (none for nobody logged in: the standings are public)
+export async function playerPhotoUrls(viewer: Viewer | null, ids: number[]): Promise<Map<number, string | null>> {
+  if (!viewer || ids.length === 0) return new Map();
+  const [rows, photos] = await Promise.all([
+    prisma.player.findMany({where: {id: {in: ids}, photo_updated_at: {not: null}}, select: {id: true, ...PLAYER_PHOTO}}),
+    photoContext(viewer),
+  ]);
+  return new Map(rows.map((p) => [p.id, photos.player(p)]));
+}
+
+export async function teamPhotoUrls(viewer: Viewer | null, ids: number[]): Promise<Map<number, string | null>> {
+  if (!viewer || ids.length === 0) return new Map();
+  const [rows, photos] = await Promise.all([
+    prisma.team.findMany({where: {team_id: {in: ids}, photo_updated_at: {not: null}}, select: {team_id: true, ...TEAM_PHOTO}}),
+    photoContext(viewer),
+  ]);
+  return new Map(rows.map((t) => [t.team_id, photos.team(t)]));
+}

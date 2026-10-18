@@ -53,6 +53,11 @@ test("standings rows get rank, sign, live and my-team flags", () => {
   assert.deepEqual(statsParts(rows[0], false), {played: "", results: "5 POB · 0 NER · 1 IZG"});
 });
 
+test("a standings row carries its team's photo for the avatar, or none (the team's letter)", () => {
+  const rows = toStandingsRows([{...standings[0], photo_url: "/api/teams/1/photo?v=5"}, {...standings[1], photo_url: null}, standings[2]]);
+  assert.deepEqual(rows.map((r) => r.photo), ["/api/teams/1/photo?v=5", null, null]);
+});
+
 test("a league opened from a Team page highlights that team by id, instead of the player's own", () => {
   const rows = toStandingsRows(standings, {myTeamNames: ["Zagorci"], highlightTeamId: 2});
   assert.deepEqual(rows.map((r) => r.highlight), [false, true, false, false]);

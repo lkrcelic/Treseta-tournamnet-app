@@ -24,6 +24,7 @@ import {
   ellipsis,
   ErrorState,
   IconCircleButton,
+  InitialsAvatar,
   LoadMoreButton,
   MessageState,
   NARROW_DESKTOP,
@@ -223,7 +224,8 @@ function PhoneRow({player: p, me}: {player: RatingRow; me: boolean}) {
       sx={{
         ...buttonBase,
         display: "grid",
-        gridTemplateColumns: "30px minmax(0,1fr) auto",
+        // the place, the player's photo (or initials), name over team, rating over Privremeno
+        gridTemplateColumns: "30px auto minmax(0,1fr) auto",
         columnGap: "10px",
         rowGap: "1px",
         alignItems: "center",
@@ -239,6 +241,9 @@ function PhoneRow({player: p, me}: {player: RatingRow; me: boolean}) {
     >
       <Box sx={{gridRow: "1 / span 2"}}>
         <RankDot rank={p.rank} />
+      </Box>
+      <Box sx={{gridRow: "1 / span 2", display: "flex"}}>
+        <InitialsAvatar name={p.name} src={p.photo_url} size={36} variant="paper" sx={{"@media (max-width: 374.98px)": {width: 32, height: 32, fontSize: 12}}} />
       </Box>
       <Box sx={{minWidth: 0, fontSize: 16, fontWeight: me ? 700 : 600, ...ellipsis}}>{p.name}</Box>
       <Box sx={{textAlign: "right", fontFamily: font.display, fontSize: 24, fontWeight: 800, lineHeight: 1.05, ...tabular}}>{p.rating}</Box>
@@ -419,6 +424,8 @@ function DesktopRatings({
                   }}
                 >
                   <RankDot rank={p.rank} size={30} />
+                  <Box sx={{minWidth: 0, display: "flex", alignItems: "center", gap: "12px"}}>
+                  <InitialsAvatar name={p.name} src={p.photo_url} size={38} variant="paper" />
                   <Box sx={{minWidth: 0, display: "flex", flexDirection: "column", gap: "1px"}}>
                     <Box component="span" sx={{fontSize: 16, fontWeight: mine ? 700 : 600, color: color.ink, ...ellipsis}}>
                       {p.name}
@@ -433,6 +440,7 @@ function DesktopRatings({
                         </Box>
                       )}
                     </Box>
+                  </Box>
                   </Box>
                   <Box sx={{justifySelf: "end", display: "flex", alignItems: "center", gap: "10px"}}>
                     {p.provisional && (

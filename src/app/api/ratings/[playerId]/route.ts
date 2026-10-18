@@ -12,7 +12,7 @@ export async function GET(request: NextRequest, {params}: {params: {playerId: st
   if (auth.response) return auth.response;
 
   try {
-    return NextResponse.json(await getPlayerRating(Number(params.playerId)), {status: STATUS.OK});
+    return NextResponse.json(await getPlayerRating(Number(params.playerId), auth.user), {status: STATUS.OK});
   } catch (error) {
     return errorResponse(error, "Rejting igrača se nije učitao.");
   }

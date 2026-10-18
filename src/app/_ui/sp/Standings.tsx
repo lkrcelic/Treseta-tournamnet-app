@@ -10,6 +10,8 @@ import React from "react";
 import {ellipsis, mergeSx, rowFocus, stretchedArea, tabular, visuallyHidden} from "./base";
 import {RankBadge} from "./Live";
 import {TeamLabel} from "./TeamDot";
+import {InitialsAvatar} from "./Surface";
+import {teamInitial} from "@/app/_lib/ui/profiles";
 
 // Where a row (or podium card) leads: its team's page; null or no function = the row is not a link (the public
 // season table for a visitor who isn't logged in)
@@ -51,6 +53,11 @@ function linkedRow(tinted: boolean, card = false) {
     "@media (hover: hover)": {"&:hover": tinted ? {filter: "brightness(.98)"} : {background: color.paper2}},
     "&:active": tinted ? {filter: "brightness(.96)"} : {background: color.lineFill},
   } as const;
+}
+
+// The team's photo, or its letter, before its name in a row (design "Gdje se slika prikazuje": Poredak · ekipe)
+function TeamAvatar({row, size, sx}: {row: StandingsRow; size: number; sx?: SxProps<Theme>}) {
+  return <InitialsAvatar name={row.name} letters={teamInitial(row.name)} src={row.photo} size={size} variant="paper" sx={sx} />;
 }
 
 const MOVEMENT_INK: Record<MovementKind, string> = {up: color.green, down: color.red, same: color.faint, none: color.faint};
@@ -330,11 +337,12 @@ const HEAD_HEIGHT = 34;
 const LINE_HEIGHT = {podium: 58, row: 62} as const;
 
 // Phones narrower than the designed 390 px: the stats line ("21 OK · 11 POB · 9 NER · 1 IZG") gets smaller type and
-// the columns sit a little closer, under 375 px the line leaves out the OK count (still read to screen readers), and
-// under 340 px RAZ is a little smaller, so even a six-digit RAZ leaves the line its room. The rows keep their height:
-// the line never wraps, and is cut with an ellipsis rather than run under RAZ.
+// the columns sit a little closer, under 430 px (since the rows got the team's avatar, so on most phones) the line
+// leaves out the OK count (still read to screen readers), and under 340 px RAZ is a little smaller, so even a six-digit
+// RAZ leaves the line its room. The rows keep their height: the line never wraps, and is cut with an ellipsis rather
+// than run under RAZ.
 const SMALL_PHONE = "@media (max-width: 389.98px)";
-const NARROW_PHONE = "@media (max-width: 374.98px)";
+const NARROW_PHONE = "@media (max-width: 429.98px)";
 const TINY_PHONE = "@media (max-width: 339.98px)";
 // the right-hand block (RAZ and BOD) and the row's end, shared by the labels row so the labels stay over their numbers
 const numbersSx = {display: "flex", gap: "12px", [SMALL_PHONE]: {gap: "8px"}} as const;
@@ -411,6 +419,8 @@ function StandingsLine({
       })}
     >
       {onPodium ? <Medal rank={r.rank} index={medal} size={28} /> : <RankBadge rank={r.rank} live={r.live} />}
+      <Box sx={{display: "flex", alignItems: "center", gap: "10px", minWidth: 0, [SMALL_PHONE]: {gap: "8px"}}}>
+      <TeamAvatar row={r} size={32} sx={{[SMALL_PHONE]: {width: 28, height: 28, fontSize: 12}}} />
       <Box sx={{display: "flex", flexDirection: "column", gap: "2px", minWidth: 0}}>
         {showMovement ? (
           <Box sx={{display: "flex", alignItems: "center", gap: "6px", minWidth: 0}}>
@@ -428,6 +438,7 @@ function StandingsLine({
           )}
           {stats.results}
         </Box>
+      </Box>
       </Box>
       <Box sx={{...numbersSx, alignItems: "baseline"}}>
         <Box
@@ -576,8 +587,9 @@ export function StandingsGrid({
                   <MovementMark movement={r.movement} look="cell" />
                 </Box>
               )}
-              <Box component="td" role="cell" sx={{fontSize: dense ? 16 : 17, fontWeight: r.highlight ? 700 : 600, minWidth: 0}}>
-                <TeamLabel name={<TeamName row={r} href={href} keepClear={keepClear} />} conference={r.conference} />
+              <Box component="td" role="cell" sx={{minWidth: 0, display: "flex", alignItems: "center", gap: dense ? "10px" : "12px"}}>
+                <TeamAvatar row={r} size={dense ? 28 : 34} />
+                <TeamLabel name={<TeamName row={r} href={href} keepClear={keepClear} />} conference={r.conference} sx={{fontSize: dense ? 16 : 17, fontWeight: r.highlight ? 700 : 600}} />
               </Box>
               {columns.map((c) => (
                 <Box component="td" role="cell" key={c} sx={{textAlign: "center", fontSize: dense ? 14 : 15, color: color.ink2}}>

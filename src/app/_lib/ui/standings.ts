@@ -17,6 +17,8 @@ export type StandingsItem = {
   // Ukupni poredak: places gained (+) or lost (−) since the league's previous night; null when the team wasn't in
   // that night's table
   movement?: number | null;
+  // the team's photo for the avatar (null or absent: its letter)
+  photo_url?: string | null;
 };
 
 export type StandingsRow = {
@@ -39,6 +41,8 @@ export type StandingsRow = {
   conference?: Conference | null;
   // places gained (+) or lost (−) since the league's previous night (Ukupni poredak's +/−); null: no change to show
   movement: number | null;
+  // the team's photo; null = its letter in the avatar
+  photo: string | null;
 };
 
 type StandingsHighlight = {
@@ -69,6 +73,7 @@ export function toStandingsRows(items: StandingsItem[] | null | undefined, {myTe
       highlight: highlightTeamId != null ? teamId === highlightTeamId : mine.has(s.team?.team_name),
       conference: conferenceOf && teamId != null ? conferenceOf(teamId) : undefined,
       movement: typeof s.movement === "number" ? s.movement : null,
+      photo: typeof s.photo_url === "string" ? s.photo_url : null,
     };
   });
 }

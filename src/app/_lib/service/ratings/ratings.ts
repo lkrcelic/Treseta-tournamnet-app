@@ -11,15 +11,18 @@ import {PLAYER_NOT_FOUND} from "@/app/_interfaces/player";
 import {displayName} from "@/app/_lib/players/names";
 import {ratingSummary, RatingSummary} from "@/app/_lib/ui/ratings";
 import {PUBLISHED_ROUND} from "@/app/_lib/roundStatus";
+import {Viewer} from "@/app/_lib/players/privacy";
+import {playerPhotoUrls} from "@/app/_lib/service/players/photos";
 
 // Player ratings across all leagues: everyone on a team or with a rated round, highest rating first. Deleted players
 // aren't listed (their rounds still count for everyone else's rating); usernames are private, so they aren't sent.
 
 type Row = {id: number; first_name: string; last_name: string; rating: number; team: string | null; rounds: number; change: number | null};
 
-export async function listRatings(viewerId: number | null): Promise<RatingsList> {
+export async function listRatings(viewer: Viewer): Promise<RatingsList> {
   const list = await allRatings();
-  return {players: list, me: viewerId != null && list.some((p) => p.id === viewerId) ? viewerId : null};
+  const photos = await playerPhotoUrls(viewer, list.map((p) => p.id));
+  return {players: list.map((p) => ({...p, photo_url: photos.get(p.id) ?? null})), me: list.some((p) => p.id === viewer.id) ? viewer.id : null};
 }
 
 // The whole list, ranked: players with the same rating share a place. One query per call (not cached), so a caller
@@ -81,10 +84,11 @@ export async function ratingSummaries(players: {id: number; rating: number}[]): 
 }
 
 // A deleted player (or one never on a team) isn't on the list: 404 "Igrač ne postoji."
-export async function getPlayerRating(playerId: number): Promise<PlayerRatingDetail> {
+export async function getPlayerRating(playerId: number, viewer: Viewer): Promise<PlayerRatingDetail> {
   const players = await allRatings();
-  const player = players.find((p) => p.id === playerId);
-  if (!player) throw new NotFoundError(PLAYER_NOT_FOUND);
+  const found = players.find((p) => p.id === playerId);
+  if (!found) throw new NotFoundError(PLAYER_NOT_FOUND);
+  const player = {...found, photo_url: (await playerPhotoUrls(viewer, [playerId])).get(playerId) ?? null};
 
   const history = await prisma.playerRatingHistory.findMany({
     where: {player_id: playerId},

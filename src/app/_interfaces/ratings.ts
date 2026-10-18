@@ -9,6 +9,7 @@ export type RatingRow = {
   change: number | null; // at the last night they played; null before their first
   rounds: number; // rated rounds played
   provisional: boolean; // fewer than PROVISIONAL_ROUNDS rated rounds
+  photo_url?: string | null; // the avatar, filtered for the viewer (null or absent = the initials)
 };
 
 export type RatingsList = {

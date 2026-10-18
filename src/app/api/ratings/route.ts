@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   if (auth.response) return auth.response;
 
   try {
-    return NextResponse.json(await listRatings(auth.user.id), {status: STATUS.OK});
+    return NextResponse.json(await listRatings(auth.user), {status: STATUS.OK});
   } catch (error) {
     return errorResponse(error, "Rejting se nije učitao.");
   }
