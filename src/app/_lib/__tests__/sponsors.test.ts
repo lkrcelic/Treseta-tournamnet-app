@@ -13,6 +13,7 @@ import {
 } from "../../_interfaces/sponsor";
 import {errorResponse} from "../apiErrors";
 import {decodeLogo, detectLogoType, LogoError, sponsorLogoPath} from "../sponsors";
+import {clampCrop, CROP_ASPECT, CROP_OUT_HEIGHT, CROP_OUT_WIDTH, CROP_START, fitScale, panLimits, placement, rotateLeft, ZOOM_MAX} from "../ui/logoCrop";
 import {bandRounds, bandSeconds, countsLabel, deleteSponsorText, groupDigits, leaguesLabel, logoTile, moveItem, NO_LEAGUE, pickSub, sponsorSub} from "../ui/sponsors";
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]);
@@ -134,4 +135,42 @@ test("moveItem moves one row and leaves the rest in order", () => {
   assert.deepEqual(moveItem(["a", "b", "c", "d"], 0, 2), ["b", "c", "a", "d"]);
   assert.deepEqual(moveItem(["a", "b", "c", "d"], 3, 0), ["d", "a", "b", "c"]);
   assert.deepEqual(moveItem(["a", "b"], 1, 1), ["a", "b"]);
+});
+
+test("the crop frame is the inside of the logo's tile, and the cropped logo is 512 px wide", () => {
+  assert.ok(Math.abs(CROP_ASPECT - 1.5 / 0.72) < 1e-9);
+  assert.equal(CROP_OUT_WIDTH, 512);
+  assert.equal(CROP_OUT_HEIGHT, 246);
+});
+
+test("at zoom 1 the whole logo fits the frame; a quarter turn swaps its sides", () => {
+  // a square logo in a 208 × 100 frame: as tall as the frame
+  assert.equal(fitScale(200, 200, 208, 100, 0), 0.5);
+  // a wide logo: as wide as the frame
+  assert.equal(fitScale(1000, 100, 208, 100, 0), 0.208);
+  // turned, the wide logo stands up: as tall as the frame
+  assert.equal(fitScale(1000, 100, 208, 100, 90), 0.1);
+});
+
+test("a logo smaller than the frame stays inside it; a larger one keeps filling it", () => {
+  // square logo at zoom 1: 100 × 100 in a 208 × 100 frame, may slide 54 px left or right, not up or down
+  const small = panLimits(200, 200, 208, 100, CROP_START);
+  assert.ok(Math.abs(small.x - 54 / 208) < 1e-9);
+  assert.equal(small.y, 0);
+  // zoomed 3×: 300 × 300, may move 46 px sideways and 100 px up or down, always covering the frame
+  const big = panLimits(200, 200, 208, 100, {...CROP_START, zoom: 3});
+  assert.ok(Math.abs(big.x - 46 / 208) < 1e-9);
+  assert.equal(big.y, 1);
+  const clamped = clampCrop({zoom: 9, panX: 5, panY: -5, rotate: 0}, 200, 200, 208, 100);
+  assert.equal(clamped.zoom, ZOOM_MAX);
+  assert.ok(clamped.panX > 0 && clamped.panX <= 0.5);
+  assert.ok(clamped.panY < 0 && clamped.panY >= -2);
+  assert.deepEqual(clampCrop({zoom: 0.2, panX: 1, panY: 1, rotate: 0}, 200, 200, 208, 100), {zoom: 1, panX: 54 / 208, panY: 0, rotate: 0});
+});
+
+test("Okreni turns a quarter to the left and goes back to the middle; placement puts the logo where the pan says", () => {
+  const turned = rotateLeft({zoom: 2, panX: 0.1, panY: 0.2, rotate: 0});
+  assert.deepEqual(turned, {zoom: 2, panX: 0, panY: 0, rotate: 270});
+  assert.equal(rotateLeft(rotateLeft(rotateLeft(turned))).rotate, 0);
+  assert.deepEqual(placement(200, 200, 208, 100, {zoom: 1, panX: 0.25, panY: 0, rotate: 90}), {cx: 156, cy: 50, w: 100, h: 100, rotate: 90});
 });

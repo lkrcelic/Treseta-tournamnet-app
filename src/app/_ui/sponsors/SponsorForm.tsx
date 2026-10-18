@@ -4,7 +4,6 @@ import {createSponsorAPI, LogoUpload, SponsorFields, updateSponsorAPI} from "@/a
 import {forgetLeagueSponsors} from "@/app/_hooks/useSponsors";
 import {LogoBackground, SPONSOR_MESSAGE_MAX, SPONSOR_URL_ERROR, SponsorAdmin} from "@/app/_interfaces/sponsor";
 import {isSafeUrl} from "@/app/_lib/nights";
-import {prepareLogo} from "@/app/_lib/ui/logoUpload";
 import {groupDigits, leaguesLabel, logoTile} from "@/app/_lib/ui/sponsors";
 import {NOUN, plural} from "@/app/_lib/ui/text";
 import {color} from "@/app/_styles/tokens";
@@ -13,7 +12,9 @@ import AddPhotoAlternateOutlinedIcon from "@mui/icons-material/AddPhotoAlternate
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import UploadRoundedIcon from "@mui/icons-material/UploadRounded";
 import {Box} from "@mui/material";
-import React, {useId, useRef, useState} from "react";
+import useIsDesktop from "@/app/_hooks/useIsDesktop";
+import React, {useId, useState} from "react";
+import {LogoDialog, LogoResult, LogoScreen, LogoSourceSheet} from "./LogoEditor";
 import {LogoSource, SponsorLogo} from "./SponsorParts";
 
 type Draft = {name: string; url: string; message: string; background: LogoBackground};
@@ -49,13 +50,10 @@ export function useSponsorForm(sponsor: SponsorAdmin | null, onSaved: (s: Sponso
   const hasLogo = upload != null || !isNew;
   const ok = d.name.trim() !== "" && hasLogo && (isNew || dirty);
 
-  const pickLogo = async (file: File) => {
-    setError(null);
-    try {
-      setUpload(await prepareLogo(file));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Logo se nije učitao.");
-    }
+  // the logo cropped in the dialog (or the phone's full screen), with the background chosen there
+  const setLogo = (r: LogoResult) => {
+    setUpload(r.upload);
+    set("background", r.background);
   };
 
   const save = async () => {
@@ -92,7 +90,7 @@ export function useSponsorForm(sponsor: SponsorAdmin | null, onSaved: (s: Sponso
       ? {...sponsor, background: d.background}
       : null;
 
-  return {d, set, logo, pickLogo, save, saving, error, ok, dirty, isNew, reset};
+  return {d, set, logo, setLogo, save, saving, error, ok, dirty, isNew, reset};
 }
 
 export type SponsorForm = ReturnType<typeof useSponsorForm>;
@@ -102,31 +100,40 @@ const hintSx = {fontSize: 13, fontWeight: 500, color: color.muted, lineHeight: 1
 const labelSx = {fontSize: 14, fontWeight: 600, color: color.ink2, pl: "4px"} as const;
 
 // The fields; sponsor (when editing) adds its counts under them
+// The logo is cropped like a profile photo (Claude Design "Profilna slika · dijalog"): on the computer in the "Logo
+// sponzora" dialog, on the phone from Fotografiraj / Odaberi iz galerije into the full-screen "Pomakni i zumiraj".
+type Editing = {kind: "dialog"} | {kind: "source"} | {kind: "screen"; file: File | null};
+
 export function SponsorFormFields({form, sponsor}: {form: SponsorForm; sponsor: SponsorAdmin | null}) {
-  const fileRef = useRef<HTMLInputElement>(null);
   const messageId = useId();
+  const isDesktop = useIsDesktop();
+  const [editing, setEditing] = useState<Editing | null>(null);
   const {d, set, logo} = form;
-  const choose = () => fileRef.current?.click();
+  const choose = () => setEditing(isDesktop ? {kind: "dialog"} : {kind: "source"});
+  const done = (r: LogoResult) => {
+    form.setLogo(r);
+    setEditing(null);
+  };
 
   return (
     <>
-      <Box
-        component="input"
-        ref={fileRef}
-        type="file"
-        accept="image/png,image/jpeg,image/webp"
-        tabIndex={-1}
-        aria-hidden
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-          const file = e.target.files?.[0];
-          if (file) form.pickLogo(file);
-          e.target.value = "";
-        }}
-        sx={{display: "none"}}
-      />
+      {editing?.kind === "dialog" && <LogoDialog src={logo?.logo ?? null} background={d.background} onClose={() => setEditing(null)} onDone={done} />}
+      {editing?.kind === "source" && (
+        <LogoSourceSheet
+          hasLogo={logo != null}
+          onClose={() => setEditing(null)}
+          onFile={(file) => setEditing({kind: "screen", file})}
+          onRecrop={() => setEditing({kind: "screen", file: null})}
+        />
+      )}
+      {editing?.kind === "screen" && (
+        <LogoScreen file={editing.file} src={editing.file ? null : logo?.logo ?? null} background={d.background} onClose={() => setEditing(null)} onDone={done} />
+      )}
       <Box sx={{flex: "none", display: "flex", alignItems: "center", gap: "14px"}}>
         {logo ? (
-          <SponsorLogo sponsor={logo} height={64} />
+          <Box component="button" type="button" aria-label="Promijeni logo" onClick={choose} sx={{...buttonBase, display: "flex", borderRadius: `${logoTile(64).radius}px`}}>
+            <SponsorLogo sponsor={logo} height={64} />
+          </Box>
         ) : (
           <Box
             component="button"
@@ -169,7 +176,7 @@ export function SponsorFormFields({form, sponsor}: {form: SponsorForm; sponsor: 
             </Box>
           )}
           <Box component="span" sx={{fontSize: 13, color: color.muted, lineHeight: 1.4}}>
-            PNG, JPG ili WebP, do 1 MB. Najbolje kvadratni ili položeni.
+            PNG, JPG ili WebP. Logo možeš pomaknuti, zumirati i okrenuti.
           </Box>
         </Box>
       </Box>

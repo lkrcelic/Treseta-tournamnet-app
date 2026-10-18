@@ -90,6 +90,18 @@ export const color = {
   borderStrong: tint.navy[30],
 } as const;
 
+// The logo cropper (Claude Design "Profilna slika · dijalog", for sponsor logos): the black stage on the phone and the
+// grey one in the computer's dialog, the shade around the frame, its white rim, the grid while dragging and the buttons
+// on black.
+export const crop = {
+  stage: "#000000",
+  stageSoft: "#4D4D4D",
+  shade: "rgba(0,0,0,.62)",
+  rim: "rgba(255,255,255,.9)",
+  grid: "rgba(255,255,255,.45)",
+  pill: "rgba(255,255,255,.12)",
+} as const;
+
 // Left team is always green, right team red (the left side is the viewer's own team).
 export const teamColor = [color.green, color.red] as const;
 export const teamTint = [tint.green[13], tint.red[13]] as const;
