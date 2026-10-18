@@ -1,4 +1,5 @@
-import {color} from "@/app/_styles/tokens";
+import {color, font} from "@/app/_styles/tokens";
+import type {RankTone} from "@/app/_lib/ui/standings";
 import {Box, SxProps, Theme} from "@mui/material";
 import React from "react";
 import {mergeSx, tabular} from "./base";
@@ -70,7 +71,37 @@ export function LiveLabel({sx}: {sx?: SxProps<Theme>}) {
   );
 }
 
-// Rank circle in standings; red and pulsing while the team is playing. medal: places 1–3 in their medal colour with
+const RANK_INK: Record<RankTone, string> = {top: color.ink, me: color.navy, live: color.red, plain: color.muted};
+
+// The place in a standings or Rejting row (design "Redni brojevi" 1b · Samo broj): the number alone, no circle,
+// centred in its column. tone (rankTone): top 24 px ink, me navy, live red (24 px when it is also in the top three:
+// podium), plain muted. Red is all that says a team is playing: no dot, no pulse. size: the column's width, 30 px on
+// the phone, 36 on the computer.
+export function RankNumber({rank, tone, size = "phone", podium = false}: {rank: number; tone: RankTone; size?: "phone" | "desktop"; podium?: boolean}) {
+  const big = tone === "top" || (tone === "live" && podium);
+  return (
+    <Box
+      component="span"
+      aria-label={tone === "live" ? `${rank}. mjesto, igra uživo` : `${rank}. mjesto`}
+      sx={{
+        width: size === "desktop" ? 36 : 30,
+        flex: "none",
+        textAlign: "center",
+        fontFamily: font.display,
+        fontSize: big ? 24 : 20,
+        fontWeight: 800,
+        letterSpacing: "-.02em",
+        lineHeight: 1,
+        color: RANK_INK[tone],
+        ...tabular,
+      }}
+    >
+      {rank}
+    </Box>
+  );
+}
+
+// Rank circle (the Team page's Lige); red and pulsing while the team is playing. medal: places 1–3 in their medal colour with
 // white text (the Team page's Lige, 13f); hash: "#2" instead of "2"; no rank (a league not played yet) is "–".
 export function RankBadge({
   rank,

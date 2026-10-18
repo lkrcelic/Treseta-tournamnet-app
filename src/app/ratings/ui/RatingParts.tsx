@@ -14,18 +14,6 @@ import React from "react";
 
 // Pieces of the ratings page (Claude Design "Rejting igrača"), shared by the phone and desktop layouts
 
-// the place in a circle; from 100 on (three digits) a size smaller, so they keep clear of the circle's edge
-export function RankDot({rank, size = 28}: {rank: number; size?: number}) {
-  return (
-    <Box
-      component="span"
-      sx={{width: size, height: size, flex: "none", borderRadius: "50%", background: color.lineFill, color: color.navy, fontSize: rank >= 100 ? 12 : 14, fontWeight: 700, letterSpacing: rank >= 100 ? "-.02em" : undefined, display: "flex", alignItems: "center", justifyContent: "center", ...tabular}}
-    >
-      {rank}
-    </Box>
-  );
-}
-
 const NARROW_PHONE = "@media (max-width: 379.98px)";
 
 // The cream card on top of a player's detail: name, team, rounds, the big rating, the last change and the place. The

@@ -25,6 +25,7 @@ import {
   ErrorState,
   IconCircleButton,
   InitialsAvatar,
+  RankNumber,
   LoadMoreButton,
   MessageState,
   NARROW_DESKTOP,
@@ -36,7 +37,8 @@ import {
   tabular,
 } from "@/app/_ui/sp";
 import {PhoneFrame} from "@/app/_ui/profiles/PageParts";
-import {DetailSkeleton, infoTitle, InfoView, LastNights, NoRoundsCard, PlayerCard, RankDot, RatingChartCard, RatingSkeletonRows, RatingsInfo} from "./RatingParts";
+import {DetailSkeleton, infoTitle, InfoView, LastNights, NoRoundsCard, PlayerCard, RatingChartCard, RatingSkeletonRows, RatingsInfo} from "./RatingParts";
+import {rankTone} from "@/app/_lib/ui/standings";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import HelpOutlineRoundedIcon from "@mui/icons-material/HelpOutlineRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
@@ -196,8 +198,16 @@ function PhoneList({all, visible, me, error, reload, query, setQuery, onMore}: L
       </Box>
       <SearchInput variant="white" height={48} placeholder="Traži igrača" aria-label="Traži igrača" value={query} onChange={(e) => search(e.target.value)} onClear={() => search("")} />
       <Card ref={all ? scroller.ref : undefined} sx={{flex: 1, minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", borderRadius: "22px"}}>
-        <Box aria-hidden sx={{position: "sticky", top: 0, zIndex: 3, background: color.white, height: 34, display: "flex", alignItems: "center", justifyContent: "space-between", pl: "14px", pr: "16px", borderBottom: `1px solid ${tint.navy[10]}`, fontSize: 11.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: color.muted}}>
-          <span>#&nbsp;&nbsp;&nbsp;Igrač</span>
+        <Box aria-hidden sx={{position: "sticky", top: 0, zIndex: 3, background: color.white, height: 34, display: "flex", alignItems: "center", justifyContent: "space-between", pl: "12px", pr: "16px", borderBottom: `1px solid ${tint.navy[10]}`, fontSize: 11.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: color.muted}}>
+          {/* "#" over the places, "Igrač" over the names (past the avatars) */}
+          <Box component="span" sx={{display: "flex", gap: "10px"}}>
+            <Box component="span" sx={{width: 76, display: "flex"}}>
+              <Box component="span" sx={{width: 30, textAlign: "center"}}>
+                #
+              </Box>
+            </Box>
+            Igrač
+          </Box>
           <span>Rejting</span>
         </Box>
         {body}
@@ -224,8 +234,8 @@ function PhoneRow({player: p, me}: {player: RatingRow; me: boolean}) {
       sx={{
         ...buttonBase,
         display: "grid",
-        // the place, the player's photo (or initials), name over team, rating over Privremeno
-        gridTemplateColumns: "30px auto minmax(0,1fr) auto",
+        // the place and the player's photo (or initials), name over team, rating over Privremeno
+        gridTemplateColumns: "76px minmax(0,1fr) auto",
         columnGap: "10px",
         rowGap: "1px",
         alignItems: "center",
@@ -239,11 +249,10 @@ function PhoneRow({player: p, me}: {player: RatingRow; me: boolean}) {
         "&:active": {background: me ? color.cream2 : color.lineFill},
       }}
     >
-      <Box sx={{gridRow: "1 / span 2"}}>
-        <RankDot rank={p.rank} />
-      </Box>
-      <Box sx={{gridRow: "1 / span 2", display: "flex"}}>
-        <InitialsAvatar name={p.name} src={p.photo_url} size={36} variant="paper" sx={{"@media (max-width: 374.98px)": {width: 32, height: 32, fontSize: 12}}} />
+      {/* Rejting has no top three: the first places look like the rest (design "Redni brojevi" R3) */}
+      <Box sx={{gridRow: "1 / span 2", display: "flex", alignItems: "center", gap: "10px"}}>
+        <RankNumber rank={p.rank} tone={rankTone({rank: p.rank, highlight: me}, {teams: false})} />
+        <InitialsAvatar name={p.name} src={p.photo_url} size={36} variant="paper" />
       </Box>
       <Box sx={{minWidth: 0, fontSize: 16, fontWeight: me ? 700 : 600, ...ellipsis}}>{p.name}</Box>
       <Box sx={{textAlign: "right", fontFamily: font.display, fontSize: 24, fontWeight: 800, lineHeight: 1.05, ...tabular}}>{p.rating}</Box>
@@ -339,7 +348,8 @@ function DetailBody({detail, chartWidth, desktop = false}: {detail: PlayerRating
 // the table's columns: grid widths and where each header's tooltip opens. Under 1280 px wide (1024×640) the detail
 // column is narrower and so are the number columns, and Privremeno moves to the line under the name, so the names
 // keep room (at 1024 px the wide columns left the Igrač column 2 px).
-const deskGrid = {gridTemplateColumns: "64px minmax(0,1fr) 190px 120px 100px", [NARROW_DESKTOP]: {gridTemplateColumns: "44px minmax(0,1fr) 92px 96px 64px", columnGap: "10px"}} as const;
+// the first column holds the place and the player's avatar (36 + 12 + 36)
+const deskGrid = {gridTemplateColumns: "84px minmax(0,1fr) 190px 120px 100px", columnGap: "12px", [NARROW_DESKTOP]: {gridTemplateColumns: "84px minmax(0,1fr) 92px 96px 64px", columnGap: "10px"}} as const;
 const wideOnly = {[NARROW_DESKTOP]: {display: "none"}} as const;
 const narrowOnly = {display: "none", [NARROW_DESKTOP]: {display: "inline-flex"}} as const;
 const HEADS: {key: string; align: "start" | "end"}[] = [
@@ -423,9 +433,10 @@ function DesktopRatings({
                     "&:hover": {filter: "brightness(.98)"},
                   }}
                 >
-                  <RankDot rank={p.rank} size={30} />
-                  <Box sx={{minWidth: 0, display: "flex", alignItems: "center", gap: "12px"}}>
-                  <InitialsAvatar name={p.name} src={p.photo_url} size={38} variant="paper" />
+                  <Box sx={{display: "flex", alignItems: "center", gap: "12px"}}>
+                    <RankNumber rank={p.rank} tone={rankTone({rank: p.rank, highlight: mine}, {teams: false})} size="desktop" />
+                    <InitialsAvatar name={p.name} src={p.photo_url} size={36} variant="paper" />
+                  </Box>
                   <Box sx={{minWidth: 0, display: "flex", flexDirection: "column", gap: "1px"}}>
                     <Box component="span" sx={{fontSize: 16, fontWeight: mine ? 700 : 600, color: color.ink, ...ellipsis}}>
                       {p.name}
@@ -440,7 +451,6 @@ function DesktopRatings({
                         </Box>
                       )}
                     </Box>
-                  </Box>
                   </Box>
                   <Box sx={{justifySelf: "end", display: "flex", alignItems: "center", gap: "10px"}}>
                     {p.provisional && (

@@ -140,7 +140,7 @@ function LeagueStandings() {
       );
     }
     if (desktop) {
-      // the +/− (since the league's previous night) is a column after "#", a pill on the podium and a note under the
+      // the +/− (since the league's previous night) is the last column, a pill on the podium and a note under the
       // table, which stays put while the rows scroll
       const grid = (
         <StandingsGrid
@@ -216,7 +216,8 @@ function LeagueStandings() {
         <StackTopBar eyebrow="Liga" nav={nav} />
         <Box component="header" sx={{display: "flex", flexDirection: "column", gap: "6px", px: "4px", minWidth: 0}}>
           <Box sx={{fontSize: 13, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.navy, overflowWrap: "anywhere"}}>{eyebrow}</Box>
-          <Display size={36} sx={{lineHeight: 1}}>
+          {/* one line: a wrapped title's second line went under the list */}
+          <Display size={34} sx={{lineHeight: 1, whiteSpace: "nowrap"}}>
             Ukupni poredak
           </Display>
           <Box sx={{fontSize: 14, color: color.muted}}>{status ?? "\u00a0"}</Box>
@@ -238,7 +239,8 @@ function LeagueStandings() {
       )}
       <Box component="header" sx={{display: "flex", flexDirection: "column", gap: "6px", px: "4px", minWidth: 0}}>
         <LeagueEyebrowButton leagues={leagues} value={leagueId} onChange={changeLeague} />
-        <Display size={36} sx={{lineHeight: 1}}>
+        {/* one line: a wrapped title's second line went under the list */}
+        <Display size={34} sx={{lineHeight: 1, whiteSpace: "nowrap"}}>
           Ukupni poredak
         </Display>
       </Box>

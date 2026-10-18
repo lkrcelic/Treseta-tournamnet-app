@@ -78,6 +78,18 @@ export function toStandingsRows(items: StandingsItem[] | null | undefined, {myTe
   });
 }
 
+// How a row's place is drawn (RankNumber, design "Redni brojevi" 1b · Samo broj): red while the team is playing,
+// navy for the player's own team or self, larger and darker for the top three of a teams' standings (never on
+// Rejting), muted for the rest. Live wins over mine, mine over top.
+export type RankTone = "top" | "me" | "live" | "plain";
+
+export function rankTone(row: {rank: number; live?: boolean; highlight?: boolean}, {teams}: {teams: boolean}): RankTone {
+  if (row.live) return "live";
+  if (row.highlight) return "me";
+  if (teams && row.rank >= 1 && row.rank <= 3) return "top";
+  return "plain";
+}
+
 // A standings row opens its team's page (null: no id to link to)
 export function standingsTeamHref(row: StandingsRow): string | null {
   return row.teamId != null ? `/teams/${row.teamId}` : null;

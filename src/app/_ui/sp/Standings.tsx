@@ -1,5 +1,5 @@
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
-import {MOVEMENT_HEADER, MovementKind, movementNote, movementView, statsParts, StandingsRow} from "@/app/_lib/ui/standings";
+import {MOVEMENT_HEADER, MovementKind, movementNote, movementView, rankTone, statsParts, StandingsRow} from "@/app/_lib/ui/standings";
 import {count, NOUN, plural} from "@/app/_lib/ui/text";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
@@ -8,7 +8,7 @@ import SwapVertRoundedIcon from "@mui/icons-material/SwapVertRounded";
 import {Box, SxProps, Theme} from "@mui/material";
 import React from "react";
 import {ellipsis, mergeSx, rowFocus, stretchedArea, tabular, visuallyHidden} from "./base";
-import {RankBadge} from "./Live";
+import {RankNumber} from "./Live";
 import {TeamLabel} from "./TeamDot";
 import {InitialsAvatar} from "./Surface";
 import {teamInitial} from "@/app/_lib/ui/profiles";
@@ -143,9 +143,10 @@ export function MovementNote({since}: {since: string}) {
   );
 }
 
-// Three medal cards. "compact" is the phone version (three narrow columns), otherwise the desktop one. showLive
-// turns a medal red and pulsing, and its points red, while that team is playing (as in the rows below the podium).
-// showMovement: the +/− pill next to a desktop medal (Ukupni poredak).
+// Three medal cards. "compact" is Početna's version (three narrow columns), otherwise the desktop one (design "Redni
+// brojevi" R7, R8): the team's photo (or letter) with the medal on its corner, the name with the +/− pill (Ukupni
+// poredak, showMovement) and the night's or season's results, and BOD over RAZ on the right. showLive turns a medal
+// and its points red while that team is playing (as in the rows below the podium).
 export function Podium({
   rows,
   compact = false,
@@ -184,13 +185,11 @@ export function Podium({
               background: color.medalBg[i],
               color: color.ink,
               borderRadius: compact ? "20px" : "24px",
-              p: compact ? "12px 12px 14px" : "20px 22px",
+              p: compact ? "12px 12px 14px" : "18px 22px 18px 18px",
               display: "flex",
               minWidth: 0,
               boxShadow: [compact ? shadow.card : null, r.highlight ? shadow.mineRing : null].filter(Boolean).join(", ") || "none",
-              ...(compact
-                ? {flexDirection: "column", gap: "10px"}
-                : {alignItems: "flex-end", justifyContent: "space-between", gap: "12px"}),
+              ...(compact ? {flexDirection: "column", gap: "10px"} : {minHeight: 116, boxSizing: "border-box", alignItems: "center", gap: "16px"}),
               ...(href ? linkedRow(true, true) : {}),
             }}
           >
@@ -215,27 +214,33 @@ export function Podium({
               </>
             ) : (
               <>
-                <Box sx={{display: "flex", flexDirection: "column", gap: "14px", minWidth: 0}}>
-                  {showMovement ? (
-                    <Box sx={{display: "flex", alignItems: "center", gap: "8px"}}>
-                      <Medal rank={r.rank} index={i} size={34} live={live} />
-                      <MovementMark movement={r.movement} look="pill" />
-                    </Box>
-                  ) : (
-                    <Medal rank={r.rank} index={i} size={34} live={live} />
-                  )}
-                  <TeamLabel name={<TeamName row={r} href={href} />} conference={r.conference} dotSize={10} sx={{gap: "10px", fontFamily: font.display, fontSize: 26, fontWeight: 700}} />
-                </Box>
-                <Box sx={{display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px"}}>
-                  <Box component="span" sx={{fontSize: 16, fontWeight: 700, color: color.navy, ...tabular}}>
-                    {r.diff}
+                <Box sx={{position: "relative", flex: "none", display: "flex"}}>
+                  <TeamAvatar
+                    row={r}
+                    size={72}
+                    sx={{boxSizing: "border-box", border: `3px solid ${color.white}`, boxShadow: shadow.photo, background: color.white, fontSize: 30}}
+                  />
+                  <Box sx={{position: "absolute", right: -6, bottom: -4, display: "flex"}}>
+                    <Medal rank={r.rank} index={i} size={32} live={live} ring />
                   </Box>
+                </Box>
+                <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "4px"}}>
+                  <Box sx={{display: "flex", alignItems: "center", gap: "8px", minWidth: 0}}>
+                    <TeamLabel name={<TeamName row={r} href={href} />} conference={r.conference} dotSize={10} sx={{gap: "10px", fontFamily: font.display, fontSize: 26, fontWeight: 800, lineHeight: 1.1}} />
+                    {showMovement && <MovementMark movement={r.movement} look="pill" />}
+                  </Box>
+                  <Box sx={{fontSize: 13.5, color: color.ink2, ...ellipsis, ...tabular}}>{statsParts(r, false).results}</Box>
+                </Box>
+                <Box sx={{flex: "none", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px"}}>
                   <Box
                     component="span"
-                    sx={{fontFamily: font.display, fontSize: 56, fontWeight: 800, lineHeight: 0.85, color: live ? color.red : undefined, ...tabular}}
+                    sx={{fontFamily: font.display, fontSize: 52, fontWeight: 800, lineHeight: 0.85, color: live ? color.red : undefined, ...tabular}}
                   >
                     {r.points}
                     <VisuallyHidden> {plural(r.points, ...NOUN.bod)}</VisuallyHidden>
+                  </Box>
+                  <Box component="span" sx={{fontSize: 13, fontWeight: 700, color: color.navy, whiteSpace: "nowrap", ...tabular}}>
+                    RAZ {r.diff}
                   </Box>
                 </Box>
               </>
@@ -247,8 +252,9 @@ export function Podium({
   );
 }
 
-// Medal circle; red and pulsing like RankBadge while the team is playing
-function Medal({rank, index, size, live = false}: {rank: number; index: number; size: number; live?: boolean}) {
+// Medal circle, red while the team is playing (pulsing on Početna's podium). ring: the desktop podium's medal on the
+// corner of the team's photo: a white ring, the display face, and no pulse.
+function Medal({rank, index, size, live = false, ring = false}: {rank: number; index: number; size: number; live?: boolean; ring?: boolean}) {
   return (
     <Box
       component="span"
@@ -258,10 +264,9 @@ function Medal({rank, index, size, live = false}: {rank: number; index: number; 
         height: size,
         borderRadius: "50%",
         background: live ? color.red : color.medal[index],
-        animation: live ? "spLive 1.5s infinite" : "none",
+        animation: live && !ring ? "spLive 1.5s infinite" : "none",
         color: color.white,
-        fontSize: size >= 34 ? 16 : 14,
-        fontWeight: 700,
+        ...(ring ? {boxSizing: "border-box", border: `3px solid ${color.white}`, fontFamily: font.display, fontSize: 15, fontWeight: 800} : {fontSize: size >= 34 ? 16 : 14, fontWeight: 700}),
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -358,7 +363,7 @@ function RowsHead() {
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        pl: "14px",
+        pl: "12px",
         ...rowEndSx,
         borderBottom: `1px solid ${tint.navy[10]}`,
         fontSize: 11.5,
@@ -369,7 +374,15 @@ function RowsHead() {
         whiteSpace: "nowrap",
       }}
     >
-      <span>#&nbsp;&nbsp;&nbsp;Ekipa</span>
+      {/* "#" over the places, "Ekipa" over the names (past the avatars) */}
+      <Box component="span" sx={{display: "flex", gap: "10px", [SMALL_PHONE]: {gap: "8px"}}}>
+        <Box component="span" sx={{width: 76, display: "flex"}}>
+          <Box component="span" sx={{width: 30, textAlign: "center"}}>
+            #
+          </Box>
+        </Box>
+        Ekipa
+      </Box>
       <Box component="span" sx={numbersSx}>
         <Box component="span" sx={{minWidth: 48, textAlign: "right"}}>
           Raz
@@ -407,7 +420,8 @@ function StandingsLine({
       sx={mergeSx(rowEndSx, {
         height: onPodium ? LINE_HEIGHT.podium : LINE_HEIGHT.row,
         display: "grid",
-        gridTemplateColumns: "30px minmax(0,1fr) auto",
+        // the place and the team's avatar, the name over its stats, RAZ and BOD
+        gridTemplateColumns: "76px minmax(0,1fr) auto",
         alignItems: "center",
         gap: "10px",
         [SMALL_PHONE]: {gap: "8px"},
@@ -418,9 +432,10 @@ function StandingsLine({
         ...(href ? linkedRow(r.highlight || onPodium) : {}),
       })}
     >
-      {onPodium ? <Medal rank={r.rank} index={medal} size={28} /> : <RankBadge rank={r.rank} live={r.live} />}
-      <Box sx={{display: "flex", alignItems: "center", gap: "10px", minWidth: 0, [SMALL_PHONE]: {gap: "8px"}}}>
-      <TeamAvatar row={r} size={32} sx={{[SMALL_PHONE]: {width: 28, height: 28, fontSize: 12}}} />
+      <Box sx={{display: "flex", alignItems: "center", gap: "10px"}}>
+        <RankNumber rank={r.rank} tone={rankTone(r, {teams: true})} podium={r.rank <= 3} />
+        <TeamAvatar row={r} size={36} />
+      </Box>
       <Box sx={{display: "flex", flexDirection: "column", gap: "2px", minWidth: 0}}>
         {showMovement ? (
           <Box sx={{display: "flex", alignItems: "center", gap: "6px", minWidth: 0}}>
@@ -438,7 +453,6 @@ function StandingsLine({
           )}
           {stats.results}
         </Box>
-      </Box>
       </Box>
       <Box sx={{...numbersSx, alignItems: "baseline"}}>
         <Box
@@ -470,7 +484,8 @@ type GridColumn = "played" | "wins" | "draws" | "losses";
 
 // Desktop standings table with real columns; RAZ and BOD larger than the counts. head={false}: no column labels row
 // on screen (Početna's Ukupni poredak card, 3a: the rows follow the podium straight away); screen readers still get
-// the column names. showMovement: Ukupni poredak's "+/−" column right after "#".
+// the column names. Each row starts with its place (RankNumber) and the team's avatar. showMovement: Ukupni poredak's
+// "+/−" as the last column, after BOD.
 export function StandingsGrid({
   rows,
   columns = ["wins", "draws", "losses"],
@@ -495,7 +510,9 @@ export function StandingsGrid({
   const short: Record<GridColumn, string> = {played: "OK", wins: "POB", draws: "NER", losses: "IZG"};
   const full: Record<GridColumn, string> = {played: "Odigrano kola", wins: "Pobjede", draws: "Neriješeno", losses: "Izgubljeno"};
   const countW = dense ? 40 : columns.length > 3 ? 64 : 56;
-  const template = `${dense ? 36 : 44}px ${showMovement ? "56px " : ""}minmax(0,1fr) ${columns.map(() => `${countW}px`).join(" ")} ${dense ? 64 : columns.length > 3 ? 96 : 80}px ${dense ? 48 : columns.length > 3 ? 72 : 64}px`;
+  // the place and the avatar: 36 + 12 + 36 (dense: 30 + 10 + 30)
+  const lead = dense ? 72 : 84;
+  const template = `${lead}px minmax(0,1fr) ${columns.map(() => `${countW}px`).join(" ")} ${dense ? 64 : columns.length > 3 ? 96 : 80}px ${dense ? 48 : columns.length > 3 ? 72 : 64}px${showMovement ? " 56px" : ""}`;
   const px = dense ? "20px" : columns.length > 3 ? "24px" : "20px";
   const cell = {display: "grid", gridTemplateColumns: template, gap: "8px", alignItems: "center", px};
   const headHeight = dense ? 34 : 44;
@@ -529,16 +546,9 @@ export function StandingsGrid({
             "& th": {fontWeight: 600, p: 0},
           }}
         >
-          <Box component="th" role="columnheader" scope="col" sx={{textAlign: "left"}}>
+          <Box component="th" role="columnheader" scope="col" sx={{textAlign: "left", pl: dense ? "10px" : "13px"}}>
             <abbr title="Mjesto" style={{textDecoration: "none"}}>#</abbr>
           </Box>
-          {showMovement && (
-            <Box component="th" role="columnheader" scope="col" sx={{textAlign: "center"}}>
-              <abbr title={MOVEMENT_HEADER} style={{textDecoration: "none", cursor: "help"}}>
-                +/−
-              </abbr>
-            </Box>
-          )}
           <Box component="th" role="columnheader" scope="col" sx={{textAlign: "left"}}>
             Ime ekipe
           </Box>
@@ -555,6 +565,13 @@ export function StandingsGrid({
           <Box component="th" role="columnheader" scope="col" sx={{textAlign: "right"}}>
             <abbr title="Bodovi" style={{textDecoration: "none"}}>BOD</abbr>
           </Box>
+          {showMovement && (
+            <Box component="th" role="columnheader" scope="col" sx={{textAlign: "center"}}>
+              <abbr title={MOVEMENT_HEADER} style={{textDecoration: "none", cursor: "help"}}>
+                +/−
+              </abbr>
+            </Box>
+          )}
         </Box>
       </Box>
       <Box component="tbody" role="rowgroup" sx={{display: "block"}}>
@@ -579,16 +596,11 @@ export function StandingsGrid({
                 ...(href ? linkedRow(r.highlight) : {}),
               }}
             >
-              <Box component="td" role="cell">
-                <RankBadge rank={r.rank} live={live} size={dense ? 26 : 30} />
+              <Box component="td" role="cell" sx={{display: "flex", alignItems: "center", gap: dense ? "10px" : "12px"}}>
+                <RankNumber rank={r.rank} tone={rankTone({...r, live}, {teams: true})} size={dense ? "phone" : "desktop"} podium={r.rank <= 3} />
+                <TeamAvatar row={r} size={dense ? 30 : 36} />
               </Box>
-              {showMovement && (
-                <Box component="td" role="cell" sx={{display: "flex", justifyContent: "center"}}>
-                  <MovementMark movement={r.movement} look="cell" />
-                </Box>
-              )}
-              <Box component="td" role="cell" sx={{minWidth: 0, display: "flex", alignItems: "center", gap: dense ? "10px" : "12px"}}>
-                <TeamAvatar row={r} size={dense ? 28 : 34} />
+              <Box component="td" role="cell" sx={{minWidth: 0}}>
                 <TeamLabel name={<TeamName row={r} href={href} keepClear={keepClear} />} conference={r.conference} sx={{fontSize: dense ? 16 : 17, fontWeight: r.highlight ? 700 : 600}} />
               </Box>
               {columns.map((c) => (
@@ -606,6 +618,11 @@ export function StandingsGrid({
               >
                 {r.points}
               </Box>
+              {showMovement && (
+                <Box component="td" role="cell" sx={{display: "flex", justifyContent: "center"}}>
+                  <MovementMark movement={r.movement} look="cell" />
+                </Box>
+              )}
             </Box>
           );
         })}
