@@ -28,6 +28,10 @@ export type TableRow = {
   conferenceB?: Conference | null;
   // smoking is allowed at the table
   smoking: boolean;
+  // the teams' photos for the avatars of a published round (null: the team's letter); absent where the rows don't come
+  // from the night's published rounds (Skica), which show no avatars
+  photoA?: string | null;
+  photoB?: string | null;
 };
 
 export type TableFilter = "all" | "live" | "done";
@@ -39,8 +43,8 @@ type RoundLike = {
   smoking_table?: boolean | null;
   team1_id?: number;
   team2_id?: number;
-  team1?: {team_name?: string} | null;
-  team2?: {team_name?: string} | null;
+  team1?: {team_name?: string; photo_url?: string | null} | null;
+  team2?: {team_name?: string; photo_url?: string | null} | null;
   team1_wins?: number;
   team2_wins?: number;
   active?: boolean;
@@ -77,6 +81,8 @@ export function toTableRows(rounds: RoundLike[], myTeamNames: string[] = [], con
         conferenceA: conferenceOf ? conferenceOf(r.team1_id ?? -1) : undefined,
         conferenceB: conferenceOf ? conferenceOf(r.team2_id ?? -1) : undefined,
         smoking: !!r.smoking_table,
+        ...(r.team1 && "photo_url" in r.team1 && {photoA: r.team1.photo_url ?? null}),
+        ...(r.team2 && "photo_url" in r.team2 && {photoB: r.team2.photo_url ?? null}),
       };
     })
     .sort((a, b) => a.table - b.table);

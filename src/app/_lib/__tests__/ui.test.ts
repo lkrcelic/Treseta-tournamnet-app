@@ -112,6 +112,17 @@ test("round tables are sorted by table and carry live match points", () => {
   assert.equal(liveCount(rows), 1);
 });
 
+test("a published round's tables carry the teams' photos for the avatars; rows without them (Skica) have none", () => {
+  const published = rounds.map((r) => ({...r, team1: {...r.team1, photo_url: r.id === 10 ? "/api/teams/1/photo?v=7" : null}, team2: {...r.team2, photo_url: null}}));
+  const rows = toTableRows(published);
+  assert.equal(rows[0].photoA, "/api/teams/1/photo?v=7");
+  assert.equal(rows[0].photoB, null);
+  // no photo_url from the API: no avatars at all, not the teams' letters
+  const plain = toTableRows(rounds);
+  assert.equal("photoA" in plain[0], false);
+  assert.equal("photoB" in plain[0], false);
+});
+
 test("table filters by status, team name and table number", () => {
   const rows = toTableRows(rounds);
   assert.equal(filterTables(rows, "all").length, 4);

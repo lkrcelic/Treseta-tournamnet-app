@@ -2,7 +2,8 @@
 
 import {TableRow} from "@/app/_lib/ui/tables";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
-import {buttonBase, Card, Eyebrow, LiveDot, LiveLabel, LivePill, rowFocus, tabular, TeamLabel} from "@/app/_ui/sp";
+import {buttonBase, Card, Eyebrow, InitialsAvatar, LiveDot, LiveLabel, LivePill, rowFocus, tabular, TeamLabel} from "@/app/_ui/sp";
+import {teamInitial} from "@/app/_lib/ui/profiles";
 import {isByeTeam} from "@/app/_lib/bye";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
@@ -12,6 +13,13 @@ import {SmokingMark} from "@/app/_ui/smoking/SmokingParts";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {Box} from "@mui/material";
 import React from "react";
+
+// A team's photo (or its letter) beside its name at a table of a published round; nothing for rows without photos
+// (Skica) or for the bye's side
+function TableAvatar({name, photo, bye, size}: {name: string; photo: string | null | undefined; bye: boolean; size: number}) {
+  if (photo === undefined || bye) return null;
+  return <InitialsAvatar name={name} letters={teamInitial(name)} src={photo} size={size} variant="paper" sx={{fontSize: size >= 28 ? 12 : 11}} />;
+}
 
 // Where a table card goes (Mobilni ekrani 14a–14g): the table's page (Pregled stola, or the admin's scorepad), or
 // for the player's own table still to be played straight into the game, with the pill saying so
@@ -136,13 +144,18 @@ export function PhoneRoundTables({
                 </Box>
                 {(
                   [
-                    [t.teamA, t.teamAId, t.winsA, t.pointsA, t.winsA > t.winsB, t.conferenceA],
-                    [t.teamB, t.teamBId, t.winsB, t.pointsB, t.winsB > t.winsA, t.conferenceB],
+                    [t.teamA, t.teamAId, t.winsA, t.pointsA, t.winsA > t.winsB, t.conferenceA, t.photoA],
+                    [t.teamB, t.teamBId, t.winsB, t.pointsB, t.winsB > t.winsA, t.conferenceB, t.photoB],
                   ] as const
-                ).map(([name, id, wins, pts, ahead, conference], k) => {
+                ).map(([name, id, wins, pts, ahead, conference, photo], k) => {
                   const bye = isByeTeam(id);
                   const href = edit || bye ? undefined : teamHref?.(id);
-                  const text = <TeamLabel name={name} conference={conference} sx={{fontSize: 16, fontWeight: t.done && ahead ? 700 : 600, color: bye ? color.muted : color.ink}} />;
+                  const text = (
+                    <>
+                      <TableAvatar name={name} photo={photo} bye={bye} size={28} />
+                      <TeamLabel name={name} conference={conference} sx={{fontSize: 16, fontWeight: t.done && ahead ? 700 : 600, color: bye ? color.muted : color.ink}} />
+                    </>
+                  );
                   return (
                     <Box
                       key={k}
@@ -170,6 +183,7 @@ export function PhoneRoundTables({
                               px: "8px",
                               display: "flex",
                               alignItems: "center",
+                              gap: "10px",
                               borderRadius: "12px",
                               color: color.ink,
                               textDecoration: "none",
@@ -181,7 +195,7 @@ export function PhoneRoundTables({
                             {text}
                           </Box>
                         ) : (
-                          <Box component="span" aria-hidden={!!target || undefined} sx={{display: "flex", minWidth: 0}}>
+                          <Box component="span" aria-hidden={!!target || undefined} sx={{display: "flex", alignItems: "center", gap: "10px", minWidth: 0}}>
                             {text}
                           </Box>
                         )}
@@ -292,8 +306,11 @@ export function DesktopTableRow({
         {/* a smoking table: the cream mark on the number's corner */}
         {t.smoking && <SmokingMark variant="badge" sx={{position: "absolute", top: -6, right: -7}} />}
       </Box>
-      {/* the dots sit next to the score, so they line up down the column */}
-      <TeamLabel name={t.teamA} conference={t.conferenceA} end hidden sx={{fontSize: font1, fontWeight: !t.live && t.winsA > t.winsB ? 700 : 500}} />
+      {/* the dots and the avatars sit next to the score, so they line up down the column */}
+      <Box component="span" aria-hidden sx={{minWidth: 0, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px"}}>
+        <TeamLabel name={t.teamA} conference={t.conferenceA} end hidden sx={{fontSize: font1, fontWeight: !t.live && t.winsA > t.winsB ? 700 : 500}} />
+        <TableAvatar name={t.teamA} photo={t.photoA} bye={isByeTeam(t.teamAId)} size={dense ? 24 : 28} />
+      </Box>
       <Box component="span" aria-hidden sx={{display: "flex", flexDirection: "column", alignItems: "center", lineHeight: 1.05}}>
         <Box component="span" sx={{fontFamily: font.display, fontSize: 22, fontWeight: 800}}>
           {t.winsA} : {t.winsB}
@@ -304,7 +321,10 @@ export function DesktopTableRow({
           </Box>
         )}
       </Box>
-      <TeamLabel name={t.teamB} conference={t.conferenceB} hidden sx={{fontSize: font1, fontWeight: !t.live && t.winsB > t.winsA ? 700 : 500}} />
+      <Box component="span" aria-hidden sx={{minWidth: 0, display: "flex", alignItems: "center", gap: "8px"}}>
+        <TableAvatar name={t.teamB} photo={t.photoB} bye={isByeTeam(t.teamBId)} size={dense ? 24 : 28} />
+        <TeamLabel name={t.teamB} conference={t.conferenceB} hidden sx={{fontSize: font1, fontWeight: !t.live && t.winsB > t.winsA ? 700 : 500}} />
+      </Box>
     </>
   );
   const status = (
