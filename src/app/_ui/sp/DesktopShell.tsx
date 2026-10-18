@@ -5,7 +5,7 @@ import useLogout from "@/app/_hooks/useLogout";
 import useStartGame from "@/app/_hooks/useStartGame";
 import {getRoundsAPI} from "@/app/_fetchers/round/getRounds";
 import {BRAND} from "@/app/_lib/brand";
-import {leagueDateString} from "@/app/_lib/dates";
+import {leagueNightString} from "@/app/_lib/dates";
 import {currentLeagueHref, LeaguePage} from "@/app/_lib/league";
 import {useSelectedLeagueId} from "@/app/_hooks/useLeagues";
 import useAuthStore from "@/app/_store/authStore";
@@ -202,7 +202,7 @@ export function NavDrawer({open, onClose, active}: {open: boolean; onClose: () =
   useEffect(() => {
     if (!open || !signedIn || leagueId == null) return;
     let cancelled = false;
-    getRoundsAPI({round_date: leagueDateString(), league_id: leagueId})
+    getRoundsAPI({round_date: leagueNightString(), league_id: leagueId})
       .then((rounds) => {
         if (!cancelled) setLiveToday(rounds.some((r) => r.active));
       })

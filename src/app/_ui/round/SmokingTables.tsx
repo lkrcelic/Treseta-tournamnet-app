@@ -172,8 +172,8 @@ function PlanRounds({plan}: {plan: SmokingPlan}) {
   return (
     <>
       {plan.rounds.map((r) => (
-        <Box key={r.roundNumber} component="section" aria-label={`Kolo ${r.roundNumber}`} sx={{display: "flex", flexDirection: "column", gap: "8px"}}>
-          <Box sx={{fontSize: 13, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.navy}}>Kolo {r.roundNumber}</Box>
+        <Box key={r.roundNumber} component="section" aria-label={r.name} sx={{display: "flex", flexDirection: "column", gap: "8px"}}>
+          <Box sx={{fontSize: 13, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.navy}}>{r.name}</Box>
           {r.tables.length === 0 ? (
             <Box sx={{fontSize: 14, color: color.muted, px: "4px"}}>U ovom kolu nema pušačkih stolova.</Box>
           ) : (
@@ -240,12 +240,12 @@ function HowChosen() {
 }
 
 // Tonight's rounds as dots: filled at a smoking table, a ring at another table, faint when not at a table
-function TonightDots({team, roundNumbers}: {team: SmokingPlanTeam; roundNumbers: number[]}) {
+function TonightDots({team, roundNumbers, roundNames}: {team: SmokingPlanTeam; roundNumbers: number[]; roundNames: string[]}) {
   if (!roundNumbers.length) return <Box component="span" aria-label="Večeras još nema kola" sx={{color: color.faint}}>—</Box>;
   return (
     <Box component="span" sx={{display: "flex", gap: `${DOT_GAP}px`}}>
       {team.tonight.map((smoking, i) => {
-        const text = roundDotLabel(roundNumbers[i], smoking);
+        const text = roundDotLabel(roundNames[i], smoking);
         return (
           <Box
             key={roundNumbers[i]}
@@ -307,7 +307,7 @@ function PlanRotation({plan}: {plan: SmokingPlan}) {
               </Box>
             </Box>
             <Box component="span" role="cell" sx={cell}>
-              <TonightDots team={t} roundNumbers={plan.roundNumbers} />
+              <TonightDots team={t} roundNumbers={plan.roundNumbers} roundNames={plan.roundNames} />
             </Box>
             <Box
               component="span"

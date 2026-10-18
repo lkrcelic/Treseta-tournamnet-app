@@ -1,4 +1,5 @@
 import {REPEAT_MATCHUPS, RoundCreateRequest} from "@/app/_interfaces/round";
+import {DRAFT_WAITING} from "@/app/_lib/roundStatus";
 import {apiFetch, responseErrorMessage} from "@/app/_fetchers/errorMessage";
 
 // The rounds weren't created because some teams would meet twice today; repeats are their names, pair by pair
@@ -7,6 +8,9 @@ export class RepeatMatchupsError extends Error {
     super(message);
   }
 }
+
+// The rounds weren't created because tonight's rounds still wait in Skica
+export class DraftWaitingError extends Error {}
 
 export async function createMultipleRoundsAPI(
   selectedLeagueId: number,
@@ -34,6 +38,7 @@ export async function createMultipleRoundsAPI(
   if (response.status === 409) {
     const data = await response.clone().json().catch(() => null);
     if (data?.code === REPEAT_MATCHUPS) throw new RepeatMatchupsError(data.error, data.repeats ?? []);
+    if (data?.code === DRAFT_WAITING) throw new DraftWaitingError(data.error);
   }
   if (!response.ok) {
     throw new Error(await responseErrorMessage(response, "Kolo nije napravljeno."));

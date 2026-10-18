@@ -1,16 +1,21 @@
 "use client";
 
 import useConferences from "@/app/_hooks/useConferences";
+import useLeagueTeams from "@/app/_hooks/useLeagueTeams";
 import useLeagues from "@/app/_hooks/useLeagues";
 import useNavStack from "@/app/_hooks/useNavStack";
 import useNightDraft from "@/app/_hooks/useNightDraft";
 import {DraftRound} from "@/app/_interfaces/round";
 import {nightLabel} from "@/app/_lib/nights";
-import {draftCounts, publishedTimeLabel, publishLabel, publishNote, RoundStatus} from "@/app/_lib/roundStatus";
+import {draftCounts, publishedTimeLabel, publishLabel, publishNote, roundName, RoundStatus} from "@/app/_lib/roundStatus";
+import {draftTableRows} from "@/app/_lib/ui/tables";
+import {isByeTeam} from "@/app/_lib/bye";
 import {count, NOUN} from "@/app/_lib/ui/text";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, shadow, tint} from "@/app/_styles/tokens";
 import {SmokingMark} from "@/app/_ui/smoking/SmokingParts";
+import {PhoneRoundTables} from "@/app/league/[leagueId]/daily-standings/ui/RoundTables";
+import {PairSheet, useTableEdits} from "@/app/league/[leagueId]/daily-standings/ui/RoundEditing";
 import {buttonBase, ConfirmSheet, ErrorNote, IconCircleButton, LoadingRows, PrimaryButton, Screen, ScrollArea, tabular, TeamLabel, TopBar} from "@/app/_ui/sp";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
@@ -19,6 +24,7 @@ import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import DoneAllRoundedIcon from "@mui/icons-material/DoneAllRounded";
 import EditCalendarRoundedIcon from "@mui/icons-material/EditCalendarRounded";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import PublishRoundedIcon from "@mui/icons-material/PublishRounded";
 import TaskAltRoundedIcon from "@mui/icons-material/TaskAltRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
@@ -31,10 +37,12 @@ const LOOK: Record<RoundStatus, {label: string; icon: React.ReactNode; ink: stri
   PUBLISHED: {label: "Objavljeno", icon: <VisibilityRoundedIcon />, ink: color.green, bg: tint.green[12]},
 };
 
-// Skica kola on the phone (admin-mobile 14–17): the night's rounds as a switch, one round's tables, its approval, and
-// at the bottom "Odobri sva" and "Objavi odobrena kola · 1/3" (only approved rounds go out; the rest stay drafts until
-// later). Odbaci skicu (the bin) deletes the rounds not published yet and goes back to Novo kolo. Once every round is
-// out it says so and opens Dnevni poredak. The rules and calls are the desktop's (useNightDraft).
+// Skica kola on the phone (admin-mobile 14–17): the night's rounds as a switch (Skica A, B, C… until published, then
+// their Kolo number), one round's tables, its approval, and at the bottom "Odobri sva" and "Objavi odobrena kola · 1/3"
+// (only approved rounds go out; the rest stay drafts until later). The pencil edits a round not published yet as
+// Dnevni poredak's pencil does (admin-mobile 19–21: Uredi par, Ukloni stol, Dodaj stol, Slobodna runda in the sheet).
+// Odbaci skicu (the bin) deletes the rounds not published yet and goes back to Novo kolo. Once every round is out it
+// says so and opens Dnevni poredak. The rules and calls are the desktop's (useNightDraft).
 export default function DraftPhone({leagueId, date}: {leagueId: number; date: string}) {
   const router = useTransitionRouter();
   const nav = useNavStack("Skica kola", "/");
@@ -55,6 +63,24 @@ export default function DraftPhone({leagueId, date}: {leagueId: number; date: st
   const allOut = rounds.length > 0 && counts.unpublished === 0;
   const lastOut = rounds.map((r) => r.publishedAt).filter((t): t is string => t != null).sort().pop() ?? null;
 
+  // Uredi stolove: a round not published yet; another round (or this one published) ends it
+  const editable = round != null && round.status !== "PUBLISHED";
+  const [editing, setEditing] = useState(false);
+  const edits = useTableEdits(editable && round ? {leagueId, date, roundNumber: round.roundNumber, onChanged: d.reload} : null);
+  const {teams} = useLeagueTeams(editing ? leagueId : null);
+  const rows = round ? draftTableRows(round, conferences.of) : [];
+  const removeRow = rows.find((r) => r.id === edits.confirmId) ?? null;
+  useEffect(() => {
+    setEditing(false);
+    edits.reset();
+    edits.setPair(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, editable]);
+  const toggleEdit = () => {
+    setEditing((e) => !e);
+    edits.reset();
+  };
+
   return (
     <Screen fill gap={14}>
       <TopBar
@@ -63,9 +89,24 @@ export default function DraftPhone({leagueId, date}: {leagueId: number; date: st
         title="Skica kola"
         right={
           night && counts.unpublished > 0 ? (
-            <IconCircleButton label="Odbaci skicu" size={44} onClick={() => setAskDiscard(true)} sx={{color: color.red, "& svg": {fontSize: 22}}}>
-              <DeleteRoundedIcon />
-            </IconCircleButton>
+            <Box sx={{display: "flex", gap: "8px"}}>
+              {editable && (
+                <IconCircleButton
+                  label={editing ? "Završi uređivanje stolova" : "Uredi stolove"}
+                  aria-pressed={editing}
+                  size={44}
+                  onClick={toggleEdit}
+                  sx={{...(editing && {background: color.navy, color: color.white}), "& svg": {fontSize: 22}}}
+                >
+                  {editing ? <CheckRoundedIcon /> : <EditRoundedIcon />}
+                </IconCircleButton>
+              )}
+              {!editing && (
+                <IconCircleButton label="Odbaci skicu" size={44} onClick={() => setAskDiscard(true)} sx={{color: color.red, "& svg": {fontSize: 22}}}>
+                  <DeleteRoundedIcon />
+                </IconCircleButton>
+              )}
+            </Box>
           ) : undefined
         }
       />
@@ -85,7 +126,7 @@ export default function DraftPhone({leagueId, date}: {leagueId: number; date: st
             <Box component="span" sx={{flex: 1, minWidth: 0, fontSize: 15, color: color.ink2, whiteSpace: "nowrap"}}>
               {count(round.tables.length, NOUN.stol)}
             </Box>
-            {round.status !== "PUBLISHED" && <ApproveButton approved={round.status === "APPROVED"} onClick={() => d.toggleApproval(round)} round={round.roundNumber} />}
+            {editable && !editing && <ApproveButton approved={round.status === "APPROVED"} onClick={() => d.toggleApproval(round)} name={roundName(round)} />}
           </Box>
 
           <ScrollArea sx={{gap: "12px"}}>
@@ -105,67 +146,111 @@ export default function DraftPhone({leagueId, date}: {leagueId: number; date: st
                 </Box>
               </Box>
             )}
-            <Box component="ol" aria-label={`Kolo ${round.roundNumber}, stolovi`} sx={{flex: "none", listStyle: "none", m: 0, p: 0, background: color.white, borderRadius: "22px", overflow: "hidden", boxShadow: shadow.card}}>
-              {round.tables.map((t, i) => (
-                <Box
-                  component="li"
-                  key={t.id}
-                  sx={{minHeight: 64, display: "grid", gridTemplateColumns: "36px minmax(0,1fr) auto minmax(0,1fr) 24px", alignItems: "center", gap: "10px", p: "8px 14px", borderTop: i ? `1px solid ${color.line}` : "none"}}
-                >
-                  <Box component="span" sx={{width: 36, height: 36, borderRadius: "10px", background: color.lineFill, color: color.navy, fontSize: 14, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", ...tabular}}>
-                    {t.table ?? i + 1}
+            {editing ? (
+              <>
+                {edits.actionError && <ErrorNote>{edits.actionError}</ErrorNote>}
+                <PhoneRoundTables
+                  title={`${roundName(round)} · ${count(rows.length, NOUN.stol)}`}
+                  rows={rows}
+                  draft
+                  fresh={edits.freshTable}
+                  edit={{
+                    onPair: (t) => edits.setPair({kind: "edit", row: t}),
+                    onRemove: (t) => {
+                      edits.setActionError(null);
+                      edits.setConfirmId(t.id);
+                    },
+                    onAdd: () => edits.setPair({kind: "new", tableNumber: rows.reduce((m, r) => Math.max(m, r.table), 0) + 1}),
+                  }}
+                />
+              </>
+            ) : (
+              <Box component="ol" aria-label={`${roundName(round)}, stolovi`} sx={{flex: "none", listStyle: "none", m: 0, p: 0, background: color.white, borderRadius: "22px", overflow: "hidden", boxShadow: shadow.card}}>
+                {rows.map((t, i) => (
+                  <Box
+                    component="li"
+                    key={t.id}
+                    sx={{minHeight: 64, display: "grid", gridTemplateColumns: "36px minmax(0,1fr) auto minmax(0,1fr) 24px", alignItems: "center", gap: "10px", p: "8px 14px", borderTop: i ? `1px solid ${color.line}` : "none"}}
+                  >
+                    <Box component="span" sx={{width: 36, height: 36, borderRadius: "10px", background: color.lineFill, color: color.navy, fontSize: 14, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", ...tabular}}>
+                      {t.table}
+                    </Box>
+                    <TeamLabel name={t.teamA} conference={t.conferenceA} end sx={{fontSize: 15.5, fontWeight: 600, ...(isByeTeam(t.teamAId) && {color: color.muted})}} />
+                    {/* a bye table is settled 2:0 from the start */}
+                    {t.bye ? (
+                      <Box component="span" sx={{fontSize: 12, color: color.faint, ...tabular}}>
+                        {t.winsA}:{t.winsB}
+                      </Box>
+                    ) : (
+                      <Box component="span" aria-label="protiv" sx={{fontSize: 12, color: color.faint}}>
+                        vs
+                      </Box>
+                    )}
+                    <TeamLabel name={t.teamB} conference={t.conferenceB} sx={{fontSize: 15.5, fontWeight: 600, ...(isByeTeam(t.teamBId) && {color: color.muted})}} />
+                    {t.smoking ? <SmokingMark /> : <span />}
                   </Box>
-                  <TeamLabel name={t.team1.name} conference={conferences.of(t.team1.id)} end sx={{fontSize: 15.5, fontWeight: 600}} />
-                  <Box component="span" aria-label="protiv" sx={{fontSize: 12, color: color.faint}}>
-                    vs
-                  </Box>
-                  <TeamLabel name={t.team2.name} conference={conferences.of(t.team2.id)} sx={{fontSize: 15.5, fontWeight: 600}} />
-                  {t.smoking ? <SmokingMark /> : <span />}
-                </Box>
-              ))}
-            </Box>
+                ))}
+              </Box>
+            )}
           </ScrollArea>
 
-          <Box sx={{flex: "none", display: "flex", flexDirection: "column", gap: "10px"}}>
-            {d.actionError && <ErrorNote>{d.actionError}</ErrorNote>}
-            {allOut ? (
-              <PrimaryButton icon={<CalendarMonthRoundedIcon />} onClick={() => router.push(`/league/${leagueId}/daily-standings?date=${date}`)}>
-                Otvori Dnevni poredak
-              </PrimaryButton>
-            ) : (
-              <>
-                <Box sx={{display: "flex", alignItems: "center", gap: "10px", minHeight: 44}}>
-                  <Box component="span" role="status" sx={{flex: 1, minWidth: 0, fontSize: 13.5, lineHeight: 1.35, color: color.ink2}}>
-                    {publishNote(counts)}
-                  </Box>
-                  {rounds.some((r) => r.status === "DRAFT") && (
-                    <Box
-                      component="button"
-                      type="button"
-                      onClick={d.approveAll}
-                      sx={{...buttonBase, flex: "none", height: 44, px: "10px", borderRadius: "12px", color: color.navy, fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", gap: "6px", "& svg": {fontSize: 20}}}
-                    >
-                      <DoneAllRoundedIcon aria-hidden />
-                      Odobri sva
-                    </Box>
-                  )}
-                </Box>
-                <PrimaryButton
-                  icon={<PublishRoundedIcon />}
-                  onClick={d.publish}
-                  disabled={counts.approved === 0}
-                  loading={d.busy === "publish"}
-                  bg={counts.approved ? color.navy : color.lineFill}
-                  ink={counts.approved ? color.white : color.faint}
-                  sx={counts.approved ? undefined : {opacity: 1, boxShadow: "none"}}
-                >
-                  {publishLabel(counts)}
+          {!editing && (
+            <Box sx={{flex: "none", display: "flex", flexDirection: "column", gap: "10px"}}>
+              {d.actionError && <ErrorNote>{d.actionError}</ErrorNote>}
+              {allOut ? (
+                <PrimaryButton icon={<CalendarMonthRoundedIcon />} onClick={() => router.push(`/league/${leagueId}/daily-standings?date=${date}`)}>
+                  Otvori Dnevni poredak
                 </PrimaryButton>
-              </>
-            )}
-          </Box>
+              ) : (
+                <>
+                  <Box sx={{display: "flex", alignItems: "center", gap: "10px", minHeight: 44}}>
+                    <Box component="span" role="status" sx={{flex: 1, minWidth: 0, fontSize: 13.5, lineHeight: 1.35, color: color.ink2}}>
+                      {publishNote(counts)}
+                    </Box>
+                    {rounds.some((r) => r.status === "DRAFT") && (
+                      <Box
+                        component="button"
+                        type="button"
+                        onClick={d.approveAll}
+                        sx={{...buttonBase, flex: "none", height: 44, px: "10px", borderRadius: "12px", color: color.navy, fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", gap: "6px", "& svg": {fontSize: 20}}}
+                      >
+                        <DoneAllRoundedIcon aria-hidden />
+                        Odobri sva
+                      </Box>
+                    )}
+                  </Box>
+                  <PrimaryButton
+                    icon={<PublishRoundedIcon />}
+                    onClick={d.publish}
+                    disabled={counts.approved === 0}
+                    loading={d.busy === "publish"}
+                    bg={counts.approved ? color.navy : color.lineFill}
+                    ink={counts.approved ? color.white : color.faint}
+                    sx={counts.approved ? undefined : {opacity: 1, boxShadow: "none"}}
+                  >
+                    {publishLabel(counts)}
+                  </PrimaryButton>
+                </>
+              )}
+            </Box>
+          )}
         </>
       )}
+
+      {editing && edits.pair && (
+        <PairSheet target={edits.pair} rows={rows} teams={teams ?? []} onClose={() => edits.setPair(null)} onSave={edits.savePair} />
+      )}
+      <ConfirmSheet
+        open={editing && removeRow != null}
+        onClose={() => edits.setConfirmId(null)}
+        onConfirm={() => removeRow && edits.remove(removeRow.id)}
+        title="Ukloniti stol?"
+        text={removeRow ? `Stol ${removeRow.table} miče se iz ove skice.` : ""}
+        action="Ukloni stol"
+        icon={<DeleteRoundedIcon />}
+        busy={edits.removing}
+        error={removeRow ? edits.actionError : null}
+      />
 
       <ConfirmSheet
         open={askDiscard}
@@ -184,7 +269,7 @@ export default function DraftPhone({leagueId, date}: {leagueId: number; date: st
   );
 }
 
-// Kolo 1 · Kolo 2 · Kolo 3, each with its status icon, on a beige track; a night of many rounds scrolls sideways
+// Kolo 1 · Skica A · Skica B, each with its status icon, on a beige track; a night of many rounds scrolls sideways
 function RoundSwitch({rounds, index, onPick}: {rounds: DraftRound[]; index: number; onPick: (i: number) => void}) {
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -202,11 +287,11 @@ function RoundSwitch({rounds, index, onPick}: {rounds: DraftRound[]; index: numb
         const look = LOOK[r.status];
         return (
           <Box
-            key={r.roundNumber}
+            key={r.id}
             component="button"
             type="button"
             aria-pressed={on}
-            aria-label={`Kolo ${r.roundNumber}, ${look.label.toLowerCase()}`}
+            aria-label={`${roundName(r)}, ${look.label.toLowerCase()}`}
             onClick={() => onPick(i)}
             sx={{
               ...buttonBase,
@@ -229,7 +314,7 @@ function RoundSwitch({rounds, index, onPick}: {rounds: DraftRound[]; index: numb
             }}
           >
             {look.icon}
-            Kolo {r.roundNumber}
+            {roundName(r)}
           </Box>
         );
       })}
@@ -256,13 +341,13 @@ function StatusPill({status}: {status: RoundStatus}) {
 }
 
 // Odobri / Odobreno: approves the round, and a second press takes the approval back
-function ApproveButton({approved, onClick, round}: {approved: boolean; onClick: () => void; round: number}) {
+function ApproveButton({approved, onClick, name}: {approved: boolean; onClick: () => void; name: string}) {
   return (
     <Box
       component="button"
       type="button"
       aria-pressed={approved}
-      aria-label={approved ? `Kolo ${round} je odobreno. Poništi odobrenje` : `Odobri kolo ${round}`}
+      aria-label={approved ? `${name}: odobreno. Poništi odobrenje` : `Odobri: ${name}`}
       onClick={onClick}
       sx={{
         ...buttonBase,

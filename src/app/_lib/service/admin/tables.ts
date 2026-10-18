@@ -5,7 +5,9 @@ import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {createByeMatches} from "@/app/_lib/service/round/insertPairRounds";
 import {isRatedRound, recalcTeamScores, replayRatings} from "./recalc";
 import {teamSmokers} from "@/app/_lib/service/team/smokers";
-import {RoundStatus, roundStatusOf} from "@/app/_lib/roundStatus";
+import {draftLetters, RoundStatus, roundStatusOf} from "@/app/_lib/roundStatus";
+import {planSeats} from "@/app/_lib/tableSeats";
+import {leagueNight} from "@/app/_lib/dates";
 
 // Admin edits of a night's tables (a "round number" of a league on a date is a set of tables, one Round row each).
 // A table whose teams change loses what was played at it; standings and, when a counted result changed, ratings
@@ -22,6 +24,7 @@ type TableRound = {
   table_number: number | null;
   status: RoundStatus;
   published_at: Date | null;
+  draft_order: number | null;
 };
 
 export class NotFoundError extends Error {
@@ -41,6 +44,7 @@ const tableSelect = {
   table_number: true,
   status: true,
   published_at: true,
+  draft_order: true,
 } as const;
 
 // The table and the league it belongs to, with the league locked for edits (same lock as round creation)
@@ -71,10 +75,12 @@ async function assertLeagueTeams(tx: Tx, leagueId: number, teamIds: number[]) {
   if (count !== new Set(real).size) throw new InvalidResultError("Obje ekipe moraju biti iz ove lige.");
 }
 
-// Drops what was played at a table and seats the given teams. A table with the bye is settled right away (2:0).
-// A smoking table stays one; the smokers it counts are the new teams'. Who played goes too (a lineup picked on Start
-// Game, or a roster saved by freezeRosterLineups): the table is played again, and its new lineup is picked then.
-async function reseat(tx: Tx, roundId: number, team1Id: number, team2Id: number) {
+// Drops what was played at a table and seats the given teams. A table with the bye is settled right away (2:0, its
+// matches on the table's night). A smoking table stays one; the smokers it counts are the new teams'. Who played goes
+// too (a lineup picked on Start Game, or a roster saved by freezeRosterLineups): the table is played again, and its new
+// lineup is picked then.
+async function reseat(tx: Tx, table: TableRound, team1Id: number, team2Id: number) {
+  const roundId = table.id;
   await tx.ongoingMatch.deleteMany({where: {round_id: roundId}});
   await tx.match.deleteMany({where: {round_id: roundId}});
   await tx.roundPlayer.deleteMany({where: {round_id: roundId}});
@@ -93,7 +99,7 @@ async function reseat(tx: Tx, roundId: number, team1Id: number, team2Id: number)
       active: false,
     },
   });
-  if (bye) await createByeMatches(tx, roundId, team1Id);
+  if (bye) await createByeMatches(tx, roundId, team1Id, table.round_date ?? leagueNight());
 }
 
 // After tables changed: the season rows of every team involved, and ratings if a rated result was undone or added
@@ -105,39 +111,14 @@ async function settle(tx: Tx, leagueId: number, before: TableRound[], after: Tab
 
 export type PairChange = {roundId: number; team1Id: number; team2Id: number};
 
-// The seats of a round after `tableId` gets `wanted` (team1, team2). A team taken from another table is replaced
-// there by the team it pushes out, so every team keeps playing once. Returns a new map; the input is not changed.
-export function planSeats(seats: Map<number, [number, number]>, tableId: number, wanted: [number, number]): Map<number, [number, number]> {
-  const out = new Map(Array.from(seats, ([id, pair]) => [id, [pair[0], pair[1]] as [number, number]]));
-  for (const side of [0, 1]) {
-    const current = out.get(tableId)!;
-    const newTeam = wanted[side];
-    const oldTeam = current[side];
-    if (newTeam === oldTeam) continue;
-    for (const [id, pair] of Array.from(out)) {
-      if (id === tableId) continue;
-      const k = pair.indexOf(newTeam);
-      if (k >= 0) {
-        pair[k] = oldTeam;
-        break;
-      }
-    }
-    current[side] = newTeam;
-  }
-  return out;
-}
-
 // Seats two teams at a table. A team that sits at another table of the same round swaps places with the team it
-// replaces, so every team still plays once in the round. Returns the tables that changed.
+// replaces, so every team still plays once in the round. A team seated with the bye (Slobodna runda) wins the table
+// 2:0 at once; a bye table whose team is taken away is left empty and removed. Returns the tables that changed (a
+// removed one with both its teams the bye).
 export async function editTablePair(roundId: number, team1Id: number, team2Id: number): Promise<PairChange[]> {
   if (team1Id === team2Id) throw new InvalidResultError("Ekipa ne može igrati sama protiv sebe.");
   return prisma.$transaction(async (tx) => {
     const {table, leagueId} = await loadTable(tx, roundId);
-    // the bye can stay at its table, but can't be seated anywhere new
-    const byeHere = isByeTeam(table.team1_id) || isByeTeam(table.team2_id);
-    if (!byeHere && (isByeTeam(team1Id) || isByeTeam(team2Id))) {
-      throw new InvalidResultError("Slobodna runda ne može biti za stolom.");
-    }
     await assertLeagueTeams(tx, leagueId, [team1Id, team2Id]);
 
     const tables = await sameRound(tx, leagueId, table);
@@ -149,8 +130,9 @@ export async function editTablePair(roundId: number, team1Id: number, team2Id: n
     });
     for (const t of changed) {
       const [a, b] = seats.get(t.id)!;
-      if (a === b) throw new InvalidResultError("Ekipa ne može igrati sama protiv sebe.");
-      await reseat(tx, t.id, a, b);
+      if (isByeTeam(a) && isByeTeam(b)) await dropTable(tx, t.id);
+      else if (a === b) throw new InvalidResultError("Ekipa ne može igrati sama protiv sebe.");
+      else await reseat(tx, t, a, b);
     }
     const after = await tx.round.findMany({where: {id: {in: changed.map((t) => t.id)}}, select: tableSelect});
     await settle(tx, leagueId, changed, after);
@@ -158,30 +140,36 @@ export async function editTablePair(roundId: number, team1Id: number, team2Id: n
   }, {timeout: 30000});
 }
 
+async function dropTable(tx: Tx, roundId: number) {
+  await tx.ongoingMatch.deleteMany({where: {round_id: roundId}});
+  await tx.match.deleteMany({where: {round_id: roundId}});
+  await tx.round.delete({where: {id: roundId}});
+}
+
 // Removes a table and everything played at it
 export async function removeTable(roundId: number): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const {table, leagueId} = await loadTable(tx, roundId);
-    await tx.ongoingMatch.deleteMany({where: {round_id: roundId}});
-    await tx.match.deleteMany({where: {round_id: roundId}});
-    await tx.round.delete({where: {id: roundId}});
+    await dropTable(tx, roundId);
     await settle(tx, leagueId, [table], []);
   }, {timeout: 30000});
 }
 
-// Adds a table to a round that exists on that night; both teams must not be playing in that round yet. The table is
-// published (or not) as the round's other tables are.
+// Adds a table to a round that exists on that night; its teams must not be playing in that round yet (the bye can be
+// at several tables). A team seated with the bye wins the table 2:0 at once, and a published round counts it in the
+// standings. The table is published (or not) as the round's other tables are.
 export async function addTable(leagueId: number, roundDate: Date, roundNumber: number, team1Id: number, team2Id: number): Promise<number> {
   if (team1Id === team2Id) throw new InvalidResultError("Ekipa ne može igrati sama protiv sebe.");
-  if (isByeTeam(team1Id) || isByeTeam(team2Id)) throw new InvalidResultError("Slobodna runda ne može biti za stolom.");
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(${leagueId})`;
     await assertLeagueTeams(tx, leagueId, [team1Id, team2Id]);
     const tables = await sameRound(tx, leagueId, {round_number: roundNumber, round_date: roundDate});
     if (tables.length === 0) throw new NotFoundError("To kolo ne postoji.");
     const seated = new Set(tables.flatMap((t) => [t.team1_id, t.team2_id]));
-    if (seated.has(team1Id) || seated.has(team2Id)) throw new InvalidResultError("Ekipa već igra u ovom kolu.");
+    if ([team1Id, team2Id].some((id) => !isByeTeam(id) && seated.has(id))) throw new InvalidResultError("Ekipa već igra u ovom kolu.");
 
+    const bye = isByeTeam(team1Id) || isByeTeam(team2Id);
+    const status = roundStatusOf(tables);
     const tableNumber = Math.max(0, ...tables.map((t) => t.table_number ?? 0)) + 1;
     const smokers = await teamSmokers([team1Id, team2Id], tx);
     const round = await tx.round.create({
@@ -193,18 +181,29 @@ export async function addTable(leagueId: number, roundDate: Date, roundNumber: n
         table_number: tableNumber,
         team1_smokers: smokers.get(team1Id) ?? 0,
         team2_smokers: smokers.get(team2Id) ?? 0,
-        status: roundStatusOf(tables),
-        published_at: roundStatusOf(tables) === "PUBLISHED" ? tables[0].published_at : null,
+        status,
+        published_at: status === "PUBLISHED" ? tables[0].published_at : null,
+        // a draft's table is part of its Skica A, B…
+        draft_order: status === "PUBLISHED" ? null : tables[0].draft_order,
+        ...(bye && {team1_wins: isByeTeam(team1Id) ? 0 : 2, team2_wins: isByeTeam(team1Id) ? 2 : 0, open: false}),
         leagueRounds: {create: {league_id: leagueId}},
       },
+      select: tableSelect,
     });
+    if (bye) {
+      await createByeMatches(tx, round.id, team1Id, roundDate);
+      await settle(tx, leagueId, [], [round]);
+    }
     return round.id;
-  });
+  }, {timeout: 30000});
 }
 
 export type RoundSummary = {
   date: string; // YYYY-MM-DD
+  // a round not published yet has a number only to keep its tables together: it is shown as Skica + its letter
   roundNumber: number;
+  // "A", "B"… until it is published; null once it is
+  letter: string | null;
   tables: number;
   // how far a published round got; a round not published yet is a draft or approved (Upravljanje ligom · Skica)
   status: "draft" | "approved" | "played" | "live" | "new";
@@ -226,6 +225,13 @@ export async function listLeagueRounds(leagueId: number): Promise<RoundSummary[]
     groups.set(key, [...(groups.get(key) ?? []), r]);
   }
   const isBye = (r: (typeof rounds)[number]) => isByeTeam(r.team1_id) || isByeTeam(r.team2_id);
+  // the letters of each night's rounds waiting in Skica
+  const nights = new Map<string, {roundNumber: number; status: RoundStatus; draftOrder: number | null}[]>();
+  groups.forEach((tables, key) => {
+    const date = key.split("|")[0];
+    nights.set(date, [...(nights.get(date) ?? []), {roundNumber: tables[0].round_number!, status: roundStatusOf(tables), draftOrder: tables[0].draft_order}]);
+  });
+  const letters = new Map(Array.from(nights, ([date, list]) => [date, draftLetters(list)]));
   return Array.from(groups, ([key, tables]) => {
     const [date, n] = key.split("|");
     const played = tables.filter((t) => !isBye(t));
@@ -239,7 +245,7 @@ export async function listLeagueRounds(leagueId: number): Promise<RoundSummary[]
           : played.some((t) => !t.open || t.active || t._count.matches > 0 || t._count.ongoingMatches > 0)
             ? "live"
             : "new";
-    return {date, roundNumber: Number(n), tables: tables.length, status};
+    return {date, roundNumber: Number(n), letter: letters.get(date)?.get(Number(n)) ?? null, tables: tables.length, status};
   }).sort((a, b) => b.date.localeCompare(a.date) || b.roundNumber - a.roundNumber);
 }
 

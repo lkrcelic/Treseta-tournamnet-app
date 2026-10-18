@@ -4,7 +4,8 @@ import {generateGroupedRoundPairings, generateMultipleRoundPairings} from "@/app
 import {getLeagueTeamsWithScores} from "@/app/_lib/helpers/query/leagueScores";
 import {REPEAT_MATCHUPS, RoundCreateRequestValidation} from "@/app/_interfaces/round";
 import {requireAdmin} from "@/app/_lib/service/auth/requireUser";
-import {insertRoundBatch, pairsPlayedToday} from "@/app/_lib/service/round/insertPairRounds";
+import {DraftWaitingError, insertRoundBatch, pairsPlayedToday, tonightDraftTables} from "@/app/_lib/service/round/insertPairRounds";
+import {DRAFT_WAITING} from "@/app/_lib/roundStatus";
 import {errorResponse} from "@/app/_lib/apiErrors";
 import {conferenceGroups, conferenceLookup} from "@/app/_lib/conferences";
 import {getLeagueConferences} from "@/app/_lib/service/league/conferences";
@@ -23,6 +24,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const parsed = RoundCreateRequestValidation.parse(body);
     const {league_id, present_teams} = parsed;
+    // tonight's rounds still waiting in Skica are published or discarded first (checked again when they are saved)
+    if ((await tonightDraftTables(league_id)) > 0) throw new DraftWaitingError();
     const numberOfRounds = parsed.numberOfRounds ?? 3;
     const windowSize = parsed.windowSize ?? 8;
 
@@ -59,13 +62,13 @@ export async function POST(request: NextRequest) {
     const seated = seatRounds(plan.rounds, setup);
 
     // drafts until an admin publishes them (Upravljanje ligom · Skica)
-    const {firstRoundNumber, date, alreadyCreated} = await insertRoundBatch(seated, league_id, {smokers, tables: smokingTables});
+    const {firstRoundNumber, date} = await insertRoundBatch(seated, league_id, {smokers, tables: smokingTables});
 
-    return NextResponse.json(
-      {round_number: firstRoundNumber, date, already_created: alreadyCreated},
-      {status: alreadyCreated ? STATUS.OK : STATUS.Created}
-    );
+    return NextResponse.json({round_number: firstRoundNumber, date}, {status: STATUS.Created});
   } catch (error) {
+    if (error instanceof DraftWaitingError) {
+      return NextResponse.json({error: error.message, code: DRAFT_WAITING}, {status: STATUS.Conflict});
+    }
     return errorResponse(error, "Kolo nije napravljeno.");
   }
 }

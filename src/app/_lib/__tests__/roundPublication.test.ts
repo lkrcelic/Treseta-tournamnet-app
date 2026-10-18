@@ -5,13 +5,17 @@ import {test} from "node:test";
 import {
   approvalStatus,
   draftCounts,
+  draftLetter,
+  draftLetters,
   NOTHING_APPROVED,
   publishedAtLabel,
   publishedTimeLabel,
   publishLabel,
   publishNote,
+  publishNumbers,
   PUBLISHED_ROUND,
   ROUND_ALREADY_PUBLISHED,
+  roundName,
   RoundStatus,
   roundStatusOf,
   roundsToApprove,
@@ -159,3 +163,38 @@ test("the standings in the database count published rounds only", () => {
     assert.equal(published, rounds, `${name}: every round query filters published rounds`);
   }
 });
+
+// A round waiting in Skica has no number: Skica A, B, C… until it is published, and then the next Kolo number
+
+const r = (roundNumber: number, status: RoundStatus, draftOrder: number | null = null) => ({roundNumber, status, draftOrder});
+
+test("a draft is called by its letter, a published round by its number", () => {
+  assert.equal(draftLetter(1), "A");
+  assert.equal(draftLetter(3), "C");
+  assert.equal(roundName({roundNumber: 12, letter: "B"}), "Skica B");
+  assert.equal(roundName({roundNumber: 7, letter: null}), "Kolo 7");
+});
+
+test("a night's drafts keep their letters: a published round has none, and the others don't move up", () => {
+  const letters = draftLetters([r(9, "PUBLISHED"), r(10, "DRAFT", 1), r(12, "APPROVED", 3)]);
+  assert.equal(letters.get(9), undefined);
+  assert.equal(letters.get(10), "A");
+  assert.equal(letters.get(12), "C");
+  // drafts from before draft orders: by their place among the night's drafts
+  const old = draftLetters([r(4, "PUBLISHED"), r(5, "DRAFT"), r(6, "DRAFT")]);
+  assert.deepEqual([old.get(5), old.get(6)], ["A", "B"]);
+});
+
+test("publishing only the last of three drafts makes it the next round, with no gap", () => {
+  const numbers = publishNumbers([r(9, "DRAFT", 1), r(10, "DRAFT", 2), r(11, "APPROVED", 3)], 8);
+  assert.equal(numbers.get(11), 9);
+  // the drafts left come after it, unseen
+  assert.equal(numbers.get(9), 10);
+  assert.equal(numbers.get(10), 11);
+});
+
+test("approved rounds are numbered in their letter order after the league's last published round", () => {
+  const numbers = publishNumbers([r(20, "APPROVED", 3), r(18, "APPROVED", 1), r(19, "DRAFT", 2)], 4);
+  assert.deepEqual([numbers.get(18), numbers.get(20), numbers.get(19)], [5, 6, 7]);
+});
+

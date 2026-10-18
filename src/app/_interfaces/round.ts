@@ -55,7 +55,10 @@ export type DraftTable = {
 };
 
 export type DraftRound = {
+  // a round not published yet has a number only to keep its tables together: it is shown as Skica + its letter
   roundNumber: number;
+  // "A", "B"… until it is published; null once it is
+  letter: string | null;
   status: "DRAFT" | "APPROVED" | "PUBLISHED";
   // ISO time; null until it is published
   publishedAt: string | null;

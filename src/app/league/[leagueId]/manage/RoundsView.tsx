@@ -2,6 +2,7 @@
 
 import {deleteLeagueRoundAPI, LeagueRoundSummary} from "@/app/_fetchers/admin/daily";
 import useLeagueRounds from "@/app/_hooks/useLeagueRounds";
+import {roundName} from "@/app/_lib/roundStatus";
 import {count, displayDate, NOUN} from "@/app/_lib/ui/text";
 import {color, font, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, EmptyState, ErrorNote, InfoNote, LoadingRows} from "@/app/_ui/sp";
@@ -17,6 +18,8 @@ import React, {useCallback, useEffect, useRef, useState} from "react";
 
 const UNDO_MS = 8000;
 const keyOf = (r: LeagueRoundSummary) => `${r.date}|${r.roundNumber}`;
+// "kolo 3", or "skicu A" for a round not published yet (Obrisati …?)
+const roundObject = (r: LeagueRoundSummary) => (r.letter ? `skicu ${r.letter}` : `kolo ${r.roundNumber}`);
 
 // a round not published yet is a draft or approved (Skica); a published one played, being played or not started
 const STATUS: Record<LeagueRoundSummary["status"], {label: string; ink: string}> = {
@@ -139,7 +142,7 @@ export default function RoundsView({leagueId, data}: {leagueId: number; data: Re
                 <Box component="li" key={k} sx={{display: "flex", flexDirection: "column", borderBottom: `1px solid ${color.divider}`, background: asking ? tint.red[6] : "transparent", transition: "background 160ms ease"}}>
                   <Box sx={{height: 60, display: "grid", gridTemplateColumns: grid, gap: "12px", alignItems: "center", pl: "20px", pr: "12px", fontVariantNumeric: "tabular-nums"}}>
                     <Box component="span" sx={{fontFamily: font.display, fontSize: 20, fontWeight: 800}}>
-                      Kolo {r.roundNumber}
+                      {roundName(r)}
                     </Box>
                     <Box component="span" sx={{fontSize: 15, color: color.ink2}}>
                       {displayDate(r.date)}
@@ -157,7 +160,7 @@ export default function RoundsView({leagueId, data}: {leagueId: number; data: Re
                           component="button"
                           type="button"
                           onClick={() => setConfirm(k)}
-                          aria-label={`Obriši kolo ${r.roundNumber}, ${displayDate(r.date)}`}
+                          aria-label={`Obriši ${roundObject(r)}, ${displayDate(r.date)}`}
                           sx={{...small, pl: "10px", pr: "14px", color: color.red, display: "flex", alignItems: "center", gap: "6px", "& svg": {fontSize: 20}, "&:hover": {background: tint.red[8]}}}
                         >
                           <DeleteRoundedIcon />
@@ -174,7 +177,7 @@ export default function RoundsView({leagueId, data}: {leagueId: number; data: Re
                       <WarningRoundedIcon />
                       <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
                         <Box component="span" sx={{fontSize: 15, fontWeight: 700}}>
-                          Obrisati kolo {r.roundNumber} · {displayDate(r.date)}?
+                          Obrisati {roundObject(r)} · {displayDate(r.date)}?
                         </Box>
                         <Box component="span" sx={{fontSize: 13, color: color.ink2}}>
                           {warning(r)}
@@ -184,7 +187,7 @@ export default function RoundsView({leagueId, data}: {leagueId: number; data: Re
                         Odustani
                       </Box>
                       <Box component="button" type="button" onClick={() => remove(r)} sx={{...small, background: color.red, color: color.white}}>
-                        Obriši kolo
+                        {r.letter ? "Obriši skicu" : "Obriši kolo"}
                       </Box>
                     </Box>
                   )}
@@ -200,7 +203,7 @@ export default function RoundsView({leagueId, data}: {leagueId: number; data: Re
           <Card sx={{borderRadius: "24px", p: "16px 18px", display: "flex", alignItems: "center", gap: "12px", "& > svg": {fontSize: 24, color: color.green}}}>
             <CheckCircleRoundedIcon />
             <Box component="span" sx={{flex: 1, fontSize: 14, fontWeight: 600}}>
-              Kolo {pending.round.roundNumber} · {displayDate(pending.round.date)} obrisano
+              {roundName(pending.round)} · {displayDate(pending.round.date)} {pending.round.letter ? "obrisana" : "obrisano"}
             </Box>
             <Box component="button" type="button" onClick={undo} sx={{...buttonBase, height: 40, px: "14px", borderRadius: "10px", background: color.paper, color: color.navy, fontSize: 14, fontWeight: 700}}>
               Poništi

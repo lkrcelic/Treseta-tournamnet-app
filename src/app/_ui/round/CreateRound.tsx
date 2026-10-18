@@ -1,16 +1,18 @@
 "use client";
 
-import {createMultipleRoundsAPI, RepeatMatchupsError} from "@/app/_fetchers/round/createMultipleRounds";
+import {createMultipleRoundsAPI, DraftWaitingError, RepeatMatchupsError} from "@/app/_fetchers/round/createMultipleRounds";
 import {getCreateRoundDraftAPI, saveCreateRoundDraftAPI} from "@/app/_fetchers/round/createRoundDraft";
 import useLeagueTeams, {LeagueTeam} from "@/app/_hooks/useLeagueTeams";
 import {updateCachedLeague} from "@/app/_hooks/useLeagues";
 import {CreateRoundDraft, isPlaying, MAX_ROUNDS, MAX_WINDOW, switchTeams} from "@/app/_lib/createRoundDraft";
 import {onBeforeLogout} from "@/app/_utils/beforeLogout";
 import {smokingSummary} from "@/app/_lib/ui/smoking";
+import {waitingLabel} from "@/app/_lib/ui/adminTonight";
 import {count, matchesQuery, NOUN, plural} from "@/app/_lib/ui/text";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, EmptyState, ErrorNote, LoadingRows, OutlineButton, PrimaryButton, SearchInput, SectionLabel, SolidButton, Stepper, SwitchRow, SwitchTrack, TeamLabel} from "@/app/_ui/sp";
 import useConferences from "@/app/_hooks/useConferences";
+import EditCalendarRoundedIcon from "@mui/icons-material/EditCalendarRounded";
 import WarningRoundedIcon from "@mui/icons-material/WarningRounded";
 import {Box, Dialog} from "@mui/material";
 import React, {useEffect, useId, useMemo, useRef, useState} from "react";
@@ -25,6 +27,10 @@ const SAVE_DELAY_MS = 500;
 // at once
 export type CreateRoundTeams = Pick<ReturnType<typeof useLeagueTeams>, "teams" | "error" | "loading" | "reload">;
 
+// Tonight's rounds still waiting in Skica (not published yet; approved: of them approved): no new rounds until they
+// are published or discarded. onOpen opens Skica.
+export type WaitingDraft = {waiting: number; approved: number; onOpen: () => void};
+
 // a save of Novo kolo still on its way, per league: Novo kolo opened again waits for it, so it doesn't show what was
 // there before it
 const savesOnTheWay = new Map<number, Promise<void>>();
@@ -35,7 +41,16 @@ const savesOnTheWay = new Map<number, Promise<void>>();
 // Upravljanje ligom opens Skica, where the admin approves and publishes them.
 // What the admin sets up here is saved for them on the server for tonight (a reload, a trip to make a new team or
 // another computer keeps it); until they change something it is the league's defaults.
-export function useCreateRound(leagueId: number, teamsData: CreateRoundTeams, onCreated: (date: string) => void, defaultRounds?: number, defaultSmokingTables?: number[]) {
+// waiting: tonight's rounds still in Skica, while the create action waits for them; onDraftWaiting: the server said
+// so when the page didn't know yet (the page reloads its rounds and shows `waiting`).
+export function useCreateRound(
+  leagueId: number,
+  teamsData: CreateRoundTeams,
+  onCreated: (date: string) => void,
+  defaultRounds?: number,
+  defaultSmokingTables?: number[],
+  {waiting = null, onDraftWaiting}: {waiting?: WaitingDraft | null; onDraftWaiting?: () => void} = {}
+) {
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -178,7 +193,7 @@ export function useCreateRound(leagueId: number, teamsData: CreateRoundTeams, on
     });
 
   const create = async ({window = windowSize, allowRepeats = false}: {window?: number; allowRepeats?: boolean} = {}) => {
-    if (leagueId == null || playing < 2 || creating) return;
+    if (leagueId == null || playing < 2 || creating || waiting) return;
     setCreating(true);
     setCreateError(null);
     setRepeats(null);
@@ -191,6 +206,7 @@ export function useCreateRound(leagueId: number, teamsData: CreateRoundTeams, on
       onCreated(date);
     } catch (e) {
       if (e instanceof RepeatMatchupsError) setRepeats(e.repeats);
+      else if (e instanceof DraftWaitingError && onDraftWaiting) onDraftWaiting();
       else setCreateError(e instanceof Error ? e.message : "Kolo nije moguće napraviti.");
       setCreating(false);
     }
@@ -270,7 +286,9 @@ export function useCreateRound(leagueId: number, teamsData: CreateRoundTeams, on
   );
 
   const showPlan = smokingOn && planOpen;
-  const createButton = (
+  const createButton = waiting ? (
+    <DraftWaitingNote waiting={waiting} flat={showPlan} />
+  ) : (
     // its shadow would show below the plan, which covers only the view
     <PrimaryButton onClick={() => create()} disabled={playing < 2} loading={creating} sx={showPlan ? {boxShadow: "none"} : undefined}>
       {creating ? "Kreiram kolo…" : `Kreiraj kolo · ${count(playing, NOUN.ekipa)}`}
@@ -312,6 +330,8 @@ export function useCreateRound(leagueId: number, teamsData: CreateRoundTeams, on
     smokingText,
     playing,
     creating,
+    // tonight's rounds still in Skica: no creating until they are published or discarded
+    waiting,
     create: () => create(),
     ready: !blocked,
     teams,
@@ -366,6 +386,8 @@ export function CreateRoundView({
   onCreated,
   defaultRounds,
   defaultSmokingTables,
+  waiting,
+  onDraftWaiting,
 }: {
   leagueId: number;
   teams: CreateRoundTeams;
@@ -373,8 +395,11 @@ export function CreateRoundView({
   onCreated: (date: string) => void;
   defaultRounds?: number;
   defaultSmokingTables?: number[];
+  // tonight's rounds still in Skica: the create action waits for them
+  waiting: WaitingDraft | null;
+  onDraftWaiting: () => void;
 }) {
-  const cr = useCreateRound(leagueId, teams, onCreated, defaultRounds, defaultSmokingTables);
+  const cr = useCreateRound(leagueId, teams, onCreated, defaultRounds, defaultSmokingTables, {waiting, onDraftWaiting});
   if (cr.blocked) {
     return (
       <Card component="section" aria-label="Novo kolo" sx={{flex: 1, minHeight: 0, overflow: "hidden", borderRadius: "24px"}}>
@@ -432,6 +457,30 @@ export function CreateRoundView({
           </Box>
         )}
       </Card>
+    </Box>
+  );
+}
+
+// In place of Kreiraj kolo while tonight's rounds wait in Skica (the desktop's Novo kolo and the phone's): they are
+// published or discarded before new ones are made (so a draft never waits beside new ones, and a second click can't
+// make them twice). flat: under the smoking plan, without the shadow.
+export function DraftWaitingNote({waiting, flat = false}: {waiting: WaitingDraft; flat?: boolean}) {
+  return (
+    <Box role="status" sx={{display: "flex", flexDirection: "column", gap: "12px", p: "16px", borderRadius: "20px", background: color.cream}}>
+      <Box sx={{display: "flex", alignItems: "flex-start", gap: "10px", "& > svg": {fontSize: 24, color: color.navy, flex: "none"}}}>
+        <EditCalendarRoundedIcon aria-hidden />
+        <Box sx={{display: "flex", flexDirection: "column", gap: "4px", minWidth: 0}}>
+          <Box component="span" sx={{fontSize: 16, fontWeight: 700}}>
+            Večeras čeka skica · {waitingLabel(waiting.waiting, waiting.approved)}
+          </Box>
+          <Box component="span" sx={{fontSize: 14, lineHeight: 1.45, color: color.ink2}}>
+            Objavi kola koja želiš, a ostala odbaci. Nova kola možeš kreirati kad skica više ne čeka.
+          </Box>
+        </Box>
+      </Box>
+      <PrimaryButton icon={<EditCalendarRoundedIcon />} onClick={waiting.onOpen} sx={flat ? {boxShadow: "none"} : undefined}>
+        Otvori skicu
+      </PrimaryButton>
     </Box>
   );
 }

@@ -2,7 +2,7 @@ import {requireUser} from "@/app/_lib/service/auth/requireUser";
 import {NextRequest, NextResponse} from "next/server";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {getLeagueStandingsByDate} from "@/app/_lib/service/league/getStandingsByDate";
-import {leagueDateString} from "@/app/_lib/dates";
+import {leagueNightString} from "@/app/_lib/dates";
 import {teamPhotoUrls} from "@/app/_lib/service/players/photos";
 
 export async function GET(request: NextRequest, {params}: { params: { id: string } }) {
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest, {params}: { params: { id: string
   const dateParam = searchParams.get('date');
   
   // A YYYY-MM-DD date is used as is, without the date shifting through time zones
-  const currentDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : leagueDateString();
+  const currentDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : leagueNightString();
 
   try {
     const teamScores = await getLeagueStandingsByDate(Number(id), currentDate);

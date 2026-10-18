@@ -31,7 +31,8 @@ export type TableTarget = {href: string} | {cue: "Nastavi igru" | "Započni igru
 // its text only, at least 44 × 44 px, and the space beside a short name opens the table. A table with the bye has no
 // table link, and its "Slobodna runda" side no team link. Signed out (no targets): nothing opens.
 // The admin's phone (admin-mobile 19, 20): edit gives every card Uredi par and Ukloni stol, and "Dodaj stol s dvije
-// ekipe" above them (and no links). A table just added (fresh) is cream.
+// ekipe" above them (and no links). A table just added (fresh) is cream. draft: a round still in Skica kola, where
+// nothing has started, so no "Nije počelo".
 export function PhoneRoundTables({
   title,
   rows,
@@ -39,6 +40,7 @@ export function PhoneRoundTables({
   teamHref,
   edit,
   fresh,
+  draft = false,
 }: {
   title: string;
   rows: TableRow[];
@@ -46,6 +48,7 @@ export function PhoneRoundTables({
   teamHref?: (teamId: number) => string;
   edit?: {onPair: (t: TableRow) => void; onRemove: (t: TableRow) => void; onAdd: () => void};
   fresh?: number | null;
+  draft?: boolean;
 }) {
   const live = rows.filter((r) => r.live).length;
   const action = {
@@ -82,7 +85,7 @@ export function PhoneRoundTables({
           const target = edit || t.bye ? undefined : tableTarget?.(t);
           const cue = target && "cue" in target ? target.cue : null;
           const notStarted = !t.started && !t.done && !t.bye;
-          const status = t.bye ? "Slobodna runda" : t.done ? "Završeno" : notStarted ? "Nije počelo" : null;
+          const status = t.bye ? "Slobodna runda" : t.done ? "Završeno" : notStarted && !draft ? "Nije počelo" : null;
           const label = `Stol ${t.table}${t.smoking ? ", pušački" : ""}: ${t.teamA} ${t.winsA}, ${t.teamB} ${t.winsB}${t.live ? ", uživo" : status ? `, ${status.toLowerCase()}` : ""}`;
           const layer = {
             position: "absolute",

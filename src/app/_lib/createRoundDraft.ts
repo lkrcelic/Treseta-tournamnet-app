@@ -1,17 +1,7 @@
 import {z} from "zod";
-import {leagueDateString} from "./dates";
 
 export const MAX_ROUNDS = 5;
 export const MAX_WINDOW = 200;
-// a night ends in the morning: Novo kolo set up after midnight is still the evening's
-const NIGHT_ENDS_AT_HOUR = 6;
-
-// The league night (YYYY-MM-DD, Zagreb time) Novo kolo is set up for at the given moment: before 06:00 it is still the
-// night before
-export function createRoundNight(moment: Date = new Date()): string {
-  return leagueDateString(new Date(moment.getTime() - NIGHT_ENDS_AT_HOUR * 60 * 60 * 1000));
-}
-
 const id = z.number().int().positive().max(2147483647);
 
 // What an admin has set up on Novo kolo for a league tonight (saved for them on the server). sitting_out: the teams that

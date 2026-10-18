@@ -33,8 +33,10 @@ export type SmokingPlan = {
   tables: number[];
   // tonight's round numbers, ascending
   roundNumbers: number[];
+  // what each of them is called: "Kolo 7", or "Skica A" for a round not published yet
+  roundNames: string[];
   // tonight's smoking tables, round by round
-  rounds: {roundNumber: number; tables: {table: number; teams: [SmokingPlanSide, SmokingPlanSide]}[]}[];
+  rounds: {roundNumber: number; name: string; tables: {table: number; teams: [SmokingPlanSide, SmokingPlanSide]}[]}[];
   // teams with smokers, or with a smoking record this season; most smokers first
   teams: SmokingPlanTeam[];
 };

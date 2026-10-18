@@ -3,7 +3,7 @@
 import {approveNightAPI, discardDraftAPI, getDraftNightAPI, publishNightAPI, setRoundApprovalAPI} from "@/app/_fetchers/round/publication";
 import {DraftNight, DraftRound} from "@/app/_interfaces/round";
 import {RoundStatus} from "@/app/_lib/roundStatus";
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 
 // Skica of one night (Upravljanje ligom · Skica on the desktop, Skica kola on the phone): its rounds, the one shown,
 // and approving, publishing and discarding them. onChanged: a round's status changed (the counts elsewhere reload);
@@ -36,6 +36,22 @@ export default function useNightDraft(leagueId: number, date: string, {onChanged
   // it opens on the first round still waiting (on the first one when every round is out)
   useEffect(() => {
     if (night && cur == null) setCur(Math.max(0, night.rounds.findIndex((r) => r.status !== "PUBLISHED")));
+  }, [night, cur]);
+  // the round shown stays shown when the night comes in again, though publishing numbers it and moves it before the
+  // drafts left (found by one of its tables)
+  const shownTables = useRef<number[]>([]);
+  const lastNight = useRef<DraftNight | null>(null);
+  useEffect(() => {
+    if (!night || cur == null) return;
+    if (night !== lastNight.current) {
+      lastNight.current = night;
+      const at = night.rounds.findIndex((r) => r.tables.some((t) => shownTables.current.includes(t.id)));
+      if (at >= 0 && at !== cur) {
+        setCur(at);
+        return;
+      }
+    }
+    shownTables.current = night.rounds[Math.min(cur, night.rounds.length - 1)]?.tables.map((t) => t.id) ?? [];
   }, [night, cur]);
 
   const setStatuses = (change: (r: DraftRound) => RoundStatus) =>

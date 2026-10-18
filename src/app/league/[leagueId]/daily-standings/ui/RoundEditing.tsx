@@ -2,6 +2,8 @@
 
 import {addTableAPI, removeTableAPI, setTablePairAPI} from "@/app/_fetchers/admin/daily";
 import {LeagueTeam} from "@/app/_hooks/useLeagueTeams";
+import {BYE_LABEL, BYE_TEAM_ID, isByeTeam} from "@/app/_lib/bye";
+import {planSeats} from "@/app/_lib/tableSeats";
 import {TableRow} from "@/app/_lib/ui/tables";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {matchesQuery} from "@/app/_lib/ui/text";
@@ -20,6 +22,7 @@ import {Box, Dialog} from "@mui/material";
 import React, {useId, useRef, useState} from "react";
 
 // Admin editing of a round's tables on Dnevni poredak (the desktop's edit mode, and the pair sheet of the admin's phone)
+// and in Upravljanje ligom · Skica
 
 const pill = {
   ...buttonBase,
@@ -168,7 +171,8 @@ type PairOption = {id: number; name: string; sub?: string};
 
 // Seating two teams at a table (edit) or adding a table (new), for the desktop dialog and the phone sheet. Picking a
 // team that sits at another table swaps it with the team it replaces; a table where something was played loses those
-// hands. A new table lists only the teams that don't play in the round.
+// hands. A new table lists only the teams that don't play in the round. Slobodna runda (the bye) is always on the
+// list, first: a team seated with it wins the table 2:0 without playing.
 function usePairForm(target: PairTarget, rows: TableRow[], teams: LeagueTeam[], onSave: (team1Id: number, team2Id: number) => Promise<void>) {
   const isNew = target.kind === "new";
   const row = target.kind === "edit" ? target.row : null;
@@ -177,39 +181,58 @@ function usePairForm(target: PairTarget, rows: TableRow[], teams: LeagueTeam[], 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const seatOf = (id: number) => rows.find((r) => r.teamAId === id || r.teamBId === id);
-  const nameOf = (id: number) => teams.find((t) => t.id === id)?.name ?? rows.flatMap((r) => [[r.teamAId, r.teamA], [r.teamBId, r.teamB]] as [number, string][]).find(([tid]) => tid === id)?.[1] ?? `#${id}`;
+  // the bye sits at several tables, so it has no seat of its own
+  const seatOf = (id: number) => (isByeTeam(id) ? undefined : rows.find((r) => r.teamAId === id || r.teamBId === id));
 
-  // league teams, plus the table's own teams when they aren't (any more) on the list, e.g. the bye
-  const known = new Map(teams.map((t) => [t.id, t.name]));
-  if (row) {
-    if (!known.has(row.teamAId)) known.set(row.teamAId, row.teamA);
-    if (!known.has(row.teamBId)) known.set(row.teamBId, row.teamB);
-  }
-  const options: PairOption[] = Array.from(known, ([id, name]) => ({id, name}))
+  const names = new Map(rows.flatMap((r) => [[r.teamAId, r.teamA], [r.teamBId, r.teamB]] as [number, string][]));
+  teams.forEach((t) => names.set(t.id, t.name));
+  names.set(BYE_TEAM_ID, BYE_LABEL);
+  const nameOf = (id: number) => names.get(id) ?? `#${id}`;
+  // the bye, the league's teams, and the table's own teams when they aren't (any more) on the list
+  const ids = new Set([BYE_TEAM_ID, ...teams.map((t) => t.id), ...(row ? [row.teamAId, row.teamBId] : [])]);
+  const options: PairOption[] = Array.from(ids, (id) => ({id, name: nameOf(id)}))
     .filter((o) => !isNew || !seatOf(o.id))
-    .sort((x, y) => x.name.localeCompare(y.name, "hr"))
+    .sort((x, y) => Number(isByeTeam(y.id)) - Number(isByeTeam(x.id)) || x.name.localeCompare(y.name, "hr"))
     .map((o) => {
+      if (isByeTeam(o.id)) return {...o, sub: "2 : 0 bez igre"};
       const seat = seatOf(o.id);
       return seat && seat.id !== row?.id ? {...o, sub: `stol ${seat.table}`} : o;
     });
 
   const notes: Note[] = [];
   if (isNew) notes.push({kind: "info", text: "Prikazane su samo ekipe koje ne igraju u ovom kolu."});
-  if (row) {
-    const changed = a !== row.teamAId || b !== row.teamBId;
-    ([[a, row.teamA], [b, row.teamB]] as const).forEach(([id, old]) => {
-      if (id === "") return;
-      const seat = seatOf(id);
-      if (seat && seat.id !== row.id) {
-        notes.push({kind: "swap", text: `${nameOf(id)} igra za stolom ${seat.table}. Zamijenit će mjesto s ekipom ${old}.`});
-        if (seat.started) notes.push({kind: "warn", text: `Za stolom ${seat.table} već se igralo. Te igre se brišu.`});
-      }
+  const picked = a !== "" && b !== "" && a !== b;
+  // the round after saving, as the server will seat it: who moves, who is left without a table
+  if (row && picked && (a !== row.teamAId || b !== row.teamBId)) {
+    const before = new Map(rows.map((r) => [r.id, [r.teamAId, r.teamBId] as [number, number]]));
+    const after = planSeats(before, row.id, [a, b]);
+    rows.forEach((r) => {
+      if (r.id === row.id) return;
+      const [x, y] = after.get(r.id)!;
+      if (x === r.teamAId && y === r.teamBId) return;
+      ([[r.teamAId, x, y], [r.teamBId, y, x]] as const).forEach(([was, now, other]) => {
+        if (was === now) return;
+        const text = isByeTeam(now)
+          ? isByeTeam(other)
+            ? `${nameOf(was)} igra za stolom ${r.table}. Taj stol ostaje bez ekipe i uklanja se.`
+            : `${nameOf(was)} igra za stolom ${r.table}. Ondje ostaje ${nameOf(other)} sa slobodnom rundom (2 : 0).`
+          : `${nameOf(was)} igra za stolom ${r.table}. Zamijenit će mjesto s ekipom ${nameOf(now)}.`;
+        notes.push({kind: "swap", text});
+      });
+      if (isByeTeam(x) && isByeTeam(y)) return;
+      if (r.started) notes.push({kind: "warn", text: `Za stolom ${r.table} već se igralo. Te igre se brišu.`});
     });
-    if (changed && row.started) notes.push({kind: "warn", text: `Za stolom ${row.table} već se igralo. Promjena para briše te igre i mijenja poredak.`});
+    const seatedAfter = new Set(Array.from(after.values()).flat());
+    [row.teamAId, row.teamBId]
+      .filter((id) => !isByeTeam(id) && !seatedAfter.has(id))
+      .forEach((id) => notes.push({kind: "info", text: `${nameOf(id)} neće igrati u ovom kolu.`}));
+    if (row.started) notes.push({kind: "warn", text: `Za stolom ${row.table} već se igralo. Promjena para briše te igre i mijenja poredak.`});
+  }
+  if (picked && (isByeTeam(a) || isByeTeam(b))) {
+    notes.push({kind: "info", text: `${nameOf(isByeTeam(a) ? (b as number) : (a as number))} dobiva slobodnu rundu: stol se odmah zatvara 2 : 0.`});
   }
   const same = a !== "" && a === b;
-  if (same) notes.push({kind: "error", text: "Ekipa ne može igrati sama protiv sebe."});
+  if (same) notes.push({kind: "error", text: isByeTeam(a) ? "Za stolom mora biti barem jedna ekipa." : "Ekipa ne može igrati sama protiv sebe."});
   const unchanged = row != null && a === row.teamAId && b === row.teamBId;
   const ok = a !== "" && b !== "" && !same && !unchanged;
 
@@ -527,7 +550,7 @@ export function PairSheet({
         <PairNotes notes={f.notes} />
       ) : (
         <Box component="p" sx={{m: 0, fontSize: 14, lineHeight: 1.45, color: color.ink2}}>
-          Ako ekipa već igra za drugim stolom, ta dva stola zamijene ekipe.
+          Ako ekipa već igra za drugim stolom, ta dva stola zamijene ekipe. Uz slobodnu rundu ekipa pobjeđuje 2 : 0.
         </Box>
       )}
       {f.error && <ErrorNote>{f.error}</ErrorNote>}

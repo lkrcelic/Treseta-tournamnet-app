@@ -9,9 +9,11 @@ import useLeagueTeams, {LeagueTeam} from "@/app/_hooks/useLeagueTeams";
 import useLeagues from "@/app/_hooks/useLeagues";
 import useNavStack from "@/app/_hooks/useNavStack";
 import {useLeagueStandings} from "@/app/_hooks/useStandings";
-import {createRoundNight, isPlaying} from "@/app/_lib/createRoundDraft";
+import {isPlaying} from "@/app/_lib/createRoundDraft";
+import {leagueNightString} from "@/app/_lib/dates";
 import {exceptionLabel, gatheringLabel, NIGHT_STATUS_LABEL, NightStatus, nightLabel, nightsLeftLabel, nightStatus} from "@/app/_lib/nights";
 import {count, NOUN} from "@/app/_lib/ui/text";
+import {roundName} from "@/app/_lib/roundStatus";
 import {replaceAddress, TransitionLink, useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {
@@ -124,7 +126,7 @@ export default function LeaguePhone({leagueId, view}: {leagueId: number; view: T
 
 // The navy Novo kolo card: tonight and how many teams play (the admin's choice for tonight, else the active teams)
 function NewRoundCard({leagueId, teams}: {leagueId: number; teams: LeagueTeam[] | null}) {
-  const tonight = useMemo(() => createRoundNight(), []);
+  const tonight = useMemo(() => leagueNightString(), []);
   const [sittingOut, setSittingOut] = useState<Set<number> | null | undefined>(undefined);
   useEffect(() => {
     let cancelled = false;
@@ -327,7 +329,7 @@ const ROUND_LOOK: Record<LeagueRoundSummary["status"], {label: string; ink: stri
 
 function RoundsTab({leagueId}: {leagueId: number}) {
   const {rounds, setRounds, error, reload} = useLeagueRounds(leagueId);
-  const tonight = useMemo(() => createRoundNight(), []);
+  const tonight = useMemo(() => leagueNightString(), []);
   const [asking, setAsking] = useState<LeagueRoundSummary | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -387,7 +389,7 @@ function RoundsTab({leagueId}: {leagueId: number}) {
                   <Box component="li" key={r.roundNumber} sx={{minHeight: 60, display: "flex", alignItems: "center", gap: "10px", pl: "16px", pr: "6px", borderTop: i ? `1px solid ${color.line}` : "none"}}>
                     <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", alignItems: "baseline", gap: "8px"}}>
                       <Box component="span" sx={{fontSize: 16, fontWeight: 600}}>
-                        Kolo {r.roundNumber}
+                        {roundName(r)}
                       </Box>
                       <Box component="span" sx={{fontSize: 13, color: color.muted, ...tabular}}>
                         {count(r.tables, NOUN.stol)}
@@ -399,7 +401,7 @@ function RoundsTab({leagueId}: {leagueId: number}) {
                     <Box
                       component="button"
                       type="button"
-                      aria-label={`Obriši kolo ${r.roundNumber}, ${nightLabel(r.date)}`}
+                      aria-label={`Obriši ${r.letter ? `skicu ${r.letter}` : `kolo ${r.roundNumber}`}, ${nightLabel(r.date)}`}
                       onClick={() => {
                         setActionError(null);
                         setAsking(r);
@@ -419,13 +421,13 @@ function RoundsTab({leagueId}: {leagueId: number}) {
         open={asking != null}
         onClose={() => setAsking(null)}
         onConfirm={remove}
-        title="Obrisati kolo?"
+        title={asking?.letter ? "Obrisati skicu?" : "Obrisati kolo?"}
         text={
           asking
-            ? `Kolo ${asking.roundNumber} (${nightLabel(asking.date)}) ${played ? "i svi upisani rezultati tog kola se brišu" : `i ${count(asking.tables, NOUN.stol)} se brišu`}. Ovo se ne može poništiti.`
+            ? `${roundName(asking)} (${nightLabel(asking.date)}) ${played ? "i svi upisani rezultati tog kola se brišu" : `i ${count(asking.tables, NOUN.stol)} se brišu`}. Ovo se ne može poništiti.`
             : ""
         }
-        action="Obriši kolo"
+        action={asking?.letter ? "Obriši skicu" : "Obriši kolo"}
         icon={<DeleteRoundedIcon />}
         busy={busy}
         error={asking ? actionError : null}

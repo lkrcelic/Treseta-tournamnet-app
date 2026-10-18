@@ -435,6 +435,10 @@ model Round {
   // when it was published; null for an unpublished round and for the rounds from before publishing (CHECK constraint
   // in the migration script: only a published round has it)
   published_at  DateTime?
+  // a round not published yet is Skica A, B, C… by its place in the batch Novo kolo created (1 = A); its
+  // round_number only keeps its tables together until publishing numbers it after the league's last published round
+  // (CHECK constraint in the migration script: only an unpublished round has it)
+  draft_order   Int?
 
   team1          Team           @relation("RoundTeam1", fields: [team1_id], references: [team_id], onDelete: Cascade)
   team2          Team           @relation("RoundTeam2", fields: [team2_id], references: [team_id], onDelete: Cascade)

@@ -28,9 +28,10 @@ export function planHeading(smokingTables: number, rounds: number, smokingTeams:
 // A team's smokers under its name in the plan: "1 pušač", "2 pušača", "bez pušača"
 export const smokersLabel = (n: number): string => (n > 0 ? count(n, NOUN.pušač) : "bez pušača");
 
-// A rotation dot: where the team sat in one of tonight's rounds (null: it had no table)
-export const roundDotLabel = (roundNumber: number, smoking: boolean | null): string =>
-  `Kolo ${roundNumber}: ${smoking == null ? "nije za stolom" : smoking ? "pušački stol" : "običan stol"}`;
+// A rotation dot: where the team sat in one of tonight's rounds (null: it had no table); round: what the round is
+// called ("Kolo 3", "Skica A")
+export const roundDotLabel = (round: string, smoking: boolean | null): string =>
+  `${round}: ${smoking == null ? "nije za stolom" : smoking ? "pušački stol" : "običan stol"}`;
 
 // "2,5": the fair share with a decimal comma
 const decimal = (n: number) => String(n).replace(".", ",");

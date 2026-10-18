@@ -17,7 +17,7 @@ import {useLeagueSponsors} from "@/app/_hooks/useSponsors";
 import LiveRoundSponsors from "@/app/_ui/sponsors/LiveRoundSponsors";
 import useAuthStore from "@/app/_store/authStore";
 import {useDailyData, useRoundDates} from "@/app/_hooks/useStandings";
-import {leagueDateString} from "@/app/_lib/dates";
+import {leagueNightString} from "@/app/_lib/dates";
 import {inConference, splitPodium, standingsTeamHref, toStandingsRows} from "@/app/_lib/ui/standings";
 import {filterTables, liveCount, splitColumns, TableFilter, tableColumns, TableRow, toTableRows} from "@/app/_lib/ui/tables";
 import {ConferenceFilter} from "@/app/_ui/league/ConferenceFilter";
@@ -92,7 +92,8 @@ export default function DailyStandings() {
   const goDate = (d: string | null) => d && router.router.replace(`/league/${leagueId}/daily-standings?date=${d}`);
 
   const daily = useDailyData(leagueId, date || null);
-  const today = leagueDateString();
+  // tonight's night lasts until 06:00, so a night that runs past midnight is still "večeras" with no medals yet
+  const today = leagueNightString();
   const isToday = date === today;
 
   // the league's conferences: the dots, and the conference picked for the night's table (null: every team). The round

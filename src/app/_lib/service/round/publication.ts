@@ -5,12 +5,13 @@ import {recalcTeamScores} from "@/app/_lib/service/admin/recalc";
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {nightValue} from "@/app/_lib/service/league/nights";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
-import {approvalStatus, NO_DRAFT, NOTHING_APPROVED, RoundStatus, roundStatusOf, roundsToApprove, roundsToDiscard, roundsToPublish} from "@/app/_lib/roundStatus";
+import {approvalStatus, draftLetters, NO_DRAFT, NOTHING_APPROVED, PUBLISHED_ROUND, publishNumbers, RoundStatus, roundStatusOf, roundsToApprove, roundsToDiscard, roundsToPublish} from "@/app/_lib/roundStatus";
 import {DraftNight, DraftRound} from "@/app/_interfaces/round";
 
 // Upravljanje ligom · Skica: approving, publishing and discarding a night's rounds (the rules are in
 // _lib/roundStatus.ts). A round is a round number on a night, one Round row per table; every change takes the league's
-// lock, as round creation and the admin's table edits do.
+// lock, as round creation and the admin's table edits do. A round not published yet is Skica A, B, C… and gets its
+// number when it is published.
 
 type Tx = Prisma.TransactionClient;
 
@@ -37,6 +38,7 @@ export async function getDraftNight(leagueId: number, date: string): Promise<Dra
       smoking_table: true,
       status: true,
       published_at: true,
+      draft_order: true,
       team1: {select: {team_id: true, team_name: true}},
       team2: {select: {team_id: true, team_name: true}},
     },
@@ -45,10 +47,12 @@ export async function getDraftNight(leagueId: number, date: string): Promise<Dra
 
   const byNumber = new Map<number, typeof tables>();
   for (const t of tables) byNumber.set(t.round_number!, [...(byNumber.get(t.round_number!) ?? []), t]);
+  const letters = draftLetters(Array.from(byNumber, ([roundNumber, list]) => ({roundNumber, status: roundStatusOf(list), draftOrder: list[0].draft_order})));
   const rounds = Array.from(byNumber, ([roundNumber, list]): DraftRound => {
     const published = list.map((t) => t.published_at?.getTime() ?? 0).reduce((a, b) => Math.max(a, b), 0);
     return {
       roundNumber,
+      letter: letters.get(roundNumber) ?? null,
       status: roundStatusOf(list),
       publishedAt: published ? new Date(published).toISOString() : null,
       id: list[0].id,
@@ -106,28 +110,50 @@ export async function approveNight(leagueId: number, date: string): Promise<{rou
   });
 }
 
-// "Objavi odobrena kola": the night's approved rounds are published at once; drafts stay drafts. A bye table is closed
-// (2:0) as soon as it is created, so its team's season row is counted again now that the round counts. Returns the
-// round numbers published.
+// "Objavi odobrena kola": the night's approved rounds are published at once; drafts stay drafts. The published ones are
+// numbered after the league's last published round in their letter order, so there is no gap for a draft left out
+// (publishNumbers). A bye table is closed (2:0) as soon as it is created, so its team's season row is counted again
+// now that the round counts. Returns the round numbers published.
 export async function publishNight(leagueId: number, date: string): Promise<{rounds: number[]; publishedAt: string}> {
   return prisma.$transaction(
     async (tx) => {
       await lockLeague(tx, leagueId);
       const tables = await tx.round.findMany({
         where: nightTables(leagueId, date),
-        select: {id: true, round_number: true, status: true, open: true, team1_id: true, team2_id: true},
+        select: {id: true, round_number: true, status: true, open: true, team1_id: true, team2_id: true, draft_order: true},
       });
       const approved = roundsToPublish(tables);
       if (approved.length === 0) throw new InvalidResultError(NOTHING_APPROVED);
 
+      const last = await tx.round.aggregate({
+        _max: {round_number: true},
+        where: {leagueRounds: {some: {league_id: leagueId}}, ...PUBLISHED_ROUND},
+      });
+      const waiting = new Map<number, typeof tables>();
+      for (const t of roundsToDiscard(tables)) waiting.set(t.round_number!, [...(waiting.get(t.round_number!) ?? []), t]);
+      const numbers = publishNumbers(
+        Array.from(waiting, ([roundNumber, list]) => ({roundNumber, status: roundStatusOf(list), draftOrder: list[0].draft_order})),
+        last._max.round_number ?? 0
+      );
+
       const now = new Date();
-      await tx.round.updateMany({where: {id: {in: approved.map((t) => t.id)}}, data: {status: "PUBLISHED", published_at: now}});
+      const published: number[] = [];
+      for (const [from, list] of Array.from(waiting)) {
+        const to = numbers.get(from)!;
+        const publish = roundStatusOf(list) === "APPROVED";
+        if (publish) published.push(to);
+        if (!publish && to === from) continue;
+        await tx.round.updateMany({
+          where: {id: {in: list.map((t) => t.id)}},
+          data: publish ? {round_number: to, status: "PUBLISHED", published_at: now, draft_order: null} : {round_number: to},
+        });
+      }
       await recalcTeamScores(
         tx,
         leagueId,
         approved.filter((t) => !t.open).flatMap((t) => [t.team1_id, t.team2_id])
       );
-      return {rounds: roundNumbers(approved), publishedAt: now.toISOString()};
+      return {rounds: published.sort((a, b) => a - b), publishedAt: now.toISOString()};
     },
     {timeout: 30000}
   );

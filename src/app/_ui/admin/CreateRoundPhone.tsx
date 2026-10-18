@@ -1,14 +1,17 @@
 "use client";
 
+import useLeagueRounds from "@/app/_hooks/useLeagueRounds";
 import useLeagueTeams, {LeagueTeam} from "@/app/_hooks/useLeagueTeams";
 import useLeagues from "@/app/_hooks/useLeagues";
 import useNavStack from "@/app/_hooks/useNavStack";
-import {createRoundNight, MAX_ROUNDS, MAX_WINDOW} from "@/app/_lib/createRoundDraft";
+import {MAX_ROUNDS, MAX_WINDOW} from "@/app/_lib/createRoundDraft";
+import {leagueNightString} from "@/app/_lib/dates";
+import {draftNight} from "@/app/_lib/ui/adminTonight";
 import {nightLabel} from "@/app/_lib/nights";
 import {count, NOUN, plural} from "@/app/_lib/ui/text";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, font, tint} from "@/app/_styles/tokens";
-import {useCreateRound} from "@/app/_ui/round/CreateRound";
+import {DraftWaitingNote, useCreateRound} from "@/app/_ui/round/CreateRound";
 import LeagueNotes from "@/app/_ui/round/LeagueNotes";
 import {SmokingTablesCard} from "@/app/_ui/round/SmokingTables";
 import {adminCardSx, adminLabelSx, PhoneStepper} from "./AdminParts";
@@ -26,22 +29,32 @@ const labelSx = adminLabelSx;
 
 // Novo kolo on the phone (admin-mobile 06, 07, 07b): how many rounds, the window, who plays tonight (changed in a
 // sheet), the smoking tables and the league's notes, then Kreiraj. The choices are the desktop's (useCreateRound),
-// saved for the admin on the server for tonight. The rounds are created as drafts and Skica kola opens.
+// saved for the admin on the server for tonight. The rounds are created as drafts and Skica kola opens. While tonight's
+// rounds still wait in Skica, Kreiraj waits too: a note with Otvori skicu is in its place.
 export default function CreateRoundPhone({leagueId}: {leagueId: number}) {
   const router = useTransitionRouter();
   const nav = useNavStack("Novo kolo", `/league/${leagueId}/manage?view=teams`);
   const leagues = useLeagues(leagueId);
   const league = leagues.find((l) => l.id === leagueId);
   const teams = useLeagueTeams(leagueId);
-  const tonight = useMemo(() => createRoundNight(), []);
+  const tonight = useMemo(() => leagueNightString(), []);
   const [sheet, setSheet] = useState(false);
+  const leagueRounds = useLeagueRounds(leagueId);
+  const tonightDraft = draftNight((leagueRounds.rounds ?? []).filter((r) => r.date === tonight), tonight);
   const cr = useCreateRound(
     leagueId,
     teams,
     // the next page is Skica kola, in Novo kolo's place: Back from it goes to Upravljanje ligom
     (date) => router.replace(`/league/${leagueId}/manage?view=draft&date=${date}`),
     league?.roundsPerNight,
-    league?.smokingTables
+    league?.smokingTables,
+    {
+      waiting:
+        tonightDraft && tonightDraft.waiting > 0
+          ? {waiting: tonightDraft.waiting, approved: tonightDraft.approved, onOpen: () => router.push(`/league/${leagueId}/manage?view=draft&date=${tonight}`)}
+          : null,
+      onDraftWaiting: leagueRounds.reload,
+    }
   );
 
   const all = cr.teams ?? [];
@@ -187,9 +200,13 @@ export default function CreateRoundPhone({leagueId}: {leagueId: number}) {
           <Box sx={{flex: "none", display: "flex", flexDirection: "column", gap: "10px"}}>
             {cr.saveError}
             {cr.createError && <ErrorNote>{cr.createError}</ErrorNote>}
-            <PrimaryButton icon={<AddCircleRoundedIcon />} onClick={cr.create} disabled={cr.playing < 2} loading={cr.creating}>
-              {cr.creating ? "Kreiram kola…" : `Kreiraj ${count(cr.rounds, NOUN.kolo)} · ${count(cr.tableCount, NOUN.stol)}`}
-            </PrimaryButton>
+            {cr.waiting ? (
+              <DraftWaitingNote waiting={cr.waiting} />
+            ) : (
+              <PrimaryButton icon={<AddCircleRoundedIcon />} onClick={cr.create} disabled={cr.playing < 2} loading={cr.creating}>
+                {cr.creating ? "Kreiram kola…" : `Kreiraj ${count(cr.rounds, NOUN.kolo)} · ${count(cr.tableCount, NOUN.stol)}`}
+              </PrimaryButton>
+            )}
           </Box>
           {cr.repeatsDialog}
         </>

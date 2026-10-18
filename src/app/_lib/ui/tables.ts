@@ -1,3 +1,4 @@
+import {DraftRound} from "@/app/_interfaces/round";
 import {isByeTeam, teamLabel} from "@/app/_lib/bye";
 import {Conference, ConferenceOf} from "@/app/_lib/conferences";
 import {matchesQuery} from "./text";
@@ -86,6 +87,35 @@ export function toTableRows(rounds: RoundLike[], myTeamNames: string[] = [], con
       };
     })
     .sort((a, b) => a.table - b.table);
+}
+
+// A round still in Skica as table rows (its Uredi stolove, desktop and phone): nothing is played before a round is
+// published; a bye table is settled 2:0 from the start. conferenceOf: the league's conferences, for the dots (left out:
+// no dots)
+export function draftTableRows(round: DraftRound, conferenceOf?: ConferenceOf): TableRow[] {
+  return round.tables.map((t, i) => {
+    const bye = isByeTeam(t.team1.id) || isByeTeam(t.team2.id);
+    return {
+      id: t.id,
+      table: t.table ?? i + 1,
+      teamA: t.team1.name,
+      teamB: t.team2.name,
+      teamAId: t.team1.id,
+      teamBId: t.team2.id,
+      winsA: bye && !isByeTeam(t.team1.id) ? 2 : 0,
+      winsB: bye && !isByeTeam(t.team2.id) ? 2 : 0,
+      live: false,
+      done: bye,
+      pointsA: null,
+      pointsB: null,
+      mine: false,
+      started: false,
+      bye,
+      conferenceA: conferenceOf ? conferenceOf(t.team1.id) : undefined,
+      conferenceB: conferenceOf ? conferenceOf(t.team2.id) : undefined,
+      smoking: t.smoking,
+    };
+  });
 }
 
 // Filter by status and by a search on team name or exact table number

@@ -7,7 +7,7 @@ import useMyTeams from "@/app/_hooks/useMyTeams";
 import useConferences from "@/app/_hooks/useConferences";
 import useNavStack from "@/app/_hooks/useNavStack";
 import {useDailyData, useLeagueStandings, useRoundDates} from "@/app/_hooks/useStandings";
-import {leagueDateString} from "@/app/_lib/dates";
+import {leagueDateString, leagueNightString} from "@/app/_lib/dates";
 import {currentLeagueHref} from "@/app/_lib/league";
 import {splitPodium, standingsTeamHref, toStandingsRows} from "@/app/_lib/ui/standings";
 import {displayDate, weekdayDate} from "@/app/_lib/ui/text";
@@ -58,9 +58,11 @@ export default function DesktopHome() {
   const {podium, rest} = splitPodium(leagueRows);
 
   const today = leagueDateString();
+  // a night that runs past midnight is still tonight's until 06:00
+  const tonight = leagueNightString();
   const dailySub = !lastDate
     ? "Još nema okupljanja"
-    : `${displayDate(lastDate)} · ${liveRound ? `Kolo ${liveRound} u tijeku` : lastDate === today ? "Večeras" : "Završeno"}`;
+    : `${displayDate(lastDate)} · ${liveRound ? `Kolo ${liveRound} u tijeku` : lastDate === tonight ? "Večeras" : "Završeno"}`;
 
   // the picker remembers the pick itself (chooseLeague), and Početna follows it like the other league screens
   const picker = leagueId != null && leagues.length > 0 ? <LeagueMenuButton leagues={leagues} value={leagueId} onChange={() => undefined} /> : undefined;

@@ -5,7 +5,7 @@ import useLeagueNights from "@/app/_hooks/useLeagueNights";
 import useLeagueRounds from "@/app/_hooks/useLeagueRounds";
 import useLeagues, {useSelectedLeagueId} from "@/app/_hooks/useLeagues";
 import {useDailyData} from "@/app/_hooks/useStandings";
-import {createRoundNight} from "@/app/_lib/createRoundDraft";
+import {leagueNightString} from "@/app/_lib/dates";
 import {nightLabel, nightLabelLong, nightsLeftLabel} from "@/app/_lib/nights";
 import {draftNight, tonightEyebrow, tonightState, TonightState, waitingLabel} from "@/app/_lib/ui/adminTonight";
 import {toTableRows, TableRow} from "@/app/_lib/ui/tables";
@@ -39,7 +39,7 @@ export default function AdminTonight() {
   const leagues = useLeagues(leagueId ?? undefined);
   const league = leagues.find((l) => l.id === leagueId);
   // the night Novo kolo is for: until 06:00 it is still the evening before
-  const tonight = useMemo(() => createRoundNight(), []);
+  const tonight = useMemo(() => leagueNightString(), []);
   const {nights} = useLeagueNights(leagueId);
   const daily = useDailyData(leagueId, leagueId != null ? tonight : null);
   const leagueRounds = useLeagueRounds(leagueId);

@@ -35,9 +35,9 @@ test("smokers under a team name", () => {
 });
 
 test("rotation dots, share and missed nights", () => {
-  assert.equal(roundDotLabel(3, true), "Kolo 3: pušački stol");
-  assert.equal(roundDotLabel(3, false), "Kolo 3: običan stol");
-  assert.equal(roundDotLabel(3, null), "Kolo 3: nije za stolom");
+  assert.equal(roundDotLabel("Kolo 3", true), "Kolo 3: pušački stol");
+  assert.equal(roundDotLabel("Kolo 3", false), "Kolo 3: običan stol");
+  assert.equal(roundDotLabel("Skica A", null), "Skica A: nije za stolom");
   assert.equal(shareTitle(3, 12, 2.5), "3 od 12 kola za pušačkim stolom; pravedan udio 2,5");
   assert.equal(shareTitle(0, 1, 0), "0 od 1 kola za pušačkim stolom; pravedan udio 0");
   assert.equal(missedTitle(1), "1 večer s pušačem, bez pušačkog stola");

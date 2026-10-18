@@ -51,6 +51,7 @@ import useLeagueRounds from "@/app/_hooks/useLeagueRounds";
 import DraftView from "./DraftView";
 import {draftNight, DraftNightTab} from "@/app/_lib/ui/adminTonight";
 import {isIsoDate} from "@/app/_lib/nights";
+import {leagueNightString} from "@/app/_lib/dates";
 import EditCalendarRoundedIcon from "@mui/icons-material/EditCalendarRounded";
 import TaskAltRoundedIcon from "@mui/icons-material/TaskAltRounded";
 import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
@@ -127,6 +128,9 @@ function ManageLeagueDesktop() {
     setShownNight(null);
   }, [leagueId]);
   const draft = draftNight(leagueRounds.rounds, shownNight);
+  // tonight's rounds still in Skica: Novo kolo creates new ones once they are published or discarded
+  const tonight = leagueNightString();
+  const tonightDraft = draftNight((leagueRounds.rounds ?? []).filter((r) => r.date === tonight), tonight);
   const leagueNights = useLeagueNights(leagueId);
   // the count on the Sponzori tab
   const leagueSponsors = useLeagueSponsors(leagueId);
@@ -425,6 +429,19 @@ function ManageLeagueDesktop() {
           }}
           defaultRounds={leagues.find((l) => l.id === leagueId)?.roundsPerNight}
           defaultSmokingTables={leagues.find((l) => l.id === leagueId)?.smokingTables}
+          waiting={
+            tonightDraft && tonightDraft.waiting > 0
+              ? {
+                  waiting: tonightDraft.waiting,
+                  approved: tonightDraft.approved,
+                  onOpen: () => {
+                    setShownNight(tonight);
+                    setView("draft");
+                  },
+                }
+              : null
+          }
+          onDraftWaiting={leagueRounds.reload}
         />
       ) : shown === "details" ? (
         <LeagueDetailsView key={leagueId} leagueId={leagueId} leagues={leagues} aside={conferencesCard} />

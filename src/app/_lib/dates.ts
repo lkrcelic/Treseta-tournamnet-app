@@ -13,6 +13,22 @@ export function leagueDateString(moment: Date = new Date()): string {
   }).format(moment);
 }
 
+// A league night runs past midnight: until 06:00 it is still the evening before
+export const NIGHT_ENDS_AT_HOUR = 6;
+
+// The league night (YYYY-MM-DD, league time) a moment belongs to: before 06:00 it is still the night before. The night
+// tonight's rounds are on: new rounds are created on it, and Novo kolo, Skica, Večer lige, Dnevni poredak's "večeras"
+// and the live dot follow it, so a night that runs past midnight stays one night. A plain calendar day (a birth date,
+// Burza, Raspored, Datumi) is leagueDateString.
+export function leagueNightString(moment: Date = new Date()): string {
+  return leagueDateString(new Date(moment.getTime() - NIGHT_ENDS_AT_HOUR * 60 * 60 * 1000));
+}
+
+// The league night as a Date at UTC midnight, as a round's round_date is stored
+export function leagueNight(moment: Date = new Date()): Date {
+  return new Date(`${leagueNightString(moment)}T00:00:00.000Z`);
+}
+
 // The league date as a Date at UTC midnight, which is what Prisma stores unchanged in a @db.Date column
 export function leagueDate(moment: Date = new Date()): Date {
   return new Date(`${leagueDateString(moment)}T00:00:00.000Z`);
