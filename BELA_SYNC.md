@@ -142,8 +142,8 @@ winner (`Match.winner_side`); everything else is worked out by replaying the han
 
 | File | Treseta's |
 |---|---|
-| `_lib/brand.ts` (Treseta only) | "Trešeta Liga" and its accusative, no line above the name (Bela: "Piatnik"), the icon letters "TL" |
-| `layout.tsx`, `global-error.tsx`, `_ui/auth/AuthFrame.tsx`, `_ui/sp/DesktopShell.tsx`, `_ui/sp/PageMessage.tsx`, `_ui/profiles/PageParts.tsx`, `_ui/install/InstallSheet.tsx`, `_hooks/useLeagues.ts`, `league/[leagueId]/standings/page.tsx` (two comments) | Bela's "Bela Liga", "Piatnik Bela Liga", "Piatnik" and "BL" read from `BRAND` (the Brand block shows no eyebrow while `BRAND.eyebrow` is empty) |
+| `_lib/brand.ts` (Treseta only) | "Trešeta Liga" and its accusative, no line above the name (Bela: "Piatnik"), and the app icon's path (`icon`) |
+| `layout.tsx`, `global-error.tsx`, `_ui/auth/AuthFrame.tsx`, `_ui/sp/DesktopShell.tsx`, `_ui/sp/PageMessage.tsx`, `_ui/profiles/PageParts.tsx`, `_ui/install/InstallSheet.tsx`, `_hooks/useLeagues.ts`, `league/[leagueId]/standings/page.tsx` (two comments) | Bela's "Bela Liga", "Piatnik Bela Liga", "Piatnik" and "BL" read from `BRAND` (the Brand block shows no eyebrow while `BRAND.eyebrow` is empty). The install sheet's `AppIcon` draws the logo from `BRAND.icon` where Bela draws "BL" on navy |
 | `public/manifest.webmanifest` (root) | `name`, `short_name`, `description`, and the maskable icon `icon-maskable-512.png` |
 | `public/icons/*`, `src/app/favicon.ico` (root) | Treseta's flower logo (blue and yellow petals in a black ring), not Bela's "BL": `icon-192.png` and `icon-512.png` on a transparent background, `icon-maskable-512.png` and `apple-touch-icon.png` on the cream `#F5F2EA`. A Bela change to its icons is dropped |
 

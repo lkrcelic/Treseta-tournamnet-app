@@ -6,6 +6,6 @@ export const BRAND = {
   nameAccusative: "Trešeta Ligu",
   // the small line above the name on the login screen and in the menu (Bela: "Piatnik"); empty shows none
   eyebrow: "",
-  // the letters of the app icon
-  initials: "TL",
+  // the app icon as the install sheet draws it: the flower logo on cream (Bela: the letters "BL" on navy)
+  icon: "/icons/apple-touch-icon.png",
 } as const;

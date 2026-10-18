@@ -165,28 +165,16 @@ export default function InstallSheet() {
   );
 }
 
-// The app icon as drawn in the design: the cream BL monogram on navy
-function AppIcon({size, radius, inverted = false}: {size: number; radius: string; inverted?: boolean}) {
+// The app icon as the home screen shows it
+function AppIcon({size, radius}: {size: number; radius: string}) {
   return (
     <Box
+      component="img"
+      src={BRAND.icon}
+      alt=""
       aria-hidden
-      sx={{
-        width: size,
-        height: size,
-        flex: "none",
-        borderRadius: radius,
-        background: inverted ? color.cream : color.navy,
-        color: inverted ? color.navy : color.cream,
-        fontFamily: font.display,
-        fontSize: Math.round(size * 0.38),
-        fontWeight: 800,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      {BRAND.initials}
-    </Box>
+      sx={{width: size, height: size, flex: "none", display: "block", borderRadius: radius, background: color.cream}}
+    />
   );
 }
 
@@ -262,7 +250,7 @@ function Installed() {
           i === 5 ? (
             <Box key={i} sx={{display: "flex", flexDirection: "column", alignItems: "center", gap: "6px"}}>
               <Box sx={{borderRadius: "50%", boxShadow: `0 0 0 3px ${tint.creamOnNavy[45]}, 0 0 0 7px ${tint.creamOnNavy[16]}`}}>
-                <AppIcon size={52} radius="50%" inverted />
+                <AppIcon size={52} radius="50%" />
               </Box>
               <Box component="span" sx={{fontSize: 11, fontWeight: 700, whiteSpace: "nowrap"}}>
                 {BRAND.name}
