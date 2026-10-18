@@ -9,7 +9,7 @@
     "dev": "prisma migrate deploy && next dev -H 0.0.0.0",
     "dev:reset": "prisma migrate reset --force && next dev -H 0.0.0.0",
     "seed": "prisma db seed",
-    "build": "prisma generate && prisma migrate deploy && next build",
+    "build": "prisma generate && prisma migrate deploy && node scripts/previewAdmin.js && next build",
     "start": "next start",
     "lint": "next lint",
     "ratings:replay": "cross-env TS_NODE_PROJECT=tsconfig.test.json TS_NODE_TRANSPILE_ONLY=1 node -r ts-node/register -r tsconfig-paths/register scripts/replayRatings.ts",

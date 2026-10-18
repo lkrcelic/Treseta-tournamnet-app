@@ -135,7 +135,7 @@ winner (`Match.winner_side`); everything else is worked out by replaying the han
 | `_lib/service/admin/recalc.ts` | `RATINGS_FROM` = 1 Aug 2025, so the whole Treseta history is rated (Bela: 7 Oct 2025) |
 | `_lib/rating/glicko2.ts` | One comment: "for teams of two" (Bela: "for Bela teams of two") |
 | `next.config.mjs` (root) | Redirects the old `/match/:id` to `/` |
-| `package.json`, `package-lock.json` (root) | The name `treseta-tournament-app`. On a lock file conflict, take Bela's lock file and put the two names back |
+| `package.json`, `package-lock.json` (root) | The name `treseta-tournament-app`, and `build` runs `node scripts/previewAdmin.js` after the migrations. On a lock file conflict, take Bela's lock file and put the two names back |
 | `.gitignore` (root) | Also ignores `.env`, `/backups/` and `/.claude/` |
 
 ### Branding
@@ -204,6 +204,7 @@ The database part (the `Conference` table and `LeagueTeam.conference_id`) is und
 |---|---|
 | `README.md`, `ProcessFlow.md`, `Task.md`, `.windsurfrules` | Own version |
 | `BELA_SYNC.md`, `TRANSITION_PLAN.md`, `CONFERENCES_PLAN.md`, `.env.example` | Treseta only |
+| `scripts/previewAdmin.js` | Treseta only: on a Vercel preview, makes `lkrcelic` (password `sifra`) an admin on the preview's Neon branch, and fails the build if that database is production |
 | `public/card.png` | Treseta only, left from the old app and unused |
 
 ### Not copied from Bela
