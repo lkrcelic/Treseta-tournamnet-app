@@ -23,6 +23,14 @@ enum RoundStatus {
   PUBLISHED
 }
 
+// Who sees a player's or a team's profile photo (others get the initials or the team's letter). A team is ALL or
+// TEAMMATES (its own players); ME is a player's only (CHECK in the migration script).
+enum PhotoVisibility {
+  ALL
+  TEAMMATES
+  ME
+}
+
 model Player {
   id              Int       @id @default(autoincrement())
   username        String    @unique @db.VarChar(100)
@@ -51,8 +59,16 @@ model Player {
   rating_deviation Float    @default(350.0)   // RD - Rating uncertainty (phi)
   volatility      Float     @default(0.06)    // Sigma - Rating volatility
 
+  // Profile photo: the bytes live in PlayerPhoto, so a Player row never carries them; photo_updated_at is set while
+  // there is one and is the version in its address (?v=). The player sets it on Moj profil; an admin may remove it
+  // and, with photo_blocked, stop the player from setting a new one.
+  photo_updated_at DateTime?
+  photo_visibility PhotoVisibility @default(ALL)
+  photo_blocked    Boolean         @default(false)
+
   // NextAuth required fields
   emailVerified DateTime?
+  // the Google account's picture: only offered as a profile photo, never shown by itself
   image         String?   @db.Text
   name          String?   @db.VarChar(100)
 
@@ -69,6 +85,18 @@ model Player {
   luciaSessions                  LuciaSession[]
   accounts                       Account[]
   createRoundDrafts              CreateRoundDraft[]
+  photo                          PlayerPhoto?
+  teamPhotosUpdated              Team[]                          @relation("TeamPhotoUpdater")
+}
+
+// A player's profile photo: a 512×512 WebP or PNG cropped in the browser, up to 512 KB (CHECK in the migration script).
+// Read only by GET /api/players/[id]/photo.
+model PlayerPhoto {
+  player_id Int    @id
+  photo     Bytes
+  type      String @db.VarChar(20)
+
+  player Player @relation(fields: [player_id], references: [id], onDelete: Cascade)
 }
 
 model Session {
@@ -310,8 +338,16 @@ model Team {
   creator_id      Int?
   created_at      DateTime  @default(now())
   last_updated_at DateTime? @updatedAt
+  // The team's photo, set by any of its players (bytes in TeamPhoto, as for a player); photo_updated_by is the player
+  // who last changed it
+  photo_updated_at DateTime?
+  photo_updated_by Int?
+  photo_visibility PhotoVisibility @default(ALL)
+  photo_blocked    Boolean         @default(false)
 
   // Relationships
+  photoUpdater    Player?          @relation("TeamPhotoUpdater", fields: [photo_updated_by], references: [id], onDelete: SetNull)
+  photo           TeamPhoto?
   founder1        Player?          @relation("PlayerFounder1", fields: [founder_id1], references: [id], onDelete: SetNull)
   founder2        Player?          @relation("PlayerFounder2", fields: [founder_id2], references: [id], onDelete: SetNull)
   creator         Player?          @relation("PlayerCreator", fields: [creator_id], references: [id], onDelete: SetNull)
@@ -322,6 +358,14 @@ model Team {
   teamScore       TeamScore[]
   roundPlayers    RoundPlayer[]
   marketPosts     MarketPost[]
+}
+
+model TeamPhoto {
+  team_id Int    @id
+  photo   Bytes
+  type    String @db.VarChar(20)
+
+  team Team @relation(fields: [team_id], references: [team_id], onDelete: Cascade)
 }
 
 model TeamScore {

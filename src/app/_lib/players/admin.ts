@@ -81,6 +81,10 @@ export function anonymisedPlayerData(id: number, now: Date, attempt = 1) {
     emailVerified: null,
     smoker: false,
     smoker_answered: true,
+    // the profile photo goes too (its bytes: PlayerPhoto, deleted with the row by anonymisePlayer)
+    photo_updated_at: null,
+    photo_visibility: "ALL" as const,
+    photo_blocked: false,
     player_role: "PLAYER" as const,
     active: false,
     deleted_at: now,
@@ -99,6 +103,8 @@ type DirectoryPlayer = {
   // the admin's phone Igrači list shows them (admin-mobile 34)
   admin?: boolean;
   rating?: number;
+  // the avatar (an admin sees every photo)
+  photo_url?: string | null;
 };
 
 // The Igrači directory rows (GET /api/admin/players): by name in Croatian order (the database's collation puts "Č"

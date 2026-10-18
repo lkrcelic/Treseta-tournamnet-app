@@ -14,7 +14,8 @@ import {BurzaHomeCard, HomeTile, NextNightCard, NextNightPlaceholder, nextNight}
 import HomeSponsors from "@/app/_ui/home/HomeSponsors";
 import InstallSheet from "@/app/_ui/install/InstallSheet";
 import {SmokingMark} from "@/app/_ui/smoking/SmokingParts";
-import {buttonBase, ellipsis, ErrorNote, IconCircleButton, Screen, Spinner, TeamDot, visuallyHidden} from "@/app/_ui/sp";
+import {buttonBase, ellipsis, ErrorNote, IconCircleButton, InitialsAvatar, Screen, Spinner, TeamDot, visuallyHidden} from "@/app/_ui/sp";
+import useAuthStore from "@/app/_store/authStore";
 import AccountCircleRoundedIcon from "@mui/icons-material/AccountCircleRounded";
 import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
@@ -34,6 +35,8 @@ const narrowPhone = "@media (max-width: 399.98px)";
 // (admin-mobile 04), with an Admin button next to Moj profil that switches back.
 export default function PhoneHome() {
   const router = useTransitionRouter();
+  // the profile button shows the player's photo, when there is one
+  const me = useAuthStore((s) => s.user);
   const leagueId = useSelectedLeagueId();
   const {table: openTable, loading: openTableLoading} = useOpenTable();
   const {start, starting, error} = useStartGame();
@@ -83,7 +86,7 @@ export default function PhoneHome() {
             </Box>
           )}
           <IconCircleButton label="Moj profil" onClick={() => router.push("/profile")}>
-            <AccountCircleRoundedIcon />
+            {me?.photo_url ? <InitialsAvatar name={me.username} src={me.photo_url} size={40} variant="navy" /> : <AccountCircleRoundedIcon />}
           </IconCircleButton>
         </Box>
       </Box>

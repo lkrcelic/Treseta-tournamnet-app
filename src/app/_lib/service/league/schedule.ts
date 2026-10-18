@@ -5,6 +5,8 @@ import {effectiveLocation, effectiveTime, nextNightIndex, NightLocation} from "@
 import {prisma} from "@/app/_lib/prisma";
 import {playedNightKeys} from "@/app/_lib/service/league/nights";
 import {displayName} from "@/app/_lib/players/names";
+import {Viewer} from "@/app/_lib/players/privacy";
+import {PLAYER_PHOTO, photoContext} from "@/app/_lib/service/players/photos";
 
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 const LOCATION = {location_name: true, location_address: true, location_url: true} as const;
@@ -13,14 +15,15 @@ const LOCATION = {location_name: true, location_address: true, location_url: tru
 // their start times and places)
 // (Početna · Sljedeća večer, Raspored, Burza · Trebam zamjenu). The league with the soonest night comes first;
 // leagues whose season is over come last.
-export async function mySchedule(playerId: number): Promise<MySchedule> {
+export async function mySchedule(viewer: Viewer): Promise<MySchedule> {
+  const playerId = viewer.id;
   const today = leagueDateString();
   const teams = await prisma.team.findMany({
     where: {team_id: {not: BYE_TEAM_ID}, teamPlayers: {some: {player_id: playerId}}},
     select: {
       team_id: true,
       team_name: true,
-      teamPlayers: {select: {player: {select: {id: true, first_name: true, last_name: true, rating: true, active: true}}}},
+      teamPlayers: {select: {player: {select: {id: true, first_name: true, last_name: true, rating: true, active: true, ...PLAYER_PHOTO}}}},
       leagueTeams: {
         select: {
           active: true,
@@ -39,7 +42,7 @@ export async function mySchedule(playerId: number): Promise<MySchedule> {
   });
 
   const leagueIds = Array.from(new Set(teams.flatMap((t) => t.leagueTeams.map((lt) => lt.league.league_id))));
-  const played = await playedNightKeys(leagueIds);
+  const [played, photos] = await Promise.all([playedNightKeys(leagueIds), photoContext(viewer)]);
 
   const leagues: MyLeague[] = teams.flatMap((t) =>
     t.leagueTeams.map(({active, league}) => {
@@ -61,7 +64,14 @@ export async function mySchedule(playerId: number): Promise<MySchedule> {
         team_name: t.team_name,
         active,
         players: t.teamPlayers
-          .map(({player}) => ({id: player.id, name: displayName(player), rating: player.rating, me: player.id === playerId, active: player.active}))
+          .map(({player}) => ({
+            id: player.id,
+            name: displayName(player),
+            rating: player.rating,
+            me: player.id === playerId,
+            active: player.active,
+            photo_url: photos.player(player),
+          }))
           // the player first, as "(ti)" on Početna
           .sort((a, b) => Number(b.me) - Number(a.me) || a.name.localeCompare(b.name, "hr")),
         nights,

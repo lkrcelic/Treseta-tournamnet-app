@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   if (auth.response) return auth.response;
 
   try {
-    return NextResponse.json(await listAdminPlayers(), {status: STATUS.OK});
+    return NextResponse.json(await listAdminPlayers(auth.user), {status: STATUS.OK});
   } catch (error) {
     console.error(error);
     return NextResponse.json({error: "Igrači se nisu učitali."}, {status: STATUS.ServerError});

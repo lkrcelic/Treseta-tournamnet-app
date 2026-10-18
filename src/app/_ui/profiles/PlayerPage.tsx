@@ -19,6 +19,7 @@ import {Box} from "@mui/material";
 import {useEffect, useMemo, useRef, useState} from "react";
 import {EditPlayerPanel} from "./EditPlayerPanel";
 import {
+  ColumnWithFooter,
   DesktopFrame,
   HeaderRating,
   HeroCard,
@@ -36,6 +37,9 @@ import {AdminNameTag, PlayerAccountPhone, PlayerDetailsSheet, PlayerTeamsPhone} 
 import {EditDataButton, PlayerTeamsAdmin, usePlayerTeamsAdmin} from "./PlayerAdmin";
 import {ProfileHero} from "./ProfileHero";
 import {AddError, RemoveButton} from "./TeamAdmin";
+import type {Overview} from "@/app/_hooks/useOverview";
+import {adminPlayersList} from "@/app/_hooks/useAdminPlayers";
+import {PhotoAdminCard} from "@/app/_ui/photo/PhotoAdmin";
 import {TeamCards} from "./TeamCards";
 
 // The Player page (/players/[playerId], handoff §6, frames 13c, 13g, 13j, 13l): the player's name and rating (to the
@@ -47,6 +51,25 @@ const NO_TEAMS = "Igrač još nije ni u jednoj ekipi.";
 
 // a player who isn't on Rejting has no rating detail (it would say "Igrač ne postoji")
 const ratingHref = (p: PlayerOverview) => (p.rating.rank != null ? ratingPath(p.player.id) : null);
+
+// The admin's Profilna slika block (admin-mobile 35, desktop A4): the server sends the photo's settings to admins
+function AdminPhoto({data, overview, phone}: {data: PlayerOverview; overview: Overview<PlayerOverview>; phone: boolean}) {
+  const photo = data.photo;
+  if (!("photo_blocked" in photo)) return null;
+  const id = data.player.id;
+  return (
+    <PhotoAdminCard
+      target={{kind: "player", id}}
+      name={data.player.name}
+      info={{photo_url: photo.photo_url, photo_visibility: photo.photo_visibility, photo_blocked: photo.photo_blocked}}
+      phone={phone}
+      onChange={(next) => {
+        overview.setData((d) => ({...d, photo: {...d.photo, ...next}}));
+        adminPlayersList.update((list) => list.map((p) => (p.id === id ? {...p, photo_url: next.photo_url} : p)));
+      }}
+    />
+  );
+}
 
 // ---------- phone ----------
 
@@ -70,11 +93,13 @@ export function PlayerPagePhone({playerId}: {playerId: number}) {
           <ProfileHero
             name={data.player.name}
             avatarName={data.player.name}
+            avatarSrc={data.photo.photo_url}
             rating={data.rating}
             ratingHref={ratingHref(data)}
             tag={!data.player.active ? <Tag variant="inactive" size="sm" /> : admin && data.player.is_admin ? <AdminNameTag /> : undefined}
           />
           <PersonalDataCard player={data.player} full={data.full} action={admin && <EditDataButton expanded={editing} onClick={() => setEditing(true)} />} />
+          {admin && <AdminPhoto data={data} overview={overview} phone />}
           {admin ? <PlayerTeamsPhone data={data} admin={admin} /> : <TeamCards title="Ekipe" empty={NO_TEAMS} emptyIcon teams={data.teams} />}
           {admin && <PlayerAccountPhone data={data} overview={overview} />}
           {admin && editing && <PlayerDetailsSheet key={data.player.id} data={data} overview={overview} onClose={() => setEditing(false)} />}
@@ -112,6 +137,7 @@ export function PlayerPageDesktop({playerId, embedded = false}: {playerId: numbe
             desktop
             short={short}
             avatarName={data.player.name}
+            avatarSrc={data.photo.photo_url}
             title={data.player.name}
             nameTag={data.player.active ? undefined : <Tag variant="inactive" />}
             aside={<HeaderRating rating={data.rating.rating} provisional={data.rating.provisional} href={ratingHref(data)} short={short} />}
@@ -125,7 +151,9 @@ export function PlayerPageDesktop({playerId, embedded = false}: {playerId: numbe
               desktop
               action={admin && <EditDataButton expanded={editing} onClick={() => setEditing(true)} />}
             />
-            <DesktopNights nights={data.nights} />
+            <ColumnWithFooter footer={admin && <AdminPhoto data={data} overview={overview} phone={false} />}>
+              <DesktopNights nights={data.nights} />
+            </ColumnWithFooter>
           </PageColumns>
           {admin && editing && <EditPlayerPanel key={data.player.id} data={data} overview={overview} onClose={() => setEditing(false)} />}
         </>
@@ -189,7 +217,7 @@ function DesktopTeams({data, admin}: {data: PlayerOverview; admin: PlayerTeamsAd
             }}
           >
             <Box component={TransitionLink} href={`/teams/${t.team_id}`} sx={{...stretchedLink, flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: "12px"}}>
-              <InitialsAvatar name={t.team_name} letters={teamInitial(t.team_name)} size={40} variant="paper" />
+              <InitialsAvatar name={t.team_name} letters={teamInitial(t.team_name)} src={t.photo_url} size={40} variant="paper" />
               <Box component="span" sx={{minWidth: 0, display: "flex", flexDirection: "column", gap: "1px"}}>
                 <Box component="span" sx={{fontSize: 16, fontWeight: 700, lineHeight: 1.25, color: color.ink, overflowWrap: "anywhere"}}>
                   {t.team_name}

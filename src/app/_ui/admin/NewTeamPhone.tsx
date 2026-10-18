@@ -114,7 +114,7 @@ export default function NewTeamPhone({leagueId}: {leagueId: number | null}) {
             <Box component="ul" aria-label="Igrači nove ekipe" sx={{listStyle: "none", m: 0, p: 0}}>
               {chosen.map((p, i) => (
                 <Box component="li" key={p.id} sx={{minHeight: 60, display: "flex", alignItems: "center", gap: "12px", borderTop: i ? `1px solid ${color.line}` : "none"}}>
-                  <InitialsAvatar name={p.name} size={40} variant="paper" />
+                  <InitialsAvatar name={p.name} src={p.photo_url} size={40} variant="paper" />
                   <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "1px"}}>
                     <Box component="span" sx={{fontSize: 16, fontWeight: 600, ...ellipsis}}>
                       {p.name}

@@ -4,7 +4,7 @@ import {STATUS} from "@/app/_lib/statusCodes";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {zodMessage} from "@/app/_lib/validation/zodMessage";
-import {LogoError} from "@/app/_lib/sponsors";
+import {ImageError} from "@/app/_lib/images";
 
 // Turns errors thrown by validation into a 400 with a readable message; anything else is logged and becomes a 500.
 // The message is always a string in `error` (Croatian); a zod error also lists its issues.
@@ -19,7 +19,7 @@ export function errorResponse(error: unknown, fallbackMessage: string): NextResp
   if (error instanceof NotFoundError) {
     return NextResponse.json({error: error.message}, {status: STATUS.NotFound});
   }
-  if (error instanceof InvalidResultError || error instanceof LogoError) {
+  if (error instanceof InvalidResultError || error instanceof ImageError) {
     return NextResponse.json({error: error.message}, {status: STATUS.BadRequest});
   }
   console.error(error);

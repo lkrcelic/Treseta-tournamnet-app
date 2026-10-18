@@ -7,6 +7,8 @@ import {anyCase} from "@/app/_lib/helpers/query/anyCase";
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {lockRatings} from "@/app/_lib/service/admin/recalc";
 import {closeActivePosts, lockPlayerAds} from "@/app/_lib/service/burza/burza";
+import {PLAYER_PHOTO} from "@/app/_lib/service/players/photos";
+import {playerPhotoUrl} from "@/app/_lib/players/privacy";
 import {freezeRosterLineups} from "@/app/_lib/service/team/freezeLineups";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 
@@ -19,7 +21,7 @@ const ADMINS_LOCK = 7314002;
 type Tx = Prisma.TransactionClient;
 
 // The Igrači directory and the "Dodaj igrača" options: everyone but the deleted players
-export async function listAdminPlayers(): Promise<AdminPlayerRow[]> {
+export async function listAdminPlayers(viewer: Viewer): Promise<AdminPlayerRow[]> {
   const players = await prisma.player.findMany({
     where: {deleted_at: null},
     select: {
@@ -30,11 +32,18 @@ export async function listAdminPlayers(): Promise<AdminPlayerRow[]> {
       active: true,
       player_role: true,
       rating: true,
+      ...PLAYER_PHOTO,
       teamPlayers: {select: {team: {select: {team_id: true, team_name: true}}}},
     },
   });
   return adminPlayerRows(
-    players.map(({teamPlayers, player_role, rating, ...p}) => ({...p, admin: isAdminRole({player_role}), rating, teams: teamPlayers.map((tp) => tp.team)}))
+    players.map(({teamPlayers, player_role, rating, photo_updated_at, photo_visibility, ...p}) => ({
+      ...p,
+      admin: isAdminRole({player_role}),
+      rating,
+      teams: teamPlayers.map((tp) => tp.team),
+      photo_url: playerPhotoUrl({id: p.id, photo_updated_at, photo_visibility}, viewer, new Set()),
+    }))
   );
 }
 
@@ -123,6 +132,7 @@ export async function anonymisePlayer(viewer: Viewer, id: number): Promise<void>
       await tx.session.deleteMany({where: {userId: id}});
       await tx.luciaSession.deleteMany({where: {userId: id}});
       await tx.account.deleteMany({where: {userId: id}});
+      await tx.playerPhoto.deleteMany({where: {player_id: id}});
       await tx.player.update({where: {id}, data: await anonymised(tx, id, new Date())});
     },
     {timeout: 30_000}

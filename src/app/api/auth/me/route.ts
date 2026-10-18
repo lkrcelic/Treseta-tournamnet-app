@@ -3,6 +3,7 @@ import {clearSessionCookies, extendSession, findSession} from "@/app/_lib/servic
 import {isAdminRole} from "@/app/_lib/players/admin";
 import {ACCOUNT_DEACTIVATED} from "@/app/_interfaces/login";
 import {STATUS} from "@/app/_lib/statusCodes";
+import {playerPhotoUrl} from "@/app/_lib/players/privacy";
 
 // Called by the app on every load, and whenever another request answers 401: who is logged in. It also keeps the login
 // alive (sliding expiry) and removes cookies of sessions that no longer exist, so the middleware's cookie check sends
@@ -30,6 +31,8 @@ export async function GET(req: NextRequest) {
         needs_birth_date: session.user.birth_date == null,
         // "Pušiš li?" wasn't answered (a Google sign-up, or a player from before the question); asked after the birth date
         needs_smoker: !session.user.smoker_answered,
+        // the player's own photo (the menu's user card, Početna's profile button); null = the initials
+        photo_url: playerPhotoUrl(session.user, session.user, new Set()),
       },
     });
     await extendSession(session, res);

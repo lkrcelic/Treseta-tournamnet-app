@@ -224,7 +224,7 @@ function TeamDirectory({selectedId}: {selectedId: number | null}) {
       noun={NOUN.ekipa}
       empty={query.trim() ? "Nijedna ekipa ne odgovara pretrazi." : "Još nema ekipa."}
       selectedId={selectedId}
-      row={(t) => ({id: t.id, href: `/teams/${t.id}`, name: t.name, letters: teamInitial(t.name), sub: teamDirectorySub(t)})}
+      row={(t) => ({id: t.id, href: `/teams/${t.id}`, name: t.name, letters: teamInitial(t.name), src: t.photo_url, sub: teamDirectorySub(t)})}
       footer={
         <Box
           component={TransitionLink}
@@ -297,7 +297,7 @@ function PlayerDirectory({selectedId, afterDelete}: {selectedId: number | null; 
       noun={NOUN.igrač}
       empty={query.trim() ? "Nijedan igrač ne odgovara pretrazi." : "Još nema igrača."}
       selectedId={selectedId}
-      row={(p) => ({id: p.id, href: `/players/${p.id}`, name: p.name, sub: playerDirectorySub(p), inactive: !p.active})}
+      row={(p) => ({id: p.id, href: `/players/${p.id}`, name: p.name, src: p.photo_url, sub: playerDirectorySub(p), inactive: !p.active})}
       notice={notice}
       footer={
         <Box component="button" type="button" onClick={invite} sx={footerButton}>
@@ -314,7 +314,8 @@ function PlayerDirectory({selectedId, afterDelete}: {selectedId: number | null; 
 // a line over the footer button for a few seconds (Pozovi igrača); done: it worked (a tick), else a link icon
 type Notice = {text: string; done: boolean};
 
-type RowData = {id: number; href: string; name: string; letters?: string; sub: string; inactive?: boolean};
+// src: the photo for the avatar
+type RowData = {id: number; href: string; name: string; letters?: string; src?: string | null; sub: string; inactive?: boolean};
 
 const footerButton = {
   ...buttonBase,
@@ -539,7 +540,7 @@ function DirectoryRow({row, selected}: {row: RowData; selected: boolean}) {
           "&:focus-visible": rowFocus,
         }}
       >
-        <InitialsAvatar name={row.name} letters={row.letters} size={36} variant={selected ? "navy" : "paper"} />
+        <InitialsAvatar name={row.name} letters={row.letters} src={row.src} size={36} variant={selected ? "navy" : "paper"} />
         <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "1px"}}>
           <Box component="span" sx={{fontSize: 15, fontWeight: selected ? 700 : 600, ...ellipsis}}>
             {row.name}

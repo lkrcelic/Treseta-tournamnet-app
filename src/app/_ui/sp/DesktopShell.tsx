@@ -325,7 +325,7 @@ export function NavDrawer({open, onClose, active}: {open: boolean; onClose: () =
         <Box
           sx={{mt: "auto", display: "flex", alignItems: "center", gap: "10px", p: "10px", borderRadius: "14px", background: color.white, boxShadow: shadow.card}}
         >
-          <InitialsAvatar name={user?.username ?? ""} size={40} variant="navy" />
+          <InitialsAvatar name={user?.username ?? ""} src={user?.photo_url} size={40} variant="navy" />
           <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column"}}>
             <Box component="span" sx={{fontSize: 15, fontWeight: 600, ...ellipsis}}>
               {user?.username ?? "—"}

@@ -10,7 +10,7 @@ export type TeamCardData = {
   team_id: number;
   team_name: string;
   // shown as given (Moj profil: name order; the Player page: the team's rating order)
-  players: {id: number; first_name: string; last_name: string}[];
+  players: {id: number; first_name: string; last_name: string; photo_url?: string | null}[];
 };
 
 // One card per team (Moj profil "Moje ekipe" 13e/12f, a phone Player page's "Ekipe" 13c): the team's name with
@@ -73,7 +73,7 @@ export function TeamCards({
               {t.players.map((p) => (
                 <Box component="li" key={p.id}>
                   {/* first names: usernames are private (handoff §6) */}
-                  <PlayerChip name={p.first_name || p.last_name} fullName={fullName(p)} />
+                  <PlayerChip name={p.first_name || p.last_name} fullName={fullName(p)} src={p.photo_url} />
                 </Box>
               ))}
             </Box>

@@ -11,14 +11,16 @@ import {matchesQuery} from "@/app/_lib/ui/text";
 
 // ---------- the lists ----------
 
-export type DirectoryMember = {id: number; first_name: string; last_name: string; username?: string};
+// photo_url: the avatar as the server filtered it for the viewer (null or absent = the initials or the team's letter)
+export type DirectoryMember = {id: number; first_name: string; last_name: string; username?: string; photo_url?: string | null};
 export type DirectoryLeague = {id: number; name: string};
-export type DirectoryTeam = {id: number; name: string; players: DirectoryMember[]; leagues: DirectoryLeague[]};
+export type DirectoryTeam = {id: number; name: string; players: DirectoryMember[]; leagues: DirectoryLeague[]; photo_url?: string | null};
 
 // a team as GET /api/teams sends it (an admin gets the usernames)
 type ApiTeam = {
   team_id: number;
   team_name: string;
+  photo_url?: string | null;
   teamPlayers: {player: DirectoryMember}[];
   leagueTeams?: {league: {league_id: number; league_name: string}}[];
 };
@@ -29,6 +31,7 @@ export function toDirectoryTeam(t: ApiTeam): DirectoryTeam {
     name: t.team_name,
     players: t.teamPlayers.map((tp) => tp.player),
     leagues: (t.leagueTeams ?? []).map((lt) => ({id: lt.league.league_id, name: lt.league.league_name})),
+    photo_url: t.photo_url ?? null,
   };
 }
 
@@ -159,7 +162,8 @@ export function playerTeamFromDirectory(team: DirectoryTeam, player: DirectoryMe
     team_id: team.id,
     team_name: team.name,
     leagues: [...team.leagues].sort((a, b) => b.id - a.id).map((l) => ({league_id: l.id, league_name: l.name})),
-    players: members.map((p) => ({id: p.id, first_name: p.first_name, last_name: p.last_name})),
+    players: members.map((p) => ({id: p.id, first_name: p.first_name, last_name: p.last_name, photo_url: p.photo_url ?? null})),
+    photo_url: team.photo_url ?? null,
   };
 }
 

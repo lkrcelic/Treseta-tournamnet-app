@@ -8,7 +8,8 @@ import {ErrorNote, Spinner} from "./States";
 // "Obrisati kolo?" and the admin's other confirmations on the phone (admin-mobile 08, 10, 17, 22, 38, 39): what will
 // happen in a tinted box with its icon, then Odustani and the action. danger (the default) is red, for what can't be
 // taken back; otherwise navy (Aktivirati račun?). busy: the action is on its way, so nothing can be pressed or closed
-// until it answers; error: it failed, and the sheet stays open to try again.
+// until it answers; error: it failed, and the sheet stays open to try again. extra: a control under the text that goes
+// with the action (Maknuti sliku?'s "Zabrani i novu sliku").
 export function ConfirmSheet({
   open,
   onClose,
@@ -21,6 +22,7 @@ export function ConfirmSheet({
   busy = false,
   error,
   eyebrow,
+  extra,
 }: {
   open: boolean;
   onClose: () => void;
@@ -33,6 +35,7 @@ export function ConfirmSheet({
   busy?: boolean;
   error?: string | null;
   eyebrow?: string;
+  extra?: React.ReactNode;
 }) {
   const ink = danger ? color.red : color.navy;
   return (
@@ -54,6 +57,7 @@ export function ConfirmSheet({
           {text}
         </Box>
       </Box>
+      {extra}
       {error && <ErrorNote>{error}</ErrorNote>}
       <Box sx={{flex: "none", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px"}}>
         <Box

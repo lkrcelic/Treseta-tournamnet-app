@@ -3,6 +3,7 @@ import {z} from "zod";
 import {isValidPhone, normalizePhone, PHONE_ERROR} from "@/app/_lib/phone";
 import {normalizeUsername, usernameError} from "@/app/_lib/validation/username";
 import {isIsoDate} from "@/app/_lib/nights";
+import {PHOTO_VISIBILITIES} from "@/app/_interfaces/photo";
 
 const DATE_FORMAT = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/;
 const NO_CHANGES = "Nema promjena za spremanje.";
@@ -45,15 +46,21 @@ const PhoneField = z
   .transform((p) => (p ? normalizePhone(p) : null));
 
 // A player changing their own profile: the birth date (Google sign-ups give it later), a new username, the phone
-// number and/or whether they smoke
+// number, whether they smoke and/or who sees their photo. photo_blocked is the admin's ("Zabrani novu sliku").
 export const PlayerProfileUpdate = z
   .object({
     birth_date: BirthDateField.optional(),
     username: UsernameField.optional(),
     phone: PhoneField.optional(),
     smoker: z.boolean().optional(),
+    photo_visibility: z.enum(PHOTO_VISIBILITIES).optional(),
+    photo_blocked: z.boolean().optional(),
   })
-  .refine((o) => o.birth_date !== undefined || o.username !== undefined || o.phone !== undefined || o.smoker !== undefined, NO_CHANGES);
+  .refine((o) => Object.values(o).some((v) => v !== undefined), NO_CHANGES);
+
+// who sees the photo is the player's choice; an admin sees every photo and only removes or blocks them
+export const PHOTO_VISIBILITY_SELF_ONLY = "Tko vidi sliku bira sam igrač.";
+export const PHOTO_BLOCK_ADMIN_ONLY = "Samo admin može zabraniti sliku.";
 
 export const EMAIL_TAKEN = "Taj email se već koristi.";
 
@@ -104,6 +111,8 @@ export type AdminPlayerRow = {
   // an admin; the rating rounded (the admin's phone Igrači list)
   admin?: boolean;
   rating?: number;
+  // the avatar (an admin sees every photo); null = the initials
+  photo_url?: string | null;
 };
 
 export type PlayerCreateInterface = z.infer<typeof PlayerCreate>;

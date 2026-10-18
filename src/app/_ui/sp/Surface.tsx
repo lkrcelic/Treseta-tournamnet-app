@@ -39,20 +39,27 @@ const AVATAR = {
 } as const;
 
 // Initials circle: cream on navy for the profile heroes, navy on cream in chips and lists, navy on paper in the rows
-// of the Team and Player pages. letters replaces the initials of name (a team's one letter, teamInitial).
+// of the Team and Player pages. letters replaces the initials of name (a team's one letter, teamInitial). src: the
+// profile photo, as the server filtered it for the viewer; it fills the same circle, and the initials come back when
+// there is none or it doesn't load.
 export function InitialsAvatar({
   name,
   letters,
+  src,
   size = 36,
   variant = "cream",
   sx,
 }: {
   name: string;
   letters?: string;
+  src?: string | null;
   size?: number;
   variant?: keyof typeof AVATAR;
   sx?: SxProps<Theme>;
 }) {
+  // the address that failed to load (a new one is tried again)
+  const [failed, setFailed] = React.useState<string | null>(null);
+  const photo = src && src !== failed ? src : null;
   return (
     <Box
       component="span"
@@ -70,18 +77,32 @@ export function InitialsAvatar({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          overflow: "hidden",
         },
         sx
       )}
     >
-      {letters ?? initials(name)}
+      {photo ? (
+        <Box
+          component="img"
+          src={photo}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          draggable={false}
+          onError={() => setFailed(photo)}
+          sx={{width: "100%", height: "100%", objectFit: "cover", display: "block"}}
+        />
+      ) : (
+        letters ?? initials(name)
+      )}
     </Box>
   );
 }
 
 // Player chip: small avatar + a name (Moj profil's teams, Upravljanje ligom). `fullName` gives the avatar both
 // initials when the chip shows only the first name (design 13c/13e: "IP Ivan").
-export function PlayerChip({name, fullName, size = "md"}: {name: string; fullName?: string; size?: "sm" | "md"}) {
+export function PlayerChip({name, fullName, src, size = "md"}: {name: string; fullName?: string; src?: string | null; size?: "sm" | "md"}) {
   const sm = size === "sm";
   return (
     <Box
@@ -103,7 +124,7 @@ export function PlayerChip({name, fullName, size = "md"}: {name: string; fullNam
         minWidth: 0,
       }}
     >
-      <InitialsAvatar name={fullName || name} size={sm ? 26 : 28} />
+      <InitialsAvatar name={fullName || name} src={src} size={sm ? 26 : 28} />
       <Box
         component="span"
         // cut short with "…": the whole name shows on hover

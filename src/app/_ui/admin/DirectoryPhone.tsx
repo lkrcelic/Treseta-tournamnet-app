@@ -16,7 +16,8 @@ import {Box} from "@mui/material";
 import React, {useEffect, useMemo, useState} from "react";
 import {AdminTabBar, AdminTab} from "./AdminTabBar";
 
-type Row = {id: number; href: string; name: string; letters?: string; sub: string; tag?: "admin" | "inactive"};
+// src: the photo for the avatar
+type Row = {id: number; href: string; name: string; letters?: string; src?: string | null; sub: string; tag?: "admin" | "inactive"};
 
 // Ekipe and Igrači on the admin's phone (admin-mobile 31, 34): every team or player with a search, 12 at a time
 // ("Učitaj još"), each opening its page. The search and the scroll come back with Back.
@@ -103,7 +104,7 @@ function DirectoryPhone({
                     href={r.href}
                     sx={{...buttonBase, minHeight: 68, display: "flex", alignItems: "center", gap: "12px", p: "10px 10px 10px 16px", textAlign: "left", textDecoration: "none", color: color.ink, opacity: r.tag === "inactive" ? 0.6 : 1, "&:active": {background: color.paper2}}}
                   >
-                    <InitialsAvatar name={r.name} letters={r.letters} size={40} variant="paper" />
+                    <InitialsAvatar name={r.name} letters={r.letters} src={r.src} size={40} variant="paper" />
                     <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
                       <Box component="span" sx={{fontSize: 16, fontWeight: 600, ...ellipsis}}>
                         {r.name}
@@ -145,6 +146,7 @@ export function TeamsDirectoryPhone() {
           href: `/teams/${t.id}`,
           name: t.name,
           letters: teamInitial(t.name),
+          src: t.photo_url,
           sub: `${count(t.players.length, NOUN.igrač)} · ${t.leagues.length ? t.leagues.map((l) => l.name).join(", ") : "bez lige"}`,
         }))
       : null;
@@ -202,6 +204,7 @@ export function PlayersDirectoryPhone() {
                 id: p.id,
                 href: `/players/${p.id}`,
                 name: p.name,
+                src: p.photo_url,
                 sub: [teams || `@${p.username}`, p.rating != null ? `rejting ${p.rating}` : null].filter(Boolean).join(" · "),
                 tag: !p.active ? ("inactive" as const) : p.admin ? ("admin" as const) : undefined,
               };

@@ -24,11 +24,15 @@ export type HeroRating = {
 // place and the big number — opening the rating's detail. ratingHref null: the strip is not a link (a player who
 // isn't on Rejting has no detail), so it has no chevron. name null / sub null: still loading.
 // On a narrow strip (the 360 px desktop column, a phone under 390 px) Privremeno drops under REJTING instead of running
-// under the number.
+// under the number. avatar replaces the initials circle (Moj profil's photo with its camera badge); avatarSrc is the
+// photo in the plain circle; belowName goes under the name ("Dodaj sliku").
 export function ProfileHero({
   name,
   sub,
   avatarName,
+  avatarSrc,
+  avatar,
+  belowName,
   rating,
   ratingHref,
   tag,
@@ -38,6 +42,9 @@ export function ProfileHero({
   // the line under the name; undefined = none (the Player page), and the name may then wrap
   sub?: string | null;
   avatarName: string;
+  avatarSrc?: string | null;
+  avatar?: React.ReactNode;
+  belowName?: React.ReactNode;
   rating: HeroRating | null;
   ratingHref: string | null;
   // a label under the name (a deactivated player's "Neaktivan" on the phone Player page)
@@ -101,7 +108,7 @@ export function ProfileHero({
       }}
     >
       <Box sx={{display: "flex", flexDirection: desktop ? "column" : "row", alignItems: desktop ? "flex-start" : "center", gap: desktop ? "22px" : "14px"}}>
-        <InitialsAvatar name={avatarName} size={desktop ? 96 : 64} variant="navy" />
+        {avatar ?? <InitialsAvatar name={avatarName} src={avatarSrc} size={desktop ? 96 : 64} variant="navy" />}
         <Box sx={{display: "flex", flexDirection: "column", gap: desktop ? "4px" : "2px", minWidth: 0}}>
           <Box
             component="h1"
@@ -119,6 +126,7 @@ export function ProfileHero({
           </Box>
           {sub !== undefined && <Box sx={{fontSize: desktop ? 17 : 16, color: color.ink2}}>{sub ?? <Skeleton width={120} />}</Box>}
           {tag && <Box sx={{display: "flex", mt: "6px"}}>{tag}</Box>}
+          {belowName && <Box sx={{display: "flex", mt: desktop ? "8px" : "6px"}}>{belowName}</Box>}
         </Box>
       </Box>
       {ratingHref ? (

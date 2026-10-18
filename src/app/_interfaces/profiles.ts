@@ -3,6 +3,7 @@
 // (_lib/players/privacy.ts).
 import type {PlayerView} from "@/app/_interfaces/player";
 import type {RatingNight} from "@/app/_interfaces/ratings";
+import type {OwnPhoto, TeamPhotoInfo} from "@/app/_interfaces/photo";
 
 // ---------- Team page ----------
 
@@ -23,6 +24,8 @@ export type TeamOverviewPlayer = {
   active: boolean;
   // the viewer's own row
   me: boolean;
+  // the avatar; null = the initials (no photo, or the viewer may not see it)
+  photo_url: string | null;
 };
 
 // One league the team plays in (Lige): live ones first, then the newest
@@ -53,6 +56,8 @@ export type TeamNight = {
 export type TeamOverview = {
   // mine: the viewer is in the team ("Tvoja ekipa")
   team: {id: number; name: string; mine: boolean};
+  // the team's photo (url null = its letter); visibility and the block go to its players and admins only
+  photo: TeamPhotoInfo | {photo_url: string | null};
   stats: {
     // Najbolje mjesto: the best place over the leagues the team has played in (null = "–")
     best: {rank: number; league_id: number; league_name: string} | null;
@@ -90,12 +95,17 @@ export type PlayerOverviewTeam = {
   leagues: {league_id: number; league_name: string}[];
   // every player of the team (the player too) in the team's rating order, as the Team page lists them (frame 13c);
   // the chips show the first name and the initials of the full name
-  players: {id: number; first_name: string; last_name: string}[];
+  players: {id: number; first_name: string; last_name: string; photo_url: string | null}[];
+  // the team's avatar
+  photo_url: string | null;
 };
 
 export type PlayerOverview = {
   // privacy-filtered: the personal keys are absent unless full
   player: PlayerView;
+  // the player's photo (url null = the initials); its settings only with full (the player themself, an admin: the
+  // admin's Profilna slika block)
+  photo: OwnPhoto | {photo_url: string | null};
   // the viewer is the player or an admin, so the page shows every personal field
   full: boolean;
   // rank null = not on Rejting, so /ratings/<id> is "Igrač ne postoji": show the rating without the link to it

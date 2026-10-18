@@ -65,6 +65,9 @@ const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const ALLOWED_WITHOUT_ADMIN: Record<string, string> = {
   "rounds/[id]/lineup/route.ts PUT": "Tko igra ovu rundu?: a player of either team confirms the lineup (canPlayRound)",
   "matches/route.ts POST": "the players of the round finish their match (canPlayRound)",
+  "teams/[id]/route.ts PATCH": "any player of the team chooses who sees its photo; renaming and blocking photos check the admin role in the handler",
+  "teams/[id]/photo/route.ts PUT": "any player of the team sets its photo (teamPhotoChangeError); an admin may not",
+  "teams/[id]/photo/route.ts DELETE": "a player of the team or an admin removes its photo (teamPhotoChangeError)",
 };
 
 type Handler = {file: string; method: string; body: string};

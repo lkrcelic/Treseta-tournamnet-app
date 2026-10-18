@@ -19,7 +19,7 @@ import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
 import {Box} from "@mui/material";
 import {useParams} from "next/navigation";
 import React, {useCallback, useEffect, useState} from "react";
-import {AdAvatar, burzaListHref, burzaListLabel, Callout, KindTag, OutlineAction, shareLink, shareText} from "../ui/BurzaParts";
+import {AdAvatar, postPhoto, burzaListHref, burzaListLabel, Callout, KindTag, OutlineAction, shareLink, shareText} from "../ui/BurzaParts";
 
 // Oglas (Claude Design "Burza igrača · spojeno", "Oglas · kontakt"): one ad with its details and the number to call.
 // Public, so a shared link works for anyone.
@@ -126,7 +126,7 @@ function PostBody({post, desktop, closing, onClose, notice, error}: {post: Burza
       <Box component="section" aria-label="Oglas" sx={{borderRadius: "24px", background: color.cream, p: "18px", display: "flex", flexDirection: "column", gap: "12px", opacity: post.closed ? 0.7 : 1}}>
         <KindTag kind={post.kind} />
         <Box sx={{display: "flex", alignItems: "center", gap: "12px"}}>
-          <AdAvatar name={postTitle(post)} size={52} sx={{background: color.white}} />
+          <AdAvatar name={postTitle(post)} src={postPhoto(post)} size={52} sx={{background: color.white}} />
           <Box component="h2" sx={{m: 0, fontFamily: font.display, fontSize: desktop ? 28 : 25, fontWeight: 800, lineHeight: 1.1, letterSpacing: "-.01em", textWrap: "pretty", overflowWrap: "anywhere"}}>
             {postHeadline(post)}
           </Box>

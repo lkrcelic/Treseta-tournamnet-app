@@ -49,10 +49,15 @@ test("nothing personal is left and nobody can log in", () => {
   // deleted ⇒ inactive (the Player_deleted_inactive_check constraint)
   assert.equal(data.active, false);
   assert.equal(data.deleted_at, now);
+  // the profile photo goes (its bytes are deleted with the row) and its settings start over
+  assert.equal(data.photo_updated_at, null);
+  assert.equal(data.photo_visibility, "ALL");
+  assert.equal(data.photo_blocked, false);
   // the old values are all replaced: no field keeps anything from the player
   assert.deepEqual(Object.keys(data).sort(), [
     "active", "birth_date", "deleted_at", "email", "emailVerified", "first_name", "image", "last_name", "name",
-    "password_hash", "phone", "player_role", "smoker", "smoker_answered", "username",
+    "password_hash", "phone", "photo_blocked", "photo_updated_at", "photo_visibility", "player_role", "smoker",
+    "smoker_answered", "username",
   ]);
 });
 

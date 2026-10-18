@@ -4,10 +4,10 @@ import {BurzaKind, BurzaPost} from "@/app/_interfaces/burza";
 import {nightLabel} from "@/app/_lib/nights";
 import {isValidPhone, normalizePhone, phoneInput, PHONE_ERROR, PHONE_HINT} from "@/app/_lib/phone";
 import {busyLine, KIND_TAG, postBody, postSub, postTitle, timeAgo} from "@/app/_lib/ui/burza";
-import {initials, plural} from "@/app/_lib/ui/text";
+import {plural} from "@/app/_lib/ui/text";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {color, shadow, tint} from "@/app/_styles/tokens";
-import {BottomSheet, buttonBase, Card, ellipsis, mergeSx, tabular} from "@/app/_ui/sp";
+import {BottomSheet, buttonBase, Card, ellipsis, InitialsAvatar, mergeSx, tabular} from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import BackHandRoundedIcon from "@mui/icons-material/BackHandRounded";
 import CallRoundedIcon from "@mui/icons-material/CallRounded";
@@ -60,21 +60,20 @@ export function KindTag({kind, large = false}: {kind: BurzaKind; large?: boolean
   );
 }
 
-// Initials in a cream circle (a team or a player)
-export function AdAvatar({name, size = 44, sx}: {name: string; size?: number; sx?: SxProps<Theme>}) {
+// Initials in a cream circle (a team or a player), or its photo (src) in the same circle
+export function AdAvatar({name, src, size = 44, sx}: {name: string; src?: string | null; size?: number; sx?: SxProps<Theme>}) {
   return (
-    <Box
-      component="span"
-      aria-hidden
-      sx={mergeSx(
-        {width: size, height: size, flex: "none", borderRadius: "50%", background: color.cream, color: color.navy, fontSize: size >= 52 ? 17 : size >= 44 ? 15 : 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center"},
-        sx
-      )}
-    >
-      {initials(name)}
-    </Box>
+    <InitialsAvatar
+      name={name}
+      src={src}
+      size={size}
+      sx={mergeSx({background: color.cream, color: color.navy, fontFamily: "inherit", fontSize: size >= 52 ? 17 : size >= 44 ? 15 : 12, fontWeight: 700}, sx)}
+    />
   );
 }
+
+// The ad's avatar: the team's photo on a substitute ad, the author's on the others
+export const postPhoto = (p: BurzaPost) => (p.kind === "SUBSTITUTE" ? p.team?.photo_url : p.author.photo_url) ?? null;
 
 // The night of a substitute ad, on the right of its card
 export function NightChip({night}: {night: string}) {
@@ -123,7 +122,7 @@ export function PostCard({post, href, ago, footer}: {post: BurzaPost; href?: str
         </Box>
       </Box>
       <Box sx={{display: "flex", alignItems: "center", gap: "12px"}}>
-        <AdAvatar name={title} />
+        <AdAvatar name={title} src={postPhoto(post)} />
         <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
           <Box component="span" sx={{fontSize: 17, fontWeight: 700, color: color.ink, ...ellipsis}}>
             {title}

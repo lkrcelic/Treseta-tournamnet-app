@@ -73,6 +73,7 @@ export function NewTeamPage({leagueId}: {leagueId: number | null}) {
 
   const team: TeamOverview = {
     team: {id: 0, name: draft, mine: false},
+    photo: {photo_url: null},
     stats: {best: null, players: 0, leagues: 0, leagues_live: 0},
     players: [],
     leagues: [],

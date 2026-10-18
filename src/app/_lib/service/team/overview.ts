@@ -10,6 +10,7 @@ import {ratingSummaries} from "@/app/_lib/service/ratings/ratings";
 import {aggregateTeamNights, bestRank, teamLeagueRows} from "@/app/_lib/ui/profiles";
 import {PUBLISHED_ROUND} from "@/app/_lib/roundStatus";
 import {TeamNight, TeamOverview, TeamOverviewPlayer} from "@/app/_interfaces/profiles";
+import {PLAYER_PHOTO, photoContext, TEAM_PHOTO} from "@/app/_lib/service/players/photos";
 
 // Zadnje večeri shows this many nights
 const NIGHTS = 4;
@@ -25,10 +26,12 @@ export async function getTeamOverview(teamId: number, viewer: Viewer): Promise<T
     select: {
       team_id: true,
       team_name: true,
+      ...TEAM_PHOTO,
+      photo_blocked: true,
       // a deleted player is taken off every team; the filter only guards against an old row
       teamPlayers: {
         where: {player: {deleted_at: null}},
-        select: {player: {select: {id: true, first_name: true, last_name: true, username: true, active: true, rating: true}}},
+        select: {player: {select: {id: true, first_name: true, last_name: true, username: true, active: true, rating: true, ...PLAYER_PHOTO}}},
       },
       leagueTeams: {
         select: {
@@ -49,10 +52,11 @@ export async function getTeamOverview(teamId: number, viewer: Viewer): Promise<T
 
   const roster = team.teamPlayers.map((tp) => tp.player);
   const leagues = team.leagueTeams.map((lt) => lt.league);
-  const [ratings, standings, nights] = await Promise.all([
+  const [ratings, standings, nights, photos] = await Promise.all([
     ratingSummaries(roster),
     Promise.all(leagues.map((l) => getLeagueStandings(l.league_id))),
     lastTeamNights(teamId),
+    photoContext(viewer),
   ]);
 
   const players: TeamOverviewPlayer[] = roster
@@ -69,6 +73,7 @@ export async function getTeamOverview(teamId: number, viewer: Viewer): Promise<T
         provisional: r.provisional,
         active: p.active,
         me: p.id === viewer.id,
+        photo_url: photos.player(p),
       };
     })
     .sort((a, b) => b.rating - a.rating || a.name.localeCompare(b.name, "hr"));
@@ -86,8 +91,15 @@ export async function getTeamOverview(teamId: number, viewer: Viewer): Promise<T
     leagueDateString()
   );
 
+  const mine = players.some((p) => p.me);
+  const photo_url = photos.team(team);
   return {
-    team: {id: team.team_id, name: team.team_name, mine: players.some((p) => p.me)},
+    team: {id: team.team_id, name: team.team_name, mine},
+    // its players change the photo and who sees it; an admin removes it and blocks new ones
+    photo:
+      mine || isAdminRole(viewer)
+        ? {photo_url, photo_visibility: team.photo_visibility === "ME" ? "TEAMMATES" : team.photo_visibility, photo_blocked: team.photo_blocked, can_edit: mine}
+        : {photo_url},
     stats: {
       best: bestRank(leagueRows),
       players: players.length,

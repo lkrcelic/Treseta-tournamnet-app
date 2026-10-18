@@ -6,6 +6,7 @@ import {defaultLineup, PLAYERS_PER_TEAM} from "@/app/_lib/lineup";
 import {displayName, fullName} from "@/app/_lib/players/names";
 import {lineupVisible, Viewer} from "@/app/_lib/players/privacy";
 import {ROUND_NOT_PUBLISHED} from "@/app/_lib/roundStatus";
+import {PLAYER_PHOTO, photoContext} from "@/app/_lib/service/players/photos";
 
 // Who plays a round: two players from each team, picked on Start Game before the scoreboard opens. Ratings of the
 // round go to these players (rounds without a lineup rate the whole roster). A deactivated player isn't offered or
@@ -16,7 +17,8 @@ import {ROUND_NOT_PUBLISHED} from "@/app/_lib/roundStatus";
 
 export const ROUND_FINISHED = "Ova runda je već završena.";
 
-export type LineupMember = {id: number; name: string; username: string};
+// photo_url: the avatar (null = the initials)
+export type LineupMember = {id: number; name: string; username: string; photo_url: string | null};
 
 export type LineupTeam = {
   id: number;
@@ -50,7 +52,7 @@ const teamSelect = {
   team_name: true,
   founder_id1: true,
   founder_id2: true,
-  teamPlayers: {select: {player: {select: {id: true, first_name: true, last_name: true, username: true, active: true}}}},
+  teamPlayers: {select: {player: {select: {id: true, first_name: true, last_name: true, username: true, active: true, ...PLAYER_PHOTO}}}},
 } as const;
 
 // "finished": a player asking for a round that is over (the route answers 403 with ROUND_FINISHED)
@@ -72,6 +74,7 @@ export async function getLineup(roundId: number, viewer: Viewer): Promise<Lineup
   if (!lineupVisible(viewer, round)) return "finished";
 
   const saved = round.roundPlayers.length > 0;
+  const photos = await photoContext(viewer);
   const leagueId = round.leagueRounds[0]?.league_id ?? null;
 
   const team = async (t: typeof round.team1): Promise<LineupTeam> => {
@@ -82,7 +85,7 @@ export async function getLineup(roundId: number, viewer: Viewer): Promise<Lineup
     const members = t.teamPlayers
       .map(({player: p}) => p)
       .filter(shown)
-      .map((p) => ({id: p.id, name: fullName(p), username: p.username}))
+      .map((p) => ({id: p.id, name: fullName(p), username: p.username, photo_url: photos.player(p)}))
       .sort((a, b) => a.name.localeCompare(b.name, "hr"));
     const founders = [t.founder_id1, t.founder_id2];
     // an open round's saved lineup keeps its active players and is topped up from the roster (saveLineup accepts

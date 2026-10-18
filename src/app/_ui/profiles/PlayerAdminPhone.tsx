@@ -63,7 +63,7 @@ export function PlayerTeamsPhone({data, admin}: {data: PlayerOverview; admin: Pl
             {data.teams.map((t, i) => (
               <Box component="li" key={t.team_id} sx={{...stretchedRow, minHeight: 62, display: "flex", alignItems: "center", gap: "12px", p: "0 4px 0 14px", borderTop: i ? `1px solid ${color.line}` : "none"}}>
                 <Box component={TransitionLink} href={`/teams/${t.team_id}`} sx={{...stretchedLink, flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: "12px"}}>
-                  <InitialsAvatar name={t.team_name} letters={teamInitial(t.team_name)} size={38} variant="paper" />
+                  <InitialsAvatar name={t.team_name} letters={teamInitial(t.team_name)} src={t.photo_url} size={38} variant="paper" />
                   <Box component="span" sx={{flex: 1, minWidth: 0, fontSize: 16, fontWeight: 600, color: color.ink, ...ellipsis}}>
                     {t.team_name}
                   </Box>

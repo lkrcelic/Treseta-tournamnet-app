@@ -36,7 +36,7 @@ type Shown = {
   leagueId: number;
   leagueName: string;
   team: string | null;
-  players: {id: number; name: string; me: boolean}[];
+  players: {id: number; name: string; me: boolean; photo_url?: string | null}[];
   nights: string[];
   played: Set<string>;
   // when each night starts, "HH:MM" (a night without a time isn't in it)
@@ -350,7 +350,7 @@ function Schedule({shown, today, desktop}: {shown: Shown; today: string; desktop
               </Box>
               {shown.players.map((p) => (
                 <Box key={p.id} sx={{display: "flex", alignItems: "center", gap: "10px", fontSize: 15}}>
-                  <InitialsAvatar name={p.name} size={32} sx={{fontSize: 11}} />
+                  <InitialsAvatar name={p.name} src={p.photo_url} size={32} sx={{fontSize: 11}} />
                   <Box component="span" sx={ellipsis}>
                     {p.name}
                   </Box>

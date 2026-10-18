@@ -156,7 +156,7 @@ export default function NewBurzaPost() {
           {...common}
           leagues={leagues}
           preset={{league: preset.league ?? schedule?.leagues[0]?.league_id}}
-          me={{name: me?.name ?? user?.username ?? "", rating: me && me.rounds > 0 ? me.rating : null}}
+          me={{name: me?.name ?? user?.username ?? "", rating: me && me.rounds > 0 ? me.rating : null, photo_url: user?.photo_url}}
         />
       ) : (
         <AvailableForm

@@ -7,10 +7,9 @@ import {MATCH_THRESHOLD} from "@/app/_lib/game/scoring";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import AdminBadge from "@/app/_ui/admin/AdminBadge";
 import type {Lineup, LineupMember, LineupTeam} from "@/app/_lib/service/round/lineup";
-import {initials} from "@/app/_lib/ui/text";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, font, teamColor, tint} from "@/app/_styles/tokens";
-import {buttonBase, Card, CenteredSpinner, DesktopOnlyNote, DesktopShell, ErrorNote, IconCircleButton, PrimaryButton, Screen, ScrollArea} from "@/app/_ui/sp";
+import {buttonBase, Card, CenteredSpinner, DesktopOnlyNote, DesktopShell, ErrorNote, IconCircleButton, InitialsAvatar, PrimaryButton, Screen, ScrollArea} from "@/app/_ui/sp";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
@@ -322,15 +321,15 @@ function TeamSlots({
   );
 }
 
+// The picked player's photo, or their initials on the team's colour
 function Avatar({player, side, size}: {player?: LineupMember; side: number; size: number}) {
   return (
-    <Box
-      component="span"
-      aria-hidden
-      sx={{width: size, height: size, flex: "none", borderRadius: "50%", background: teamColor[side], color: color.white, fontSize: size >= 42 ? 15 : 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center"}}
-    >
-      {initials(player?.name)}
-    </Box>
+    <InitialsAvatar
+      name={player?.name ?? ""}
+      src={player?.photo_url}
+      size={size}
+      sx={{background: teamColor[side], color: color.white, fontFamily: "inherit", fontSize: size >= 42 ? 15 : 14, fontWeight: 700}}
+    />
   );
 }
 

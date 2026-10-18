@@ -1,4 +1,5 @@
 import {z} from "zod";
+import {TEAM_PHOTO_VISIBILITIES} from "@/app/_interfaces/photo";
 
 const TeamName = z.string().trim().min(1, "Ime ekipe je obavezno.").max(100, "Ime ekipe je predugo.");
 
@@ -25,9 +26,17 @@ export const TeamRequestValidation = z
   }));
 export type TeamCreateRequest = z.infer<typeof TeamRequestValidation>;
 
-export const TeamUpdateValidation = z.object({
-  team_name: TeamName,
-});
+// PATCH /api/teams/[id]: a new name (admin), who sees the team's photo (any of its players) and "Zabrani novu sliku"
+// (admin); any of them, at least one
+export const TeamUpdateValidation = z
+  .object({
+    team_name: TeamName.optional(),
+    photo_visibility: z.enum(TEAM_PHOTO_VISIBILITIES).optional(),
+    photo_blocked: z.boolean().optional(),
+  })
+  .refine((o) => Object.values(o).some((v) => v !== undefined), "Nema promjena za spremanje.");
+export const TEAM_RENAME_ADMIN_ONLY = "Ime ekipe mijenja admin.";
+export const TEAM_PHOTO_VISIBILITY_MEMBERS_ONLY = "Tko vidi sliku ekipe biraju njezini igrači.";
 
 export const TeamPlayerAddValidation = z.object({
   player_id: z.number().int(),
@@ -40,11 +49,15 @@ const TeamMemberValidation = z.object({
   first_name: z.string(),
   last_name: z.string(),
   username: z.string().optional(),
+  // the avatar; null = the initials (no photo, or the viewer may not see it)
+  photo_url: z.string().nullable().optional(),
 });
 
 export const TeamExtendedResponseValidation = z.object({
   team_id: z.number().int(),
   team_name: z.string(),
+  // the team's photo for the avatar (null = its letter)
+  photo_url: z.string().nullable().optional(),
   // the founders (the first two players), and the leagues the Ekipe directory counts
   founder_id1: z.number().int().nullable().optional(),
   founder_id2: z.number().int().nullable().optional(),

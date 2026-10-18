@@ -7,7 +7,7 @@ import {initials} from "@/app/_lib/ui/text";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {mapLinkProps} from "@/app/_ui/gathering/Gathering";
-import {buttonBase, ellipsis} from "@/app/_ui/sp";
+import {buttonBase, ellipsis, InitialsAvatar} from "@/app/_ui/sp";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import EventRoundedIcon from "@mui/icons-material/EventRounded";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
@@ -93,9 +93,7 @@ export function NextNightCard({league, night, today}: {league: MyLeague; night: 
       <Box component="ul" aria-label="Igrači" sx={{listStyle: "none", m: 0, p: 0, display: "flex", flexDirection: "column", gap: "8px"}}>
         {league.players.map((p) => (
           <Box component="li" key={p.id} sx={{display: "flex", alignItems: "center", gap: "10px", fontSize: 15, minWidth: 0}}>
-            <Box component="span" aria-hidden sx={{width: 32, height: 32, flex: "none", borderRadius: "50%", background: color.cream, color: color.navy, fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center"}}>
-              {initials(p.name)}
-            </Box>
+            <InitialsAvatar name={p.name} src={p.photo_url} size={32} sx={{fontSize: 11}} />
             <Box component="span" sx={ellipsis}>
               {p.name}
             </Box>

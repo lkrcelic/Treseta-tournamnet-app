@@ -154,7 +154,7 @@ export function SubstituteForm({
               onClick={() => setWithId(p.id)}
               sx={{...buttonBase, width: "100%", minHeight: 68, display: "flex", alignItems: "center", gap: "12px", p: "10px 14px", borderBottom: i < players.length - 1 ? `1px solid ${color.line}` : "none", background: on ? color.cream2 : color.white, textAlign: "left", transition: "background 160ms ease"}}
             >
-              <InitialsAvatar name={p.name} size={40} variant={p.me ? "navy" : "cream"} sx={{fontSize: 14, ...(p.me ? {color: color.white} : {})}} />
+              <InitialsAvatar name={p.name} src={p.photo_url} size={40} variant={p.me ? "navy" : "cream"} sx={{fontSize: 14, ...(p.me ? {color: color.white} : {})}} />
               <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
                 <Box component="span" sx={{fontSize: 16, fontWeight: 600, color: color.ink}}>
                   {p.me ? `Ja · ${p.name}` : p.name}
@@ -187,7 +187,7 @@ function RadioDot({on}: {on: boolean}) {
 }
 
 // Tražim partnera: a running league → the ad's text → phone; the player's rating goes with it
-export function PartnerForm({leagues, preset, me, ...props}: FormProps & {leagues: LeagueOption[]; preset: {league?: number}; me: {name: string; rating: number | null}}) {
+export function PartnerForm({leagues, preset, me, ...props}: FormProps & {leagues: LeagueOption[]; preset: {league?: number}; me: {name: string; rating: number | null; photo_url?: string | null}}) {
   const today = leagueDateString();
   // leagues whose season isn't over
   const options = leagues.filter((l) => !l.endDate || l.endDate >= today);
@@ -226,7 +226,7 @@ export function PartnerForm({leagues, preset, me, ...props}: FormProps & {league
       <Step n={3}>Kontakt</Step>
       <Phone phone={props.phone} setPhone={props.setPhone} />
       <Card sx={{p: "12px 14px", display: "flex", alignItems: "center", gap: "12px"}}>
-        <InitialsAvatar name={me.name} size={40} variant="navy" sx={{fontSize: 14, color: color.white}} />
+        <InitialsAvatar name={me.name} src={me.photo_url} size={40} variant="navy" sx={{fontSize: 14, color: color.white}} />
         <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
           <Box component="span" sx={{fontSize: 15, fontWeight: 600}}>
             Uz oglas se vidi tvoj rejting

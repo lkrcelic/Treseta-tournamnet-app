@@ -35,9 +35,19 @@ import {
 import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
 import PersonAddRoundedIcon from "@mui/icons-material/PersonAddRounded";
 import {Box} from "@mui/material";
-import React, {useId, useMemo} from "react";
+import React, {useId, useMemo, useState} from "react";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import type {TeamPhotoInfo} from "@/app/_interfaces/photo";
+import type {Overview} from "@/app/_hooks/useOverview";
+import {teamsList} from "@/app/_hooks/useTeams";
+import {BlockedNote, EditableAvatar, PhotoControls, PhotoInfo, usePhoto, visibilityLabel} from "@/app/_ui/photo/PhotoParts";
+import {PhotoSheet} from "@/app/_ui/photo/PhotoSheet";
+import {PhotoDialog} from "@/app/_ui/photo/PhotoDialog";
+import {PhotoAdminCard} from "@/app/_ui/photo/PhotoAdmin";
 import {
+  ColumnWithFooter,
   DesktopFrame,
+  heroAvatarSize,
   HeroCard,
   PageColumns,
   PageStatus,
@@ -69,15 +79,69 @@ const EMPTY: EmptyText = {
 const playerHref = (p: TeamOverviewPlayer) => `/players/${p.id}`;
 const leagueHref = (l: TeamOverviewLeague, teamId: number) => `/league/${l.league_id}/standings?team=${teamId}`;
 
-// rename: the admin's pencil next to the name (desktop)
-function Hero({team, desktop, short = false, rename}: {team: TeamOverview; desktop: boolean; short?: boolean; rename?: NameEditing}) {
+// The team's photo with its settings, for its players and admins (null for anyone else)
+const photoSettings = (team: TeamOverview | null): TeamPhotoInfo | null => (team && "can_edit" in team.photo ? team.photo : null);
+
+// The team's photo as the page holds it, and what its players do to it; a change shows on the page, and in the admin's
+// Ekipe directory
+function useTeamPhoto(overview: Overview<TeamOverview>) {
+  const team = overview.data;
+  const settings = photoSettings(team);
+  const teamId = team?.team.id ?? 0;
+  const target = useMemo(() => ({kind: "team" as const, id: teamId}), [teamId]);
+  const info: PhotoInfo = {photo_url: team?.photo.photo_url ?? null, photo_visibility: settings?.photo_visibility ?? "ALL", photo_blocked: settings?.photo_blocked ?? false};
+  const {setData} = overview;
+  return usePhoto(target, info, (next) => {
+    setData((d) => ({...d, photo: {...d.photo, ...next}}));
+    teamsList.update((list) => list.map((t) => (t.id === teamId ? {...t, photo_url: next.photo_url} : t)));
+  });
+}
+
+// rename: the admin's pencil next to the name (desktop). photo: the team's player changes the photo from its avatar
+// (the camera badge; onPhoto opens the sheet or the dialog).
+function Hero({
+  team,
+  desktop,
+  short = false,
+  rename,
+  photo,
+  onPhoto,
+}: {
+  team: TeamOverview;
+  desktop: boolean;
+  short?: boolean;
+  rename?: NameEditing;
+  photo?: PhotoControls;
+  onPhoto?: () => void;
+}) {
   const focus = useNameFocus(rename?.editing ?? false);
+  const letters = teamInitial(team.team.name);
+  const editable = photo && onPhoto && photoSettings(team)?.can_edit;
+  const blocked = photo?.info.photo_blocked ?? false;
   return (
     <HeroCard
       desktop={desktop}
       short={short}
       avatarName={team.team.name}
-      avatarLetters={teamInitial(team.team.name)}
+      avatarLetters={letters}
+      avatarSrc={team.photo.photo_url}
+      avatar={
+        editable ? (
+          <EditableAvatar
+            name={team.team.name}
+            letters={letters}
+            src={photo.info.photo_url}
+            size={heroAvatarSize(desktop, short)}
+            badge={desktop && short ? 24 : 28}
+            hover={desktop}
+            blocked={blocked}
+            label={photo.info.photo_url ? "Promijeni sliku ekipe" : "Dodaj sliku ekipe"}
+            // the computer has nothing to open while it is blocked
+            onClick={() => (desktop && blocked ? undefined : onPhoto())}
+            sx={desktop ? {fontSize: short ? 20 : 28} : undefined}
+          />
+        ) : undefined
+      }
       title={team.team.name}
       titleEditor={rename?.editing ? <TeamNameInput edit={rename} short={short} inputRef={focus.inputRef} /> : undefined}
       nameTag={rename ? <NameButton edit={rename} short={short} onStart={rename.start} buttonRef={focus.buttonRef} /> : undefined}
@@ -116,11 +180,28 @@ export function TeamPagePhone({teamId}: {teamId: number}) {
   const adminPhone = useAdminPhone();
   const actions = useTeamAdmin(overview);
   const admin = adminPhone && team?.viewer.admin ? actions : null;
+  const photo = useTeamPhoto(overview);
+  const [photoOpen, setPhotoOpen] = useState(false);
+  const settings = photoSettings(team);
   return (
     <PhoneFrame eyebrow="Ekipa" nav={nav}>
       {team ? (
         <>
-          <Hero team={team} desktop={false} rename={admin?.rename} />
+          <Hero team={team} desktop={false} rename={admin?.rename} photo={photo} onPhoto={() => setPhotoOpen(true)} />
+          {settings?.can_edit && <TeamPhotoVisibility photo={photo} onOpen={() => setPhotoOpen(true)} />}
+          {admin && (
+            <PhotoAdminCard
+              target={{kind: "team", id: team.team.id}}
+              name={team.team.name}
+              letters={teamInitial(team.team.name)}
+              info={photo.info}
+              phone
+              onChange={(next) => overview.setData((d) => ({...d, photo: {...d.photo, ...next}}))}
+            />
+          )}
+          {settings?.can_edit && (
+            <PhotoSheet kind="team" photo={photo} name={team.team.name} letters={teamInitial(team.team.name)} open={photoOpen} onClose={() => setPhotoOpen(false)} />
+          )}
           <PhonePlayers team={team} admin={admin} />
           <PhoneLeagues team={team} admin={admin} />
           <PhoneNights nights={team.nights} />
@@ -129,6 +210,35 @@ export function TeamPagePhone({teamId}: {teamId: number}) {
         <PageStatus kind="team" overview={overview} nav={nav} />
       )}
     </PhoneFrame>
+  );
+}
+
+// "Tko vidi sliku ekipe" under the header card, for the team's players (T1): Vidljivost › opens Slika ekipe; while an
+// admin has blocked the team's photo, a note says so (T3)
+function TeamPhotoVisibility({photo, onOpen}: {photo: PhotoControls; onOpen: () => void}) {
+  const titleId = useId();
+  return (
+    <Box component="section" aria-labelledby={titleId} sx={{flex: "none", display: "flex", flexDirection: "column", gap: "8px"}}>
+      {photo.info.photo_blocked && <BlockedNote kind="team" sx={{background: color.white}} />}
+      <SectionLabel id={titleId}>Tko vidi sliku ekipe</SectionLabel>
+      <Card sx={{overflow: "hidden"}}>
+        <Box
+          component="button"
+          type="button"
+          aria-haspopup="dialog"
+          onClick={onOpen}
+          sx={{...buttonBase, width: "100%", height: 52, display: "flex", alignItems: "center", gap: "8px", pl: "16px", pr: "10px", textAlign: "left"}}
+        >
+          <Box component="span" sx={{flex: 1, fontSize: 15, color: color.muted}}>
+            Vidljivost
+          </Box>
+          <Box component="span" sx={{fontSize: 15, fontWeight: 600, color: color.navy}}>
+            {visibilityLabel(photo.info.photo_visibility)}
+          </Box>
+          <ChevronRightRoundedIcon aria-hidden sx={{fontSize: 24, color: color.navy}} />
+        </Box>
+      </Card>
+    </Box>
   );
 }
 
@@ -183,7 +293,7 @@ function PhonePlayers({team, admin}: {team: TeamOverview; admin: TeamAdmin | nul
                   sx={{...stretchedRow, height: 62, display: "flex", alignItems: "center", gap: "12px", p: "0 4px 0 14px", background: p.me ? color.cream2 : undefined, boxShadow: p.me ? shadow.mineBar : undefined}}
                 >
                   <Box component={TransitionLink} href={playerHref(p)} sx={{...stretchedLink, flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: "12px"}}>
-                    <InitialsAvatar name={p.name} size={38} variant="paper" />
+                    <InitialsAvatar name={p.name} src={p.photo_url} size={38} variant="paper" />
                     <PlayerNames player={p} teamName={team.team.name} desktop={false} />
                     <Box component="span" sx={{flex: "none", fontFamily: font.display, fontSize: 22, fontWeight: 800, lineHeight: 1, color: color.ink, ...tabular}}>
                       {p.rating}
@@ -198,7 +308,7 @@ function PhonePlayers({team, admin}: {team: TeamOverview; admin: TeamAdmin | nul
                     href={playerHref(p)}
                     sx={{...phoneRowLink, height: 62, p: "0 10px 0 14px", background: p.me ? color.cream2 : undefined, boxShadow: p.me ? shadow.mineBar : undefined}}
                   >
-                    <InitialsAvatar name={p.name} size={38} variant="paper" />
+                    <InitialsAvatar name={p.name} src={p.photo_url} size={38} variant="paper" />
                     <PlayerNames player={p} teamName={team.team.name} desktop={false} />
                     <Box component="span" sx={{flex: "none", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "3px"}}>
                       <Box component="span" sx={{fontFamily: font.display, fontSize: 22, fontWeight: 800, lineHeight: 1, color: color.ink, ...tabular}}>
@@ -370,12 +480,33 @@ export function TeamPageDesktop({teamId, embedded = false}: {teamId: number; emb
   const short = useShortWindow();
   const actions = useTeamAdmin(overview);
   const admin = team?.viewer.admin ? actions : null;
+  const photo = useTeamPhoto(overview);
+  const [photoOpen, setPhotoOpen] = useState(false);
   return (
     <DesktopFrame embedded={embedded} short={short} nav={nav}>
       {team ? (
         <>
-          <Hero team={team} desktop short={short} rename={admin?.rename} />
-          <TeamColumns team={team} admin={admin} />
+          <Hero team={team} desktop short={short} rename={admin?.rename} photo={photo} onPhoto={() => setPhotoOpen(true)} />
+          <TeamColumns
+            team={team}
+            admin={admin}
+            footer={
+              admin && (
+                <PhotoAdminCard
+                  target={{kind: "team", id: team.team.id}}
+                  name={team.team.name}
+                  letters={teamInitial(team.team.name)}
+                  info={photo.info}
+                  phone={false}
+                  onChange={(next) => {
+                    overview.setData((d) => ({...d, photo: {...d.photo, ...next}}));
+                    teamsList.update((list) => list.map((t) => (t.id === team.team.id ? {...t, photo_url: next.photo_url} : t)));
+                  }}
+                />
+              )
+            }
+          />
+          {photoOpen && <PhotoDialog kind="team" photo={photo} onClose={() => setPhotoOpen(false)} />}
         </>
       ) : (
         <PageStatus kind="team" overview={overview} nav={nav} desktop template={TEAM_GRID} />
@@ -385,12 +516,15 @@ export function TeamPageDesktop({teamId, embedded = false}: {teamId: number; emb
 }
 
 // The three columns under the header card (13f, 13h; 13o for Nova ekipa, which passes its own empty texts)
-export function TeamColumns({team, admin, empty = EMPTY}: {team: TeamOverview; admin: TeamAdmin | null; empty?: EmptyText}) {
+// footer: a card under Zadnje večeri (the admin's Slika ekipe)
+export function TeamColumns({team, admin, empty = EMPTY, footer}: {team: TeamOverview; admin: TeamAdmin | null; empty?: EmptyText; footer?: React.ReactNode}) {
   return (
     <PageColumns template={TEAM_GRID} stackedTemplate={TEAM_STACKED_GRID}>
       <DesktopPlayers team={team} admin={admin} empty={empty.players} />
       <DesktopLeagues team={team} admin={admin} empty={empty.leagues} />
-      <DesktopNights nights={team.nights} empty={empty.nights} />
+      <ColumnWithFooter footer={footer}>
+        <DesktopNights nights={team.nights} empty={empty.nights} />
+      </ColumnWithFooter>
     </PageColumns>
   );
 }
@@ -436,7 +570,7 @@ function DesktopPlayers({team, admin, empty}: {team: TeamOverview; admin: TeamAd
             }}
           >
             <Box component={TransitionLink} href={playerHref(p)} sx={{...stretchedLink, minWidth: 0, display: "flex", alignItems: "center", gap: "12px"}}>
-              <InitialsAvatar name={p.name} size={40} variant="paper" />
+              <InitialsAvatar name={p.name} src={p.photo_url} size={40} variant="paper" />
               <PlayerNames player={p} teamName={team.team.name} desktop />
             </Box>
             <Box sx={{justifySelf: "end", display: "flex", alignItems: "center", gap: "8px"}}>

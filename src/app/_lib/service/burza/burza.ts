@@ -18,6 +18,7 @@ import {BYE_TEAM_ID} from "@/app/_lib/bye";
 import {leagueDateString} from "@/app/_lib/dates";
 import {normalizePhone, PHONE_ERROR} from "@/app/_lib/phone";
 import {prisma} from "@/app/_lib/prisma";
+import {PhotoContext, photoContext, PLAYER_PHOTO, TEAM_PHOTO} from "@/app/_lib/service/players/photos";
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {isAdmin} from "@/app/_lib/service/auth/requireUser";
 import {nightValue} from "@/app/_lib/service/league/nights";
@@ -51,11 +52,11 @@ async function lockAuthor(tx: Tx, playerId: number) {
 
 const postInclude = {
   player: {
-    select: {id: true, first_name: true, last_name: true, rating: true, phone: true, _count: {select: {ratingHistory: true}}},
+    select: {id: true, first_name: true, last_name: true, rating: true, phone: true, ...PLAYER_PHOTO, _count: {select: {ratingHistory: true}}},
   },
   withPlayer: {select: {first_name: true, last_name: true, rating: true, _count: {select: {ratingHistory: true}}}},
   league: {select: {league_id: true, league_name: true, end_date: true}},
-  team: {select: {team_id: true, team_name: true}},
+  team: {select: {team_id: true, team_name: true, ...TEAM_PHOTO}},
 } satisfies Prisma.MarketPostInclude;
 
 type PostRow = Prisma.MarketPostGetPayload<{include: typeof postInclude}>;
@@ -66,6 +67,8 @@ type ViewContext = StatusContext & {
   viewer: Player | null;
   myTeams: Set<number>;
   busy: Map<string, string>;
+  // the avatars the viewer may see (none for nobody logged in)
+  photos: PhotoContext | null;
 };
 
 // today and the nights from today on of the substitute ads' leagues: what postStatus needs
@@ -80,7 +83,7 @@ async function statusContext(db: Tx, posts: {kind: BurzaKind; league_id: number 
 
 async function viewContext(viewer: Player | null, posts: PostRow[]): Promise<ViewContext> {
   const from = nightValue(leagueDateString());
-  const [status, teams] = await Promise.all([
+  const [status, teams, photos] = await Promise.all([
     statusContext(prisma, posts),
     viewer
       ? prisma.team.findMany({
@@ -92,6 +95,7 @@ async function viewContext(viewer: Player | null, posts: PostRow[]): Promise<Vie
           },
         })
       : Promise.resolve([]),
+    viewer ? photoContext(viewer) : null,
   ]);
 
   const busy = new Map<string, string>();
@@ -108,6 +112,7 @@ async function viewContext(viewer: Player | null, posts: PostRow[]): Promise<Vie
     viewer,
     myTeams: new Set(teams.map((t) => t.team_id)),
     busy,
+    photos,
   };
 }
 
@@ -135,8 +140,8 @@ function toView(p: PostRow, ctx: ViewContext): BurzaPost {
     kind: p.kind,
     created_at: p.created_at.toISOString(),
     closed,
-    author: {id: p.player.id, name: displayName(p.player)},
-    team: p.team ? {id: p.team.team_id, name: p.team.team_name} : null,
+    author: {id: p.player.id, name: displayName(p.player), photo_url: ctx.photos?.player(p.player) ?? null},
+    team: p.team ? {id: p.team.team_id, name: p.team.team_name, photo_url: ctx.photos?.team(p.team) ?? null} : null,
     league: p.league ? {id: p.league.league_id, name: p.league.league_name} : null,
     night,
     with_player: p.withPlayer ? displayName(p.withPlayer) : null,

@@ -55,10 +55,10 @@ export type BurzaPost = {
   created_at: string; // ISO timestamp
   // closed by its author, or its night (or league) is over
   closed: boolean;
-  // who published it (the contact)
-  author: {id: number; name: string};
-  // SUBSTITUTE: the team that needs a player
-  team: {id: number; name: string} | null;
+  // who published it (the contact); photo_url: the avatar of a partner or availability ad (null = the initials)
+  author: {id: number; name: string; photo_url?: string | null};
+  // SUBSTITUTE: the team that needs a player; photo_url: the ad's avatar
+  team: {id: number; name: string; photo_url?: string | null} | null;
   league: {id: number; name: string} | null;
   night: string | null; // YYYY-MM-DD
   // SUBSTITUTE: the player the substitute plays with ("suigrač: ...")
@@ -114,7 +114,8 @@ export type MyLeague = {
   // the team is active in the league (inactive teams aren't signed in for rounds)
   active: boolean;
   // active: false for a deactivated player (still on the roster, but not offered in Trebam zamjenu)
-  players: {id: number; name: string; rating: number; me: boolean; active: boolean}[];
+  // photo_url: the avatar (null = the initials)
+  players: {id: number; name: string; rating: number; me: boolean; active: boolean; photo_url?: string | null}[];
   nights: string[]; // YYYY-MM-DD, in date order
   played: string[]; // the nights that have rounds
   // when each night starts (its own time or the league's), "HH:MM"; a night without a time isn't in it
