@@ -258,8 +258,9 @@ model Sponsor {
   url        String?  @db.VarChar(500)
   // shown to the players on its card; up to 80 characters (CHECK in the migration script)
   message    String   @default("") @db.VarChar(80)
-  // the logo goes on a dark plate (a light logo without a background)
-  dark       Boolean  @default(false)
+  // what the logo's tile is under it: "light" (white with a hairline), "dark" (the dark plate, for a light logo
+  // without a background) or "none" (just the logo); CHECK in the migration script
+  background String   @default("light") @db.VarChar(10)
   // the logo itself, shrunk to at most 512 px by the admin's browser: PNG, JPEG or WebP, up to 1 MB
   logo       Bytes
   logo_type  String   @db.VarChar(20)

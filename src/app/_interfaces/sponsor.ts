@@ -10,6 +10,10 @@ export const LOGO_MAX_SIDE = 512;
 export const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
 export type LogoType = (typeof LOGO_TYPES)[number];
 
+// what the logo's tile is under it: white, the dark plate (a light logo without a background), or nothing
+export const LOGO_BACKGROUNDS = ["light", "dark", "none"] as const;
+export type LogoBackground = (typeof LOGO_BACKGROUNDS)[number];
+
 export const SPONSOR_URL_ERROR = "Link mora počinjati s https://.";
 export const LOGO_REQUIRED = "Dodaj logo sponzora.";
 export const LOGO_FORMAT_ERROR = "Logo mora biti PNG, JPG ili WebP.";
@@ -29,13 +33,13 @@ export const SponsorCreateValidation = z.object({
   name,
   url: url.nullable().optional(),
   message: message.optional(),
-  dark: z.boolean().optional(),
+  background: z.enum(LOGO_BACKGROUNDS).optional(),
   logo: logo.optional(),
 }).refine((b) => b.logo, {message: LOGO_REQUIRED, path: ["logo"]});
 
 // anything left out stays as it is
 export const SponsorUpdateValidation = z
-  .object({name: name.optional(), url: url.nullable().optional(), message: message.optional(), dark: z.boolean().optional(), logo: logo.optional()})
+  .object({name: name.optional(), url: url.nullable().optional(), message: message.optional(), background: z.enum(LOGO_BACKGROUNDS).optional(), logo: logo.optional()})
   .refine((b) => Object.values(b).some((v) => v !== undefined), "Nema promjene.");
 
 // a league's sponsors, all of them, in the order they slide
@@ -63,7 +67,7 @@ export type SponsorPublic = {
   name: string;
   url: string | null;
   message: string;
-  dark: boolean;
+  background: LogoBackground;
   // the logo's address, with its version, so a new logo isn't served from the cache
   logo: string;
   logo_width: number;

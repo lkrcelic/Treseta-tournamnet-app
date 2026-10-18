@@ -1,9 +1,9 @@
 import {apiFetch, responseErrorMessage} from "@/app/_fetchers/errorMessage";
-import {SponsorAdmin, SponsorPublic} from "@/app/_interfaces/sponsor";
+import {LogoBackground, SponsorAdmin, SponsorPublic} from "@/app/_interfaces/sponsor";
 
 // The logo as the admin's browser prepared it (shrunk, base64) with its size in pixels
 export type LogoUpload = {data: string; width: number; height: number};
-export type SponsorFields = {name?: string; url?: string | null; message?: string; dark?: boolean; logo?: LogoUpload};
+export type SponsorFields = {name?: string; url?: string | null; message?: string; background?: LogoBackground; logo?: LogoUpload};
 
 const json = (body: unknown): RequestInit => ({headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
 

@@ -56,7 +56,9 @@ test("the logo's address carries its version", () => {
 test("a new sponsor needs a name and a logo; the link must be http(s), the message 80 characters at most", () => {
   const logo = {data: PNG.toString("base64"), width: 128, height: 128};
   assert.ok(SponsorCreateValidation.safeParse({name: "KSS Burger One", logo}).success);
-  assert.ok(SponsorCreateValidation.safeParse({name: "KSS", url: "", message: "", dark: true, logo}).success);
+  assert.ok(SponsorCreateValidation.safeParse({name: "KSS", url: "", message: "", background: "dark", logo}).success);
+  assert.ok(SponsorCreateValidation.safeParse({name: "KSS", background: "none", logo}).success);
+  assert.equal(SponsorCreateValidation.safeParse({name: "KSS", background: "grey", logo}).success, false);
   const noLogo = SponsorCreateValidation.safeParse({name: "KSS"});
   assert.equal(noLogo.success, false);
   assert.equal(!noLogo.success && noLogo.error.issues[0].message, LOGO_REQUIRED);
@@ -68,7 +70,7 @@ test("a new sponsor needs a name and a logo; the link must be http(s), the messa
 });
 
 test("an edit sends only what changes, and something must change", () => {
-  assert.ok(SponsorUpdateValidation.safeParse({dark: false}).success);
+  assert.ok(SponsorUpdateValidation.safeParse({background: "light"}).success);
   assert.ok(SponsorUpdateValidation.safeParse({url: null}).success);
   assert.equal(SponsorUpdateValidation.safeParse({}).success, false);
 });

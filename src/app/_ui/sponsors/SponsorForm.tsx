@@ -2,7 +2,7 @@
 
 import {createSponsorAPI, LogoUpload, SponsorFields, updateSponsorAPI} from "@/app/_fetchers/sponsors";
 import {forgetLeagueSponsors} from "@/app/_hooks/useSponsors";
-import {SPONSOR_MESSAGE_MAX, SPONSOR_URL_ERROR, SponsorAdmin} from "@/app/_interfaces/sponsor";
+import {LogoBackground, SPONSOR_MESSAGE_MAX, SPONSOR_URL_ERROR, SponsorAdmin} from "@/app/_interfaces/sponsor";
 import {isSafeUrl} from "@/app/_lib/nights";
 import {prepareLogo} from "@/app/_lib/ui/logoUpload";
 import {groupDigits, leaguesLabel, logoTile} from "@/app/_lib/ui/sponsors";
@@ -16,8 +16,8 @@ import {Box} from "@mui/material";
 import React, {useId, useRef, useState} from "react";
 import {LogoSource, SponsorLogo} from "./SponsorParts";
 
-type Draft = {name: string; url: string; message: string; dark: boolean};
-const draftOf = (s: SponsorAdmin | null): Draft => ({name: s?.name ?? "", url: s?.url ?? "", message: s?.message ?? "", dark: s?.dark ?? false});
+type Draft = {name: string; url: string; message: string; background: LogoBackground};
+const draftOf = (s: SponsorAdmin | null): Draft => ({name: s?.name ?? "", url: s?.url ?? "", message: s?.message ?? "", background: s?.background ?? "light"});
 
 // Novi sponzor and Uredi sponzora, on the phone (a sheet) and the computer (the card next to the list): the logo, its
 // background, name, link and the message for the players. sponsor: the one being edited, null for a new one.
@@ -34,14 +34,14 @@ export function useSponsorForm(sponsor: SponsorAdmin | null, onSaved: (s: Sponso
 
   // what the form changes, or for a new sponsor everything
   const fields = (): SponsorFields => {
-    const all: SponsorFields = {name: d.name.trim(), url: d.url.trim() || null, message: d.message.trim(), dark: d.dark};
+    const all: SponsorFields = {name: d.name.trim(), url: d.url.trim() || null, message: d.message.trim(), background: d.background};
     if (upload) all.logo = {data: upload.data, width: upload.width, height: upload.height};
     if (isNew) return all;
     const change: SponsorFields = {};
     if (all.name !== sponsor.name) change.name = all.name;
     if (all.url !== (sponsor.url ?? null)) change.url = all.url;
     if (all.message !== sponsor.message) change.message = all.message;
-    if (all.dark !== sponsor.dark) change.dark = all.dark;
+    if (all.background !== sponsor.background) change.background = all.background;
     if (all.logo) change.logo = all.logo;
     return change;
   };
@@ -87,9 +87,9 @@ export function useSponsorForm(sponsor: SponsorAdmin | null, onSaved: (s: Sponso
 
   // the logo as the form shows it: the one just picked, else the saved one
   const logo: LogoSource | null = upload
-    ? {name: d.name, logo: upload.preview, logo_width: upload.width, logo_height: upload.height, dark: d.dark}
+    ? {name: d.name, logo: upload.preview, logo_width: upload.width, logo_height: upload.height, background: d.background}
     : sponsor
-      ? {...sponsor, dark: d.dark}
+      ? {...sponsor, background: d.background}
       : null;
 
   return {d, set, logo, pickLogo, save, saving, error, ok, dirty, isNew, reset};
@@ -176,19 +176,20 @@ export function SponsorFormFields({form, sponsor}: {form: SponsorForm; sponsor: 
 
       <Box sx={{flex: "none", display: "flex", flexDirection: "column", gap: "6px"}}>
         <Box sx={labelSx}>Pozadina loga</Box>
-        <Segmented<"light" | "dark">
+        <Segmented<LogoBackground>
           items={[
             {key: "light", label: "Svijetla"},
             {key: "dark", label: "Tamna"},
+            {key: "none", label: "Bez pozadine"},
           ]}
-          value={d.dark ? "dark" : "light"}
-          onChange={(k) => set("dark", k === "dark")}
+          value={d.background}
+          onChange={(k) => set("background", k)}
           label="Pozadina loga"
           variant="track"
           size={42}
           asTabs={false}
         />
-        <Box sx={hintSx}>Tamna za svijetli logo bez pozadine.</Box>
+        <Box sx={hintSx}>Tamna za svijetli logo bez pozadine. Bez pozadine prikazuje samo logo.</Box>
       </Box>
 
       <TextField label="Ime" placeholder="npr. Caffe bar Kartaš" maxLength={100} value={d.name} onChange={(e) => set("name", e.target.value)} soft inputSx={inputSx} />

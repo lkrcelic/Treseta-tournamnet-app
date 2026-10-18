@@ -2,7 +2,7 @@
 
 import {sendSponsorEvent} from "@/app/_fetchers/sponsors";
 import useReducedMotion from "@/app/_hooks/useReducedMotion";
-import {SponsorPublic} from "@/app/_interfaces/sponsor";
+import {LogoBackground, SponsorPublic} from "@/app/_interfaces/sponsor";
 import {isSafeUrl} from "@/app/_lib/nights";
 import {bandRounds, bandSeconds, logoTile} from "@/app/_lib/ui/sponsors";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
@@ -13,10 +13,10 @@ import {Box, Dialog, SxProps, Theme} from "@mui/material";
 import React, {useEffect, useId, useLayoutEffect, useRef, useState} from "react";
 
 // A logo to draw: a saved sponsor's, or the one the admin just picked (its preview)
-export type LogoSource = {name: string; logo: string; logo_width: number; logo_height: number; dark: boolean};
+export type LogoSource = {name: string; logo: string; logo_width: number; logo_height: number; background: LogoBackground};
 
 // A sponsor's logo in its tile (logoTile): the same rounded rectangle for every logo, white with a hairline (so it
-// shows on a white card too), or dark for a light logo without a background
+// shows on a white card too), dark for a light logo without a background, or nothing under the logo
 export function SponsorLogo({sponsor, height, sx}: {sponsor: LogoSource; height: number; sx?: SxProps<Theme>}) {
   const t = logoTile(height);
   return (
@@ -30,8 +30,8 @@ export function SponsorLogo({sponsor, height, sx}: {sponsor: LogoSource; height:
           boxSizing: "border-box",
           p: `${t.padY}px ${t.padX}px`,
           borderRadius: `${t.radius}px`,
-          background: sponsor.dark ? color.logoPlate : color.white,
-          border: `1px solid ${sponsor.dark ? color.logoPlate : color.line}`,
+          background: sponsor.background === "dark" ? color.logoPlate : sponsor.background === "light" ? color.white : "transparent",
+          border: `1px solid ${sponsor.background === "dark" ? color.logoPlate : sponsor.background === "light" ? color.line : "transparent"}`,
           overflow: "hidden",
           display: "flex",
           alignItems: "center",

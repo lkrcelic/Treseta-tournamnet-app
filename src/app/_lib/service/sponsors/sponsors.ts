@@ -1,5 +1,6 @@
 import {Prisma} from "@prisma/client";
 import {
+  LogoBackground,
   SPONSOR_NOT_FOUND,
   SponsorAdmin,
   SponsorCounts,
@@ -15,7 +16,7 @@ import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {decodeLogo, LogoError, sponsorLogoPath} from "@/app/_lib/sponsors";
 
 // Everything of a sponsor but the logo's bytes
-const SPONSOR_FIELDS = {id: true, name: true, url: true, message: true, dark: true, logo_width: true, logo_height: true, updated_at: true} as const;
+const SPONSOR_FIELDS = {id: true, name: true, url: true, message: true, background: true, logo_width: true, logo_height: true, updated_at: true} as const;
 type SponsorRow = Prisma.SponsorGetPayload<{select: typeof SPONSOR_FIELDS}>;
 
 const LEAGUE_NOT_FOUND = "Liga ne postoji.";
@@ -26,7 +27,7 @@ function toPublic(s: SponsorRow): SponsorPublic {
     name: s.name,
     url: s.url,
     message: s.message,
-    dark: s.dark,
+    background: s.background as LogoBackground,
     logo: sponsorLogoPath(s.id, s.updated_at),
     logo_width: s.logo_width,
     logo_height: s.logo_height,
@@ -78,7 +79,7 @@ function logoFields(logo: NonNullable<SponsorUpdate["logo"]>) {
 export async function createSponsor(input: SponsorCreate): Promise<SponsorAdmin> {
   if (!input.logo) throw new LogoError("Dodaj logo sponzora.");
   const created = await prisma.sponsor.create({
-    data: {name: input.name, url: input.url || null, message: input.message ?? "", dark: input.dark ?? false, ...logoFields(input.logo)},
+    data: {name: input.name, url: input.url || null, message: input.message ?? "", background: input.background ?? "light", ...logoFields(input.logo)},
     select: {id: true},
   });
   return adminSponsor(created.id);
@@ -92,7 +93,7 @@ export async function updateSponsor(id: number, input: SponsorUpdate): Promise<S
     ...(input.name !== undefined && {name: input.name}),
     ...(input.url !== undefined && {url: input.url || null}),
     ...(input.message !== undefined && {message: input.message}),
-    ...(input.dark !== undefined && {dark: input.dark}),
+    ...(input.background !== undefined && {background: input.background}),
     ...(input.logo && logoFields(input.logo)),
   };
   const {count} = await prisma.sponsor.updateMany({where: {id}, data});
