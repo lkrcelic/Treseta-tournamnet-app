@@ -3,8 +3,8 @@ import {NOUN, plural} from "@/app/_lib/ui/text";
 
 // What the sponsor screens show, framework free (checked by __tests__/sponsors.test.ts)
 
-// A logo's tile at a given height: every logo in the same rounded rectangle (1.9 : 1), white, dark or with nothing
-// under the logo (its Pozadina loga), with the logo fitted inside it whatever its own shape
+// A logo's tile at a given height: every logo in the same rounded rectangle (1.9 : 1), black or with nothing under the
+// logo (its Pozadina loga), with the logo fitted inside it whatever its own shape
 export const TILE_RATIO = 1.9;
 export function logoTile(height: number): {width: number; height: number; padY: number; padX: number; radius: number} {
   return {width: Math.round(height * TILE_RATIO), height, padY: Math.round(height * 0.14), padX: Math.round(height * 0.2), radius: Math.round(height * 0.26)};

@@ -17,7 +17,7 @@ import React, {useId, useRef, useState} from "react";
 import {LogoSource, SponsorLogo} from "./SponsorParts";
 
 type Draft = {name: string; url: string; message: string; background: LogoBackground};
-const draftOf = (s: SponsorAdmin | null): Draft => ({name: s?.name ?? "", url: s?.url ?? "", message: s?.message ?? "", background: s?.background ?? "light"});
+const draftOf = (s: SponsorAdmin | null): Draft => ({name: s?.name ?? "", url: s?.url ?? "", message: s?.message ?? "", background: s?.background ?? "none"});
 
 // Novi sponzor and Uredi sponzora, on the phone (a sheet) and the computer (the card next to the list): the logo, its
 // background, name, link and the message for the players. sponsor: the one being edited, null for a new one.
@@ -178,9 +178,8 @@ export function SponsorFormFields({form, sponsor}: {form: SponsorForm; sponsor: 
         <Box sx={labelSx}>Pozadina loga</Box>
         <Segmented<LogoBackground>
           items={[
-            {key: "light", label: "Svijetla"},
-            {key: "dark", label: "Tamna"},
             {key: "none", label: "Bez pozadine"},
+            {key: "dark", label: "Crna pozadina"},
           ]}
           value={d.background}
           onChange={(k) => set("background", k)}
@@ -189,7 +188,7 @@ export function SponsorFormFields({form, sponsor}: {form: SponsorForm; sponsor: 
           size={42}
           asTabs={false}
         />
-        <Box sx={hintSx}>Tamna za svijetli logo bez pozadine. Bez pozadine prikazuje samo logo.</Box>
+        <Box sx={hintSx}>Crna pozadina za svijetli logo koji se na bijelom ne vidi.</Box>
       </Box>
 
       <TextField label="Ime" placeholder="npr. Caffe bar Kartaš" maxLength={100} value={d.name} onChange={(e) => set("name", e.target.value)} soft inputSx={inputSx} />

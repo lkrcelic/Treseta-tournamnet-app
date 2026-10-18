@@ -10,8 +10,8 @@ export const LOGO_MAX_SIDE = 512;
 export const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
 export type LogoType = (typeof LOGO_TYPES)[number];
 
-// what the logo's tile is under it: white, the dark plate (a light logo without a background), or nothing
-export const LOGO_BACKGROUNDS = ["light", "dark", "none"] as const;
+// what is under the logo: nothing, or the black plate (for a light logo)
+export const LOGO_BACKGROUNDS = ["none", "dark"] as const;
 export type LogoBackground = (typeof LOGO_BACKGROUNDS)[number];
 
 export const SPONSOR_URL_ERROR = "Link mora počinjati s https://.";

@@ -79,7 +79,7 @@ function logoFields(logo: NonNullable<SponsorUpdate["logo"]>) {
 export async function createSponsor(input: SponsorCreate): Promise<SponsorAdmin> {
   if (!input.logo) throw new LogoError("Dodaj logo sponzora.");
   const created = await prisma.sponsor.create({
-    data: {name: input.name, url: input.url || null, message: input.message ?? "", background: input.background ?? "light", ...logoFields(input.logo)},
+    data: {name: input.name, url: input.url || null, message: input.message ?? "", background: input.background ?? "none", ...logoFields(input.logo)},
     select: {id: true},
   });
   return adminSponsor(created.id);
