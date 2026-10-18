@@ -3,17 +3,11 @@ import {NOUN, plural} from "@/app/_lib/ui/text";
 
 // What the sponsor screens show, framework free (checked by __tests__/sponsors.test.ts)
 
-// A logo's tile at a given height: as wide as the logo's shape allows (square to just over 2:1), on a dark plate with
-// room around the logo when it is a light logo without a background. A square logo is round: the sample logos are
-// round badges, and a square one with corners still shows whole (it is only fitted, not cropped).
-export function logoTile(logo: {logo_width: number; logo_height: number; dark: boolean}, height: number): {width: number; height: number; padY: number; padX: number; round: boolean} {
-  const aspect = Math.min(2.2, Math.max(1, logo.logo_width / Math.max(1, logo.logo_height)));
-  if (logo.dark) {
-    const padY = Math.round(height * 0.14);
-    const padX = Math.round(height * 0.2);
-    return {width: Math.round((height - 2 * padY) * aspect + 2 * padX), height, padY, padX, round: false};
-  }
-  return {width: Math.round(height * aspect), height, padY: 0, padX: 0, round: aspect < 1.05};
+// A logo's tile at a given height: every logo on the same rounded rectangle (1.9 : 1), white or, for a light logo
+// without a background, dark, with the logo fitted inside it whatever its own shape
+export const TILE_RATIO = 1.9;
+export function logoTile(height: number): {width: number; height: number; padY: number; padX: number; radius: number} {
+  return {width: Math.round(height * TILE_RATIO), height, padY: Math.round(height * 0.14), padX: Math.round(height * 0.2), radius: Math.round(height * 0.26)};
 }
 
 // "1 210": a space between thousands, as the design writes counts (a no-break space, so it doesn't wrap)

@@ -15,10 +15,10 @@ import React, {useEffect, useId, useLayoutEffect, useRef, useState} from "react"
 // A logo to draw: a saved sponsor's, or the one the admin just picked (its preview)
 export type LogoSource = {name: string; logo: string; logo_width: number; logo_height: number; dark: boolean};
 
-// A sponsor's logo in its tile (logoTile): round for a square logo, as wide as the logo for a wide one, on the dark
-// plate for a light logo without a background
+// A sponsor's logo in its tile (logoTile): the same rounded rectangle for every logo, white with a hairline (so it
+// shows on a white card too), or dark for a light logo without a background
 export function SponsorLogo({sponsor, height, sx}: {sponsor: LogoSource; height: number; sx?: SxProps<Theme>}) {
-  const t = logoTile(sponsor, height);
+  const t = logoTile(height);
   return (
     <Box
       component="span"
@@ -29,8 +29,9 @@ export function SponsorLogo({sponsor, height, sx}: {sponsor: LogoSource; height:
           height: t.height,
           boxSizing: "border-box",
           p: `${t.padY}px ${t.padX}px`,
-          borderRadius: sponsor.dark ? `${Math.round(height * 0.26)}px` : t.round ? "50%" : "8px",
-          background: sponsor.dark ? color.logoPlate : "transparent",
+          borderRadius: `${t.radius}px`,
+          background: sponsor.dark ? color.logoPlate : color.white,
+          border: `1px solid ${sponsor.dark ? color.logoPlate : color.line}`,
           overflow: "hidden",
           display: "flex",
           alignItems: "center",
@@ -71,7 +72,7 @@ export function SponsorBand({
   const bandRef = useRef<HTMLDivElement>(null);
   const [bandWidth, setBandWidth] = useState(0);
   const [held, setHeld] = useState(false);
-  const roundWidth = sponsors.reduce((w, s) => w + logoTile(s, height).width + gap, 0);
+  const roundWidth = sponsors.length * (logoTile(height).width + gap);
   const rounds = reduce ? 1 : bandRounds(bandWidth, roundWidth);
 
   useLayoutEffect(() => {
@@ -161,7 +162,7 @@ function CardBody({sponsor, leagueId}: {sponsor: SponsorPublic; leagueId: number
   return (
     <>
       <Box sx={{flex: "none", display: "flex", justifyContent: "center", p: "6px 0 4px"}}>
-        <SponsorLogo sponsor={sponsor} height={sponsor.dark ? 92 : 120} />
+        <SponsorLogo sponsor={sponsor} height={96} />
       </Box>
       {sponsor.message && (
         <Box sx={{flex: "none", p: "14px 16px", borderRadius: "16px", background: color.paper2, fontSize: 16, lineHeight: 1.45, color: color.ink, textAlign: "center", textWrap: "pretty"}}>

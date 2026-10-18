@@ -5,7 +5,7 @@ import {forgetLeagueSponsors} from "@/app/_hooks/useSponsors";
 import {SPONSOR_MESSAGE_MAX, SPONSOR_URL_ERROR, SponsorAdmin} from "@/app/_interfaces/sponsor";
 import {isSafeUrl} from "@/app/_lib/nights";
 import {prepareLogo} from "@/app/_lib/ui/logoUpload";
-import {groupDigits, leaguesLabel} from "@/app/_lib/ui/sponsors";
+import {groupDigits, leaguesLabel, logoTile} from "@/app/_lib/ui/sponsors";
 import {NOUN, plural} from "@/app/_lib/ui/text";
 import {color} from "@/app/_styles/tokens";
 import {buttonBase, Segmented, TextField, TextInput} from "@/app/_ui/sp";
@@ -126,7 +126,7 @@ export function SponsorFormFields({form, sponsor}: {form: SponsorForm; sponsor: 
       />
       <Box sx={{flex: "none", display: "flex", alignItems: "center", gap: "14px"}}>
         {logo ? (
-          <SponsorLogo sponsor={logo} height={logo.dark ? 60 : 88} sx={{outline: `1px solid ${color.line}`}} />
+          <SponsorLogo sponsor={logo} height={64} />
         ) : (
           <Box
             component="button"
@@ -134,10 +134,11 @@ export function SponsorFormFields({form, sponsor}: {form: SponsorForm; sponsor: 
             onClick={choose}
             sx={{
               ...buttonBase,
-              width: 88,
-              height: 88,
+              // the shape of the logo's tile (logoTile at 64 px)
+              width: logoTile(64).width,
+              height: 64,
               flex: "none",
-              borderRadius: "20px",
+              borderRadius: `${logoTile(64).radius}px`,
               border: `1.5px dashed ${color.borderStrong}`,
               background: color.paper2,
               color: color.navy,
@@ -145,10 +146,10 @@ export function SponsorFormFields({form, sponsor}: {form: SponsorForm; sponsor: 
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              gap: "4px",
+              gap: "2px",
               fontSize: 13,
               fontWeight: 600,
-              "& svg": {fontSize: 28},
+              "& svg": {fontSize: 24},
             }}
           >
             <AddPhotoAlternateOutlinedIcon aria-hidden />

@@ -83,15 +83,10 @@ test("a league's sponsors are a list of different ids; a count names its league,
   assert.equal(SponsorEventValidation.safeParse({league_id: 3, kind: "click", sponsor_ids: []}).success, false);
 });
 
-test("a logo's tile: round when square, as wide as the logo up to 2.2:1, on a padded plate when dark", () => {
-  assert.deepEqual(logoTile({logo_width: 128, logo_height: 128, dark: false}, 56), {width: 56, height: 56, padY: 0, padX: 0, round: true});
-  assert.deepEqual(logoTile({logo_width: 300, logo_height: 100, dark: false}, 50), {width: 110, height: 50, padY: 0, padX: 0, round: false});
-  // a tall logo is a square tile
-  assert.equal(logoTile({logo_width: 50, logo_height: 200, dark: false}, 40).width, 40);
-  // dark: the logo 72% of the height, with room on each side (the design's 1.9:1 plate for Macaklin)
-  const plate = logoTile({logo_width: 240, logo_height: 101, dark: true}, 60);
-  assert.deepEqual([plate.padY, plate.padX, plate.round], [8, 12, false]);
-  assert.ok(plate.width > 60 * 1.8 && plate.width < 60 * 2.2, String(plate.width));
+test("every logo's tile is the same rounded rectangle, 1.9 : 1, with room around the logo", () => {
+  assert.deepEqual(logoTile(60), {width: 114, height: 60, padY: 8, padX: 12, radius: 16});
+  assert.deepEqual(logoTile(56), {width: 106, height: 56, padY: 8, padX: 11, radius: 15});
+  assert.equal(logoTile(40).width, 76);
 });
 
 test("the counts read as the design writes them", () => {
