@@ -21,7 +21,7 @@ export async function middleware(req: NextRequest) {
       // the app manifest and icons, read by the browser before anyone logs in
       req.nextUrl.pathname === "/manifest.webmanifest" ||
       req.nextUrl.pathname.startsWith("/static/") ||
-      req.nextUrl.pathname.match(/\.(png|jpg|jpeg|gif|svg)$/)
+      req.nextUrl.pathname.match(/\.(png|jpg|jpeg|gif|svg|webp)$/)
     )
   ) {
     const authorized = await authenticationMiddleware(req);
