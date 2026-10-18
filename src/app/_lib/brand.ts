@@ -8,4 +8,6 @@ export const BRAND = {
   eyebrow: "",
   // the app icon as the install sheet draws it: the flower logo on cream (Bela: the letters "BL" on navy)
   icon: "/icons/apple-touch-icon.png",
+  // the flower logo, transparent, before the name on login and Početna (Bela: none)
+  logo: "/logo.png",
 } as const;

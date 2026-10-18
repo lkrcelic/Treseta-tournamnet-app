@@ -6,12 +6,23 @@ import {color, font, tint} from "@/app/_styles/tokens";
 import {Box} from "@mui/material";
 import React from "react";
 
-// Brand block: the eyebrow (if any) over the big wordmark. "auth" (login, sign-up): a muted eyebrow over a
-// size-px wordmark. "home" (Početna, the desktop-only note): the navy 12.5 px eyebrow over a 34 px wordmark.
+// Brand block: the logo, then the eyebrow (if any) over the big wordmark. "auth" (login, sign-up): a muted eyebrow over
+// a size-px wordmark. "home" (Početna, the desktop-only note): the navy 12.5 px eyebrow over a 34 px wordmark.
 export function Brand({size = 56, light = false, variant = "auth"}: {size?: number; light?: boolean; variant?: "auth" | "home"}) {
   const home = variant === "home";
+  // "auth" sets the name in two lines (one word each), and the logo is as tall as both
+  const logo = home ? 44 : Math.round(size * 1.84);
   return (
-    <Box sx={{display: "flex", flexDirection: "column", gap: !home && size > 60 ? "6px" : "4px"}}>
+    <Box sx={{display: "flex", alignItems: "center", gap: home ? "12px" : `${Math.round(size * 0.22)}px`, minWidth: 0}}>
+      <Box component="img" src={BRAND.logo} alt="" aria-hidden sx={{width: logo, height: logo, flex: "none", display: "block"}} />
+      <BrandName size={size} light={light} home={home} />
+    </Box>
+  );
+}
+
+function BrandName({size, light, home}: {size: number; light: boolean; home: boolean}) {
+  return (
+    <Box sx={{display: "flex", flexDirection: "column", gap: !home && size > 60 ? "6px" : "4px", minWidth: 0}}>
       {BRAND.eyebrow && (
         <Box
           sx={{
@@ -26,7 +37,7 @@ export function Brand({size = 56, light = false, variant = "auth"}: {size?: numb
         </Box>
       )}
       <Box
-        sx={{fontFamily: font.display, fontSize: home ? 34 : size, fontWeight: 800, lineHeight: home ? 1 : 0.92, letterSpacing: home ? "-.02em" : "-.03em", whiteSpace: home ? "nowrap" : undefined}}
+        sx={{fontFamily: font.display, fontSize: home ? 34 : size, fontWeight: 800, lineHeight: home ? 1 : 0.92, letterSpacing: home ? "-.02em" : "-.03em", whiteSpace: home ? "nowrap" : undefined, width: home ? undefined : "min-content"}}
       >
         {BRAND.name}
       </Box>

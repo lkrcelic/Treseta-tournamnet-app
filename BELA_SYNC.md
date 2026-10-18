@@ -142,10 +142,10 @@ winner (`Match.winner_side`); everything else is worked out by replaying the han
 
 | File | Treseta's |
 |---|---|
-| `_lib/brand.ts` (Treseta only) | "Trešeta Liga" and its accusative, no line above the name (Bela: "Piatnik"), and the app icon's path (`icon`) |
-| `layout.tsx`, `global-error.tsx`, `_ui/auth/AuthFrame.tsx`, `_ui/sp/DesktopShell.tsx`, `_ui/sp/PageMessage.tsx`, `_ui/profiles/PageParts.tsx`, `_ui/install/InstallSheet.tsx`, `_hooks/useLeagues.ts`, `league/[leagueId]/standings/page.tsx` (two comments) | Bela's "Bela Liga", "Piatnik Bela Liga", "Piatnik" and "BL" read from `BRAND` (the Brand block shows no eyebrow while `BRAND.eyebrow` is empty). The install sheet's `AppIcon` draws the logo from `BRAND.icon` where Bela draws "BL" on navy |
+| `_lib/brand.ts` (Treseta only) | "Trešeta Liga" and its accusative, no line above the name (Bela: "Piatnik"), the app icon's path (`icon`) and the transparent logo's (`logo`) |
+| `layout.tsx`, `global-error.tsx`, `_ui/auth/AuthFrame.tsx`, `_ui/sp/DesktopShell.tsx`, `_ui/sp/PageMessage.tsx`, `_ui/profiles/PageParts.tsx`, `_ui/install/InstallSheet.tsx`, `_hooks/useLeagues.ts`, `league/[leagueId]/standings/page.tsx` (two comments) | Bela's "Bela Liga", "Piatnik Bela Liga", "Piatnik" and "BL" read from `BRAND` (the Brand block shows no eyebrow while `BRAND.eyebrow` is empty). The install sheet's `AppIcon` draws the logo from `BRAND.icon` where Bela draws "BL" on navy. `AuthFrame.tsx`'s `Brand` puts `BRAND.logo` before the name (login, sign-up, Početna): on login the name is set in two lines and the logo is as tall as both |
 | `public/manifest.webmanifest` (root) | `name`, `short_name`, `description`, and the maskable icon `icon-maskable-512.png` |
-| `public/icons/*`, `src/app/favicon.ico` (root) | Treseta's flower logo (blue and yellow petals in a black ring), not Bela's "BL": `icon-192.png` and `icon-512.png` on a transparent background, `icon-maskable-512.png` and `apple-touch-icon.png` on the cream `#F5F2EA`. A Bela change to its icons is dropped |
+| `public/icons/*`, `public/logo.png`, `src/app/favicon.ico`, `src/app/icon.png` (root) | Treseta's flower logo (blue and yellow petals in a black ring), not Bela's "BL": `icon-192.png` and `icon-512.png` on a transparent background, `icon-maskable-512.png` and `apple-touch-icon.png` on the cream `#F5F2EA`; `logo.png`, `favicon.ico` and `icon.png` (the browser tab's, which Next links with a version) transparent. A Bela change to its icons is dropped |
 
 New Bela text with the app's name or the sponsor uses `BRAND` here, and its file joins this table. Example league
 names in Bela's tests and comments stay as they are, and `_lib/navStack.ts`'s storage key `bela.navStack` stays Bela's:
