@@ -2,8 +2,8 @@
 
 import type {LogoUpload} from "@/app/_fetchers/sponsors";
 import {LogoBackground} from "@/app/_interfaces/sponsor";
-import {CROP_START, CropState, rotateLeft, ZOOM_MAX} from "@/app/_lib/ui/logoCrop";
-import {loadLogoFile, loadLogoUrl, renderLogo} from "@/app/_lib/ui/logoUpload";
+import {CROP_START, CropState, LOGO_SHAPES, LogoShape, rotateLeft, shapeFor, shapeOf, ZOOM_MAX} from "@/app/_lib/ui/logoCrop";
+import {loadLogoFile, loadLogoUrl, renderLogo, trimLogo} from "@/app/_lib/ui/logoUpload";
 import {color, crop as cropColor, font, shadow, tint} from "@/app/_styles/tokens";
 import {BottomSheet, buttonBase, ErrorNote, IconCircleButton, OutlineButton, Segmented, SolidButton} from "@/app/_ui/sp";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
@@ -27,18 +27,23 @@ const BACKGROUNDS = [
   {key: "none" as LogoBackground, label: "Bez pozadine"},
   {key: "dark" as LogoBackground, label: "Crna pozadina"},
 ];
+const SHAPES = LOGO_SHAPES.map((s) => ({key: s.key, label: s.label}));
 
-// What the dialog and the full screen share: the logo being cropped, how, and on which background
+// What the dialog and the full screen share: the logo being cropped, how, in which shape and on which background. A
+// logo comes in without its empty edges, and the shape nearest to its own is chosen for it.
 function useLogoEditor(initial: {src: string | null; file: File | null; background: LogoBackground}) {
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [crop, setCrop] = useState<CropState>(CROP_START);
+  const [shape, setShapeState] = useState<LogoShape>("wide");
   const [background, setBackground] = useState(initial.background);
   const [error, setError] = useState<string | null>(null);
 
   const take = async (load: Promise<HTMLImageElement>) => {
     setError(null);
     try {
-      setImg(await load);
+      const t = await trimLogo(await load);
+      setImg(t.img);
+      setShapeState(shapeFor(t.img.naturalWidth / t.img.naturalHeight));
       setCrop(CROP_START);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Logo se nije učitao.");
@@ -53,14 +58,20 @@ function useLogoEditor(initial: {src: string | null; file: File | null; backgrou
   const done = (): LogoResult | null => {
     if (!img) return null;
     try {
-      return {upload: renderLogo(img, crop), background};
+      return {upload: renderLogo(img, crop, shape), background};
     } catch (e) {
       setError(e instanceof Error ? e.message : "Logo se nije spremio.");
       return null;
     }
   };
 
-  return {img, crop, setCrop, background, setBackground, error, pick: (f: File) => take(loadLogoFile(f)), done};
+  // another shape starts the crop again: the old pan and zoom were for the old frame
+  const setShape = (s: LogoShape) => {
+    setShapeState(s);
+    setCrop(CROP_START);
+  };
+
+  return {img, crop, setCrop, shape, aspect: shapeOf(shape).aspect, setShape, background, setBackground, error, pick: (f: File) => take(loadLogoFile(f)), done};
 }
 
 // A hidden file input and the call that opens it
@@ -131,6 +142,7 @@ export function LogoDialog({src, background, onClose, onDone}: {src: string | nu
           img={e.img}
           crop={e.crop}
           onCrop={e.setCrop}
+          aspect={e.aspect}
           background={e.background}
           tone="soft"
           sx={{width: 400, height: 400, borderRadius: "20px"}}
@@ -196,6 +208,11 @@ export function LogoDialog({src, background, onClose, onDone}: {src: string | nu
           <Box component="span" sx={{fontSize: 13.5, color: color.muted}}>
             PNG, JPG ili WebP
           </Box>
+        </Box>
+        <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
+          <Box sx={{fontSize: 14, fontWeight: 600, color: color.ink2, pl: "4px"}}>Oblik loga</Box>
+          <Segmented<LogoShape> items={SHAPES} value={e.shape} onChange={e.setShape} label="Oblik loga" variant="track" size={42} asTabs={false} />
+          <Box sx={{fontSize: 13, color: color.muted, pl: "4px"}}>Kvadrat za okrugli ili uspravni logo, da u traci nema praznine pokraj njega.</Box>
         </Box>
         <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
           <Box sx={{fontSize: 14, fontWeight: 600, color: color.ink2, pl: "4px"}}>Pozadina loga</Box>
@@ -270,8 +287,32 @@ export function LogoSourceSheet({hasLogo, onClose, onFile, onRecrop}: {hasLogo: 
   );
 }
 
+// Two to three choices side by side on the black full screen (Oblik loga, Pozadina loga)
+function DarkChoice<T extends string>({label, items, value, onChange}: {label: string; items: {key: T; label: string}[]; value: T; onChange: (v: T) => void}) {
+  return (
+    <Box role="radiogroup" aria-label={label} sx={{display: "grid", gridTemplateColumns: `repeat(${items.length}, minmax(0,1fr))`, gap: "4px", p: "4px", borderRadius: "14px", background: cropColor.pill}}>
+      {items.map((b) => {
+        const on = value === b.key;
+        return (
+          <Box
+            key={b.key}
+            component="button"
+            type="button"
+            role="radio"
+            aria-checked={on}
+            onClick={() => onChange(b.key)}
+            sx={{...buttonBase, height: 40, borderRadius: "10px", background: on ? color.white : "transparent", color: on ? color.ink : color.white, fontSize: 14.5, fontWeight: on ? 700 : 600}}
+          >
+            {b.label}
+          </Box>
+        );
+      })}
+    </Box>
+  );
+}
+
 // "Pomakni i zumiraj" on the phone: the black full screen with Odustani and Gotovo on top, the zoom, Okreni, Vrati and
-// Druga slika under the logo, and the logo's background
+// Druga slika under the logo, then the logo's shape and background
 export function LogoScreen({file, src, background, onClose, onDone}: {file: File | null; src: string | null; background: LogoBackground; onClose: () => void; onDone: (r: LogoResult) => void}) {
   const e = useLogoEditor({src, file, background});
   const other = useFilePicker(e.pick);
@@ -314,7 +355,7 @@ export function LogoScreen({file, src, background, onClose, onDone}: {file: File
           Gotovo
         </Box>
       </Box>
-      <LogoCropper img={e.img} crop={e.crop} onCrop={e.setCrop} background={e.background} tone="dark" sx={{flex: 1, minHeight: 0}} />
+      <LogoCropper img={e.img} crop={e.crop} onCrop={e.setCrop} aspect={e.aspect} background={e.background} tone="dark" sx={{flex: 1, minHeight: 0}} />
       <Box sx={{flex: "none", display: "flex", flexDirection: "column", gap: "14px", p: "16px 20px calc(18px + env(safe-area-inset-bottom))"}}>
         {e.error && <ErrorNote>{e.error}</ErrorNote>}
         <ZoomSlider value={e.crop.zoom} onChange={(z) => e.setCrop({...e.crop, zoom: z})} tone="dark" />
@@ -332,24 +373,8 @@ export function LogoScreen({file, src, background, onClose, onDone}: {file: File
             Druga slika
           </Box>
         </Box>
-        <Box role="radiogroup" aria-label="Pozadina loga" sx={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px", p: "4px", borderRadius: "14px", background: cropColor.pill}}>
-          {BACKGROUNDS.map((b) => {
-            const on = e.background === b.key;
-            return (
-              <Box
-                key={b.key}
-                component="button"
-                type="button"
-                role="radio"
-                aria-checked={on}
-                onClick={() => e.setBackground(b.key)}
-                sx={{...buttonBase, height: 40, borderRadius: "10px", background: on ? color.white : "transparent", color: on ? color.ink : color.white, fontSize: 14.5, fontWeight: on ? 700 : 600}}
-              >
-                {b.label}
-              </Box>
-            );
-          })}
-        </Box>
+        <DarkChoice<LogoShape> label="Oblik loga" items={SHAPES} value={e.shape} onChange={e.setShape} />
+        <DarkChoice<LogoBackground> label="Pozadina loga" items={BACKGROUNDS} value={e.background} onChange={e.setBackground} />
       </Box>
     </Dialog>
   );

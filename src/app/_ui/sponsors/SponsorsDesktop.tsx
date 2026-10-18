@@ -118,7 +118,7 @@ export default function SponsorsDesktop() {
                         }}
                       >
                         <Box sx={{display: "flex"}}>
-                          <SponsorLogo sponsor={s} height={40} />
+                          <SponsorLogo sponsor={s} height={40} slot />
                         </Box>
                         <Box component="span" sx={{minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
                           <Box component="span" sx={{fontSize: 15, fontWeight: 600, ...ellipsis}}>

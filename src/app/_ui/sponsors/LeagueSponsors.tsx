@@ -118,7 +118,7 @@ export function LeagueSponsorsPhone({leagueId, leagueName}: {leagueId: number; l
                 sx={[{minHeight: 64, display: "flex", alignItems: "center", gap: "8px", p: "8px 6px 8px 4px", borderTop: i ? `1px solid ${color.line}` : "none", borderRadius: i === 0 ? "22px 22px 0 0" : i === e.chosen!.length - 1 ? "0 0 22px 22px" : 0}, drag.rowSx(i) as object]}
               >
                 <DragHandle {...drag.handleProps(i, s.name)} />
-                <SponsorLogo sponsor={s} height={42} />
+                <SponsorLogo sponsor={s} height={42} slot />
                 <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
                   <Box sx={{fontSize: 16, fontWeight: 600, ...ellipsis}}>{s.name}</Box>
                   <Box sx={{fontSize: 12.5, color: color.muted, ...ellipsis}}>{countsLabel(s.league_counts[leagueId])}</Box>
@@ -208,7 +208,7 @@ function PickSheet({
                   sx={{...buttonBase, width: "100%", minHeight: 58, display: "flex", alignItems: "center", gap: "12px", p: "6px 14px", textAlign: "left", color: color.ink}}
                 >
                   <CheckBox on={on} />
-                  <SponsorLogo sponsor={s} height={40} />
+                  <SponsorLogo sponsor={s} height={40} slot />
                   <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "1px"}}>
                     <Box component="span" sx={{fontSize: 15.5, fontWeight: 600, ...ellipsis}}>
                       {s.name}
@@ -279,7 +279,7 @@ export function LeagueSponsorsDesktop({leagueId, leagueName}: {leagueId: number;
               >
                 <DragHandle {...drag.handleProps(i, s.name)} />
                 <Box sx={{width: 92, flex: "none", display: "flex"}}>
-                  <SponsorLogo sponsor={s} height={40} />
+                  <SponsorLogo sponsor={s} height={40} slot />
                 </Box>
                 <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
                   <Box sx={{fontSize: 15, fontWeight: 600, ...ellipsis}}>{s.name}</Box>
@@ -318,7 +318,7 @@ export function LeagueSponsorsDesktop({leagueId, leagueName}: {leagueId: number;
                     sx={{...buttonBase, width: "100%", minHeight: 58, display: "flex", alignItems: "center", gap: "12px", p: "6px 20px", textAlign: "left", color: color.ink, "&:hover": {background: color.paper2}}}
                   >
                     <CheckBox on={on} />
-                    <SponsorLogo sponsor={s} height={36} />
+                    <SponsorLogo sponsor={s} height={36} slot />
                     <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "1px"}}>
                       <Box component="span" sx={{fontSize: 14.5, fontWeight: 600, ...ellipsis}}>
                         {s.name}

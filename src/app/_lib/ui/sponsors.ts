@@ -3,11 +3,20 @@ import {NOUN, plural} from "@/app/_lib/ui/text";
 
 // What the sponsor screens show, framework free (checked by __tests__/sponsors.test.ts)
 
-// A logo's tile at a given height: every logo in the same rounded rectangle (1.9 : 1), black or with nothing under the
-// logo (its Pozadina loga), with the logo fitted inside it whatever its own shape
+// A logo's tile at a given height: a rounded rectangle around the logo with room on every side (0.14 of the height above
+// and below, 0.2 on each side), black or with nothing under the logo (its Pozadina loga). Its width follows the logo's
+// shape (aspect: width over height), from a square logo's 1.12 : 1 to the widest, 1.9 : 1; a logo outside that range
+// (one saved before the cropper) is fitted inside its tile.
 export const TILE_RATIO = 1.9;
-export function logoTile(height: number): {width: number; height: number; padY: number; padX: number; radius: number} {
-  return {width: Math.round(height * TILE_RATIO), height, padY: Math.round(height * 0.14), padX: Math.round(height * 0.2), radius: Math.round(height * 0.26)};
+export const WIDE_ASPECT = (TILE_RATIO - 0.4) / (1 - 0.28);
+export function logoTile(height: number, aspect = WIDE_ASPECT): {width: number; height: number; padY: number; padX: number; radius: number} {
+  const a = Math.min(WIDE_ASPECT, Math.max(1, Number.isFinite(aspect) && aspect > 0 ? aspect : WIDE_ASPECT));
+  return {width: Math.round(height * (a * 0.72 + 0.4)), height, padY: Math.round(height * 0.14), padX: Math.round(height * 0.2), radius: Math.round(height * 0.26)};
+}
+
+// A saved logo's shape, width over height
+export function logoAspect(s: {logo_width: number; logo_height: number}): number {
+  return s.logo_height > 0 ? s.logo_width / s.logo_height : WIDE_ASPECT;
 }
 
 // "1 210": a space between thousands, as the design writes counts (a no-break space, so it doesn't wrap)

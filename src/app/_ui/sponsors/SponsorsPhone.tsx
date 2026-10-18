@@ -113,7 +113,7 @@ export default function SponsorsPhone() {
                     onClick={() => setEditing(s)}
                     sx={{...buttonBase, width: "100%", minHeight: 64, display: "flex", alignItems: "center", gap: "12px", p: "10px 10px 10px 14px", textAlign: "left", color: color.ink, "&:active": {background: color.paper2}}}
                   >
-                    <SponsorLogo sponsor={s} height={44} />
+                    <SponsorLogo sponsor={s} height={44} slot />
                     <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
                       <Box component="span" sx={{fontSize: 16, fontWeight: 600, ...ellipsis}}>
                         {s.name}

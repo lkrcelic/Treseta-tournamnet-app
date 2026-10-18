@@ -4,7 +4,7 @@ import {sendSponsorEvent} from "@/app/_fetchers/sponsors";
 import useReducedMotion from "@/app/_hooks/useReducedMotion";
 import {LogoBackground, SponsorPublic} from "@/app/_interfaces/sponsor";
 import {isSafeUrl} from "@/app/_lib/nights";
-import {bandRounds, bandSeconds, logoTile} from "@/app/_lib/ui/sponsors";
+import {bandRounds, bandSeconds, logoAspect, logoTile} from "@/app/_lib/ui/sponsors";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {BottomSheet, buttonBase, IconCircleButton} from "@/app/_ui/sp";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
@@ -15,11 +15,12 @@ import React, {useEffect, useId, useLayoutEffect, useRef, useState} from "react"
 // A logo to draw: a saved sponsor's, or the one the admin just picked (its preview)
 export type LogoSource = {name: string; logo: string; logo_width: number; logo_height: number; background: LogoBackground};
 
-// A sponsor's logo in its tile (logoTile): the same rounded rectangle for every logo, black under a light logo, or
-// nothing under it
-export function SponsorLogo({sponsor, height, sx}: {sponsor: LogoSource; height: number; sx?: SxProps<Theme>}) {
-  const t = logoTile(height);
-  return (
+// A sponsor's logo in its tile (logoTile): a rounded rectangle as wide as the logo's shape needs, black under a light
+// logo, or nothing under it. slot: in a list, the tile sits in the middle of a place as wide as the widest tile, so the
+// names beside the logos stay in line.
+export function SponsorLogo({sponsor, height, slot, sx}: {sponsor: LogoSource; height: number; slot?: boolean; sx?: SxProps<Theme>}) {
+  const t = logoTile(height, logoAspect(sponsor));
+  const tile = (
     <Box
       component="span"
       sx={[
@@ -41,6 +42,12 @@ export function SponsorLogo({sponsor, height, sx}: {sponsor: LogoSource; height:
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- a logo from the API, already small; next/image adds nothing */}
       <Box component="img" src={sponsor.logo} alt="" draggable={false} sx={{width: "100%", height: "100%", objectFit: "contain", display: "block"}} />
+    </Box>
+  );
+  if (!slot) return tile;
+  return (
+    <Box component="span" sx={{flex: "none", width: logoTile(height).width, display: "flex", justifyContent: "center"}}>
+      {tile}
     </Box>
   );
 }
@@ -71,7 +78,8 @@ export function SponsorBand({
   const bandRef = useRef<HTMLDivElement>(null);
   const [bandWidth, setBandWidth] = useState(0);
   const [held, setHeld] = useState(false);
-  const roundWidth = sponsors.length * (logoTile(height).width + gap);
+  // each logo's tile has its own width
+  const roundWidth = sponsors.reduce((w, s) => w + logoTile(height, logoAspect(s)).width + gap, 0);
   const rounds = reduce ? 1 : bandRounds(bandWidth, roundWidth);
 
   useLayoutEffect(() => {

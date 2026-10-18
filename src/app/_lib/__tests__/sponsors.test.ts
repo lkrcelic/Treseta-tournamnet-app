@@ -13,8 +13,8 @@ import {
 } from "../../_interfaces/sponsor";
 import {errorResponse} from "../apiErrors";
 import {decodeLogo, detectLogoType, LogoError, sponsorLogoPath} from "../sponsors";
-import {clampCrop, CROP_ASPECT, CROP_OUT_HEIGHT, CROP_OUT_WIDTH, CROP_START, fitScale, panLimits, placement, rotateLeft, ZOOM_MAX} from "../ui/logoCrop";
-import {bandRounds, bandSeconds, countsLabel, deleteSponsorText, groupDigits, leaguesLabel, logoTile, moveItem, NO_LEAGUE, pickSub, sponsorSub} from "../ui/sponsors";
+import {clampCrop, CROP_ASPECT, CROP_OUT_HEIGHT, CROP_OUT_WIDTH, CROP_START, fitScale, LOGO_SHAPES, panLimits, placement, rotateLeft, shapeFor, trimBox, ZOOM_MAX} from "../ui/logoCrop";
+import {bandRounds, bandSeconds, countsLabel, deleteSponsorText, groupDigits, leaguesLabel, logoAspect, logoTile, moveItem, NO_LEAGUE, pickSub, sponsorSub} from "../ui/sponsors";
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]);
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 16]);
@@ -86,10 +86,19 @@ test("a league's sponsors are a list of different ids; a count names its league,
   assert.equal(SponsorEventValidation.safeParse({league_id: 3, kind: "click", sponsor_ids: []}).success, false);
 });
 
-test("every logo's tile is the same rounded rectangle, 1.9 : 1, with room around the logo", () => {
+test("a logo's tile is as wide as its shape, from a square logo's to 1.9 : 1, with room around the logo", () => {
   assert.deepEqual(logoTile(60), {width: 114, height: 60, padY: 8, padX: 12, radius: 16});
   assert.deepEqual(logoTile(56), {width: 106, height: 56, padY: 8, padX: 11, radius: 15});
   assert.equal(logoTile(40).width, 76);
+  // the three shapes the cropper makes: 512 × 246, 369 × 246 and 246 × 246
+  assert.equal(logoTile(56, logoAspect({logo_width: 512, logo_height: 246})).width, 106);
+  assert.equal(logoTile(56, logoAspect({logo_width: 369, logo_height: 246})).width, 83);
+  assert.equal(logoTile(56, logoAspect({logo_width: 246, logo_height: 246})).width, 63);
+  // older logos of any shape: never narrower than a square's tile or wider than the widest
+  assert.equal(logoTile(56, 0.5).width, 63);
+  assert.equal(logoTile(56, 5).width, 106);
+  assert.equal(logoTile(56, NaN).width, 106);
+  assert.equal(logoAspect({logo_width: 10, logo_height: 0}), CROP_ASPECT);
 });
 
 test("the counts read as the design writes them", () => {
@@ -137,10 +146,50 @@ test("moveItem moves one row and leaves the rest in order", () => {
   assert.deepEqual(moveItem(["a", "b"], 1, 1), ["a", "b"]);
 });
 
-test("the crop frame is the inside of the logo's tile, and the cropped logo is 512 px wide", () => {
+test("the crop frame is the inside of the logo's tile; the cropped logo is 246 px tall and as wide as its shape", () => {
   assert.ok(Math.abs(CROP_ASPECT - 1.5 / 0.72) < 1e-9);
   assert.equal(CROP_OUT_WIDTH, 512);
   assert.equal(CROP_OUT_HEIGHT, 246);
+  assert.deepEqual(
+    LOGO_SHAPES.map((s) => [s.key, s.label, s.width]),
+    [
+      ["wide", "Široki", 512],
+      ["medium", "Srednji", 369],
+      ["square", "Kvadrat", 246],
+    ]
+  );
+  for (const s of LOGO_SHAPES) assert.ok(Math.abs(s.width / CROP_OUT_HEIGHT - s.aspect) < 0.01);
+});
+
+test("a logo is offered the shape nearest its own", () => {
+  assert.equal(shapeFor(2.4), "wide");
+  assert.equal(shapeFor(1.8), "wide");
+  assert.equal(shapeFor(1.6), "medium");
+  assert.equal(shapeFor(1.3), "medium");
+  assert.equal(shapeFor(1), "square");
+  assert.equal(shapeFor(0.6), "square");
+  assert.equal(shapeFor(NaN), "wide");
+});
+
+// an image w × h of one colour (rgba), with a block of another from (x, y), bw × bh
+function image(w: number, h: number, edge: number[], x: number, y: number, bw: number, bh: number, ink = [200, 30, 40, 255]) {
+  const px: number[] = [];
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) px.push(...(i >= x && i < x + bw && j >= y && j < y + bh ? ink : edge));
+  return px;
+}
+
+test("the empty edges are found on transparent and on one solid colour, and kept when there are none", () => {
+  // a round badge in the middle of a transparent square
+  assert.deepEqual(trimBox(image(20, 20, [0, 0, 0, 0], 5, 4, 10, 12), 20, 20), {x: 5, y: 4, w: 10, h: 12});
+  // a logo on white, the white a little uneven (a JPEG)
+  assert.deepEqual(trimBox(image(30, 10, [250, 252, 248, 255], 2, 1, 26, 8), 30, 10), {x: 2, y: 1, w: 26, h: 8});
+  // nothing to take off: the logo reaches the edges
+  assert.equal(trimBox(image(20, 20, [0, 0, 0, 0], 0, 0, 20, 20), 20, 20), null);
+  // only edge: nothing to keep
+  assert.equal(trimBox(image(20, 20, [255, 255, 255, 255], 0, 0, 0, 0), 20, 20), null);
+  // corners that don't agree (a photo): left alone
+  const photo = image(20, 20, [255, 255, 255, 255], 0, 0, 1, 1, [0, 0, 0, 255]);
+  assert.equal(trimBox(photo, 20, 20), null);
 });
 
 test("at zoom 1 the whole logo fits the frame; a quarter turn swaps its sides", () => {

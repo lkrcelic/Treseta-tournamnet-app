@@ -4,7 +4,7 @@ import {createSponsorAPI, LogoUpload, SponsorFields, updateSponsorAPI} from "@/a
 import {forgetLeagueSponsors} from "@/app/_hooks/useSponsors";
 import {LogoBackground, SPONSOR_MESSAGE_MAX, SPONSOR_URL_ERROR, SponsorAdmin} from "@/app/_interfaces/sponsor";
 import {isSafeUrl} from "@/app/_lib/nights";
-import {groupDigits, leaguesLabel, logoTile} from "@/app/_lib/ui/sponsors";
+import {groupDigits, leaguesLabel, logoAspect, logoTile} from "@/app/_lib/ui/sponsors";
 import {NOUN, plural} from "@/app/_lib/ui/text";
 import {color} from "@/app/_styles/tokens";
 import {buttonBase, Segmented, TextField, TextInput} from "@/app/_ui/sp";
@@ -131,7 +131,7 @@ export function SponsorFormFields({form, sponsor}: {form: SponsorForm; sponsor: 
       )}
       <Box sx={{flex: "none", display: "flex", alignItems: "center", gap: "14px"}}>
         {logo ? (
-          <Box component="button" type="button" aria-label="Promijeni logo" onClick={choose} sx={{...buttonBase, display: "flex", borderRadius: `${logoTile(64).radius}px`}}>
+          <Box component="button" type="button" aria-label="Promijeni logo" onClick={choose} sx={{...buttonBase, display: "flex", borderRadius: `${logoTile(64, logoAspect(logo)).radius}px`}}>
             <SponsorLogo sponsor={logo} height={64} />
           </Box>
         ) : (

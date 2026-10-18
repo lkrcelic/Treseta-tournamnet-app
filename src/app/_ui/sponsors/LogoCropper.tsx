@@ -1,19 +1,20 @@
 "use client";
 
 import {LogoBackground} from "@/app/_interfaces/sponsor";
-import {CROP_ASPECT, CROP_START, clampCrop, CropState, placement} from "@/app/_lib/ui/logoCrop";
+import {CROP_START, clampCrop, CropState, placement} from "@/app/_lib/ui/logoCrop";
 import {color, crop as cropColor} from "@/app/_styles/tokens";
 import {Box} from "@mui/material";
 import React, {useEffect, useLayoutEffect, useRef, useState} from "react";
 
 // The cropper's stage (Claude Design "Profilna slika · dijalog" D2 and "Pomakni i zumiraj" M3, for a sponsor's logo):
 // the logo on the tile it will have (the black plate, or white for no background), the frame it is cut to, and the
-// shade around it. Drag to move it, two fingers, the wheel or the slider to zoom; a double tap or click goes back to
+// shade around it; the frame has the shape the admin chose (aspect: width over height). Drag to move it, two fingers, the wheel or the slider to zoom; a double tap or click goes back to
 // the start. tone: "dark" is the phone's black full screen, "soft" the computer's grey square.
 export function LogoCropper({
   img,
   crop,
   onCrop,
+  aspect,
   background,
   tone,
   empty,
@@ -22,6 +23,7 @@ export function LogoCropper({
   img: HTMLImageElement | null;
   crop: CropState;
   onCrop: (c: CropState) => void;
+  aspect: number;
   background: LogoBackground;
   tone: "dark" | "soft";
   // shown in the frame while there is no logo yet
@@ -44,16 +46,15 @@ export function LogoCropper({
     return () => ro.disconnect();
   }, []);
 
-  // the frame: as wide as the stage allows with room around it for the tile, which is 1.9 : 1 around the frame
+  // the frame: as large as the stage allows with room around it for the tile (logoTile's padding: the tile is the
+  // frame's height / 0.72 tall and 0.4 of its own height wider than the frame)
   const margin = tone === "dark" ? 28 : 36;
-  const tileOverFrame = 1.9 / (0.72 * CROP_ASPECT);
-  const fw = Math.max(0, Math.min((size.w - 2 * margin) / tileOverFrame, (size.h - 2 * margin) * CROP_ASPECT * 0.72));
-  const fh = fw / CROP_ASPECT;
+  const fh = Math.max(0, Math.min((size.h - 2 * margin) * 0.72, (size.w - 2 * margin) / (aspect + 0.4 / 0.72)));
+  const fw = fh * aspect;
   const left = (size.w - fw) / 2;
   const top = (size.h - fh) / 2;
-  // the tile around the frame (logoTile's padding): its height is the frame's / 0.72
   const tileH = fh / 0.72;
-  const tileW = tileH * 1.9;
+  const tileW = fw + tileH * 0.4;
   const iw = img?.naturalWidth ?? 1;
   const ih = img?.naturalHeight ?? 1;
   const set = (c: CropState) => onCrop(clampCrop(c, iw, ih, fw || 1, fh || 1));
