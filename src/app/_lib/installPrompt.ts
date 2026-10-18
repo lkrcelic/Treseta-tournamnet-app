@@ -1,6 +1,6 @@
 "use client";
 
-import {detectPlatform, type InstallPlatform} from "@/app/_lib/installPlatform";
+import {detectInstallEnv, type InstallEnv} from "@/app/_lib/installPlatform";
 import {useEffect, useState, useSyncExternalStore} from "react";
 
 // Installing the app from the browser (the manifest is in public/). Chrome on Android announces that it can install
@@ -42,8 +42,8 @@ function isStandalone(): boolean {
 export function useInstallPrompt() {
   const canPrompt = useSyncExternalStore(subscribe, () => deferred != null, () => false);
   const justInstalled = useSyncExternalStore(subscribe, () => installed, () => false);
-  const [env, setEnv] = useState<{platform: InstallPlatform; standalone: boolean} | null>(null);
-  useEffect(() => setEnv({platform: detectPlatform(navigator.userAgent, navigator.maxTouchPoints), standalone: isStandalone()}), []);
+  const [state, setState] = useState<{env: InstallEnv; standalone: boolean} | null>(null);
+  useEffect(() => setState({env: detectInstallEnv(navigator.userAgent, navigator.maxTouchPoints), standalone: isStandalone()}), []);
 
   // Chrome's own install dialog; resolves true when the user accepted it
   const prompt = async (): Promise<boolean> => {
@@ -60,5 +60,5 @@ export function useInstallPrompt() {
     return outcome === "accepted";
   };
 
-  return {platform: env?.platform ?? null, standalone: env?.standalone ?? true, canPrompt, installed: justInstalled, prompt};
+  return {env: state?.env ?? null, standalone: state?.standalone ?? true, canPrompt, installed: justInstalled, prompt};
 }
