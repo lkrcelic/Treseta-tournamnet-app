@@ -3,7 +3,8 @@
 import {formatChange} from "@/app/_lib/ui/ratings";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {color, font} from "@/app/_styles/tokens";
-import {buttonBase, Card, changeInk, ellipsis, InitialsAvatar, ProvisionalTag, tabular} from "@/app/_ui/sp";
+import {ViewableAvatar} from "@/app/_ui/photo/PhotoViewer";
+import {buttonBase, Card, changeInk, ellipsis, ProvisionalTag, tabular} from "@/app/_ui/sp";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import {Box, Skeleton} from "@mui/material";
 import React, {useId} from "react";
@@ -108,7 +109,7 @@ export function ProfileHero({
       }}
     >
       <Box sx={{display: "flex", flexDirection: desktop ? "column" : "row", alignItems: desktop ? "flex-start" : "center", gap: desktop ? "22px" : "14px"}}>
-        {avatar ?? <InitialsAvatar name={avatarName} src={avatarSrc} size={desktop ? 96 : 64} variant="navy" />}
+        {avatar ?? <ViewableAvatar kind="player" name={avatarName} src={avatarSrc} size={desktop ? 96 : 64} />}
         <Box sx={{display: "flex", flexDirection: "column", gap: desktop ? "4px" : "2px", minWidth: 0}}>
           <Box
             component="h1"

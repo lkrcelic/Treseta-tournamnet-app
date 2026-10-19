@@ -12,7 +12,6 @@ import {
   DesktopShell,
   ellipsis,
   ErrorState,
-  InitialsAvatar,
   mergeSx,
   MessageState,
   type NavKey,
@@ -35,6 +34,7 @@ import SearchOffRoundedIcon from "@mui/icons-material/SearchOffRounded";
 import {Box, SxProps, Theme} from "@mui/material";
 import React, {useContext, useId} from "react";
 import {createPortal} from "react-dom";
+import {ViewableAvatar} from "@/app/_ui/photo/PhotoViewer";
 
 // The frame, the cream header and the states shared by the Team and Player pages (handoff §6,
 // komponente/Profiles.dc.html, abbreviated P below)
@@ -277,7 +277,9 @@ export function HeroCard({
     >
       {phoneTag && <Box sx={{display: "flex", justifyContent: "flex-end", mr: "-6px", mb: "-12px"}}>{cornerTag}</Box>}
       <Box sx={{display: "flex", alignItems: "center", gap: desktop ? (short ? "14px" : "18px") : "14px", minWidth: 0}}>
-        {avatarNode ?? <InitialsAvatar name={avatarName} letters={avatarLetters} src={avatarSrc} size={avatar} variant="navy" sx={desktop ? {fontSize: short ? 20 : 28} : undefined} />}
+        {avatarNode ?? (
+          <ViewableAvatar kind={avatarLetters ? "team" : "player"} name={avatarName} letters={avatarLetters} src={avatarSrc} size={avatar} sx={desktop ? {fontSize: short ? 20 : 28} : undefined} />
+        )}
         {/* the field (and a note under it) and its ✓ line up at the top; the ✓ centres itself on the field. On the phone
             the box is the name's size container (phoneTitleSize) */}
         <Box

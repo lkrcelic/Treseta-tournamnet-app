@@ -2,12 +2,13 @@
 
 import type {PhotoTarget} from "@/app/_fetchers/photos";
 import {color, shadow, tint} from "@/app/_styles/tokens";
-import {buttonBase, ConfirmSheet, ErrorNote, InitialsAvatar, SectionLabel, SwitchRow, SwitchTrack} from "@/app/_ui/sp";
+import {buttonBase, ConfirmSheet, ErrorNote, SectionLabel, SwitchRow, SwitchTrack} from "@/app/_ui/sp";
 import HideImageRoundedIcon from "@mui/icons-material/HideImageRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {Box} from "@mui/material";
 import React, {useId, useState} from "react";
 import {PhotoInfo, usePhoto, visibilityLabel} from "./PhotoParts";
+import {ViewableAvatar} from "./PhotoViewer";
 
 // The admin's block on a player's or a team's photo (Claude Design: admin-mobile 33 and 35, desktop A4): whether there
 // is one, who the player (or team) chose to show it to, "Makni sliku" (asked first, with "Zabrani i novu sliku"; the
@@ -142,7 +143,7 @@ export function PhotoAdminCard({
       <SectionLabel id={titleId}>{phone ? text.title : `${name} · ${text.title}`}</SectionLabel>
       <Box sx={{background: color.white, borderRadius: "22px", boxShadow: shadow.card, p: "14px 16px", display: "flex", flexDirection: "column", gap: "12px"}}>
         <Box sx={{display: "flex", alignItems: "center", gap: "12px"}}>
-          <InitialsAvatar name={name} letters={letters} src={photo_url} size={44} variant="paper" />
+          <ViewableAvatar kind={target.kind} name={name} letters={letters} src={photo_url} size={44} variant="paper" />
           <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
             <Box component="span" sx={{fontSize: 15.5, fontWeight: 700, color: color.ink}}>
               {status}

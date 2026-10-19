@@ -12,6 +12,7 @@ import {Box} from "@mui/material";
 import React, {useId, useState} from "react";
 import {CropSource, PhotoScreen} from "./PhotoCropper";
 import {BlockedNote, PHOTO_TEXT, PhotoControls, PhotoKind, useFilePicker, VisibilityChoices} from "./PhotoParts";
+import {ViewableAvatar} from "./PhotoViewer";
 
 // "Profilna slika" / "Slika ekipe" on the phone (Claude Design M2, M5, M6, T2): the Google picture offered as a
 // suggestion (a player signed in with Google, no photo yet), Fotografiraj, Odaberi iz galerije, Koristi Google sliku
@@ -89,7 +90,7 @@ export function PhotoSheet({
             <>
               {photo_url ? (
                 <Box sx={{flex: "none", display: "flex", justifyContent: "center", py: "6px"}}>
-                  <InitialsAvatar name={name} letters={letters} src={photo_url} size={112} variant="navy" />
+                  <ViewableAvatar kind={kind} name={name} letters={letters} src={photo_url} size={112} />
                 </Box>
               ) : (
                 google && <GoogleCard email={google.email} onUse={useGoogle} />
