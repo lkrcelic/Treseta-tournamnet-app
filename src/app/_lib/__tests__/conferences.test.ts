@@ -11,7 +11,7 @@ import {
   nextFreeColor,
 } from "../conferences";
 import {inConference, splitPodium, toStandingsRows} from "../ui/standings";
-import {toTableRows} from "../ui/tables";
+import {draftTableRows, toTableRows} from "../ui/tables";
 import {generateGroupedRoundPairings} from "../matching/multipleRoundMatching";
 import {BYE_TEAM_ID} from "../bye";
 
@@ -136,6 +136,28 @@ test("round tables carry both teams' conferences", () => {
   // the bye has no conference
   assert.equal(rows[2].conferenceB, null);
   assert.equal(toTableRows(rounds)[0].conferenceA, undefined);
+});
+
+test("Skica's tables carry both teams' conferences, and none without the league's", () => {
+  const round = {
+    roundNumber: 4,
+    letter: "A",
+    status: "DRAFT" as const,
+    publishedAt: null,
+    id: 11,
+    tables: [
+      {id: 11, table: 1, smoking: false, team1: {id: 1, name: "Dalmatinci"}, team2: {id: 3, name: "Zagorci"}},
+      {id: 12, table: 2, smoking: false, team1: {id: 4, name: "Istrani"}, team2: {id: BYE_TEAM_ID, name: "Slobodna runda"}},
+    ],
+  };
+  const rows = draftTableRows(round, lookup.of);
+  assert.equal(rows[0].conferenceA?.name, "Sjever");
+  assert.equal(rows[0].conferenceB?.name, "Sjever");
+  assert.equal(rows[1].conferenceA?.name, "Jug");
+  // the bye has no conference; its table is settled 2:0 for the team
+  assert.equal(rows[1].conferenceB, null);
+  assert.deepEqual([rows[1].winsA, rows[1].winsB], [2, 0]);
+  assert.equal(draftTableRows(round)[0].conferenceA, undefined);
 });
 
 const ranked = (ids: number[]) =>

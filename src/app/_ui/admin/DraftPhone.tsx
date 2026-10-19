@@ -238,7 +238,7 @@ export default function DraftPhone({leagueId, date}: {leagueId: number; date: st
       )}
 
       {editing && edits.pair && (
-        <PairSheet target={edits.pair} rows={rows} teams={teams ?? []} onClose={() => edits.setPair(null)} onSave={edits.savePair} />
+        <PairSheet target={edits.pair} rows={rows} teams={teams ?? []} onClose={() => edits.setPair(null)} onSave={edits.savePair} conferenceOf={conferences.of} />
       )}
       <ConfirmSheet
         open={editing && removeRow != null}

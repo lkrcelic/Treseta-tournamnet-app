@@ -394,7 +394,7 @@ function RoundCard({
         </Box>
       )}
       {editing && edits.pair && (
-        <PairDialog target={edits.pair} rows={rows} teams={teams ?? []} roundLabel={name} onClose={() => edits.setPair(null)} onSave={edits.savePair} />
+        <PairDialog target={edits.pair} rows={rows} teams={teams ?? []} roundLabel={name} onClose={() => edits.setPair(null)} onSave={edits.savePair} conferenceOf={conferenceOf} />
       )}
     </Card>
   );

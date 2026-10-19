@@ -3,11 +3,12 @@
 import {addTableAPI, removeTableAPI, setTablePairAPI} from "@/app/_fetchers/admin/daily";
 import {LeagueTeam} from "@/app/_hooks/useLeagueTeams";
 import {BYE_LABEL, BYE_TEAM_ID, isByeTeam} from "@/app/_lib/bye";
+import {Conference, ConferenceOf, conferenceDot} from "@/app/_lib/conferences";
 import {planSeats} from "@/app/_lib/tableSeats";
 import {TableRow} from "@/app/_lib/ui/tables";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {matchesQuery} from "@/app/_lib/ui/text";
-import {BottomSheet, buttonBase, ellipsis, ErrorNote, OutlineButton, SearchInput, SolidButton} from "@/app/_ui/sp";
+import {BottomSheet, buttonBase, ellipsis, ErrorNote, OutlineButton, SearchInput, SolidButton, TeamDot, TeamLabel} from "@/app/_ui/sp";
 import {SmokingMark} from "@/app/_ui/smoking/SmokingParts";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
@@ -166,14 +167,22 @@ const NOTE_STYLE: Record<Note["kind"], {bg: string; ink: string; icon: React.Rea
 
 export type PairTarget = {kind: "edit"; row: TableRow} | {kind: "new"; tableNumber: number};
 
-// A team that can be seated: its name, and "stol 4" when it sits at another table of the round
-type PairOption = {id: number; name: string; sub?: string};
+// A team that can be seated: its name, and "stol 4" when it sits at another table of the round. conference: its
+// conference for the dot (undefined: no dot, for the bye and in a league without conferences)
+type PairOption = {id: number; name: string; sub?: string; conference?: Conference | null};
 
 // Seating two teams at a table (edit) or adding a table (new), for the desktop dialog and the phone sheet. Picking a
 // team that sits at another table swaps it with the team it replaces; a table where something was played loses those
 // hands. A new table lists only the teams that don't play in the round. Slobodna runda (the bye) is always on the
-// list, first: a team seated with it wins the table 2:0 without playing.
-function usePairForm(target: PairTarget, rows: TableRow[], teams: LeagueTeam[], onSave: (team1Id: number, team2Id: number) => Promise<void>) {
+// list, first: a team seated with it wins the table 2:0 without playing. conferenceOf: the league's conferences, for
+// the dots before the teams (left out: no dots).
+function usePairForm(
+  target: PairTarget,
+  rows: TableRow[],
+  teams: LeagueTeam[],
+  onSave: (team1Id: number, team2Id: number) => Promise<void>,
+  conferenceOf?: ConferenceOf
+) {
   const isNew = target.kind === "new";
   const row = target.kind === "edit" ? target.row : null;
   const [a, setA] = useState<number | "">(row ? row.teamAId : "");
@@ -190,7 +199,7 @@ function usePairForm(target: PairTarget, rows: TableRow[], teams: LeagueTeam[], 
   const nameOf = (id: number) => names.get(id) ?? `#${id}`;
   // the bye, the league's teams, and the table's own teams when they aren't (any more) on the list
   const ids = new Set([BYE_TEAM_ID, ...teams.map((t) => t.id), ...(row ? [row.teamAId, row.teamBId] : [])]);
-  const options: PairOption[] = Array.from(ids, (id) => ({id, name: nameOf(id)}))
+  const options: PairOption[] = Array.from(ids, (id) => ({id, name: nameOf(id), conference: conferenceOf && !isByeTeam(id) ? conferenceOf(id) : undefined}))
     .filter((o) => !isNew || !seatOf(o.id))
     .sort((x, y) => Number(isByeTeam(y.id)) - Number(isByeTeam(x.id)) || x.name.localeCompare(y.name, "hr"))
     .map((o) => {
@@ -278,6 +287,8 @@ function TeamPickField({label, value, options, onPick}: {label: string; value: n
   const [hi, setHi] = useState(0);
   const closeTimer = useRef<number | undefined>(undefined);
   const picked = options.find((o) => o.id === value);
+  // the picked team's dot, at the field's end while it shows the team (not while searching)
+  const pickedDot = query === null && picked ? conferenceDot(picked.conference) : undefined;
   const hits = open ? options.filter((o) => matchesQuery(o.name, query ?? "")) : [];
   const pick = (o: PairOption) => {
     window.clearTimeout(closeTimer.current);
@@ -340,7 +351,7 @@ function TeamPickField({label, value, options, onPick}: {label: string; value: n
             border: `1.5px solid ${open ? color.navy : color.border}`,
             background: color.paper2,
             pl: "42px",
-            pr: "12px",
+            pr: pickedDot !== undefined ? "34px" : "12px",
             fontFamily: "inherit",
             fontSize: 16,
             fontWeight: 600,
@@ -350,6 +361,9 @@ function TeamPickField({label, value, options, onPick}: {label: string; value: n
             "&::placeholder": {color: color.muted, fontWeight: 500},
           }}
         />
+        {pickedDot !== undefined && (
+          <TeamDot color={pickedDot} size={10} label={picked?.conference?.name} sx={{position: "absolute", right: "14px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none"}} />
+        )}
       </Box>
       <Box
         component="ul"
@@ -370,9 +384,7 @@ function TeamPickField({label, value, options, onPick}: {label: string; value: n
             onMouseEnter={() => setHi(i)}
             sx={{minHeight: 44, display: "flex", alignItems: "center", gap: "8px", px: "10px", borderRadius: "10px", cursor: "pointer", background: i === hi ? color.paper : "transparent", fontSize: 15, fontWeight: 600}}
           >
-            <Box component="span" sx={{flex: 1, minWidth: 0, ...ellipsis}}>
-              {o.name}
-            </Box>
+            <TeamLabel name={o.name} conference={o.conference} sx={{flex: 1}} />
             {o.sub && (
               <Box component="span" sx={{flex: "none", fontSize: 13, fontWeight: 600, color: color.muted}}>
                 {o.sub}
@@ -394,6 +406,7 @@ export function PairDialog({
   roundLabel,
   onClose,
   onSave,
+  conferenceOf,
 }: {
   target: PairTarget;
   rows: TableRow[];
@@ -401,8 +414,10 @@ export function PairDialog({
   roundLabel: string;
   onClose: () => void;
   onSave: (team1Id: number, team2Id: number) => Promise<void>;
+  // the league's conferences: a dot before each team (left out: none)
+  conferenceOf?: ConferenceOf;
 }) {
-  const f = usePairForm(target, rows, teams, onSave);
+  const f = usePairForm(target, rows, teams, onSave, conferenceOf);
   const titleId = useId();
   return (
     <Dialog
@@ -449,21 +464,25 @@ export function PairSheet({
   teams,
   onClose,
   onSave,
+  conferenceOf,
 }: {
   target: PairTarget;
   rows: TableRow[];
   teams: LeagueTeam[];
   onClose: () => void;
   onSave: (team1Id: number, team2Id: number) => Promise<void>;
+  // the league's conferences: a dot before each team (left out: none)
+  conferenceOf?: ConferenceOf;
 }) {
-  const f = usePairForm(target, rows, teams, onSave);
+  const f = usePairForm(target, rows, teams, onSave, conferenceOf);
   const [picking, setPicking] = useState<0 | 1 | null>(null);
   const [query, setQuery] = useState("");
   const title = f.isNew ? "Novi stol" : `Stol ${f.row!.table} · uredi par`;
   const value = [f.a, f.b] as const;
   const set = [f.setA, f.setB] as const;
   const hits = f.options.filter((o) => matchesQuery(o.name, query));
-  const nameOf = (id: number | "") => f.options.find((o) => o.id === id)?.name ?? null;
+  const optionOf = (id: number | "") => f.options.find((o) => o.id === id);
+  const nameOf = (id: number | "") => optionOf(id)?.name ?? null;
 
   if (picking != null) {
     return (
@@ -489,9 +508,7 @@ export function PairSheet({
                     }}
                     sx={{...buttonBase, width: "100%", minHeight: 52, display: "flex", alignItems: "center", gap: "10px", px: "16px", textAlign: "left", fontSize: 16, fontWeight: 600, color: color.ink}}
                   >
-                    <Box component="span" sx={{flex: 1, minWidth: 0, ...ellipsis}}>
-                      {o.name}
-                    </Box>
+                    <TeamLabel name={o.name} conference={o.conference} sx={{flex: 1}} />
                     {o.sub && (
                       <Box component="span" sx={{flex: "none", fontSize: 13, color: color.muted}}>
                         {o.sub}
@@ -540,9 +557,7 @@ export function PairSheet({
             }}
           >
             <SearchRoundedIcon aria-hidden />
-            <Box component="span" sx={{flex: 1, minWidth: 0, ...ellipsis}}>
-              {nameOf(value[i]) ?? "Odaberi ekipu"}
-            </Box>
+            <TeamLabel name={nameOf(value[i]) ?? "Odaberi ekipu"} conference={optionOf(value[i])?.conference} sx={{flex: 1}} />
           </Box>
         </Box>
       ))}

@@ -18,6 +18,7 @@ import LiveRoundSponsors from "@/app/_ui/sponsors/LiveRoundSponsors";
 import useAuthStore from "@/app/_store/authStore";
 import {useDailyData, useRoundDates} from "@/app/_hooks/useStandings";
 import {leagueNightString} from "@/app/_lib/dates";
+import {ConferenceOf} from "@/app/_lib/conferences";
 import {inConference, splitPodium, standingsTeamHref, toStandingsRows} from "@/app/_lib/ui/standings";
 import {filterTables, liveCount, splitColumns, TableFilter, tableColumns, TableRow, toTableRows} from "@/app/_lib/ui/tables";
 import {ConferenceFilter} from "@/app/_ui/league/ConferenceFilter";
@@ -192,6 +193,7 @@ export default function DailyStandings() {
               title={`Kolo ${tab}`}
               rows={roundRows}
               admin={isAdmin ? {leagueId, date: date || "", roundNumber: tab, onChanged: daily.refresh} : null}
+              conferenceOf={conferences.of}
             />
           )}
         </Box>
@@ -280,7 +282,7 @@ export default function DailyStandings() {
       )}
 
       {adminPhone && phoneEdit.edits.pair && (
-        <PairSheet target={phoneEdit.edits.pair} rows={roundRows} teams={phoneEdit.teams ?? []} onClose={() => phoneEdit.edits.setPair(null)} onSave={phoneEdit.edits.savePair} />
+        <PairSheet target={phoneEdit.edits.pair} rows={roundRows} teams={phoneEdit.teams ?? []} onClose={() => phoneEdit.edits.setPair(null)} onSave={phoneEdit.edits.savePair} conferenceOf={conferences.of} />
       )}
       {adminPhone && (
         <ConfirmSheet
@@ -451,8 +453,9 @@ function DesktopNightTable({rows, date, scroller}: {rows: ReturnType<typeof toSt
 
 // Desktop round view: every table at once, in 1–3 columns, with status filters and a search. One column while every
 // table fits the height on screen, so a short round reads straight down.
-// admin: edit mode (re-pair, remove and add tables), and every table opens its scorepad
-function DesktopRound({title, rows, admin}: {title: string; rows: ReturnType<typeof toTableRows>; admin: RoundAdmin | null}) {
+// admin: edit mode (re-pair, remove and add tables), and every table opens its scorepad. conferenceOf: the league's
+// conferences, for the dots in the pair dialog's team lists
+function DesktopRound({title, rows, admin, conferenceOf}: {title: string; rows: ReturnType<typeof toTableRows>; admin: RoundAdmin | null; conferenceOf: ConferenceOf}) {
   const [filter, setFilter] = useState<TableFilter>("all");
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState(false);
@@ -556,7 +559,7 @@ function DesktopRound({title, rows, admin}: {title: string; rows: ReturnType<typ
         )}
       </Box>
       {pair && admin && (
-        <PairDialog target={pair} rows={rows} teams={leagueTeams ?? []} roundLabel={title} onClose={() => setPair(null)} onSave={savePair} />
+        <PairDialog target={pair} rows={rows} teams={leagueTeams ?? []} roundLabel={title} onClose={() => setPair(null)} onSave={savePair} conferenceOf={conferenceOf} />
       )}
     </Box>
   );
