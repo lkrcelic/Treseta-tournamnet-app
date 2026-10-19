@@ -9,7 +9,7 @@ own; everything else is kept identical to Bela.
 | | |
 |---|---|
 | Bela branch | `development`, read through the remote `bela` (the local Bela repo). Only commits come over, never Bela's uncommitted work |
-| Last synced Bela commit | `91f1537` (16 Oct 2026) |
+| Last synced Bela commit | `b6cd20c` (19 Oct 2026) |
 | Waiting in Bela | Nothing settled ahead (see [Bela's work waiting to come over](#belas-work-waiting-to-come-over)) |
 | Target branch | `master` |
 | Sync branch | `bela-sync` in the repo itself (no worktree): created from `master`, or rebased onto it, by every run |
@@ -78,7 +78,7 @@ Treseta directly only for what has to differ, and add it below.
 
 ## Bela's work waiting to come over
 
-Nothing: every Bela commit up to `91f1537` (16 Oct 2026) came over by 17 Oct 2026, and what lasts from the decisions
+Nothing: every Bela commit up to `b6cd20c` (19 Oct 2026) came over by 19 Oct 2026, and what lasts from the decisions
 settled for them is under Differences. Decisions for Bela work that touches Treseta's differences before it comes
 over go here.
 
@@ -145,10 +145,10 @@ winner (`Match.winner_side`); everything else is worked out by replaying the han
 
 | File | Treseta's |
 |---|---|
-| `_lib/brand.ts` (Treseta only) | "Trešeta Liga" and its accusative, no line above the name (Bela: "Piatnik"), the app icon's path (`icon`) and the transparent logo's (`logo`) |
-| `layout.tsx`, `global-error.tsx`, `_ui/auth/AuthFrame.tsx`, `_ui/sp/DesktopShell.tsx`, `_ui/sp/PageMessage.tsx`, `_ui/profiles/PageParts.tsx`, `_ui/install/InstallSheet.tsx`, `_hooks/useLeagues.ts`, `league/[leagueId]/standings/page.tsx` (two comments) | Bela's "Bela Liga", "Piatnik Bela Liga", "Piatnik" and "BL" read from `BRAND` (the Brand block shows no eyebrow while `BRAND.eyebrow` is empty). The install sheet's `AppIcon` draws the logo from `BRAND.icon` where Bela draws "BL" on navy. `AuthFrame.tsx`'s `Brand` puts `BRAND.logo` before the name (login, sign-up, Početna): on login the name is set in two lines and the logo is as tall as both |
+| `_lib/brand.ts` (Treseta only) | "Trešeta Liga" and its accusative, no line above the name (Bela: "Piatnik"), the app icon's path (`icon`) and the transparent logo's (`logo`; Bela: the bell, `public/bell.webp`) |
+| `layout.tsx`, `global-error.tsx`, `_ui/auth/AuthFrame.tsx`, `_ui/sp/DesktopShell.tsx`, `_ui/sp/PageMessage.tsx`, `_ui/profiles/PageParts.tsx`, `_ui/install/InstallSheet.tsx`, `_ui/home/PhoneHome.tsx` (three comments), `_hooks/useLeagues.ts`, `league/[leagueId]/standings/page.tsx` (two comments) | Bela's "Bela Liga", "Piatnik Bela Liga", "Piatnik" and "BL" read from `BRAND` (the Brand block shows no eyebrow while `BRAND.eyebrow` is empty); the install sheet's titles and texts read `BRAND.name` and `BRAND.nameAccusative`. The install sheet's `AppIcon` draws `BRAND.icon` on cream where Bela draws `/icons/icon-192.png` (its bell). `AuthFrame.tsx`'s `Brand` puts `BRAND.logo` before the name (login, sign-up, Početna) where Bela puts the bell: on login the name is set in two lines and the logo is as tall as both. Početna's comments say logo where Bela's say bell |
 | `public/manifest.webmanifest` (root) | `name`, `short_name`, `description`, and the maskable icon `icon-maskable-512.png` |
-| `public/icons/*`, `public/logo.png`, `src/app/favicon.ico`, `src/app/icon.png` (root) | Treseta's flower logo (blue and yellow petals in a black ring), not Bela's "BL": `icon-192.png` and `icon-512.png` on a transparent background, `icon-maskable-512.png` and `apple-touch-icon.png` on the cream `#F5F2EA`; `logo.png`, `favicon.ico` and `icon.png` (the browser tab's, which Next links with a version) transparent. A Bela change to its icons is dropped |
+| `public/icons/*`, `public/logo.png`, `src/app/favicon.ico`, `src/app/icon.png` (root) | Treseta's flower logo (blue and yellow petals in a black ring), not Bela's "BL": `icon-192.png` and `icon-512.png` on a transparent background, `icon-maskable-512.png` and `apple-touch-icon.png` on the cream `#F5F2EA`; `logo.png`, `favicon.ico` and `icon.png` (the browser tab's, which Next links with a version) transparent. A Bela change to its icons is dropped, and Bela's bell (`public/bell.webp`) is not copied |
 
 New Bela text with the app's name or the sponsor uses `BRAND` here, and its file joins this table. Example league
 names in Bela's tests and comments stay as they are, and `_lib/navStack.ts`'s storage key `bela.navStack` stays Bela's:
@@ -184,11 +184,11 @@ edit:
 |---|---|
 | `_interfaces/league.ts`, `_lib/service/league/leagues.ts`, `_fetchers/league/leagues.ts`, `_hooks/useLeagueTeams.ts`, `api/leagues/[id]/teams/[teamId]/route.ts`, `_ui/admin/LeaguePhone.tsx` | Create League takes conferences; a league's team list has each team's `conference_id`, and the team PATCH sets it (a team added on the phone's league screen starts with `conferenceId: null`) |
 | `_interfaces/round.ts`, `api/rounds/generate-multiple/route.ts`, `_fetchers/round/createMultipleRounds.ts`, `_ui/round/CreateRound.tsx` | Create Round (desktop): the "Samo unutar konferencija" switch (`withinConferences`, under Rounds and Window, next to the smoking tables; the fetcher sends it after `smokingTables`) and the team list's dots. The switch is local state, off for every league, outside Bela's saved Novo kolo draft; `useCreateRound` also returns `hasConferences`, `withinConferences` and `setWithinConferences` for the phone. The route pairs (by conference when asked), checks repeats, then Bela's `seatRounds` only places the pairs at tables |
-| `_ui/admin/CreateRoundPhone.tsx`, `_ui/admin/DraftPhone.tsx` | The admin's phone: Novo kolo has the "Samo unutar konferencija" switch under the window, and Skica kola the teams' dots |
+| `_ui/admin/CreateRoundPhone.tsx`, `_ui/admin/DraftPhone.tsx` | The admin's phone: Novo kolo has the "Samo unutar konferencija" switch under the window, and Skica kola the teams' dots (its rows from `draftTableRows` with the league's conferences) |
 | `_lib/matching/multipleRoundMatching.ts` | `generateGroupedRoundPairings` at the end of the file, which pairs every conference on its own with the unchanged pairing; a conference with too few teams throws `InvalidResultError` (a 400) |
 | `api/rounds/open/route.ts`, `_fetchers/round/getOpenByPlayerId.ts`, `_hooks/useOpenTable.ts`, `_ui/home/PhoneHome.tsx` | The Start Game card shows the two teams' conference colors (green and red in a league without conferences) |
-| `_lib/ui/standings.ts`, `_lib/ui/tables.ts`, `_ui/sp/Standings.tsx`, `_ui/sp/Controls.tsx`, `_ui/sp/index.ts`, `_lib/__tests__/conferences.test.ts` | Standings and table rows carry each team's conference (`conferenceOf` is a field of `toStandingsRows`' options; `toTableRows` has it as a third parameter), the standings draw its dot before the linked name, a tab item can have a dot, and the kit exports `TeamDot` |
-| `league/[leagueId]/daily-standings/page.tsx`, `league/[leagueId]/daily-standings/ui/RoundTables.tsx`, `league/[leagueId]/standings/page.tsx`, `_ui/home/DesktopHome.tsx`, `league/[leagueId]/manage/DraftView.tsx` | The dots (also on Skica's tables, which replaced the pairings page), and the conference filter on Daily's night table and League standings. Ukupni poredak's +/− shows on the whole league's table only, not in a conference's view |
+| `_lib/ui/standings.ts`, `_lib/ui/tables.ts`, `_ui/sp/Standings.tsx`, `_ui/sp/Controls.tsx`, `_ui/sp/index.ts`, `_lib/__tests__/conferences.test.ts` | Standings and table rows carry each team's conference (`conferenceOf` is a field of `toStandingsRows`' options; `toTableRows` has it as a third parameter, `draftTableRows` as a second), the standings draw its dot before the linked name (after the team's avatar, on the podium cards, the phone rows and the desktop table), a tab item can have a dot, and the kit exports `TeamDot` |
+| `league/[leagueId]/daily-standings/page.tsx`, `league/[leagueId]/daily-standings/ui/RoundTables.tsx`, `league/[leagueId]/standings/page.tsx`, `_ui/home/DesktopHome.tsx`, `league/[leagueId]/manage/DraftView.tsx` | The dots (also on Skica's tables, which replaced the pairings page, in and out of Uredi stolove; at a published round's tables the phone puts the avatar before the dot and name, and the desktop row puts the avatars next to the score with the dots just outside them), and the conference filter on Daily's night table and League standings. Ukupni poredak's +/− shows on the whole league's table only, not in a conference's view |
 | `league/new/page.tsx`, `league/[leagueId]/manage/page.tsx`, `league/[leagueId]/manage/LeagueDetailsView.tsx` | Nova liga's Conferences switch and editor before Okupljanje (and their count in its summary); Upravljanje ligom's team picker, filter and Distribute card (Podaci shows the conferences card as its `aside`, under Okupljanje in the right column) |
 
 The database part (the `Conference` table and `LeagueTeam.conference_id`) is under Database.
@@ -213,6 +213,7 @@ The database part (the `Conference` table and `LeagueTeam.conference_id`) is und
 
 ### Not copied from Bela
 
+- `public/bell.webp`, Bela's bell (see Branding).
 - `.env` (Bela tracks it; here it is ignored), `next-env.d.ts` (ignored here), `.idea/`, `bela-tournament-app.zip`,
   `tmp-file.ts`, `skills-lock.json`, `backups/`, `.claude/`.
 - Bela's documents: `PLAN.md`, `DECISIONS.md`, `BACKEND_REVIEW.md`, `REFINEMENTS.md`, `TEST_REPORT.md`, `BLOCKERS.md`,
@@ -246,3 +247,4 @@ The nightly sync adds a row when it brings something over or stops.
 | 14 Oct 2026 | `4bf68ad..e39abc1` (45) | 41 came over, 3 skipped (decision logs, Burza test data), the Frankfurt merge already here; 7 migrations, untested |
 | 16 Oct 2026 | `b9afd0e..07a790f` (14) | Bela's history was rewritten (`e39abc1` is now `b9afd0e`, same tree). All 14 came over: the admin's phone screens, with Treseta's hands on TablePhone and the conference switch and dots on the phone; 2 migrations (`create_round_draft`, `night_location`) |
 | 17 Oct 2026 | `07a790f..91f1537` (1) | Sponsors came over (Sponzori under Admin, a league's Sponzori tab, logos on Početna and a live round), the conference code kept around Upravljanje ligom's new tab; 1 migration (`sponsors`) |
+| 19 Oct 2026 | `91f1537..b6cd20c` (15) | 13 came over, 2 skipped (Bela's bell icons): sponsor logo backgrounds, shapes and cropping, profile photos for players and teams (avatars in the standings, Rejting and a round's tables, next to the conference dots), the install sheet per browser (Treseta's branding), more rounds a night with Skica A, B, C, Uredi stolove and Slobodna runda (5:0 byes), standings places as numbers; Bela's bell not copied; 4 migrations (`sponsor_background`, `sponsor_background_two`, `profile_photos`, `draft_order`) |
