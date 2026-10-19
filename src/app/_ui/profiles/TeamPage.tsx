@@ -43,9 +43,8 @@ import {teamsList} from "@/app/_hooks/useTeams";
 import {BlockedNote, EditableAvatar, PhotoControls, PhotoInfo, usePhoto, visibilityLabel} from "@/app/_ui/photo/PhotoParts";
 import {PhotoSheet} from "@/app/_ui/photo/PhotoSheet";
 import {PhotoDialog} from "@/app/_ui/photo/PhotoDialog";
-import {PhotoAdminCard} from "@/app/_ui/photo/PhotoAdmin";
+import {PhotoAdminBadge, PhotoAdminCard} from "@/app/_ui/photo/PhotoAdmin";
 import {
-  ColumnWithFooter,
   DesktopFrame,
   heroAvatarSize,
   HeroCard,
@@ -98,7 +97,8 @@ function useTeamPhoto(overview: Overview<TeamOverview>) {
 }
 
 // rename: the admin's pencil next to the name (desktop). photo: the team's player changes the photo from its avatar
-// (the camera badge; onPhoto opens the sheet or the dialog).
+// (the camera badge; onPhoto opens the sheet or the dialog). adminPhoto: the computer's admin badge on the photo
+// (PhotoAdminBadge), which takes the camera badge's place; an admin in the team still changes the photo by clicking it.
 function Hero({
   team,
   desktop,
@@ -106,6 +106,7 @@ function Hero({
   rename,
   photo,
   onPhoto,
+  adminPhoto,
 }: {
   team: TeamOverview;
   desktop: boolean;
@@ -113,6 +114,7 @@ function Hero({
   rename?: NameEditing;
   photo?: PhotoControls;
   onPhoto?: () => void;
+  adminPhoto?: React.ReactNode;
 }) {
   const focus = useNameFocus(rename?.editing ?? false);
   const letters = teamInitial(team.team.name);
@@ -132,7 +134,7 @@ function Hero({
             letters={letters}
             src={photo.info.photo_url}
             size={heroAvatarSize(desktop, short)}
-            badge={desktop && short ? 24 : 28}
+            badge={adminPhoto ? 0 : desktop && short ? 24 : 28}
             hover={desktop}
             blocked={blocked}
             label={photo.info.photo_url ? "Promijeni sliku ekipe" : "Dodaj sliku ekipe"}
@@ -142,6 +144,7 @@ function Hero({
           />
         ) : undefined
       }
+      avatarOverlay={adminPhoto}
       title={team.team.name}
       titleEditor={rename?.editing ? <TeamNameInput edit={rename} short={short} inputRef={focus.inputRef} /> : undefined}
       nameTag={rename ? <NameButton edit={rename} short={short} onStart={rename.start} buttonRef={focus.buttonRef} /> : undefined}
@@ -195,7 +198,6 @@ export function TeamPagePhone({teamId}: {teamId: number}) {
               name={team.team.name}
               letters={teamInitial(team.team.name)}
               info={photo.info}
-              phone
               onChange={(next) => overview.setData((d) => ({...d, photo: {...d.photo, ...next}}))}
             />
           )}
@@ -486,18 +488,21 @@ export function TeamPageDesktop({teamId, embedded = false}: {teamId: number; emb
     <DesktopFrame embedded={embedded} short={short} nav={nav}>
       {team ? (
         <>
-          <Hero team={team} desktop short={short} rename={admin?.rename} photo={photo} onPhoto={() => setPhotoOpen(true)} />
-          <TeamColumns
+          <Hero
             team={team}
-            admin={admin}
-            footer={
+            desktop
+            short={short}
+            rename={admin?.rename}
+            photo={photo}
+            onPhoto={() => setPhotoOpen(true)}
+            adminPhoto={
               admin && (
-                <PhotoAdminCard
+                <PhotoAdminBadge
+                  size={short ? 24 : 30}
                   target={{kind: "team", id: team.team.id}}
                   name={team.team.name}
                   letters={teamInitial(team.team.name)}
                   info={photo.info}
-                  phone={false}
                   onChange={(next) => {
                     overview.setData((d) => ({...d, photo: {...d.photo, ...next}}));
                     teamsList.update((list) => list.map((t) => (t.id === team.team.id ? {...t, photo_url: next.photo_url} : t)));
@@ -506,6 +511,7 @@ export function TeamPageDesktop({teamId, embedded = false}: {teamId: number; emb
               )
             }
           />
+          <TeamColumns team={team} admin={admin} />
           {photoOpen && <PhotoDialog kind="team" photo={photo} onClose={() => setPhotoOpen(false)} />}
         </>
       ) : (
@@ -516,15 +522,12 @@ export function TeamPageDesktop({teamId, embedded = false}: {teamId: number; emb
 }
 
 // The three columns under the header card (13f, 13h; 13o for Nova ekipa, which passes its own empty texts)
-// footer: a card under Zadnje večeri (the admin's Slika ekipe)
-export function TeamColumns({team, admin, empty = EMPTY, footer}: {team: TeamOverview; admin: TeamAdmin | null; empty?: EmptyText; footer?: React.ReactNode}) {
+export function TeamColumns({team, admin, empty = EMPTY}: {team: TeamOverview; admin: TeamAdmin | null; empty?: EmptyText}) {
   return (
     <PageColumns template={TEAM_GRID} stackedTemplate={TEAM_STACKED_GRID}>
       <DesktopPlayers team={team} admin={admin} empty={empty.players} />
       <DesktopLeagues team={team} admin={admin} empty={empty.leagues} />
-      <ColumnWithFooter footer={footer}>
-        <DesktopNights nights={team.nights} empty={empty.nights} />
-      </ColumnWithFooter>
+      <DesktopNights nights={team.nights} empty={empty.nights} />
     </PageColumns>
   );
 }

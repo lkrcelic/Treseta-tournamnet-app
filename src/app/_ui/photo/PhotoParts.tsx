@@ -154,7 +154,8 @@ export type PhotoControls = ReturnType<typeof usePhoto>;
 
 // The avatar a player (or a team's player) changes: the camera badge in its bottom right corner (28 px on the phone,
 // 34 px on the computer, navy with a cream ring) and, on the computer, a dark layer with the camera and "Promijeni"
-// under the pointer. blocked: an admin has stopped new photos, so there is no badge (a tap tells why).
+// under the pointer. blocked: an admin has stopped new photos, so there is no badge (a tap tells why). badge 0: none
+// (the admin's badge takes its place on the computer's Team page).
 export function EditableAvatar({
   name,
   letters,
@@ -223,7 +224,7 @@ export function EditableAvatar({
           Promijeni
         </Box>
       )}
-      {!blocked && (
+      {!blocked && badge > 0 && (
         <Box
           component="span"
           aria-hidden

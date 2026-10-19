@@ -116,18 +116,6 @@ export function DesktopFrame({
 // The header card's avatar: 64 on the phone, 76 on the computer (48 in a short window)
 export const heroAvatarSize = (desktop: boolean, short = false) => (desktop ? (short ? 48 : 76) : 64);
 
-// A desktop column with a card under its column card (the admin's photo block under Zadnje večeri, A4): the column
-// card keeps the rest of the height and scrolls in it
-export function ColumnWithFooter({children, footer}: {children: React.ReactNode; footer: React.ReactNode}) {
-  if (!footer) return <>{children}</>;
-  return (
-    <Box sx={{minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column", gap: "18px", "& > :first-of-type": {flex: "1 1 auto", minHeight: 0}}}>
-      {children}
-      {footer}
-    </Box>
-  );
-}
-
 // The three columns of a desktop page under its header card, each scrolling on its own (P:204). Stacked (in a narrow
 // directory frame, see DirectoryFrame) the first keeps a column of its own and the other two share the second column,
 // which scrolls as a whole: both cards are as high as all they hold (WholeColumnContext), one under the other, and the
@@ -225,7 +213,8 @@ const phoneTitleSize = (title: string) => `clamp(22px, calc(100cqi / ${Math.max(
 // takes the name's place while an admin renames the team (the pencil and ✓ come in nameTag; the name stays as a
 // heading for screen readers). The name is the page's h1, or an h2 under the "Ekipe"/"Igrači" h1 of the admin's
 // directory. avatar replaces the initials circle (a team's photo with its camera badge for the team's players);
-// avatarSrc is the photo in the plain circle.
+// avatarSrc is the photo in the plain circle. avatarOverlay sits on the circle (the admin's photo badge, which places
+// itself on its lower right).
 export function HeroCard({
   desktop = false,
   short = false,
@@ -233,6 +222,7 @@ export function HeroCard({
   avatarLetters,
   avatarSrc,
   avatar: avatarNode,
+  avatarOverlay,
   title,
   titleEditor,
   nameTag,
@@ -247,6 +237,7 @@ export function HeroCard({
   avatarLetters?: string;
   avatarSrc?: string | null;
   avatar?: React.ReactNode;
+  avatarOverlay?: React.ReactNode;
   title: string;
   titleEditor?: React.ReactNode;
   nameTag?: React.ReactNode;
@@ -277,9 +268,12 @@ export function HeroCard({
     >
       {phoneTag && <Box sx={{display: "flex", justifyContent: "flex-end", mr: "-6px", mb: "-12px"}}>{cornerTag}</Box>}
       <Box sx={{display: "flex", alignItems: "center", gap: desktop ? (short ? "14px" : "18px") : "14px", minWidth: 0}}>
-        {avatarNode ?? (
-          <ViewableAvatar kind={avatarLetters ? "team" : "player"} name={avatarName} letters={avatarLetters} src={avatarSrc} size={avatar} sx={desktop ? {fontSize: short ? 20 : 28} : undefined} />
-        )}
+        <Box sx={{position: "relative", flex: "none", display: "flex"}}>
+          {avatarNode ?? (
+            <ViewableAvatar kind={avatarLetters ? "team" : "player"} name={avatarName} letters={avatarLetters} src={avatarSrc} size={avatar} sx={desktop ? {fontSize: short ? 20 : 28} : undefined} />
+          )}
+          {avatarOverlay}
+        </Box>
         {/* the field (and a note under it) and its ✓ line up at the top; the ✓ centres itself on the field. On the phone
             the box is the name's size container (phoneTitleSize) */}
         <Box
