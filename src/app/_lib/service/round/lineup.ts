@@ -2,18 +2,20 @@ import {prisma} from "@/app/_lib/prisma";
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {z} from "zod";
-import {defaultLineup, PLAYERS_PER_TEAM} from "@/app/_lib/lineup";
+import {defaultLineup, lineupPool, PLAYERS_PER_TEAM} from "@/app/_lib/lineup";
 import {displayName, fullName} from "@/app/_lib/players/names";
 import {lineupVisible, Viewer} from "@/app/_lib/players/privacy";
 import {ROUND_NOT_PUBLISHED} from "@/app/_lib/roundStatus";
 import {PLAYER_PHOTO, photoContext} from "@/app/_lib/service/players/photos";
+import {isRatedRound, replayRatings} from "@/app/_lib/service/admin/recalc";
 
 // Who plays a round: two players from each team, picked on Start Game before the scoreboard opens. Ratings of the
 // round go to these players (rounds without a lineup rate the whole roster). A deactivated player isn't offered or
 // picked: when a lineup saved before the deactivation names them, the open round's screen puts an active teammate in
-// their place, so it can be confirmed again (a finished round keeps what was saved). The members' usernames go to the
-// players of the round while it is open (design 7c shows them under the names); a finished round's lineup only to
-// admins (lineupVisible).
+// their place, so it can be confirmed again. An admin confirms it again every time they open a table's scorepad, a
+// finished one too: there the saved players stay on offer (deactivated or off the team since), and a change replays
+// the ratings. The members' usernames go to the players of the round while it is open (design 7c shows them under the
+// names); a finished round's lineup only to admins (lineupVisible).
 
 export const ROUND_FINISHED = "Ova runda je već završena.";
 
@@ -27,6 +29,8 @@ export type LineupTeam = {
   mine: boolean;
   members: LineupMember[];
   selected: number[];
+  // the players saved for this team now (none before the lineup is confirmed)
+  saved: number[];
   // how many players must be picked: two, or the whole roster when it is smaller
   needed: number;
 };
@@ -37,6 +41,8 @@ export type Lineup = {
   roundNumber: number | null;
   // a lineup was confirmed for this round already
   saved: boolean;
+  // the round is over: a change goes into its ratings
+  finished: boolean;
   teams: [LineupTeam, LineupTeam];
 };
 
@@ -47,12 +53,14 @@ export const LineupSaveValidation = z.object({
 });
 export type LineupSave = z.infer<typeof LineupSaveValidation>;
 
+const lineupPlayerSelect = {id: true, first_name: true, last_name: true, username: true, active: true, ...PLAYER_PHOTO} as const;
+
 const teamSelect = {
   team_id: true,
   team_name: true,
   founder_id1: true,
   founder_id2: true,
-  teamPlayers: {select: {player: {select: {id: true, first_name: true, last_name: true, username: true, active: true, ...PLAYER_PHOTO}}}},
+  teamPlayers: {select: {player: {select: lineupPlayerSelect}}},
 } as const;
 
 // "finished": a player asking for a round that is over (the route answers 403 with ROUND_FINISHED)
@@ -67,7 +75,7 @@ export async function getLineup(roundId: number, viewer: Viewer): Promise<Lineup
       team1: {select: teamSelect},
       team2: {select: teamSelect},
       leagueRounds: {select: {league_id: true}},
-      roundPlayers: {select: {player_id: true, team_id: true}},
+      roundPlayers: {select: {player_id: true, team_id: true, player: {select: lineupPlayerSelect}}},
     },
   });
   if (!round) throw new NotFoundError("Runda ne postoji.");
@@ -78,30 +86,31 @@ export async function getLineup(roundId: number, viewer: Viewer): Promise<Lineup
   const leagueId = round.leagueRounds[0]?.league_id ?? null;
 
   const team = async (t: typeof round.team1): Promise<LineupTeam> => {
-    const savedIds = round.roundPlayers.filter((p) => p.team_id === t.team_id).map((p) => p.player_id);
+    const savedRows = round.roundPlayers.filter((p) => p.team_id === t.team_id);
+    const savedIds = savedRows.map((p) => p.player_id);
     const roster = activeRoster(t.teamPlayers.map((tp) => tp.player));
-    // a finished round can't be changed: it shows who played, deactivated or not
-    const shown = (p: {id: number; active: boolean}) => p.active || (!round.open && savedIds.includes(p.id));
-    const members = t.teamPlayers
-      .map(({player: p}) => p)
-      .filter(shown)
+    const pool = lineupPool(roster, savedIds, round.open);
+    // a finished round also offers who played it: deactivated since, or no longer on the team
+    const players = [...t.teamPlayers.map((tp) => tp.player), ...savedRows.map((p) => p.player)];
+    const members = players
+      .filter((p, i) => pool.includes(p.id) && players.findIndex((q) => q.id === p.id) === i)
       .map((p) => ({id: p.id, name: fullName(p), username: p.username, photo_url: photos.player(p)}))
       .sort((a, b) => a.name.localeCompare(b.name, "hr"));
     const founders = [t.founder_id1, t.founder_id2];
-    // an open round's saved lineup keeps its active players and is topped up from the roster (saveLineup accepts
-    // only active players, as many as `needed`)
-    const selected = !saved
-      ? defaultLineup(roster, await lastLineup(t.team_id, leagueId, roundId), founders)
-      : round.open
-        ? defaultLineup(roster, savedIds, founders)
-        : savedIds;
+    // a saved lineup keeps its players (an open round's only the active ones) and is topped up from the roster
+    // (saveLineup accepts as many as `needed`); a finished round without one starts from the founders, as its whole
+    // roster (the old rating freeze) does
+    const selected = saved || !round.open
+      ? defaultLineup(pool, savedIds, founders)
+      : defaultLineup(roster, await lastLineup(t.team_id, leagueId, roundId), founders);
     return {
       id: t.team_id,
       name: t.team_name,
       mine: t.teamPlayers.some((tp) => tp.player.id === viewer.id),
       members,
       selected,
-      needed: Math.min(PLAYERS_PER_TEAM, roster.length),
+      saved: savedIds,
+      needed: Math.min(PLAYERS_PER_TEAM, pool.length),
     };
   };
 
@@ -110,6 +119,7 @@ export async function getLineup(roundId: number, viewer: Viewer): Promise<Lineup
     table: round.table_number,
     roundNumber: round.round_number,
     saved,
+    finished: !round.open,
     teams: [await team(round.team1), await team(round.team2)],
   };
 }
@@ -140,8 +150,9 @@ export async function hasLineup(roundId: number): Promise<boolean> {
 const savePlayerSelect = {id: true, active: true, first_name: true, last_name: true} as const;
 
 // Saves (or replaces) the round's lineup: each team's players must be on its roster and active, two of them or the
-// whole (active) roster
-export async function saveLineup(roundId: number, lineup: LineupSave): Promise<void> {
+// whole (active) roster. An admin can also correct a finished round's, where the players saved for it count as on the
+// roster; its ratings are replayed with the new lineup.
+export async function saveLineup(roundId: number, lineup: LineupSave, {admin = false}: {admin?: boolean} = {}): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const round = await tx.round.findUnique({
       where: {id: roundId},
@@ -152,24 +163,28 @@ export async function saveLineup(roundId: number, lineup: LineupSave): Promise<v
         team2_id: true,
         team1: {select: {teamPlayers: {select: {player: {select: savePlayerSelect}}}}},
         team2: {select: {teamPlayers: {select: {player: {select: savePlayerSelect}}}}},
+        roundPlayers: {select: {player_id: true, team_id: true}},
       },
     });
     if (!round) throw new NotFoundError("Runda ne postoji.");
-    if (!round.open) throw new InvalidResultError(ROUND_FINISHED);
+    if (!round.open && !admin) throw new InvalidResultError(ROUND_FINISHED);
     // the lineup is confirmed when the round is played, which waits for it to be published
     if (round.status !== "PUBLISHED") throw new InvalidResultError(ROUND_NOT_PUBLISHED);
 
-    // a player deactivated while the screen was open: say who, instead of the count below
-    const inactive = [...round.team1.teamPlayers, ...round.team2.teamPlayers]
-      .map((tp) => tp.player)
-      .find((p) => !p.active && lineup.teams.some((t) => t.player_ids.includes(p.id)));
+    const savedFor = (teamId: number) => round.roundPlayers.filter((p) => p.team_id === teamId).map((p) => p.player_id);
+    // a player deactivated while the screen was open: say who, instead of the count below (a finished round's saved
+    // players can stay)
+    const inactive = [round.team1, round.team2]
+      .flatMap((t, i) => t.teamPlayers.map((tp) => ({player: tp.player, teamId: i === 0 ? round.team1_id : round.team2_id})))
+      .find(({player: p, teamId}) => !p.active && lineup.teams.some((t) => t.team_id === teamId && t.player_ids.includes(p.id)) && (round.open || !savedFor(teamId).includes(p.id)))
+      ?.player;
     if (inactive) {
       throw new InvalidResultError(`${displayName(inactive)} ima deaktiviran račun. Odaberi drugog igrača.`);
     }
 
     const rosters = new Map([
-      [round.team1_id, activeRoster(round.team1.teamPlayers.map((tp) => tp.player))],
-      [round.team2_id, activeRoster(round.team2.teamPlayers.map((tp) => tp.player))],
+      [round.team1_id, lineupPool(activeRoster(round.team1.teamPlayers.map((tp) => tp.player)), savedFor(round.team1_id), round.open)],
+      [round.team2_id, lineupPool(activeRoster(round.team2.teamPlayers.map((tp) => tp.player)), savedFor(round.team2_id), round.open)],
     ]);
     const teamIds = lineup.teams.map((t) => t.team_id);
     if (new Set(teamIds).size !== 2 || !teamIds.every((id) => rosters.has(id))) {
@@ -191,5 +206,7 @@ export async function saveLineup(roundId: number, lineup: LineupSave): Promise<v
 
     await tx.roundPlayer.deleteMany({where: {round_id: roundId}});
     await tx.roundPlayer.createMany({data: rows});
-  });
+    // a finished round's ratings go to its players
+    if (isRatedRound(round)) await replayRatings(tx);
+  }, {timeout: 60000});
 }

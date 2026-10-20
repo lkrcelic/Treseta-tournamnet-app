@@ -9,6 +9,7 @@ import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useShortWindow from "@/app/_hooks/useShortWindow";
 import {blankEntry, EntryState, fromPadHand, toAdminHand} from "@/app/_lib/ui/adminEntry";
 import {dostaCallers, MATCH_THRESHOLD, PlayedHand, Side} from "@/app/_lib/game/scoring";
+import {leaveRoundPages, lineupPassed} from "@/app/_lib/ui/lineupPass";
 import {color, shadow, teamColor, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, CenteredSpinner, DesktopShell, EmptyState, ErrorNote} from "@/app/_ui/sp";
 import {HandList, ScorePanel} from "@/app/ongoing-match/ui/BoardParts";
@@ -71,11 +72,12 @@ function TableScorepadDesktop() {
     if (isAdmin) load();
   }, [isAdmin, load]);
 
-  // a table still to be played: confirm who plays first, as players do on Započni igru (the ratings need it)
-  const needsLineup = pad != null && !pad.done && !pad.bye && !pad.hasLineup;
+  // every time the table is opened, who plays (or played) it first, as players do on Započni igru (the ratings need it)
+  const needsLineup = pad != null && !pad.bye && !lineupPassed(roundId);
   useEffect(() => {
     if (needsLineup) router.replace(`/round/lineup/${roundId}?league=${leagueId}`);
   }, [needsLineup, router, roundId, leagueId]);
+  useEffect(() => () => leaveRoundPages(roundId), [roundId]);
 
   // the matches to choose from; a table still in play without a match running gets the next one to start
   const matches: PadMatch[] = pad ? [...pad.matches] : [];

@@ -1,7 +1,7 @@
 import {NextRequest, NextResponse} from "next/server";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {getLineup, LineupSaveValidation, ROUND_FINISHED, saveLineup} from "@/app/_lib/service/round/lineup";
-import {canPlayRound, notYourRoundResponse, requireUser} from "@/app/_lib/service/auth/requireUser";
+import {canPlayRound, isAdmin, notYourRoundResponse, requireUser} from "@/app/_lib/service/auth/requireUser";
 import {errorResponse} from "@/app/_lib/apiErrors";
 import {isDbId} from "@/app/_lib/helpers/query/dbId";
 
@@ -27,7 +27,8 @@ export async function GET(request: NextRequest, {params}: {params: {id: string}}
   }
 }
 
-// Confirms the lineup (Potvrdi i počni); a player of either team, or an admin, can set it
+// Confirms the lineup (Potvrdi i počni); a player of either team, or an admin, can set it, an admin also for a
+// finished round (Tko igra before a table's scorepad)
 export async function PUT(request: NextRequest, {params}: {params: {id: string}}) {
   const auth = await requireUser(request);
   if (auth.response) return auth.response;
@@ -37,7 +38,7 @@ export async function PUT(request: NextRequest, {params}: {params: {id: string}}
     if (!isDbId(roundId)) return roundNotFound();
     if (!(await canPlayRound(auth.user, roundId))) return notYourRoundResponse();
 
-    await saveLineup(roundId, LineupSaveValidation.parse(await request.json()));
+    await saveLineup(roundId, LineupSaveValidation.parse(await request.json()), {admin: isAdmin(auth.user)});
     return NextResponse.json({message: "Postava je spremljena."}, {status: STATUS.OK});
   } catch (error) {
     return errorResponse(error, "Postava nije spremljena.");

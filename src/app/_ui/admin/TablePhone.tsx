@@ -6,6 +6,7 @@ import {currentMatchNumber, matchSlots, matchTabSub, roundWins, TABLE_MATCHES} f
 import {blankEntry, canSave, clearPoints, EntryState, fromPadHand, manualFields, setActive, toAdminHand, typeDigit} from "@/app/_lib/ui/adminEntry";
 import {dostaCallers, MATCH_THRESHOLD, PlayedHand, Side} from "@/app/_lib/game/scoring";
 import {navigateWithTransition, useTransitionRouter} from "@/app/_lib/viewTransitions";
+import {leaveRoundPages, lineupPassed} from "@/app/_lib/ui/lineupPass";
 import {color, font, shadow, teamColor, tint} from "@/app/_styles/tokens";
 import {
   ActionPair,
@@ -117,12 +118,13 @@ export default function TablePhone() {
     };
   }, [live, load]);
 
-  // a table nobody has started: who plays first, as players do on Započni igru (the ratings need it)
-  const needsLineup = pad != null && !pad.done && !pad.bye && !pad.hasLineup;
+  // every time the table is opened, who plays (or played) it first, as players do on Započni igru (the ratings need it)
+  const needsLineup = pad != null && !pad.bye && !lineupPassed(roundId);
   const lineupHref = `/round/lineup/${roundId}?league=${leagueId}`;
   useEffect(() => {
     if (needsLineup) router.replace(lineupHref);
   }, [needsLineup, router, lineupHref]);
+  useEffect(() => () => leaveRoundPages(roundId), [roundId]);
 
   if (loadError && !pad) {
     return (

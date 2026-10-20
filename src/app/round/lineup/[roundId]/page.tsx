@@ -6,11 +6,14 @@ import useAdminPhone from "@/app/_hooks/useAdminPhone";
 import {MATCH_THRESHOLD} from "@/app/_lib/game/scoring";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import AdminBadge from "@/app/_ui/admin/AdminBadge";
+import {sameLineup} from "@/app/_lib/lineup";
 import type {Lineup, LineupMember, LineupTeam} from "@/app/_lib/service/round/lineup";
+import {leaveRoundPages, passLineup} from "@/app/_lib/ui/lineupPass";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, font, teamColor, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, CenteredSpinner, DesktopOnlyNote, DesktopShell, ErrorNote, IconCircleButton, InitialsAvatar, PrimaryButton, Screen, ScrollArea} from "@/app/_ui/sp";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
+import DoneRoundedIcon from "@mui/icons-material/DoneRounded";
 import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
@@ -23,17 +26,21 @@ import React, {useCallback, useEffect, useState} from "react";
 // Započni igru · who plays this round (Claude Design 7c "Lineup card", desktop "tko igra"). Shown before the
 // scoreboard of the round's first match: two players per team, suggested from the team's last round in the league
 // (or its founders in the league's first round). A slot opens to swap in a teammate who isn't playing.
-// With ?league=, an admin is opening the table's scorepad from Dnevni poredak: confirming goes on to that scorepad, where
-// the admin's first hand starts the match (on the admin's phone, to the first match's board; admin-mobile 24). Anyone
-// else on the phone gets the desktop-only note there.
+// With ?league=, an admin is opening the table's scorepad from Dnevni poredak, which asks this every time, also for a
+// table being played or finished (Tko je igrao, where a change replays the ratings): confirming goes on to that
+// scorepad, where the admin's first hand starts the match (on the admin's phone, to the first match's board;
+// admin-mobile 24); confirming an unchanged lineup saves nothing. Anyone else on the phone gets the desktop-only note.
 
 const TITLE = "Tko igra ovu rundu?";
+const TITLE_FINISHED = "Tko je igrao ovu rundu?";
 // the slot's background while it is open, per side (viewer's team green, opponent red)
 const TINT = [tint.green[9], tint.red[8]] as const;
 const NOTES = [
   {icon: <InsightsRoundedIcon />, text: "Ovi podaci potrebni su za izračun rejtinga svakog igrača."},
   {icon: <PersonAddRoundedIcon />, text: "Igrač nije na popisu? Neka napravi račun i javi se administratoru da ga doda u tim."},
 ];
+// a finished round: who played it decides whose ratings its result changes
+const NOTES_FINISHED = [{icon: <InsightsRoundedIcon />, text: "Runda je završena. Promijeniš li igrače, rejting se ponovno izračunava s njima."}, NOTES[1]];
 
 export default function LineupPage() {
   const {roundId} = useParams<{roundId: string}>();
@@ -70,21 +77,28 @@ export default function LineupPage() {
   useEffect(() => {
     load();
   }, [load]);
+  useEffect(() => () => leaveRoundPages(id), [id]);
 
   const pick = (team: number, slot: number, playerId: number) => {
     setSelected((prev) => prev.map((ids, ti) => (ti === team ? ids.map((p, si) => (si === slot ? playerId : p)) : ids)));
     setOpenSlot(null);
   };
 
-  const ready = teams.length === 2 && teams.every((t, i) => selected[i].length === t.needed && t.needed > 0);
+  // a finished round can be confirmed as it is, a team without players too
+  const ready = teams.length === 2 && teams.every((t, i) => selected[i].length === t.needed && (t.needed > 0 || !!lineup?.finished));
+  const finished = !!lineup?.finished;
 
   const confirm = async () => {
     if (!ready || saving) return;
     setSaving(true);
     setSaveError(null);
     try {
-      await saveLineupAPI(id, {teams: teams.map((t, i) => ({team_id: t.id, player_ids: selected[i]}))});
+      // the same players as saved: nothing to save (a finished round's ratings stay as they are)
+      if (!teams.every((t, i) => sameLineup(selected[i], t.saved))) {
+        await saveLineupAPI(id, {teams: teams.map((t, i) => ({team_id: t.id, player_ids: selected[i]}))});
+      }
       if (padLeague) {
+        passLineup(id);
         // back to the board it was opened from (which loads the table again), or on to the table's board
         if (fromPad && !isDesktop && window.history.length > 1) router.back();
         else router.replace(`/league/${padLeague}/daily-standings/table/${id}`);
@@ -113,13 +127,19 @@ export default function LineupPage() {
   const slots = (t: LineupTeam, ti: number, big: boolean) => (
     <TeamSlots team={t} side={ti} selected={selected[ti]} openSlot={openSlot} onToggle={setOpenSlot} onPick={(s, p) => pick(ti, s, p)} big={big} />
   );
+  // the admin's scorepad of a table already being played goes on with it; a finished one is only confirmed
+  const starts = !finished && !(padLeague && lineup?.saved);
+  const startLabel = finished ? "Potvrdi" : starts ? "Potvrdi i počni" : "Potvrdi i nastavi";
+  const title = finished ? TITLE_FINISHED : TITLE;
   const status = loadError ? <ErrorNote onRetry={load}>{loadError}</ErrorNote> : !lineup ? <CenteredSpinner /> : null;
   const footer = (
     <Box sx={{display: "flex", flexDirection: "column", alignItems: "center", gap: "10px"}}>
       {saveError && <ErrorNote sx={{alignSelf: "stretch"}}>{saveError}</ErrorNote>}
-      <Box aria-hidden sx={{fontFamily: font.display, fontSize: isDesktop ? 15 : 14, fontWeight: 700, color: color.muted}}>
-        ♠ Neka bolji pobijedi ♥
-      </Box>
+      {!finished && (
+        <Box aria-hidden sx={{fontFamily: font.display, fontSize: isDesktop ? 15 : 14, fontWeight: 700, color: color.muted}}>
+          ♠ Neka bolji pobijedi ♥
+        </Box>
+      )}
       <PrimaryButton
         onClick={confirm}
         disabled={!ready}
@@ -127,8 +147,8 @@ export default function LineupPage() {
         height={isDesktop ? 60 : 62}
         sx={{borderRadius: "20px", fontWeight: 700, ...(isDesktop && {width: "auto", minWidth: 320, px: "32px"}), "& > span": {display: "flex", alignItems: "center", gap: "8px"}}}
       >
-        Potvrdi i počni
-        {!saving && <PlayArrowRoundedIcon />}
+        {startLabel}
+        {!saving && (starts ? <PlayArrowRoundedIcon /> : <DoneRoundedIcon />)}
       </PrimaryButton>
     </Box>
   );
@@ -140,7 +160,7 @@ export default function LineupPage() {
         active={padLeague ? "daily" : "game"}
         back={padLeague ? {label: "Dnevni poredak", href: `/league/${padLeague}/daily-standings`} : undefined}
         eyebrow={label || "Započni igru"}
-        title={TITLE}
+        title={title}
       >
         {status ?? (
           <Box sx={{flex: 1, minHeight: 0, overflowY: "auto", display: "flex", justifyContent: "center"}}>
@@ -163,7 +183,7 @@ export default function LineupPage() {
                   </React.Fragment>
                 ))}
               </Box>
-              <Notes centered />
+              <Notes centered finished={finished} />
               {footer}
             </Box>
           </Box>
@@ -185,7 +205,7 @@ export default function LineupPage() {
       </Box>
       <ScrollArea sx={{px: "20px", pt: "2px", pb: "12px"}}>
         <Box component="h1" sx={{m: 0, px: "4px", fontFamily: font.display, fontSize: 32, fontWeight: 800, lineHeight: 1.02, letterSpacing: "-.02em", textWrap: "pretty"}}>
-          {TITLE}
+          {title}
         </Box>
         {status ?? (
           <>
@@ -208,7 +228,7 @@ export default function LineupPage() {
                 </Box>
               ))}
             </Card>
-            <Notes />
+            <Notes finished={finished} />
           </>
         )}
       </ScrollArea>
@@ -333,10 +353,10 @@ function Avatar({player, side, size}: {player?: LineupMember; side: number; size
   );
 }
 
-function Notes({centered = false}: {centered?: boolean}) {
+function Notes({centered = false, finished = false}: {centered?: boolean; finished?: boolean}) {
   return (
     <Box sx={{display: "flex", flexDirection: "column", alignItems: centered ? "center" : "stretch", gap: "10px", px: centered ? "8px" : "6px", pt: centered ? 0 : "2px"}}>
-      {NOTES.map((n) => (
+      {(finished ? NOTES_FINISHED : NOTES).map((n) => (
         <Box key={n.text} sx={{display: "flex", gap: "10px", alignItems: "flex-start", "& svg": {fontSize: centered ? 20 : 19, color: color.navy, flex: "none"}}}>
           {n.icon}
           <Box component="span" sx={{fontSize: centered ? 14.5 : 13.5, lineHeight: 1.45, color: color.ink2}}>

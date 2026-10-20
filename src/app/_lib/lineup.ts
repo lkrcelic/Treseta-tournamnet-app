@@ -24,6 +24,20 @@ export function defaultLineup(roster: number[], lastPlayed: number[] | null, fou
   return picked;
 }
 
+/**
+ * The players a team's seats can be filled from: its active roster, and for a finished round also whoever was saved
+ * as having played it (deactivated or off the team since), so an admin can confirm or correct who played it then.
+ */
+export function lineupPool(activeRoster: number[], saved: number[], open: boolean): number[] {
+  return open ? activeRoster : Array.from(new Set([...activeRoster, ...saved]));
+}
+
+// The same players, in any order
+export function sameLineup(a: number[], b: number[]): boolean {
+  const set = new Set(a);
+  return set.size === a.length && a.length === new Set(b).size && b.every((id) => set.has(id));
+}
+
 // The players a round is rated with: its lineup for that team, or the whole roster for a round without one
 export function ratedPlayerIds(lineup: {player_id: number; team_id: number}[], teamId: number, roster: number[]): number[] {
   const played = lineup.filter((p) => p.team_id === teamId).map((p) => p.player_id);

@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {defaultLineup, ratedPlayerIds} from "@/app/_lib/lineup";
+import {defaultLineup, lineupPool, ratedPlayerIds, sameLineup} from "@/app/_lib/lineup";
 
 test("a team starts with the players of its last round in the league", () => {
   assert.deepEqual(defaultLineup([1, 2, 3, 4], [3, 4], [1, 2]), [3, 4]);
@@ -39,4 +39,16 @@ test("ratings go to the round's lineup, or the whole roster for a round without 
   assert.deepEqual(ratedPlayerIds(lineup, 10, [1, 2, 3, 4]), [1, 3]);
   assert.deepEqual(ratedPlayerIds(lineup, 20, [7, 8, 9]), [7, 8]);
   assert.deepEqual(ratedPlayerIds([], 10, [1, 2, 3, 4]), [1, 2, 3, 4]);
+});
+
+test("a finished round's seats also take who was saved as playing it", () => {
+  assert.deepEqual(lineupPool([1, 2, 3], [3, 9], true), [1, 2, 3]);
+  assert.deepEqual(lineupPool([1, 2, 3], [3, 9], false), [1, 2, 3, 9]);
+});
+
+test("a lineup is the same whatever the order of its players", () => {
+  assert.equal(sameLineup([1, 2], [2, 1]), true);
+  assert.equal(sameLineup([1, 2], [1, 3]), false);
+  assert.equal(sameLineup([1], [1, 2]), false);
+  assert.equal(sameLineup([], []), true);
 });
