@@ -9,7 +9,7 @@ own; everything else is kept identical to Bela.
 | | |
 |---|---|
 | Bela branch | `development`, read through the remote `bela` (the local Bela repo). Only commits come over, never Bela's uncommitted work |
-| Last synced Bela commit | `da577ba` (19 Oct 2026) |
+| Last synced Bela commit | `5fc3bf5` (20 Oct 2026) |
 | Waiting in Bela | Nothing settled ahead (see [Bela's work waiting to come over](#belas-work-waiting-to-come-over)) |
 | Target branch | `master` |
 | Sync branch | `bela-sync` in the repo itself (no worktree): created from `master`, or rebased onto it, by every run |
@@ -78,7 +78,7 @@ Treseta directly only for what has to differ, and add it below.
 
 ## Bela's work waiting to come over
 
-Nothing: every Bela commit up to `da577ba` (19 Oct 2026) came over by 20 Oct 2026, and what lasts from the decisions
+Nothing: every Bela commit up to `5fc3bf5` (20 Oct 2026) came over by 20 Oct 2026, and what lasts from the decisions
 settled for them is under Differences. Decisions for Bela work that touches Treseta's differences before it comes
 over go here.
 
@@ -249,3 +249,4 @@ The nightly sync adds a row when it brings something over or stops.
 | 17 Oct 2026 | `07a790f..91f1537` (1) | Sponsors came over (Sponzori under Admin, a league's Sponzori tab, logos on Početna and a live round), the conference code kept around Upravljanje ligom's new tab; 1 migration (`sponsors`) |
 | 19 Oct 2026 | `91f1537..b6cd20c` (15) | 13 came over, 2 skipped (Bela's bell icons): sponsor logo backgrounds, shapes and cropping, profile photos for players and teams (avatars in the standings, Rejting and a round's tables, next to the conference dots), the install sheet per browser (Treseta's branding), more rounds a night with Skica A, B, C, Uredi stolove and Slobodna runda (5:0 byes), standings places as numbers; Bela's bell not copied; 4 migrations (`sponsor_background`, `sponsor_background_two`, `profile_photos`, `draft_order`) |
 | 20 Oct 2026 | `b6cd20c..da577ba` (1) | Came over as Bela has it: a tap on a player's or a team's photo opens it over the whole screen (PhotoViewer); no migration |
+| 20 Oct 2026 | `da577ba..5fc3bf5` (1) | Came over as Bela has it: the admin's photo controls on the computer move onto the header avatar's badge and panel (PhotoAdmin); no migration |
