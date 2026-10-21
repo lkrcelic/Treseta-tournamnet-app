@@ -62,12 +62,13 @@ function TeamAvatar({row, size, sx}: {row: StandingsRow; size: number; sx?: SxPr
 
 const MOVEMENT_INK: Record<MovementKind, string> = {up: color.green, down: color.red, same: color.faint, none: color.faint};
 
-// The three looks of the +/− (design is.league): a desktop table cell; a pill next to a desktop podium medal; a chip
-// after a team's name on the phone. The pill and the chip are as wide as their text, narrower when there's no arrow.
+// The three looks of the +/− (design is.league): a desktop table cell; a pill next to a desktop podium medal; a small
+// mark under the place on the phone (so the team's name keeps the whole line). The pill is as wide as its text,
+// narrower when there's no arrow.
 const MOVEMENT_LOOK = {
   cell: {fontSize: 15, icon: 26, iconWidth: 26, iconGap: "-5px", shape: null},
   pill: {fontSize: 14, icon: 24, iconWidth: 24, iconGap: "0px", shape: {height: 28, minWidth: 28, padArrow: "3px", pad: "9px", background: tint.white[70]}},
-  chip: {fontSize: 13, icon: 22, iconWidth: 22, iconGap: "0px", shape: {height: 20, minWidth: 22, padArrow: "2px", pad: "6px", background: color.paper2}},
+  under: {fontSize: 11, icon: 18, iconWidth: 18, iconGap: "-5px", shape: null},
 } as const;
 
 // A row's +/− since the league's previous night: a green ▲ or red ▼ with the places, or a grey "–" (same place, or a
@@ -78,7 +79,7 @@ export function MovementMark({movement, look}: {movement: number | null; look: k
   const v = movementView(movement);
   const {fontSize, icon, iconWidth, iconGap, shape} = MOVEMENT_LOOK[look];
   const Arrow = v.kind === "up" ? ArrowDropUpIcon : v.kind === "down" ? ArrowDropDownIcon : null;
-  const raised = look !== "chip";
+  const raised = look !== "under";
   return (
     <Box
       component="span"
@@ -294,7 +295,7 @@ export function VisuallyHidden({children}: {children: React.ReactNode}) {
 // card is the scroller). The highlighted team (the player's own, or the one the page was opened for) has a cream row
 // with a navy bar, also on the podium. head: a labels row on top ("#  EKIPA … RAZ  BOD", 13d), pinned with the podium.
 // The pinned block (as the desktop grid's column labels) is marked data-pinned, rows data-highlight.
-// showMovement: Ukupni poredak's +/− chip after each team's name, on the podium rows too.
+// showMovement: Ukupni poredak's +/− under each team's place, on the podium rows too.
 export function StandingsRows({
   rows,
   podium,
@@ -351,6 +352,9 @@ const NARROW_PHONE = "@media (max-width: 429.98px)";
 const TINY_PHONE = "@media (max-width: 339.98px)";
 // the right-hand block (RAZ and BOD) and the row's end, shared by the labels row so the labels stay over their numbers
 const numbersSx = {display: "flex", gap: "12px", [SMALL_PHONE]: {gap: "8px"}} as const;
+// the row's start: the place (with the +/− under it) right next to the team's avatar
+const LEAD = {place: 26, gap: 6, avatar: 36} as const;
+const LEAD_WIDTH = LEAD.place + LEAD.gap + LEAD.avatar;
 const rowEndSx = {pr: "16px", [SMALL_PHONE]: {pr: "14px"}} as const;
 
 // "#  EKIPA" on the left, "RAZ" and "BOD" over their columns (Profiles P:119); the rows say the same to screen readers
@@ -376,8 +380,8 @@ function RowsHead() {
     >
       {/* "#" over the places, "Ekipa" over the names (past the avatars) */}
       <Box component="span" sx={{display: "flex", gap: "10px", [SMALL_PHONE]: {gap: "8px"}}}>
-        <Box component="span" sx={{width: 76, display: "flex"}}>
-          <Box component="span" sx={{width: 30, textAlign: "center"}}>
+        <Box component="span" sx={{width: LEAD_WIDTH, display: "flex"}}>
+          <Box component="span" sx={{width: LEAD.place, textAlign: "center"}}>
             #
           </Box>
         </Box>
@@ -421,7 +425,7 @@ function StandingsLine({
         height: onPodium ? LINE_HEIGHT.podium : LINE_HEIGHT.row,
         display: "grid",
         // the place and the team's avatar, the name over its stats, RAZ and BOD
-        gridTemplateColumns: "76px minmax(0,1fr) auto",
+        gridTemplateColumns: `${LEAD_WIDTH}px minmax(0,1fr) auto`,
         alignItems: "center",
         gap: "10px",
         [SMALL_PHONE]: {gap: "8px"},
@@ -432,19 +436,15 @@ function StandingsLine({
         ...(href ? linkedRow(r.highlight || onPodium) : {}),
       })}
     >
-      <Box sx={{display: "flex", alignItems: "center", gap: "10px"}}>
-        <RankNumber rank={r.rank} tone={rankTone(r, {teams: true})} podium={r.rank <= 3} />
-        <TeamAvatar row={r} size={36} />
+      <Box sx={{display: "flex", alignItems: "center", gap: `${LEAD.gap}px`}}>
+        <Box sx={{width: LEAD.place, flex: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: "3px"}}>
+          <RankNumber rank={r.rank} tone={rankTone(r, {teams: true})} size="compact" podium={r.rank <= 3} />
+          {showMovement && <MovementMark movement={r.movement} look="under" />}
+        </Box>
+        <TeamAvatar row={r} size={LEAD.avatar} />
       </Box>
       <Box sx={{display: "flex", flexDirection: "column", gap: "2px", minWidth: 0}}>
-        {showMovement ? (
-          <Box sx={{display: "flex", alignItems: "center", gap: "6px", minWidth: 0}}>
-            <TeamLabel name={<TeamName row={r} href={href} keepClear={keepClear} />} conference={r.conference} sx={{fontSize: 16, fontWeight: onPodium || r.highlight ? 700 : 600}} />
-            <MovementMark movement={r.movement} look="chip" />
-          </Box>
-        ) : (
-          <TeamLabel name={<TeamName row={r} href={href} keepClear={keepClear} />} conference={r.conference} sx={{fontSize: 16, fontWeight: onPodium || r.highlight ? 700 : 600}} />
-        )}
+        <TeamLabel name={<TeamName row={r} href={href} keepClear={keepClear} />} conference={r.conference} sx={{fontSize: 16, fontWeight: onPodium || r.highlight ? 700 : 600}} />
         <Box sx={{fontSize: 12.5, [SMALL_PHONE]: {fontSize: 11.5}, color: onPodium ? color.ink2 : color.muted, ...ellipsis, ...tabular}}>
           {stats.played && (
             <Box component="span" sx={{[NARROW_PHONE]: visuallyHidden}}>

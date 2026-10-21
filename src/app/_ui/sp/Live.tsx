@@ -77,18 +77,29 @@ const RANK_INK: Record<RankTone, string> = {top: color.ink, me: color.navy, live
 // centred in its column. tone (rankTone): top 24 px ink, me navy, live red (24 px when it is also in the top three:
 // podium), plain muted. Red is all that says a team is playing: no dot, no pulse. size: the column's width, 30 px on
 // the phone, 36 on the computer.
-export function RankNumber({rank, tone, size = "phone", podium = false}: {rank: number; tone: RankTone; size?: "phone" | "desktop"; podium?: boolean}) {
+// compact: the phone's standings rows, a narrower and smaller number so the team's name gets the room
+export function RankNumber({
+  rank,
+  tone,
+  size = "phone",
+  podium = false,
+}: {
+  rank: number;
+  tone: RankTone;
+  size?: "phone" | "compact" | "desktop";
+  podium?: boolean;
+}) {
   const big = tone === "top" || (tone === "live" && podium);
   return (
     <Box
       component="span"
       aria-label={tone === "live" ? `${rank}. mjesto, igra uživo` : `${rank}. mjesto`}
       sx={{
-        width: size === "desktop" ? 36 : 30,
+        width: size === "desktop" ? 36 : size === "compact" ? 26 : 30,
         flex: "none",
         textAlign: "center",
         fontFamily: font.display,
-        fontSize: big ? 24 : 20,
+        fontSize: size === "compact" ? (big ? 19 : 16) : big ? 24 : 20,
         fontWeight: 800,
         letterSpacing: "-.02em",
         lineHeight: 1,
