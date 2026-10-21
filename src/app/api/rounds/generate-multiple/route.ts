@@ -12,6 +12,7 @@ import {getLeagueConferences} from "@/app/_lib/service/league/conferences";
 import {seatRounds} from "@/app/_lib/matching/smokingTables";
 import {smokingSetup} from "@/app/_lib/service/round/smoking";
 import {teamSmokers} from "@/app/_lib/service/team/smokers";
+import {teamAverageAges} from "@/app/_lib/service/team/ages";
 
 // the pairing stops searching after a few seconds; this leaves room for the database around it
 export const maxDuration = 30;
@@ -30,7 +31,11 @@ export async function POST(request: NextRequest) {
     const windowSize = parsed.windowSize ?? 8;
 
     const teamsWithScores = await getLeagueTeamsWithScores(league_id);
-    const filteredTeams = teamsWithScores.filter((team) => present_teams.includes(team.id));
+    // the average age is the pairing's weakest factor: it only decides between otherwise equal pairings
+    const ages = await teamAverageAges(present_teams);
+    const filteredTeams = teamsWithScores
+      .filter((team) => present_teams.includes(team.id))
+      .map((team) => ({...team, average_age: ages.get(team.id) ?? null}));
 
     // "Only within conferences": every conference is paired on its own (a league without conferences ignores it)
     const conferences = parsed.withinConferences ? conferenceLookup(await getLeagueConferences(league_id)) : null;

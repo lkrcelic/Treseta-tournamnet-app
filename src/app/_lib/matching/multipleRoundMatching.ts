@@ -9,6 +9,8 @@ export interface Team {
   readonly point_difference: number;
   readonly score: number;
   played_against: number[]; // ids of teams already played against (the bye counts too)!
+  // the average age of its players in years (see teamAges.ts); null or left out when no player has a birth date
+  readonly average_age?: number | null;
 }
 
 export interface TeamPair {
@@ -36,6 +38,8 @@ const DEFAULT_TIME_BUDGET_MS = 5000;
 const MIN_LAST_WINDOW = 6;
 // the most improvement passes over a window's rounds (each pass re-solves every round)
 const MAX_PASSES = 20;
+// an age gap counts in whole years, up to this many: past it, teams are simply far apart
+export const AGE_GAP_CAP = 40;
 
 function createByeTeam(): Team {
   return {id: BYE_TEAM_ID, name: "Bye", score: 0, point_difference: 0, played_against: []};
@@ -65,6 +69,18 @@ function divideTeamsIntoWindows(sortedTeams: Team[], windowSize: number, numberO
   return windows;
 }
 
+/**
+ * How far apart two teams are in age: whole years between their average ages, at most AGE_GAP_CAP. Two teams whose age
+ * isn't known are close (0); one of them is halfway to the cap from every team with a known age, the same for all, so
+ * it doesn't break up two teams of a similar age by being close to everyone.
+ */
+export function ageGap(a: Team, b: Team): number {
+  const known = (a.average_age != null ? 1 : 0) + (b.average_age != null ? 1 : 0);
+  if (known === 0) return 0;
+  if (known === 1) return AGE_GAP_CAP / 2;
+  return Math.min(AGE_GAP_CAP, Math.round(Math.abs(a.average_age - b.average_age)));
+}
+
 function countMatchups(teamA: Team, teamB: Team): number {
   let count = 0;
   for (const id of teamA.played_against) {
@@ -79,7 +95,8 @@ type IndexRound = [number, number][];
 class WindowPlanner {
   private readonly n: number;
   private readonly bye: number;
-  // the price of a pair: earlier meetings squared, so one pair meeting a third time costs more than two meeting twice
+  // the price of a pair: earlier meetings squared, so one pair meeting a third time costs more than two meeting twice,
+  // times ageScale, plus the age gap (see the constructor)
   private readonly cost: number[][];
   // a pair that meets twice today costs more than any round without one
   private readonly repeatCost: number;
@@ -98,7 +115,11 @@ class WindowPlanner {
     const n = teams.length;
     this.n = n;
     this.bye = n % 2 === 1 ? n : -1;
-    this.cost = teams.map((a) => teams.map((b) => (a === b ? 0 : countMatchups(a, b) ** 2)));
+    // The age gap is the weakest factor: it only picks between pairings that are equally good otherwise. The gaps of
+    // a whole night together stay below ageScale, the price of a single earlier meeting, so no age difference makes a
+    // pair meet once more. Whole numbers keep the blossom exact.
+    const ageScale = rounds * Math.ceil(n / 2) * AGE_GAP_CAP + 1;
+    this.cost = teams.map((a) => teams.map((b) => (a === b ? 0 : countMatchups(a, b) ** 2 * ageScale + ageGap(a, b))));
     const maxCost = Math.max(0, ...this.cost.flat());
     this.repeatCost = (maxCost + 1) * Math.ceil(n / 2) + 1;
     this.today = teams.map((a) => teams.map((b) => a !== b && playedToday.has(pairKey(a.id, b.id))));
@@ -269,7 +290,8 @@ class PairCounter {
 /**
  * Pairs the teams for numberOfRounds rounds. Teams are ranked and split into windows; inside a window every round
  * is the pairing with the fewest earlier meetings (squared), and no two teams meet twice today. If that can't be
- * done, the plan still comes back, with the pairs that meet twice in repeats.
+ * done, the plan still comes back, with the pairs that meet twice in repeats. Last of all, between pairings that are
+ * otherwise equal, teams of a similar average age meet.
  */
 export function generateMultipleRoundPairings(teams: Team[], options: MultiRoundMatchingOptions): RoundsPlan {
   const {windowSize, numberOfRounds} = options;
