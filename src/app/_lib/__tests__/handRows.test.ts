@@ -2,18 +2,18 @@ import assert from "node:assert/strict";
 import {test} from "node:test";
 import {LEAD_BAR_FULL, runningHands} from "../ui/handRows";
 
-test("each hand shows the totals before it, its winner and the lead after it", () => {
+test("each hand shows the totals with it counted, its winner and the lead after it", () => {
   const out = runningHands([
     {left: 92, right: 70},
     {left: 84, right: 118},
     {left: 0, right: 162},
   ]);
   assert.deepEqual(
-    out.map((h) => [h.before, h.winner, h.leader, h.lead]),
+    out.map((h) => [h.total, h.winner, h.leader, h.lead]),
     [
-      [[0, 0], 0, 0, 22],
-      [[92, 70], 1, 1, 12],
-      [[176, 188], 1, 1, 174],
+      [[92, 70], 0, 0, 22],
+      [[176, 188], 1, 1, 12],
+      [[176, 350], 1, 1, 174],
     ],
   );
 });

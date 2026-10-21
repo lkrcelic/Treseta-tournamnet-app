@@ -138,7 +138,7 @@ export function ScorePanel({
 export type HandRow = {id: number | null; left: number; right: number; animate?: "in" | "flash"};
 
 // The list of hands; tapping one opens it for editing (without onOpen the list is only read: Pregled stola).
-// Each hand is its own card (Claude Design "Score pad", A6): both teams' totals before it beside its points, the
+// Each hand is its own card (Claude Design "Score pad", A6): both teams' totals with it counted beside its points, the
 // hand's winner in the team colour, and under it a bar from the middle towards the team ahead with the lead after it.
 // empty: what an empty list says instead of "Još nema upisanih igara".
 export function HandList({
@@ -168,7 +168,7 @@ export function HandList({
       </Card>
     );
   }
-  const before = (n: number) => (
+  const total = (n: number) => (
     <Box component="span" sx={{fontSize: desk ? 15 : 13, fontWeight: 600, color: color.ink}}>
       {n}
     </Box>
@@ -208,7 +208,7 @@ export function HandList({
                 component={onOpen ? "button" : "div"}
                 type={onOpen ? "button" : undefined}
                 onClick={onOpen ? () => r.id != null && onOpen(r.id) : undefined}
-                aria-label={`Igra ${i + 1}: ${r.left} prema ${r.right}, prije ${h.before[0]} prema ${h.before[1]}, razlika ${h.lead}${onOpen ? ". Uredi" : ""}`}
+                aria-label={`Igra ${i + 1}: ${r.left} prema ${r.right}, ukupno ${h.total[0]} prema ${h.total[1]}, razlika ${h.lead}${onOpen ? ". Uredi" : ""}`}
                 aria-current={selected ? "true" : undefined}
                 sx={{
                   ...buttonBase,
@@ -232,7 +232,7 @@ export function HandList({
                   sx={{display: "grid", gridTemplateColumns: desk ? "minmax(0,1fr) 56px minmax(0,1fr)" : "minmax(0,1fr) 44px minmax(0,1fr)", alignItems: "center"}}
                 >
                   <Box component="span" sx={{display: "flex", alignItems: "baseline", justifyContent: "center", gap: "8px"}}>
-                    {before(h.before[0])}
+                    {total(h.total[0])}
                     {points(r.left, 0, h.winner)}
                   </Box>
                   <Box component="span" sx={{fontFamily: font.display, fontSize: desk ? 22 : 20, fontWeight: 800, lineHeight: 1, color: color.muted}}>
@@ -240,7 +240,7 @@ export function HandList({
                   </Box>
                   <Box component="span" sx={{display: "flex", alignItems: "baseline", justifyContent: "center", gap: "8px"}}>
                     {points(r.right, 1, h.winner)}
-                    {before(h.before[1])}
+                    {total(h.total[1])}
                   </Box>
                 </Box>
                 <Box component="span" aria-hidden sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) 52px minmax(0,1fr)", alignItems: "center"}}>
