@@ -128,8 +128,8 @@ const nightLink = {
   "&:focus-visible": rowFocus,
 } as const;
 
-// The player's last five nights: date, who they played, matches won:lost, the change
-// A night opens that league's Dnevni poredak with the player's team highlighted (one without a league is not a link).
+// The player's last five nights: date, who they played, matches won:lost, the change. A night opens that league's
+// Dnevni poredak with the player's team highlighted (one without a league is not a link).
 export function LastNights({detail, desktop = false}: {detail: PlayerRatingDetail; desktop?: boolean}) {
   const rows = detail.lastNights.map((n) => {
     const href = n.league_id != null ? nightHref(n.league_id, n.night, n.team_id) : null;

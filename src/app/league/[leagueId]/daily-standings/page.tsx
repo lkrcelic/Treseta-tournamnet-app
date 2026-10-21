@@ -93,8 +93,9 @@ export default function DailyStandings() {
   const index = date && dates ? dates.indexOf(date) : -1;
   const prevDate = index > 0 ? dates[index - 1] : null;
   const nextDate = dates && index >= 0 && index < dates.length - 1 ? dates[index + 1] : null;
-  // opened from a Team page's Zadnje večeri (?team=<id>): that team highlighted and scrolled to, and the page is a page
-  // of the stack (Back to the team, and Home on the phone); the team stays in the address on another date or tab
+  // opened from a team's or a player's Zadnje večeri (?team=<id>): that team highlighted and scrolled to, and the page
+  // is a page of the stack (Back to where it was opened, and Home on the phone); the team stays in the address on
+  // another date or tab
   const highlightTeamId = highlightParam(searchParams.get("team"));
   const teamQuery = highlightTeamId != null ? `&team=${highlightTeamId}` : "";
   const goDate = (d: string | null) => d && router.router.replace(`/league/${leagueId}/daily-standings?date=${d}${teamQuery}`);
@@ -118,13 +119,14 @@ export default function DailyStandings() {
   const roundsLive = (n: number) => (daily.data?.rounds ?? []).some((r) => r.round_number === n && r.active);
 
   // tab 0 is the night's table, then one tab per round; the desktop opens on the round being played,
-  // or on ?round= (coming back from a table's scorepad)
+  // or on ?round= (coming back from a table's scorepad); opened for a team, on the night's table where it is highlighted
   const roundParam = Number(searchParams.get("round")) || 0;
+  const tabFixed = roundParam > 0 || highlightTeamId != null;
   const [tab, setTab] = useState(roundParam);
-  const [tabTouched, setTabTouched] = useState(roundParam > 0);
+  const [tabTouched, setTabTouched] = useState(tabFixed);
   useEffect(() => {
     setTab(roundParam);
-    setTabTouched(roundParam > 0);
+    setTabTouched(tabFixed);
   }, [date, leagueId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!isDesktop || tabTouched || !daily.data) return;
