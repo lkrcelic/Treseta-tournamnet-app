@@ -278,7 +278,7 @@ export default function DailyStandings() {
             {standings.length === 0 ? (
               <EmptyState>Nema rezultata za ovaj datum.</EmptyState>
             ) : (
-              <StandingsRows rows={showPodium ? rest : standings} podium={showPodium ? podium : undefined} rowHref={standingsTeamHref} />
+              <StandingsRows rows={showPodium ? rest : standings} podium={showPodium ? podium : undefined} head rowHref={standingsTeamHref} />
             )}
           </ScrollCard>
         ) : (
