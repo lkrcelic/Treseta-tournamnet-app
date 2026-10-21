@@ -9,7 +9,7 @@ export interface Team {
   readonly point_difference: number;
   readonly score: number;
   played_against: number[]; // ids of teams already played against (the bye counts too)!
-  // the average age of its players in years (see teamAges.ts); null or left out when no player has a birth date
+  // the average age of its players in years (see teamAges.ts); null or left out for a team without players
   readonly average_age?: number | null;
 }
 

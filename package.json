@@ -13,6 +13,7 @@
     "start": "next start",
     "lint": "next lint",
     "ratings:replay": "cross-env TS_NODE_PROJECT=tsconfig.test.json TS_NODE_TRANSPILE_ONLY=1 node -r ts-node/register -r tsconfig-paths/register scripts/replayRatings.ts",
+    "ages:report": "cross-env TS_NODE_PROJECT=tsconfig.test.json TS_NODE_TRANSPILE_ONLY=1 node -r ts-node/register -r tsconfig-paths/register scripts/ageReport.ts",
     "test": "cross-env TS_NODE_PROJECT=tsconfig.test.json TS_NODE_TRANSPILE_ONLY=1 node --test -r ts-node/register -r tsconfig-paths/register src/app/_lib/__tests__/*.test.ts",
     "postinstall": "npm rebuild argon2 --build-from-source"
   },

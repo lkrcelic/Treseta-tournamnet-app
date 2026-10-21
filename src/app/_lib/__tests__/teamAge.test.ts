@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {AGE_GAP_CAP, ageGap, generateMultipleRoundPairings, Team, TeamPair} from "@/app/_lib/matching/multipleRoundMatching";
-import {ageInYears, averageAge} from "@/app/_lib/matching/teamAges";
+import {ageInYears, averageAge, DEFAULT_AGE} from "@/app/_lib/matching/teamAges";
 import {BYE_TEAM_ID} from "@/app/_lib/bye";
 
 // team 1 is ranked first, team `ages.length` last; ages[i] is team i + 1's average age (null: unknown)
@@ -58,12 +58,22 @@ test("ageInYears counts the part of the year since the birthday", () => {
   assert.ok(half > 36.4 && half < 36.6, `about 36.5, got ${half}`);
 });
 
-test("averageAge averages the players with a birth date and skips the others", () => {
+test("averageAge averages the players' ages", () => {
   const today = new Date("2026-10-21T00:00:00.000Z");
-  const age = averageAge([new Date("1996-10-21T00:00:00.000Z"), null, new Date("1976-10-21T00:00:00.000Z"), undefined], today);
+  const age = averageAge([new Date("1996-10-21T00:00:00.000Z"), new Date("1976-10-21T00:00:00.000Z")], today);
   assert.ok(Math.abs(age! - 40) < 0.01, `30 and 50 average 40, got ${age}`);
-  assert.equal(averageAge([], today), null);
-  assert.equal(averageAge([null, undefined], today), null, "no birth date at all: unknown, not 0");
+});
+
+test("a player without a birth date counts as 24", () => {
+  const today = new Date("2026-10-21T00:00:00.000Z");
+  assert.equal(DEFAULT_AGE, 24);
+  const age = averageAge([new Date("1986-10-21T00:00:00.000Z"), null], today);
+  assert.ok(Math.abs(age! - 32) < 0.01, `40 and 24 average 32, got ${age}`);
+  assert.equal(averageAge([null, undefined], today), 24, "no birth date at all: 24, not unknown");
+});
+
+test("only a team without players has no age", () => {
+  assert.equal(averageAge([], new Date("2026-10-21T00:00:00.000Z")), null);
 });
 
 test("ageGap is whole years, capped; an unknown age is halfway to the cap from a known one", () => {
