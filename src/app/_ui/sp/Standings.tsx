@@ -62,29 +62,57 @@ function TeamAvatar({row, size, sx}: {row: StandingsRow; size: number; sx?: SxPr
 
 const MOVEMENT_INK: Record<MovementKind, string> = {up: color.green, down: color.red, same: color.faint, none: color.faint};
 
-// The three looks of the +/− (design is.league): a desktop table cell; a pill next to a desktop podium medal; a small
-// mark under the place on the phone (so the team's name keeps the whole line). The pill is as wide as its text,
-// narrower when there's no arrow.
+// The three looks of the +/− (design is.league): a desktop table cell; a pill next to a desktop podium medal; the
+// phone rows' last column (Poredak mobitel B1), the arrow over the places. The pill is as wide as its text, narrower
+// when there's no arrow.
 const MOVEMENT_LOOK = {
   cell: {fontSize: 15, icon: 26, iconWidth: 26, iconGap: "-5px", shape: null},
   pill: {fontSize: 14, icon: 24, iconWidth: 24, iconGap: "0px", shape: {height: 28, minWidth: 28, padArrow: "3px", pad: "9px", background: tint.white[70]}},
-  under: {fontSize: 11, icon: 18, iconWidth: 18, iconGap: "-5px", shape: null},
+  stack: {fontSize: 11.5, icon: 22, iconWidth: 16, iconGap: "-6px", shape: null},
 } as const;
 
 // A row's +/− since the league's previous night: a green ▲ or red ▼ with the places, or a grey "–" (same place, or a
-// team that wasn't in that night's table). The cell and the pill sit over the row's link so the pointer gets their
-// tooltip; a click on them still opens the team. A screen reader hears the tooltip's words. The arrows are the filled
-// icons: the Rounded ones draw a third smaller triangle than the design's arrow_drop_up.
+// team that wasn't in that night's table). It sits over the row's link so the pointer gets its tooltip; a click on it
+// still opens the team. A screen reader hears the tooltip's words. The arrows are the filled icons: the Rounded ones
+// draw a third smaller triangle than the design's arrow_drop_up.
 export function MovementMark({movement, look}: {movement: number | null; look: keyof typeof MOVEMENT_LOOK}) {
   const v = movementView(movement);
   const {fontSize, icon, iconWidth, iconGap, shape} = MOVEMENT_LOOK[look];
   const Arrow = v.kind === "up" ? ArrowDropUpIcon : v.kind === "down" ? ArrowDropDownIcon : null;
-  const raised = look !== "under";
+  if (look === "stack") {
+    // the arrow just over the places (its box overlaps the number by iconGap), drawn at its full size with its empty
+    // sides trimmed to iconWidth (a narrower width alone would shrink the svg); no change is a 13 px "–"
+    return (
+      <Box
+        component="span"
+        role="img"
+        aria-label={v.label}
+        title={v.label}
+        onClick={openRowLink}
+        data-movement={look}
+        sx={{
+          position: "relative",
+          zIndex: 1,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          fontSize: Arrow ? fontSize : 13,
+          fontWeight: 700,
+          lineHeight: 1,
+          color: MOVEMENT_INK[v.kind],
+          ...tabular,
+        }}
+      >
+        {Arrow && <Arrow sx={{fontSize: icon, mx: `${(iconWidth - icon) / 2}px`, mb: iconGap, flex: "none"}} />}
+        {v.text}
+      </Box>
+    );
+  }
   return (
     <Box
       component="span"
-      title={raised ? v.label : undefined}
-      onClick={raised ? openRowLink : undefined}
+      title={v.label}
+      onClick={openRowLink}
       sx={{
         flex: "none",
         display: "flex",
@@ -104,7 +132,8 @@ export function MovementMark({movement, look}: {movement: number | null; look: k
           borderRadius: `${shape.height / 2}px`,
           background: shape.background,
         }),
-        ...(raised && {position: "relative", zIndex: 1}),
+        position: "relative",
+        zIndex: 1,
       }}
     >
       <Box component="span" aria-hidden sx={{display: "flex", alignItems: "center"}}>
@@ -290,12 +319,12 @@ export function VisuallyHidden({children}: {children: React.ReactNode}) {
   );
 }
 
-// Phone standings: two-line rows (name + stats), RAZ and BOD on the right, so nothing scrolls sideways. With
+// Phone standings: two-line rows (name + stats), BOD over RAZ on the right, so nothing scrolls sideways. With
 // podium, the top three come first as medal rows that stay pinned while the rest scrolls under them (the parent
 // card is the scroller). The highlighted team (the player's own, or the one the page was opened for) has a cream row
-// with a navy bar, also on the podium. head: a labels row on top ("#  EKIPA … RAZ  BOD", 13d), pinned with the podium.
+// with a navy bar, also on the podium. head: a labels row on top ("#  EKIPA … BOD  +/-"), pinned with the podium.
 // The pinned block (as the desktop grid's column labels) is marked data-pinned, rows data-highlight.
-// showMovement: Ukupni poredak's +/− under each team's place, on the podium rows too.
+// showMovement: Ukupni poredak's +/− as the rows' last column, on the podium rows too.
 export function StandingsRows({
   rows,
   podium,
@@ -319,7 +348,7 @@ export function StandingsRows({
     <>
       {(top || head) && (
         <Box data-pinned="" sx={{position: "sticky", top: 0, zIndex: 2, background: color.white, boxShadow: top ? shadow.sticky : "none"}}>
-          {head && <RowsHead />}
+          {head && <RowsHead showMovement={showMovement} />}
           {top && (
             <Box component="ol" aria-label="Prva tri mjesta" sx={{listStyle: "none", m: 0, p: 0}}>
               {top.map((r, i) => (
@@ -338,39 +367,44 @@ export function StandingsRows({
   );
 }
 
-// the phone rows' heights (border included): the labels row, a podium row, any other row
-const HEAD_HEIGHT = 34;
-const LINE_HEIGHT = {podium: 58, row: 62} as const;
+// the phone rows' heights (border included): the labels row, any row (the podium's are the same, only tinted)
+const HEAD_HEIGHT = 38;
+const LINE_HEIGHT = {podium: 64, row: 64} as const;
 
 // Phones narrower than the designed 390 px: the stats line ("21 OK · 11 POB · 9 NER · 1 IZG") gets smaller type and
 // the columns sit a little closer, under 430 px (since the rows got the team's avatar, so on most phones) the line
-// leaves out the OK count (still read to screen readers), and under 340 px RAZ is a little smaller, so even a six-digit
-// RAZ leaves the line its room. The rows keep their height: the line never wraps, and is cut with an ellipsis rather
-// than run under RAZ.
+// leaves out the OK count (still read to screen readers), and under 340 px BOD and RAZ are a little smaller, so even a
+// six-digit RAZ leaves the line its room. The rows keep their height: the line never wraps, and is cut with an
+// ellipsis rather than run under BOD.
 const SMALL_PHONE = "@media (max-width: 389.98px)";
 const NARROW_PHONE = "@media (max-width: 429.98px)";
 const TINY_PHONE = "@media (max-width: 339.98px)";
-// the right-hand block (RAZ and BOD) and the row's end, shared by the labels row so the labels stay over their numbers
-const numbersSx = {display: "flex", gap: "12px", [SMALL_PHONE]: {gap: "8px"}} as const;
-// the row's start: the place (with the +/− under it) right next to the team's avatar
-const LEAD = {place: 26, gap: 6, avatar: 36} as const;
-const LEAD_WIDTH = LEAD.place + LEAD.gap + LEAD.avatar;
-const rowEndSx = {pr: "16px", [SMALL_PHONE]: {pr: "14px"}} as const;
 
-// "#  EKIPA" on the left, "RAZ" and "BOD" over their columns (Profiles P:119); the rows say the same to screen readers
-function RowsHead() {
+// The grid shared by the labels row and the rows (Poredak mobitel B1), so the labels stay over their columns: the
+// place, the avatar, the name over its stats, BOD over RAZ and, with showMovement, the +/−
+function rowGrid(showMovement: boolean) {
+  return {
+    display: "grid",
+    gridTemplateColumns: `26px 36px minmax(0,1fr) auto${showMovement ? " 16px" : ""}`,
+    columnGap: "8px",
+    alignItems: "center",
+    pl: "7px",
+    pr: "12px",
+    [SMALL_PHONE]: {columnGap: "6px", pr: "10px"},
+  } as const;
+}
+
+// "#  EKIPA … BOD  +/-" over their columns; the rows say the same to screen readers
+function RowsHead({showMovement}: {showMovement: boolean}) {
   return (
     <Box
       aria-hidden
       sx={{
+        ...rowGrid(showMovement),
         height: HEAD_HEIGHT,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        pl: "12px",
-        ...rowEndSx,
+        boxSizing: "border-box",
         borderBottom: `1px solid ${tint.navy[10]}`,
-        fontSize: 11.5,
+        fontSize: 12,
         fontWeight: 700,
         letterSpacing: ".08em",
         textTransform: "uppercase",
@@ -378,23 +412,22 @@ function RowsHead() {
         whiteSpace: "nowrap",
       }}
     >
-      {/* "#" over the places, "Ekipa" over the names (past the avatars) */}
-      <Box component="span" sx={{display: "flex", gap: "10px", [SMALL_PHONE]: {gap: "8px"}}}>
-        <Box component="span" sx={{width: LEAD_WIDTH, display: "flex"}}>
-          <Box component="span" sx={{width: LEAD.place, textAlign: "center"}}>
-            #
-          </Box>
-        </Box>
+      <Box component="span" sx={{textAlign: "center"}}>
+        #
+      </Box>
+      <span />
+      <Box component="span" sx={{ml: "4px"}}>
         Ekipa
       </Box>
-      <Box component="span" sx={numbersSx}>
-        <Box component="span" sx={{minWidth: 48, textAlign: "right"}}>
-          Raz
-        </Box>
-        <Box component="span" sx={{minWidth: 34, textAlign: "right"}}>
-          Bod
-        </Box>
+      <Box component="span" sx={{ml: "4px", textAlign: "right"}}>
+        Bod
       </Box>
+      {showMovement && (
+        // a plain hyphen, and not upper-cased (it has nothing to raise anyway); the tooltip says what it counts
+        <Box component="span" title={MOVEMENT_HEADER} sx={{textAlign: "center", textTransform: "none", letterSpacing: 0, cursor: "help"}}>
+          +/-
+        </Box>
+      )}
     </Box>
   );
 }
@@ -421,29 +454,20 @@ function StandingsLine({
       component="li"
       aria-current={r.highlight ? "true" : undefined}
       data-highlight={r.highlight ? "" : undefined}
-      sx={mergeSx(rowEndSx, {
+      sx={{
+        ...rowGrid(showMovement),
         height: onPodium ? LINE_HEIGHT.podium : LINE_HEIGHT.row,
-        display: "grid",
-        // the place and the team's avatar, the name over its stats, RAZ and BOD
-        gridTemplateColumns: `${LEAD_WIDTH}px minmax(0,1fr) auto`,
-        alignItems: "center",
-        gap: "10px",
-        [SMALL_PHONE]: {gap: "8px"},
-        pl: "12px",
+        boxSizing: "border-box",
+        py: "8px",
         borderBottom: `1px solid ${color.line}`,
         background: r.highlight ? color.cream2 : onPodium ? color.medalBg[medal] : "transparent",
         boxShadow: r.highlight ? shadow.mineBar : "none",
         ...(href ? linkedRow(r.highlight || onPodium) : {}),
-      })}
+      }}
     >
-      <Box sx={{display: "flex", alignItems: "center", gap: `${LEAD.gap}px`}}>
-        <Box sx={{width: LEAD.place, flex: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: "3px"}}>
-          <RankNumber rank={r.rank} tone={rankTone(r, {teams: true})} size="compact" podium={r.rank <= 3} />
-          {showMovement && <MovementMark movement={r.movement} look="under" />}
-        </Box>
-        <TeamAvatar row={r} size={LEAD.avatar} />
-      </Box>
-      <Box sx={{display: "flex", flexDirection: "column", gap: "2px", minWidth: 0}}>
+      <RankNumber rank={r.rank} tone={rankTone(r, {teams: true})} size="phoneNarrow" podium={r.rank <= 3} />
+      <TeamAvatar row={r} size={36} />
+      <Box sx={{ml: "4px", display: "flex", flexDirection: "column", gap: "2px", minWidth: 0}}>
         <TeamLabel name={<TeamName row={r} href={href} keepClear={keepClear} />} conference={r.conference} sx={{fontSize: 16, fontWeight: onPodium || r.highlight ? 700 : 600}} />
         <Box sx={{fontSize: 12.5, [SMALL_PHONE]: {fontSize: 11.5}, color: onPodium ? color.ink2 : color.muted, ...ellipsis, ...tabular}}>
           {stats.played && (
@@ -454,20 +478,13 @@ function StandingsLine({
           {stats.results}
         </Box>
       </Box>
-      <Box sx={{...numbersSx, alignItems: "baseline"}}>
-        <Box
-          aria-label={`razlika ${r.diff}`}
-          sx={{minWidth: 48, textAlign: "right", fontSize: 17, [TINY_PHONE]: {fontSize: 15}, fontWeight: 700, color: color.navy, ...tabular}}
-        >
-          {r.diff}
-        </Box>
+      <Box sx={{ml: "4px", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "3px", lineHeight: 1}}>
         <Box
           aria-label={count(r.points, NOUN.bod)}
           sx={{
-            minWidth: 34,
-            textAlign: "right",
             fontFamily: font.display,
-            fontSize: 26,
+            fontSize: 20,
+            [TINY_PHONE]: {fontSize: 18},
             fontWeight: 800,
             color: !onPodium && r.live ? color.red : color.ink,
             ...tabular,
@@ -475,7 +492,11 @@ function StandingsLine({
         >
           {r.points}
         </Box>
+        <Box aria-label={`razlika ${r.diff}`} sx={{fontSize: 12.5, [TINY_PHONE]: {fontSize: 11.5}, fontWeight: 600, color: color.muted, ...tabular}}>
+          {r.diff}
+        </Box>
       </Box>
+      {showMovement && <MovementMark movement={r.movement} look="stack" />}
     </Box>
   );
 }

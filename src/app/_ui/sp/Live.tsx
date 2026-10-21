@@ -76,8 +76,7 @@ const RANK_INK: Record<RankTone, string> = {top: color.ink, me: color.navy, live
 // The place in a standings or Rejting row (design "Redni brojevi" 1b · Samo broj): the number alone, no circle,
 // centred in its column. tone (rankTone): top 24 px ink, me navy, live red (24 px when it is also in the top three:
 // podium), plain muted. Red is all that says a team is playing: no dot, no pulse. size: the column's width, 30 px on
-// the phone, 36 on the computer.
-// compact: the phone's standings rows, a narrower and smaller number so the team's name gets the room
+// the phone (26 in the phone's standings rows, phoneNarrow), 36 on the computer.
 export function RankNumber({
   rank,
   tone,
@@ -86,7 +85,7 @@ export function RankNumber({
 }: {
   rank: number;
   tone: RankTone;
-  size?: "phone" | "compact" | "desktop";
+  size?: "phone" | "phoneNarrow" | "desktop";
   podium?: boolean;
 }) {
   const big = tone === "top" || (tone === "live" && podium);
@@ -95,11 +94,11 @@ export function RankNumber({
       component="span"
       aria-label={tone === "live" ? `${rank}. mjesto, igra uživo` : `${rank}. mjesto`}
       sx={{
-        width: size === "desktop" ? 36 : size === "compact" ? 26 : 30,
+        width: size === "desktop" ? 36 : size === "phoneNarrow" ? 26 : 30,
         flex: "none",
         textAlign: "center",
         fontFamily: font.display,
-        fontSize: size === "compact" ? (big ? 19 : 16) : big ? 24 : 20,
+        fontSize: big ? 24 : 20,
         fontWeight: 800,
         letterSpacing: "-.02em",
         lineHeight: 1,
