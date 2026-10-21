@@ -95,6 +95,11 @@ export function standingsTeamHref(row: StandingsRow): string | null {
   return row.teamId != null ? `/teams/${row.teamId}` : null;
 }
 
+// A night of a team's or a player's Zadnje večeri: that league's Dnevni poredak of the date, the team highlighted
+export function nightHref(leagueId: number, date: string, teamId: number | null): string {
+  return `/league/${leagueId}/daily-standings?date=${date}${teamId != null ? `&team=${teamId}` : ""}`;
+}
+
 // The team id of a ?team= parameter (a league's standings opened from a Team page), or null for none or a bad one
 export function highlightParam(value: string | null | undefined): number | null {
   if (value == null || !/^\d{1,9}$/.test(value.trim())) return null;

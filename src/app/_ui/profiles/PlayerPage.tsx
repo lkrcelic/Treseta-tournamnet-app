@@ -10,9 +10,10 @@ import type {RatingNight} from "@/app/_interfaces/ratings";
 import {teamAddOptions} from "@/app/_lib/ui/directory";
 import {playerTeamLeagues, playerTiles, teamInitial} from "@/app/_lib/ui/profiles";
 import {formatChange, ratingPath, shortDate} from "@/app/_lib/ui/ratings";
+import {nightHref} from "@/app/_lib/ui/standings";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {color} from "@/app/_styles/tokens";
-import {changeInk, ColumnCard, ColumnHead, ellipsis, EmptyState, InitialsAvatar, ResultPill, SearchAddField, tabular, Tag} from "@/app/_ui/sp";
+import {buttonBase, changeInk, ColumnCard, ColumnHead, ellipsis, EmptyState, InitialsAvatar, ResultPill, rowFocus, SearchAddField, tabular, Tag} from "@/app/_ui/sp";
 import GroupAddRoundedIcon from "@mui/icons-material/GroupAddRounded";
 import GroupRemoveRoundedIcon from "@mui/icons-material/GroupRemoveRounded";
 import {Box} from "@mui/material";
@@ -112,7 +113,18 @@ export function PlayerPagePhone({playerId}: {playerId: number}) {
 
 // ---------- desktop ----------
 
-const NIGHTS_GRID = "52px minmax(0,1fr) 44px 48px";
+const NIGHTS_GRID = "52px minmax(0,1fr) 44px 48px 22px";
+const nightRow = {height: 54, boxSizing: "border-box", display: "grid", gridTemplateColumns: NIGHTS_GRID, gap: "12px", alignItems: "center", p: "0 16px 0 20px"} as const;
+// a night's row as a link (one without a league is not)
+const nightLink = {
+  ...buttonBase,
+  textDecoration: "none",
+  textAlign: "left",
+  color: color.ink,
+  transition: "background 150ms ease",
+  "&:hover": {background: color.paper2},
+  "&:focus-visible": rowFocus,
+} as const;
 
 // The desktop Player page (13g). embedded: inside the admin's Igrači directory (13j), which brings its own frame. An
 // admin gets the controls (the server says so in viewer.admin).
@@ -263,7 +275,8 @@ function TeamsAddField({data, admin}: {data: PlayerOverview; admin: PlayerTeamsA
   );
 }
 
-// Zadnje večeri (P:307-316): the last five nights with who they played, the matches won:lost and the rating change
+// Zadnje večeri (P:307-316): the last five nights with who they played, the matches won:lost and the rating change;
+// a night opens that league's Dnevni poredak with the player's team highlighted
 function DesktopNights({nights}: {nights: RatingNight[]}) {
   return (
     <ColumnCard
@@ -276,6 +289,7 @@ function DesktopNights({nights}: {nights: RatingNight[]}) {
           <Box component="span" sx={{textAlign: "right"}}>
             Rejt.
           </Box>
+          <span />
         </ColumnHead>
       }
       empty={nights.length === 0 && <EmptyState sx={{p: "32px 20px"}}>Još nema odigranih kola.</EmptyState>}
@@ -283,21 +297,21 @@ function DesktopNights({nights}: {nights: RatingNight[]}) {
       <Box component="ol" sx={{listStyle: "none", m: 0, p: 0}}>
         {nights.map((n) => {
           const opponents = n.opponents.join(", ");
+          const href = n.league_id != null ? nightHref(n.league_id, n.night, n.team_id) : null;
           return (
-            <Box
-              component="li"
-              key={n.night}
-              sx={{height: 54, display: "grid", gridTemplateColumns: NIGHTS_GRID, gap: "12px", alignItems: "center", p: "0 20px", borderBottom: `1px solid ${color.divider}`}}
-            >
-              <Box component="span" sx={{fontSize: 14, color: color.muted, ...tabular}}>
-                {shortDate(n.night)}
-              </Box>
-              <Box component="span" title={opponents || undefined} sx={{minWidth: 0, fontSize: 15, fontWeight: 600, color: color.ink, ...ellipsis}}>
-                {opponents ? `vs ${opponents}` : "—"}
-              </Box>
-              <ResultPill won={n.won} lost={n.lost} size="sm" sx={{justifySelf: "start"}} />
-              <Box component="span" sx={{textAlign: "right", fontSize: 15, fontWeight: 700, color: changeInk(n.change), whiteSpace: "nowrap", ...tabular}}>
-                {formatChange(n.change)}
+            <Box component="li" key={n.night} sx={{borderBottom: `1px solid ${color.divider}`}}>
+              <Box {...(href ? {component: TransitionLink, href} : {component: "div"})} sx={{...(href && nightLink), ...nightRow}}>
+                <Box component="span" sx={{fontSize: 14, color: color.muted, ...tabular}}>
+                  {shortDate(n.night)}
+                </Box>
+                <Box component="span" title={opponents || undefined} sx={{minWidth: 0, fontSize: 15, fontWeight: 600, color: color.ink, ...ellipsis}}>
+                  {opponents ? `vs ${opponents}` : "—"}
+                </Box>
+                <ResultPill won={n.won} lost={n.lost} size="sm" sx={{justifySelf: "start"}} />
+                <Box component="span" sx={{textAlign: "right", fontSize: 15, fontWeight: 700, color: changeInk(n.change), whiteSpace: "nowrap", ...tabular}}>
+                  {formatChange(n.change)}
+                </Box>
+                {href ? <RowChevron /> : <span />}
               </Box>
             </Box>
           );

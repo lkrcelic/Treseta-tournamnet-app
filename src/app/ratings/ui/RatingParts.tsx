@@ -2,7 +2,9 @@
 
 import {PlayerRatingDetail} from "@/app/_interfaces/ratings";
 import {formatChange, RATING_COLUMNS, RATING_HOW, ratingChart, roundsLabel, shortDate} from "@/app/_lib/ui/ratings";
+import {nightHref} from "@/app/_lib/ui/standings";
 import {NOUN, plural} from "@/app/_lib/ui/text";
+import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, changeInk, ChipLink, ellipsis, ProvisionalTag, ResultPill, rowFocus, stretchedArea, tabular, VisuallyHidden} from "@/app/_ui/sp";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
@@ -115,26 +117,53 @@ export function RatingChartCard({detail, width, desktop = false}: {detail: Playe
   );
 }
 
+// a night's row as a link
+const nightLink = {
+  ...buttonBase,
+  textDecoration: "none",
+  textAlign: "left",
+  color: color.ink,
+  transition: "background 150ms ease",
+  "&:hover": {background: color.paper2},
+  "&:focus-visible": rowFocus,
+} as const;
+
 // The player's last five nights: date, who they played, matches won:lost, the change
+// A night opens that league's Dnevni poredak with the player's team highlighted (one without a league is not a link).
 export function LastNights({detail, desktop = false}: {detail: PlayerRatingDetail; desktop?: boolean}) {
-  const rows = detail.lastNights.map((n) => (
-    <Box
-      component="li"
-      key={n.night}
-      sx={{height: desktop ? 50 : 54, display: "grid", gridTemplateColumns: `${desktop ? 56 : 52}px minmax(0,1fr) auto ${desktop ? 52 : 48}px`, gap: "10px", alignItems: "center", px: desktop ? "18px" : "16px", borderTop: desktop ? `1px solid ${color.divider}` : undefined, borderBottom: desktop ? undefined : `1px solid ${color.line}`, "&:last-of-type": desktop ? undefined : {borderBottom: "none"}}}
-    >
-      <Box component="span" sx={{fontSize: 14, color: color.muted, ...tabular}}>
-        {shortDate(n.night)}
+  const rows = detail.lastNights.map((n) => {
+    const href = n.league_id != null ? nightHref(n.league_id, n.night, n.team_id) : null;
+    const row = {
+      height: desktop ? 50 : 54,
+      boxSizing: "border-box",
+      display: "grid",
+      gridTemplateColumns: `${desktop ? 56 : 52}px minmax(0,1fr) auto ${desktop ? 52 : 48}px 22px`,
+      gap: "10px",
+      alignItems: "center",
+      p: desktop ? "0 12px 0 18px" : "0 10px 0 16px",
+    } as const;
+    return (
+      <Box
+        component="li"
+        key={n.night}
+        sx={{borderTop: desktop ? `1px solid ${color.divider}` : undefined, borderBottom: desktop ? undefined : `1px solid ${color.line}`, "&:last-of-type": desktop ? undefined : {borderBottom: "none"}}}
+      >
+        <Box {...(href ? {component: TransitionLink, href} : {component: "div"})} sx={{...(href && nightLink), ...row}}>
+          <Box component="span" sx={{fontSize: 14, color: color.muted, ...tabular}}>
+            {shortDate(n.night)}
+          </Box>
+          <Box component="span" title={n.opponents.join(", ")} sx={{fontSize: 15, fontWeight: 600, ...ellipsis}}>
+            {n.opponents.length ? `vs ${n.opponents.join(", ")}` : "—"}
+          </Box>
+          <ResultPill won={n.won} lost={n.lost} />
+          <Box component="span" sx={{textAlign: "right", fontSize: 15, fontWeight: 700, color: changeInk(n.change), ...tabular}}>
+            {formatChange(n.change)}
+          </Box>
+          {href ? <ChevronRightRoundedIcon aria-hidden sx={{fontSize: 22, color: color.navy}} /> : <span />}
+        </Box>
       </Box>
-      <Box component="span" title={n.opponents.join(", ")} sx={{fontSize: 15, fontWeight: 600, ...ellipsis}}>
-        {n.opponents.length ? `vs ${n.opponents.join(", ")}` : "—"}
-      </Box>
-      <ResultPill won={n.won} lost={n.lost} />
-      <Box component="span" sx={{textAlign: "right", fontSize: 15, fontWeight: 700, color: changeInk(n.change), ...tabular}}>
-        {formatChange(n.change)}
-      </Box>
-    </Box>
-  ));
+    );
+  });
 
   if (desktop) {
     return (

@@ -23,6 +23,10 @@ export type RatingNight = {
   won: number; // matches won that night
   lost: number;
   change: number;
+  // where the night opens (that league's Dnevni poredak with the team highlighted): the league and the team of the
+  // player's first round that night; null when no round of the night counted for them
+  league_id: number | null;
+  team_id: number | null;
 };
 
 export type PlayerRatingDetail = {

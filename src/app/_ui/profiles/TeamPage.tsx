@@ -11,6 +11,7 @@ import {leagueDateString} from "@/app/_lib/dates";
 import {leagueAddOptions, playerAddOptions} from "@/app/_lib/ui/directory";
 import {leagueStatusParts, nightParts, rosterSubline, teamInitial, teamTiles} from "@/app/_lib/ui/profiles";
 import {formatChange, shortDate} from "@/app/_lib/ui/ratings";
+import {nightHref} from "@/app/_lib/ui/standings";
 import {count, NOUN} from "@/app/_lib/ui/text";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {color, font, shadow} from "@/app/_styles/tokens";
@@ -77,8 +78,6 @@ const EMPTY: EmptyText = {
 
 const playerHref = (p: TeamOverviewPlayer) => `/players/${p.id}`;
 const leagueHref = (l: TeamOverviewLeague, teamId: number) => `/league/${l.league_id}/standings?team=${teamId}`;
-// a night opens that league's Dnevni poredak of the date, with the team highlighted
-const nightHref = (n: TeamNight, teamId: number) => `/league/${n.league_id}/daily-standings?date=${n.date}&team=${teamId}`;
 
 // The team's photo with its settings, for its players and admins (null for anyone else)
 const photoSettings = (team: TeamOverview | null): TeamPhotoInfo | null => (team && "can_edit" in team.photo ? team.photo : null);
@@ -403,7 +402,7 @@ function PhoneNights({nights, teamId}: {nights: TeamNight[]; teamId: number}) {
             <Box component="li" key={`${n.date}|${n.league_id}`}>
               <Box
                 component={TransitionLink}
-                href={nightHref(n, teamId)}
+                href={nightHref(n.league_id, n.date, teamId)}
                 sx={{...phoneRowLink, minHeight: 56, boxSizing: "border-box", display: "grid", gridTemplateColumns: "50px minmax(0,1fr) auto 22px", gap: "10px", p: "8px 10px 8px 16px"}}
               >
                 <NightCells night={n} desktop={false} />
@@ -756,7 +755,7 @@ function DesktopNights({nights, teamId, empty}: {nights: TeamNight[]; teamId: nu
           <Box component="li" key={`${n.date}|${n.league_id}`}>
             <Box
               component={TransitionLink}
-              href={nightHref(n, teamId)}
+              href={nightHref(n.league_id, n.date, teamId)}
               sx={{
                 ...buttonBase,
                 minHeight: 62,

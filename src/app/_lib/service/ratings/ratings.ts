@@ -131,17 +131,22 @@ export async function lastNights(playerId: number, nights: {night: Date; change:
       team2: {select: {team_name: true, teamPlayers: {select: {player_id: true}}}},
       roundPlayers: {select: {player_id: true, team_id: true}},
       matches: {select: {player_pair1_score: true, player_pair2_score: true, winner_side: true}, orderBy: {id: "asc"}},
+      leagueRounds: {select: {league_id: true}, orderBy: {league_id: "asc"}, take: 1},
     },
   });
 
   return nights.map(({night, change}) => {
-    const out: RatingNight = {night: isoDate(night), opponents: [], won: 0, lost: 0, change};
+    const out: RatingNight = {night: isoDate(night), opponents: [], won: 0, lost: 0, change, league_id: null, team_id: null};
     for (const r of rounds) {
       if (isoDate(r.round_date!) !== out.night) continue;
       const teamA = ratedPlayerIds(r.roundPlayers, r.team1_id, r.team1.teamPlayers.map((p) => p.player_id));
       const teamB = ratedPlayerIds(r.roundPlayers, r.team2_id, r.team2.teamPlayers.map((p) => p.player_id));
       const side = teamA.includes(playerId) ? 1 : teamB.includes(playerId) ? 2 : 0;
       if (!side) continue;
+      if (out.league_id == null && r.leagueRounds[0]) {
+        out.league_id = r.leagueRounds[0].league_id;
+        out.team_id = side === 1 ? r.team1_id : r.team2_id;
+      }
       out.opponents.push(side === 1 ? r.team2.team_name : r.team1.team_name);
       const games = roundGames({
         night: out.night,
