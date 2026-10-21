@@ -63,8 +63,8 @@ import {AddError, NameButton, NameEditing, RemoveButton, TeamAdmin, TeamNameInpu
 
 // The Team page (/teams/[teamId], handoff §6, frames 13a, 13b, 13f, 13k–13o): the cream header with the team's best
 // place, players and leagues, then its players (to their pages), its leagues (to that league's standings with the team
-// highlighted) and its last nights. On the desktop an admin also renames the team, adds and removes its players and puts
-// it in leagues (TeamAdmin.tsx).
+// highlighted) and its last nights (to that night's Dnevni poredak, the team highlighted). On the desktop an admin also
+// renames the team, adds and removes its players and puts it in leagues (TeamAdmin.tsx).
 
 // what an empty column says (Nova ekipa says it its own way)
 export type EmptyText = {players: string; leagues: string; nights: string};
@@ -77,6 +77,8 @@ const EMPTY: EmptyText = {
 
 const playerHref = (p: TeamOverviewPlayer) => `/players/${p.id}`;
 const leagueHref = (l: TeamOverviewLeague, teamId: number) => `/league/${l.league_id}/standings?team=${teamId}`;
+// a night opens that league's Dnevni poredak of the date, with the team highlighted
+const nightHref = (n: TeamNight, teamId: number) => `/league/${n.league_id}/daily-standings?date=${n.date}&team=${teamId}`;
 
 // The team's photo with its settings, for its players and admins (null for anyone else)
 const photoSettings = (team: TeamOverview | null): TeamPhotoInfo | null => (team && "can_edit" in team.photo ? team.photo : null);
@@ -206,7 +208,7 @@ export function TeamPagePhone({teamId}: {teamId: number}) {
           )}
           <PhonePlayers team={team} admin={admin} />
           <PhoneLeagues team={team} admin={admin} />
-          <PhoneNights nights={team.nights} />
+          <PhoneNights nights={team.nights} teamId={team.team.id} />
         </>
       ) : (
         <PageStatus kind="team" overview={overview} nav={nav} />
@@ -390,7 +392,7 @@ function PhoneLeagues({team, admin}: {team: TeamOverview; admin: TeamAdmin | nul
   );
 }
 
-function PhoneNights({nights}: {nights: TeamNight[]}) {
+function PhoneNights({nights, teamId}: {nights: TeamNight[]; teamId: number}) {
   return (
     <PhoneSection title="Zadnje večeri">
       {nights.length === 0 ? (
@@ -398,12 +400,15 @@ function PhoneNights({nights}: {nights: TeamNight[]}) {
       ) : (
         <Box component="ol" sx={phoneRows}>
           {nights.map((n) => (
-            <Box
-              component="li"
-              key={`${n.date}|${n.league_id}`}
-              sx={{minHeight: 56, boxSizing: "border-box", display: "grid", gridTemplateColumns: "50px minmax(0,1fr) auto", gap: "10px", alignItems: "center", p: "8px 16px"}}
-            >
-              <NightCells night={n} desktop={false} />
+            <Box component="li" key={`${n.date}|${n.league_id}`}>
+              <Box
+                component={TransitionLink}
+                href={nightHref(n, teamId)}
+                sx={{...phoneRowLink, minHeight: 56, boxSizing: "border-box", display: "grid", gridTemplateColumns: "50px minmax(0,1fr) auto 22px", gap: "10px", p: "8px 10px 8px 16px"}}
+              >
+                <NightCells night={n} desktop={false} />
+                <RowChevron />
+              </Box>
             </Box>
           ))}
         </Box>
@@ -470,7 +475,7 @@ function NightCells({night: n, desktop}: {night: TeamNight; desktop: boolean}) {
 const GRID = {
   players: "minmax(0,1fr) auto 36px",
   leagues: "40px minmax(0,1fr) 44px 22px",
-  nights: "52px minmax(0,1fr) 56px",
+  nights: "52px minmax(0,1fr) 56px 22px",
 } as const;
 
 // The desktop Team page (13f; 13n loading, 13o a new team). embedded: inside the admin's Ekipe directory (13h), which
@@ -527,7 +532,7 @@ export function TeamColumns({team, admin, empty = EMPTY}: {team: TeamOverview; a
     <PageColumns template={TEAM_GRID} stackedTemplate={TEAM_STACKED_GRID}>
       <DesktopPlayers team={team} admin={admin} empty={empty.players} />
       <DesktopLeagues team={team} admin={admin} empty={empty.leagues} />
-      <DesktopNights nights={team.nights} empty={empty.nights} />
+      <DesktopNights nights={team.nights} teamId={team.team.id} empty={empty.nights} />
     </PageColumns>
   );
 }
@@ -730,7 +735,7 @@ function DesktopLeagues({team, admin, empty}: {team: TeamOverview; admin: TeamAd
   );
 }
 
-function DesktopNights({nights, empty}: {nights: TeamNight[]; empty: string}) {
+function DesktopNights({nights, teamId, empty}: {nights: TeamNight[]; teamId: number; empty: string}) {
   return (
     <ColumnCard
       title="Zadnje večeri"
@@ -741,18 +746,38 @@ function DesktopNights({nights, empty}: {nights: TeamNight[]; empty: string}) {
           <Box component="span" sx={rightLabel}>
             Raz
           </Box>
+          <span />
         </ColumnHead>
       }
       empty={nights.length === 0 && <EmptyState icon>{empty}</EmptyState>}
     >
       <Box component="ol" sx={{listStyle: "none", m: 0, p: 0}}>
         {nights.map((n) => (
-          <Box
-            component="li"
-            key={`${n.date}|${n.league_id}`}
-            sx={{minHeight: 62, boxSizing: "border-box", display: "grid", gridTemplateColumns: GRID.nights, gap: "12px", alignItems: "center", p: "8px 20px", borderBottom: `1px solid ${color.divider}`}}
-          >
-            <NightCells night={n} desktop />
+          <Box component="li" key={`${n.date}|${n.league_id}`}>
+            <Box
+              component={TransitionLink}
+              href={nightHref(n, teamId)}
+              sx={{
+                ...buttonBase,
+                minHeight: 62,
+                boxSizing: "border-box",
+                display: "grid",
+                gridTemplateColumns: GRID.nights,
+                gap: "12px",
+                alignItems: "center",
+                p: "8px 16px 8px 20px",
+                borderBottom: `1px solid ${color.divider}`,
+                textDecoration: "none",
+                textAlign: "left",
+                color: color.ink,
+                transition: "background 150ms ease",
+                "&:hover": {background: color.paper2},
+                "&:focus-visible": rowFocus,
+              }}
+            >
+              <NightCells night={n} desktop />
+              <RowChevron />
+            </Box>
           </Box>
         ))}
       </Box>

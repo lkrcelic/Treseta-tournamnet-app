@@ -19,7 +19,7 @@ import useAuthStore from "@/app/_store/authStore";
 import {useDailyData, useRoundDates} from "@/app/_hooks/useStandings";
 import {leagueNightString} from "@/app/_lib/dates";
 import {ConferenceOf} from "@/app/_lib/conferences";
-import {inConference, splitPodium, standingsTeamHref, toStandingsRows} from "@/app/_lib/ui/standings";
+import {highlightParam, inConference, splitPodium, standingsTeamHref, toStandingsRows} from "@/app/_lib/ui/standings";
 import {filterTables, liveCount, splitColumns, TableFilter, tableColumns, TableRow, toTableRows} from "@/app/_lib/ui/tables";
 import {ConferenceFilter} from "@/app/_ui/league/ConferenceFilter";
 import {count, displayDate, NOUN} from "@/app/_lib/ui/text";
@@ -42,12 +42,15 @@ import {
   ScrollArea,
   ScrollCard,
   SearchInput,
+  scrollIntoMiddle,
   Segmented,
+  StackTopBar,
   StandingsGrid,
   StandingsRows,
   TabItem,
   tabPanelProps,
 } from "@/app/_ui/sp";
+import {BackPill} from "@/app/_ui/sp/BackPill";
 import {DesktopTableRow, PhoneRoundTables, TABLE_ROW_HEIGHT, TableTarget} from "@/app/league/[leagueId]/daily-standings/ui/RoundTables";
 import {ConfirmRemove, EditToggle, NewTableButton, PairDialog, PairSheet, RoundAdmin, RowActions, useTableEdits} from "@/app/league/[leagueId]/daily-standings/ui/RoundEditing";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
@@ -90,7 +93,11 @@ export default function DailyStandings() {
   const index = date && dates ? dates.indexOf(date) : -1;
   const prevDate = index > 0 ? dates[index - 1] : null;
   const nextDate = dates && index >= 0 && index < dates.length - 1 ? dates[index + 1] : null;
-  const goDate = (d: string | null) => d && router.router.replace(`/league/${leagueId}/daily-standings?date=${d}`);
+  // opened from a Team page's Zadnje večeri (?team=<id>): that team highlighted and scrolled to, and the page is a page
+  // of the stack (Back to the team, and Home on the phone); the team stays in the address on another date or tab
+  const highlightTeamId = highlightParam(searchParams.get("team"));
+  const teamQuery = highlightTeamId != null ? `&team=${highlightTeamId}` : "";
+  const goDate = (d: string | null) => d && router.router.replace(`/league/${leagueId}/daily-standings?date=${d}${teamQuery}`);
 
   const daily = useDailyData(leagueId, date || null);
   // tonight's night lasts until 06:00, so a night that runs past midnight is still "večeras" with no medals yet
@@ -102,7 +109,10 @@ export default function DailyStandings() {
   const conferences = useConferences(leagueId);
   const [conf, setConf] = useConferenceFilter(leagueId, conferences.conferences);
   const confName = conferences.conferences.find((c) => c.id === conf)?.name;
-  const allStandings = useMemo(() => toStandingsRows(daily.data?.standings, {myTeamNames, conferenceOf: conferences.of}), [daily.data, myTeamNames, conferences]);
+  const allStandings = useMemo(
+    () => toStandingsRows(daily.data?.standings, {myTeamNames, highlightTeamId, conferenceOf: conferences.of}),
+    [daily.data, myTeamNames, highlightTeamId, conferences]
+  );
   const standings = useMemo(() => inConference(allStandings, conf), [allStandings, conf]);
   const roundNumbers = daily.data?.roundNumbers ?? [];
   const roundsLive = (n: number) => (daily.data?.rounds ?? []).some((r) => r.round_number === n && r.active);
@@ -125,10 +135,12 @@ export default function DailyStandings() {
     setTab(k);
     setTabTouched(true);
     // the tab is in the address, so Back from a table (or a team) comes back to it
-    if (date) replaceAddress(`/league/${leagueId}/daily-standings?date=${date}${k ? `&round=${k}` : ""}`);
+    if (date) replaceAddress(`/league/${leagueId}/daily-standings?date=${date}${k ? `&round=${k}` : ""}${teamQuery}`);
   };
   // the name a Team or table page opened from here shows on its back pill: "‹ Kolo 3" from a round's tab
   const nav = useNavStack(tab ? `Kolo ${tab}` : "Dnevni poredak");
+  // the admin's phone keeps its own top row (Back, Osvježi, editing)
+  const fromTeam = highlightTeamId != null && signedIn && !adminPhone;
   const tabs: TabItem<number>[] = [{key: 0, label: "Tablica okupljanja"}, ...roundNumbers.map((n) => ({key: n, label: `Kolo ${n}`, live: roundsLive(n)}))];
   const roundRows = useMemo(
     () => toTableRows((daily.data?.rounds ?? []).filter((r) => r.round_number === tab), myTeamNames, conferences.of),
@@ -144,6 +156,21 @@ export default function DailyStandings() {
   // before the league's first night there is no date to show
   const dateTitle = date ? displayDate(date) : noNights ? "Dnevni poredak" : "—";
   const loadError = datesError ?? daily.error;
+
+  // the highlighted team in view once the night's table is there (a row of the podium shows itself); Back to the page
+  // finds the list where it was left instead
+  const scrolledTo = useRef<string | null>(null);
+  useEffect(() => {
+    if (highlightTeamId == null || tab !== 0 || standings.length === 0) return;
+    const key = `${leagueId}:${date}:${highlightTeamId}:${isDesktop}`;
+    const box = scroller.element();
+    if (scrolledTo.current === key || !box) return;
+    scrolledTo.current = key;
+    const row = box.querySelector<HTMLElement>("[data-highlight]");
+    const pinned = box.querySelector<HTMLElement>("[data-pinned]");
+    if (scroller.restored() || !row || pinned?.contains(row)) return;
+    scrollIntoMiddle(row, box, pinned?.offsetHeight ?? 0);
+  }, [highlightTeamId, leagueId, date, isDesktop, tab, standings, scroller]);
 
   const phoneEdit = usePhoneEdit(adminPhone ? {leagueId, date: date || "", roundNumber: tab, onChanged: daily.refresh} : null, tab);
   const removeRow = roundRows.find((r) => r.id === phoneEdit.edits.confirmId) ?? null;
@@ -163,6 +190,7 @@ export default function DailyStandings() {
     return (
       <DesktopShell
         active="daily"
+        lead={fromTeam ? <BackPill nav={nav} sx={{alignSelf: "center", maxWidth: 320}} /> : undefined}
         eyebrow={isToday ? "Okupljanje · večeras" : "Okupljanje"}
         title={dateTitle}
         right={
@@ -209,6 +237,7 @@ export default function DailyStandings() {
 
   return (
     <Screen fill>
+      {fromTeam && <StackTopBar eyebrow="Okupljanje" nav={nav} />}
       {adminPhone && (
         <AdminTopRow
           onBack={nav.back}
@@ -275,7 +304,7 @@ export default function DailyStandings() {
       </Box>
 
       {/* the admin goes back with the arrow at the top, as on every admin screen (no button that only closes) */}
-      {!adminPhone && (
+      {!adminPhone && !fromTeam && (
         <PrimaryButton icon={<HomeRoundedIcon />} onClick={() => router.push("/", "back")}>
           Početni zaslon
         </PrimaryButton>
