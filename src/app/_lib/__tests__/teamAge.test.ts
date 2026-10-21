@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {AGE_GAP_CAP, ageGap, generateMultipleRoundPairings, Team, TeamPair} from "@/app/_lib/matching/multipleRoundMatching";
-import {ageInYears, averageAge, DEFAULT_AGE} from "@/app/_lib/matching/teamAges";
+import {ageInYears, averageAge, DEFAULT_AGE, MIN_AGE} from "@/app/_lib/matching/teamAges";
 import {BYE_TEAM_ID} from "@/app/_lib/bye";
 
 // team 1 is ranked first, team `ages.length` last; ages[i] is team i + 1's average age (null: unknown)
@@ -70,6 +70,18 @@ test("a player without a birth date counts as 24", () => {
   const age = averageAge([new Date("1986-10-21T00:00:00.000Z"), null], today);
   assert.ok(Math.abs(age! - 32) < 0.01, `40 and 24 average 32, got ${age}`);
   assert.equal(averageAge([null, undefined], today), 24, "no birth date at all: 24, not unknown");
+});
+
+test("a birth date under 18 years counts as no birth date: 24", () => {
+  const today = new Date("2026-10-21T00:00:00.000Z");
+  assert.equal(MIN_AGE, 18);
+  assert.equal(averageAge([today], today), 24, "born today (the date field's slip): 24, not 0");
+  assert.equal(averageAge([new Date("2024-06-07T00:00:00.000Z")], today), 24, "2 years old: 24");
+  assert.equal(averageAge([new Date("2008-10-22T00:00:00.000Z")], today), 24, "a day before the 18th birthday: 24");
+  const eighteen = averageAge([new Date("2008-10-20T00:00:00.000Z")], today);
+  assert.ok(eighteen! > 18 && eighteen! < 18.01, `a day after the 18th birthday counts as they are, got ${eighteen}`);
+  const team = averageAge([new Date("1986-10-21T00:00:00.000Z"), today], today);
+  assert.ok(Math.abs(team! - 32) < 0.01, `40 and a slip average 32, got ${team}`);
 });
 
 test("only a team without players has no age", () => {

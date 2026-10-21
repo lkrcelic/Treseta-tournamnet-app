@@ -7,7 +7,7 @@ import {leagueNight} from "@/app/_lib/dates";
 import {activeLeagueId} from "@/app/_lib/service/league/leagues";
 import {getLeagueTeamsWithScores} from "@/app/_lib/helpers/query/leagueScores";
 import {teamAverageAges} from "@/app/_lib/service/team/ages";
-import {ageInYears, DEFAULT_AGE} from "@/app/_lib/matching/teamAges";
+import {ageInYears, DEFAULT_AGE, MIN_AGE} from "@/app/_lib/matching/teamAges";
 import {ageGap, generateMultipleRoundPairings, RoundsPlan, Team} from "@/app/_lib/matching/multipleRoundMatching";
 import {isByeTeam} from "@/app/_lib/bye";
 
@@ -34,6 +34,7 @@ const median = (xs: number[]) => {
     const avg = entered.reduce((s, a) => s + a, 0) / entered.length;
     console.log(`ages entered: average ${one(avg)}, median ${one(median(entered))}, youngest ${one(Math.min(...entered))}, oldest ${one(Math.max(...entered))}`);
     console.log(`a player without a birth date counts as ${DEFAULT_AGE} (${one(DEFAULT_AGE - avg)} from the average)`);
+    console.log(`younger than ${MIN_AGE}, so counted as ${DEFAULT_AGE} too: ${entered.filter((a) => a < MIN_AGE).length}`);
     const buckets = new Map<string, number>();
     entered.forEach((a) => {
       const from = Math.floor(a / 10) * 10;
