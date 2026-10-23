@@ -3,12 +3,13 @@ import {NextRequest, NextResponse} from "next/server";
 import {randomUUID} from "crypto";
 import {z} from "zod";
 
-import argon2 from "argon2";
 import {LoginUser} from "@/app/_interfaces/login";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {extractCookieWithoutSignature, signCookie} from "@/app/_lib/service/auth/signCookie";
 import { lucia } from "@/app/_lib/luciaAuth";
 import {clearFailedLogins, isLoginLocked, loginLimitKey, recordFailedLogin} from "@/app/_lib/rateLimiting/loginLimiting";
+import {clearAccountLogins, countAccountLogin} from "@/app/_lib/rateLimiting/accountLimiting";
+import {verifyPassword} from "@/app/_lib/service/auth/verifyPassword";
 import {anyCase} from "@/app/_lib/helpers/query/anyCase";
 import {ACCOUNT_DEACTIVATED} from "@/app/_interfaces/login";
 
@@ -34,21 +35,22 @@ export async function POST(req: NextRequest) {
 
     // The limit is per account (username and email count together). The attempt is counted before the password is
     // checked, so parallel requests can't all get through; a correct password clears the count again.
-    const limitKey = loginLimitKey(req, existingUser ? `player:${existingUser.id}` : `login:${login.toLowerCase()}`);
-    if (isLoginLocked(limitKey)) {
+    // Two limits: per address and account (in memory), and per account from any address (in the database, so it holds
+    // across addresses and instances). A missing account is counted the same way, so a lockout doesn't tell it apart.
+    const accountKey = existingUser ? `player:${existingUser.id}` : `login:${login.toLowerCase()}`;
+    const limitKey = loginLimitKey(req, accountKey);
+    if (isLoginLocked(limitKey) || await countAccountLogin(prisma, accountKey)) {
       return NextResponse.json({error: "Previše pokušaja prijave. Pokušaj kasnije."}, {status: STATUS.TooManyRequests});
     }
     recordFailedLogin(limitKey);
 
-    // Google accounts have no password
-    if (!existingUser || !existingUser.password_hash) {
-      return notFoundResponse();
-    }
-    const validPassword = await argon2.verify(existingUser.password_hash, user.password);
-    if (!validPassword) {
+    // Google accounts have no password; both still run a hash check, so the timing doesn't tell they're different
+    const validPassword = await verifyPassword(existingUser?.password_hash, user.password);
+    if (!existingUser || !validPassword) {
       return notFoundResponse();
     }
     clearFailedLogins(limitKey);
+    await clearAccountLogins(prisma, accountKey);
     // deactivated by an admin (a deleted player has no password, so they never get this far)
     if (!existingUser.active) {
       return NextResponse.json({error: ACCOUNT_DEACTIVATED}, {status: STATUS.Forbidden});
