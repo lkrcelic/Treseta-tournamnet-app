@@ -131,6 +131,7 @@ winner (`Match.winner_side`); everything else is worked out by replaying the han
 | `_hooks/useStartGame.ts`, `round/lineup/[roundId]/page.tsx`, `league/[leagueId]/daily-standings/table/TablePreview.tsx` | `1001` → `MATCH_THRESHOLD` |
 | `league/[leagueId]/daily-standings/table/[roundId]/page.tsx` | `1001` → `MATCH_THRESHOLD` (the comment says "Custom" for "Ručni unos"); after a custom hand `save` passes `run` an `after` that opens the "s ovim dosta" question (`DostaPrompt`, `askDosta` and `pickDosta`); the "Do 51" flag (`TargetFlag`) next to the admin pill; a match tab adds "· do 51" |
 | `_lib/service/admin/recalc.ts`, `_lib/service/ratings/ratings.ts` | The ratings read each match's `winner_side` through `ratedMatch`, so a "s ovim dosta" win with fewer points is a win (Bela compares the points). `recalc.ts` also has `RATINGS_FROM`, below |
+| `_lib/ui/handRows.ts` | The scorepad's lead bar is full at a lead of `MATCH_THRESHOLD` (`LEAD_BAR_FULL`; Bela: 300) |
 | `_lib/service/round/insertPairRounds.ts` | Bye matches `BYE_MATCH_POINTS : 0` (Bela: `301 : 0`), threshold `MATCH_THRESHOLD` |
 | `ongoing-match/ui/useMatchSides.ts` | Imports `TeamSide` from `_interfaces/side` |
 | `_store/ongoingMatchStore.ts` | The hands field is `results` (Bela: `belaResults`) |

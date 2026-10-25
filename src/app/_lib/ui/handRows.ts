@@ -1,8 +1,10 @@
 // The scorepad's running view of a match's hands (Claude Design "Score pad", A6): what each team has with the hand
 // counted, who won it and how far the leader is ahead after it.
 
+import {MATCH_THRESHOLD} from "@/app/_lib/game/scoring";
+
 // a lead this big (or bigger) fills its half of the bar under a hand
-export const LEAD_BAR_FULL = 300;
+export const LEAD_BAR_FULL = MATCH_THRESHOLD;
 
 export type RunningHand = {
   // both teams' totals with this hand counted
