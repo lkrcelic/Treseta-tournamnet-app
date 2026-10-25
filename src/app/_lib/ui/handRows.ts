@@ -3,7 +3,8 @@
 
 import {MATCH_THRESHOLD} from "@/app/_lib/game/scoring";
 
-// a lead this big (or bigger) fills its half of the bar under a hand
+// a lead this big (or bigger) fills its half of the bar under a hand: the 41 a match is played to, so a lead of a
+// few points shows as part of the way rather than already full
 export const LEAD_BAR_FULL = MATCH_THRESHOLD;
 
 export type RunningHand = {

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
+import {MATCH_THRESHOLD} from "@/app/_lib/game/scoring";
 import {LEAD_BAR_FULL, runningHands} from "../ui/handRows";
 
 test("each hand shows the totals with it counted, its winner and the lead after it", () => {
@@ -29,13 +30,15 @@ test("a tied hand has no winner and a level match no leader", () => {
   assert.equal(b.leadPct, 0);
 });
 
-test("the lead bar fills its half at LEAD_BAR_FULL and stops there", () => {
-  const [half, full, over] = runningHands([
-    {left: LEAD_BAR_FULL / 2, right: 0},
-    {left: LEAD_BAR_FULL / 2, right: 0},
-    {left: 200, right: 0},
+test("the lead bar fills its half at a lead of MATCH_THRESHOLD and stops there", () => {
+  assert.equal(LEAD_BAR_FULL, MATCH_THRESHOLD);
+  const [some, full, over] = runningHands([
+    {left: 12, right: 0},
+    {left: 29, right: 0},
+    {left: 5, right: 0},
   ]);
-  assert.equal(half.leadPct, 50);
+  // a lead of 12 is under a third of the bar, not a full one
+  assert.ok(some.leadPct > 29 && some.leadPct < 30);
   assert.equal(full.leadPct, 100);
   assert.equal(over.leadPct, 100);
 });
