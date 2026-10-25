@@ -9,7 +9,7 @@ own; everything else is kept identical to Bela.
 | | |
 |---|---|
 | Bela branch | `development`, read through the remote `bela` (the local Bela repo). Only commits come over, never Bela's uncommitted work |
-| Last synced Bela commit | `4b0be31` (20 Oct 2026) |
+| Last synced Bela commit | `d0777b1` (23 Oct 2026) |
 | Waiting in Bela | Nothing settled ahead (see [Bela's work waiting to come over](#belas-work-waiting-to-come-over)) |
 | Target branch | `master` |
 | Sync branch | `bela-sync` in the repo itself (no worktree): created from `master`, or rebased onto it, by every run |
@@ -78,7 +78,7 @@ Treseta directly only for what has to differ, and add it below.
 
 ## Bela's work waiting to come over
 
-Nothing: every Bela commit up to `4b0be31` (20 Oct 2026) came over by 21 Oct 2026, and what lasts from the decisions
+Nothing: every Bela commit up to `d0777b1` (23 Oct 2026) came over by 25 Oct 2026, and what lasts from the decisions
 settled for them is under Differences. Decisions for Bela work that touches Treseta's differences before it comes
 over go here.
 
@@ -183,7 +183,7 @@ edit:
 | File | Treseta's edit |
 |---|---|
 | `_interfaces/league.ts`, `_lib/service/league/leagues.ts`, `_fetchers/league/leagues.ts`, `_hooks/useLeagueTeams.ts`, `api/leagues/[id]/teams/[teamId]/route.ts`, `_ui/admin/LeaguePhone.tsx` | Create League takes conferences; a league's team list has each team's `conference_id`, and the team PATCH sets it (a team added on the phone's league screen starts with `conferenceId: null`) |
-| `_interfaces/round.ts`, `api/rounds/generate-multiple/route.ts`, `_fetchers/round/createMultipleRounds.ts`, `_ui/round/CreateRound.tsx` | Create Round (desktop): the "Samo unutar konferencija" switch (`withinConferences`, under Rounds and Window, next to the smoking tables; the fetcher sends it after `smokingTables`) and the team list's dots. The switch is local state, off for every league, outside Bela's saved Novo kolo draft; `useCreateRound` also returns `hasConferences`, `withinConferences` and `setWithinConferences` for the phone. The route pairs (by conference when asked), checks repeats, then Bela's `seatRounds` only places the pairs at tables |
+| `_interfaces/round.ts`, `api/rounds/generate-multiple/route.ts`, `_fetchers/round/createMultipleRounds.ts`, `_ui/round/CreateRound.tsx` | Create Round (desktop): the "Samo unutar konferencija" switch (`withinConferences`, under Rounds and Window, next to the smoking tables; the fetcher sends it after `smokingTables`) and the team list's dots. The switch is local state, off for every league, outside Bela's saved Novo kolo draft; `useCreateRound` also returns `hasConferences`, `withinConferences` and `setWithinConferences` for the phone. The route gives the teams their average age, pairs (by conference when asked), checks repeats, then Bela's `seatRounds` only places the pairs at tables |
 | `_ui/admin/CreateRoundPhone.tsx`, `_ui/admin/DraftPhone.tsx` | The admin's phone: Novo kolo has the "Samo unutar konferencija" switch under the window, and Skica kola the teams' dots (its rows from `draftTableRows` with the league's conferences) |
 | `_lib/matching/multipleRoundMatching.ts` | `generateGroupedRoundPairings` at the end of the file, which pairs every conference on its own with the unchanged pairing; a conference with too few teams throws `InvalidResultError` (a 400) |
 | `api/rounds/open/route.ts`, `_fetchers/round/getOpenByPlayerId.ts`, `_hooks/useOpenTable.ts`, `_ui/home/PhoneHome.tsx` | The Start Game card shows the two teams' conference colors (green and red in a league without conferences) |
@@ -217,7 +217,7 @@ The database part (the `Conference` table and `LeagueTeam.conference_id`) is und
 - `.env` (Bela tracks it; here it is ignored), `next-env.d.ts` (ignored here), `.idea/`, `bela-tournament-app.zip`,
   `tmp-file.ts`, `skills-lock.json`, `backups/`, `.claude/`.
 - Bela's documents: `PLAN.md`, `DECISIONS.md`, `BACKEND_REVIEW.md`, `REFINEMENTS.md`, `TEST_REPORT.md`, `BLOCKERS.md`,
-  `RATING_INTEGRATION.md`, and any other Markdown file Bela adds at its root.
+  `RATING_INTEGRATION.md`, `CLAUDE.md`, and any other Markdown file Bela adds at its root.
 - Bela's database files: `prisma/migrations/**` (see Database), `prisma/seedHelpers.ts`, `prisma/usefulQueries/**`.
 - Bela's game: `_lib/bela/`, `_interfaces/belaResult.ts`, `_interfaces/belaPlayerAnnouncement.ts`, `_store/bela/`,
   `_fetchers/ongoingBelaResult/`, `_lib/service/ongoingBelaResult/`, `api/ongoing-bela-result/`, and the hand entry's
@@ -251,3 +251,4 @@ The nightly sync adds a row when it brings something over or stops.
 | 20 Oct 2026 | `b6cd20c..da577ba` (1) | Came over as Bela has it: a tap on a player's or a team's photo opens it over the whole screen (PhotoViewer); no migration |
 | 20 Oct 2026 | `da577ba..5fc3bf5` (1) | Came over as Bela has it: the admin's photo controls on the computer move onto the header avatar's badge and panel (PhotoAdmin); no migration |
 | 21 Oct 2026 | `5fc3bf5..4b0be31` (1) | Came over as Bela has it (the scorepad page's scoring import kept): Tko igra ovu rundu? every time an admin opens a table's scorepad, a finished round's lineup correctable with a ratings replay; no migration |
+| 25 Oct 2026 | `4b0be31..d0777b1` (13) | 12 came over, 1 skipped (Bela's root `CLAUDE.md`), `DECISIONS.md` left out: Zadnje večeri open that night's Dnevni poredak with the team highlighted (with the conference filter), the phone's standings rows as B1 (the conference dot kept in the name), pairing by average age (also inside every conference), `npm run ages:report`, scorepad hands as cards; no migration. Checks incomplete: the sandbox stopped `npm ci`'s Prisma engine download |
