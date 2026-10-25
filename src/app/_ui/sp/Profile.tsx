@@ -419,6 +419,7 @@ export function SearchAddField({
   note,
   noHit,
   disabled = false,
+  onQueryChange,
   sx,
 }: {
   placeholder: string;
@@ -428,9 +429,15 @@ export function SearchAddField({
   note?: React.ReactNode;
   noHit?: React.ReactNode;
   disabled?: boolean;
+  // the typed text, for a list beside the field that filters with it (the league's own teams)
+  onQueryChange?: (query: string) => void;
   sx?: SxProps<Theme>;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQueryState] = useState("");
+  const setQuery = (q: string) => {
+    setQueryState(q);
+    onQueryChange?.(q);
+  };
   const [open, setOpen] = useState(false);
   const closeTimer = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);

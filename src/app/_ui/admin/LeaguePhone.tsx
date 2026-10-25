@@ -12,7 +12,7 @@ import {useLeagueStandings} from "@/app/_hooks/useStandings";
 import {isPlaying} from "@/app/_lib/createRoundDraft";
 import {leagueNightString} from "@/app/_lib/dates";
 import {exceptionLabel, gatheringLabel, NIGHT_STATUS_LABEL, NightStatus, nightLabel, nightsLeftLabel, nightStatus} from "@/app/_lib/nights";
-import {count, NOUN} from "@/app/_lib/ui/text";
+import {count, matchesQuery, NOUN} from "@/app/_lib/ui/text";
 import {roundName} from "@/app/_lib/roundStatus";
 import {replaceAddress, TransitionLink, useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
@@ -186,6 +186,8 @@ function TeamsTab({leagueId, data}: {leagueId: number; data: ReturnType<typeof u
   const [asking, setAsking] = useState<LeagueTeam | null>(null);
   const [removing, setRemoving] = useState(false);
   const [justAdded, setJustAdded] = useState<number | null>(null);
+  // the field's text also filters the league's own teams, so a team already in the league is found too
+  const [query, setQuery] = useState("");
 
   // every team, to add one that isn't in the league
   useEffect(() => {
@@ -199,6 +201,7 @@ function TeamsTab({leagueId, data}: {leagueId: number; data: ReturnType<typeof u
   }, []);
   const inLeague = new Set((teams ?? []).map((t) => t.id));
   const options = (outside ?? []).filter((o) => !inLeague.has(Number(o.id)));
+  const shown = teams?.filter((t) => matchesQuery(t.name, query)) ?? null;
 
   const add = async (o: AddOption) => {
     setActionError(null);
@@ -243,7 +246,8 @@ function TeamsTab({leagueId, data}: {leagueId: number; data: ReturnType<typeof u
         options={options}
         onAdd={add}
         note="Neaktivne ekipe se ne uključuju automatski kad kreiraš novo kolo."
-        noHit="Nijedna ekipa izvan lige ne odgovara. Novu ekipu napravi na kartici Ekipe."
+        noHit={shown?.length ? "Ekipa je već u ligi (popis ispod)." : "Nijedna ekipa ne odgovara. Novu ekipu napravi na kartici Ekipe."}
+        onQueryChange={setQuery}
         // in a scrolling column it keeps its height (and its hits) instead of giving way
         sx={{flex: "none"}}
       />
@@ -256,9 +260,9 @@ function TeamsTab({leagueId, data}: {leagueId: number; data: ReturnType<typeof u
         </Box>
       ) : teams.length === 0 ? (
         <EmptyState>Ova liga još nema ekipa.</EmptyState>
-      ) : (
+      ) : !shown?.length ? null : (
         <Box component="ul" aria-label="Ekipe lige" sx={{flex: "none", listStyle: "none", m: 0, p: 0, background: color.white, borderRadius: "22px", overflow: "hidden", boxShadow: shadow.card}}>
-          {teams.map((t, i) => {
+          {shown.map((t, i) => {
             const n = played.get(t.id);
             return (
               <Box
