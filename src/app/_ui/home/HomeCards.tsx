@@ -19,10 +19,11 @@ import React from "react";
 
 // Početna's Burza igrača cards (Claude Design "Burza igrača · spojeno", Početna)
 
-// The player's next league night: the soonest one of a league where their team is active
+// The player's next league night: the soonest one of a league where their team is active, else of one where it is
+// inactive (an admin can still switch an inactive team on for a night, so it keeps its league's nights)
 export function nextNight(schedule: MySchedule | null): {league: MyLeague; night: string} | null {
-  for (const league of schedule?.leagues ?? []) {
-    if (!league.active) continue;
+  const leagues = schedule?.leagues ?? [];
+  for (const league of [...leagues.filter((l) => l.active), ...leagues.filter((l) => !l.active)]) {
     const i = nextNightIndex(league.nights, schedule!.today);
     if (i >= 0) return {league, night: league.nights[i]};
   }
