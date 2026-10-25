@@ -27,3 +27,16 @@ export function planSeats(seats: Map<number, [number, number]>, tableId: number,
   out.set(tableId, [wanted[0], wanted[1]]);
   return out;
 }
+
+type NumberedTable = {team1_id: number; team2_id: number; table_number: number | null};
+
+// The number of a table added to a round (Dodaj stol): the lowest one free, so removing Stol 2 and adding the pair
+// back gives Stol 2 again rather than a Stol 7 the hall doesn't have. A number the bye's table holds isn't free, and
+// a table with the bye goes after all the others.
+export function newTableNumber(tables: NumberedTable[], bye: boolean): number {
+  const used = new Set(tables.map((t) => t.table_number ?? 0));
+  if (bye) return Math.max(0, ...Array.from(used)) + 1;
+  let n = 1;
+  while (used.has(n)) n++;
+  return n;
+}

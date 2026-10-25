@@ -6,7 +6,7 @@ import {createByeMatches} from "@/app/_lib/service/round/insertPairRounds";
 import {isRatedRound, recalcTeamScores, replayRatings} from "./recalc";
 import {teamSmokers} from "@/app/_lib/service/team/smokers";
 import {draftLetters, RoundStatus, roundStatusOf} from "@/app/_lib/roundStatus";
-import {planSeats} from "@/app/_lib/tableSeats";
+import {newTableNumber, planSeats} from "@/app/_lib/tableSeats";
 import {leagueNight} from "@/app/_lib/dates";
 
 // Admin edits of a night's tables (a "round number" of a league on a date is a set of tables, one Round row each).
@@ -170,7 +170,7 @@ export async function addTable(leagueId: number, roundDate: Date, roundNumber: n
 
     const bye = isByeTeam(team1Id) || isByeTeam(team2Id);
     const status = roundStatusOf(tables);
-    const tableNumber = Math.max(0, ...tables.map((t) => t.table_number ?? 0)) + 1;
+    const tableNumber = newTableNumber(tables, bye);
     const smokers = await teamSmokers([team1Id, team2Id], tx);
     const round = await tx.round.create({
       data: {

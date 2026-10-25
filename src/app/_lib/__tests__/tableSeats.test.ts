@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
 import {BYE_TEAM_ID} from "@/app/_lib/bye";
-import {planSeats} from "@/app/_lib/tableSeats";
+import {newTableNumber, planSeats} from "@/app/_lib/tableSeats";
 
 // Re-pairing a table on the Daily screen: who sits where afterwards
 
@@ -80,4 +80,26 @@ test("a team taken from the bye's table leaves its opponent the bye", () => {
   const out = planSeats(seats, 4, [7, 2]);
   assert.deepEqual(out.get(4), [7, 2]);
   assert.deepEqual(out.get(1), [1, BYE_TEAM_ID]);
+});
+
+// Dodaj stol: the number the new table gets
+const numbered = (...tables: [number, number, number][]) =>
+  tables.map(([team1_id, team2_id, table_number]) => ({team1_id, team2_id, table_number}));
+
+test("a table added after one was removed takes the free number", () => {
+  // Stol 2 removed from six tables
+  assert.equal(newTableNumber(numbered([1, 2, 1], [5, 6, 3], [7, 8, 4], [9, 10, 5], [11, 12, 6]), false), 2);
+  // Stol 12 removed, the bye at 13
+  const kolo = numbered(...Array.from({length: 11}, (_, i) => [i * 2 + 1, i * 2 + 2, i + 1] as [number, number, number]), [23, BYE_TEAM_ID, 13]);
+  assert.equal(newTableNumber(kolo, false), 12);
+});
+
+test("a table added to a full round goes after the last one", () => {
+  assert.equal(newTableNumber(numbered([1, 2, 1], [3, 4, 2]), false), 3);
+  // the bye's number isn't free
+  assert.equal(newTableNumber(numbered([1, 2, 1], [3, BYE_TEAM_ID, 2]), false), 3);
+});
+
+test("a table with the bye is added after all the others", () => {
+  assert.equal(newTableNumber(numbered([1, 2, 1], [5, 6, 3]), true), 4);
 });
