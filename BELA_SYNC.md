@@ -10,7 +10,7 @@ own; everything else is kept identical to Bela.
 |---|---|
 | Bela branch | `development`, read through the remote `bela` (the local Bela repo). Only commits come over, never Bela's uncommitted work |
 | Last synced Bela commit | `c2969e5` (25 Oct 2026) |
-| Waiting in Bela | The tournaments, `79d735a..86cbcec`, waiting for a decision (see [Bela's work waiting to come over](#belas-work-waiting-to-come-over)) |
+| Waiting in Bela | The tournaments, `79d735a..86cbcec`: not copied, only their non-tournament changes come over (see [Bela's work waiting to come over](#belas-work-waiting-to-come-over)) |
 | Target branch | `master` |
 | Sync branch | `bela-sync` in the repo itself (no worktree): created from `master`, or rebased onto it, by every run |
 
@@ -81,17 +81,11 @@ Treseta directly only for what has to differ, and add it below.
 Every Bela commit up to `c2969e5` (25 Oct 2026) came over by 26 Oct 2026. Decisions for Bela work that touches
 Treseta's differences before it comes over go here.
 
-**The tournaments (`79d735a..86cbcec`, 26 Oct 2026, 7 commits), not decided.** The nightly sync stops at `79d735a`
-until this is settled. Bela's Turniri (parts 1–6 and its `DECISIONS.md` entries) add the Tournament tables' date,
-place, format and waiting list (migration `20261026120000_tournaments`), Swiss pairing, sign-ups, the admin's
-Turniri and Upravljanje turnirom, the player's tournament pages, the Turniri · Liga switch on Početna and Turniri in
-the menu, and they change shared files Treseta keeps differences in (the scorepad, `AdminEntryPanel.tsx`,
-`TablePreview.tsx`, the table and lineup pages, `RoundEditing.tsx`, `RoundTables.tsx`, `rounds/open`, `HandEntryPanel.tsx`).
-Treseta has no tournament tables (Database, `getStandings.ts`). A format setting is Bela's zvanja ("bez zvanja",
-a single Bela button), and part 5 names the app Belatronika (header, title, install sheet). To decide, here:
-whether Treseta gets tournaments (then: the schema and an adapted migration, the format without zvanja, matches to
-`MATCH_THRESHOLD`, `BRAND` for Belatronika) or they are Not copied (then: their paths, and what happens to the shared
-files, Početna's switch and the menu entry).
+**The tournaments (`79d735a..86cbcec`, 26 Oct 2026, 7 commits): Treseta doesn't get them** (decided 26 Oct 2026).
+Bring the commits over as [Bela's tournaments](#belas-tournaments) under Not copied says: drop every tournament file
+and the tournament code in the shared files, and keep each commit's changes that aren't about tournaments. A commit
+left with nothing is skipped (`86cbcec` touches only `DECISIONS.md`). Once they are synced, this entry goes and the
+rule stays under Not copied.
 
 ## Differences from Bela
 
@@ -236,8 +230,43 @@ The database part (the `Conference` table and `LeagueTeam.conference_id`) is und
   trump-caller and announcement steps (`ongoing-match/[matchId]/ongoing-result/new/` and `…/[resultId]/`:
   `trump-caller/`, `announcement/`; `…/ui/pages/TrumpCallerPage.tsx`, `…/ui/pages/AnnouncementPage.tsx`). Their
   Treseta counterparts are under Game rules.
+- Bela's tournaments (Turniri). See [Bela's tournaments](#belas-tournaments) below.
 - Unused images: `public/TitleBackground.png`, `public/TitleBackgroundSponsors.png`, `public/background.png`,
   `public/title.png`.
+
+### Bela's tournaments
+
+Treseta has leagues only, and doesn't get Bela's one-day tournaments (decided 26 Oct 2026). These come from Bela's Turniri,
+first brought by `79d735a..86cbcec`, and never come here. A later Bela change to them is dropped too:
+
+- Pages and routes: `turniri/**`, `api/tournaments/**`, `api/admin/tournaments/**`, and `api/players/search/` (finding
+  a partner for a sign-up).
+- Screens: `_ui/tournaments/**`.
+- Logic: `_lib/tournaments.ts`, `_lib/tournamentEntries.ts`, `_lib/matching/tournamentPairing.ts`,
+  `_lib/service/tournament/**`, `_lib/service/players/search.ts`, `_lib/__tests__/tournaments.test.ts`.
+- Data access: `_interfaces/tournament.ts`, `_fetchers/tournament.ts`, `_hooks/useTournaments.ts`.
+- Bela's game: `_lib/bela/declarations.ts` ("bez zvanja") is already covered by `_lib/bela/` above.
+- Database: the `Tournament*` models, which stay out of `prisma/schema.prisma`, the `Round.matches_per_round` and
+  `Round.declarations` columns, and Bela's migration `20261026120000_tournaments`, which gets no Treseta migration.
+- Branding: Bela's name "Belatronika" (part 5: the header, the title, the install sheet, `public/manifest.webmanifest`)
+  and its `_ui/sp/brand.ts`. Treseta keeps `BRAND` (`_lib/brand.ts`). Shared code that imports `_ui/sp/brand.ts`
+  reads `BRAND` instead.
+
+Shared files these commits change (Početna, the scorepad, the admin's tables, the open table, the round services, the
+tab bars, the middleware's public paths and so on) are merged without the tournament code:
+
+- No `tournament_id` or tournament branches, and no Turniri · Liga switch or tournament card on Početna.
+- No Turniri in the menu, the admin's tab bar or the phone's bottom bar, and no link back to a tournament from the
+  scorepad or Pregled stola.
+- A table always plays two matches with Treseta's hands (no `matches_per_round`, no `declarations`, no single Bela
+  button).
+- No `/turniri` public paths.
+
+What isn't about tournaments comes over as usual. Examples are #67's fixes in Bela's `DECISIONS.md`, a long team name
+taking two lines in a draft, and a page's tab kept in its address (`?view=`, `?round=`) so a reload and Back return to
+it. A new shared file that both kinds of code use (`_ui/home/StartCard.tsx`, `_lib/ui/tableScope.ts`) comes over
+without its tournament part, or isn't copied if nothing outside tournaments uses it. If a change can't be told apart
+from the tournaments, the sync stops at that commit.
 
 ### Adding a difference
 
