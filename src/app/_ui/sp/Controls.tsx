@@ -8,8 +8,8 @@ import {LiveDot} from "./Live";
 import {TeamDot} from "./TeamDot";
 
 // Visual 52×32 switch track. Use inside an element that has role="switch" + aria-checked. dim: a switch that can't be
-// changed now
-export function SwitchTrack({on, onColor = color.navy, dim = false}: {on: boolean; onColor?: string; dim?: boolean}) {
+// changed now; offColor: the track when off, for a switch on a navy card
+export function SwitchTrack({on, onColor = color.navy, offColor = color.borderControl, dim = false}: {on: boolean; onColor?: string; offColor?: string; dim?: boolean}) {
   return (
     <Box
       component="span"
@@ -20,7 +20,7 @@ export function SwitchTrack({on, onColor = color.navy, dim = false}: {on: boolea
         width: 52,
         height: 32,
         borderRadius: "16px",
-        background: on ? onColor : color.borderControl,
+        background: on ? onColor : offColor,
         opacity: dim ? 0.5 : 1,
         transition: "background 180ms ease, opacity 180ms ease",
       }}

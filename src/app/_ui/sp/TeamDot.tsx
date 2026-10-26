@@ -57,6 +57,7 @@ export function TeamLabel({
   dotSize,
   hidden,
   sx,
+  nameSx,
 }: {
   name: React.ReactNode;
   conference: Conference | null | undefined;
@@ -65,6 +66,8 @@ export function TeamLabel({
   // aria-hidden, where the row has its own label
   hidden?: boolean;
   sx?: SxProps<Theme>;
+  // the name's own style instead of one line cut with an ellipsis (a draft's two lines)
+  nameSx?: SxProps<Theme>;
 }) {
   const dot = conferenceDot(conference);
   const dotEl = dot !== undefined && <TeamDot color={dot} size={dotSize} label={conference?.name} />;
@@ -75,7 +78,7 @@ export function TeamLabel({
       sx={mergeSx({display: "flex", alignItems: "center", justifyContent: end ? "flex-end" : "flex-start", gap: "8px", minWidth: 0}, sx)}
     >
       {!end && dotEl}
-      <Box component="span" sx={ellipsis}>
+      <Box component="span" sx={nameSx ?? ellipsis}>
         {name}
       </Box>
       {end && dotEl}

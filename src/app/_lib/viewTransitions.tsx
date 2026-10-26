@@ -125,11 +125,12 @@ export function useTransitionRouter() {
 
 // The address bar shows `href` in place of the current address, and the page stays as it is (no navigation, nothing
 // reloads or remounts): a desktop list whose selection is in the address (Rejting's /ratings/<id>), so a reload, a
-// shared link and Back come to the same player without the list losing its search and scroll. usePathname follows (Next
-// keeps its router in step with history.replaceState); the page stack swaps its top entry as for a replace.
+// shared link and Back come to the same player without the list losing its search and scroll; or a page's tab in its
+// query (?view=, ?round=). usePathname and useSearchParams follow (Next keeps its router in step with
+// history.replaceState); another path swaps the page stack's top entry as for a replace, a query alone keeps it.
 export function replaceAddress(href: string) {
-  if (pathOfHref(href) === window.location.pathname) return;
-  noteReplace(pathOfHref(href));
+  const path = pathOfHref(href);
+  if (path !== window.location.pathname) noteReplace(path);
   window.history.replaceState(null, "", href);
 }
 
