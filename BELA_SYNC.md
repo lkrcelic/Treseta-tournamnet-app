@@ -9,8 +9,8 @@ own; everything else is kept identical to Bela.
 | | |
 |---|---|
 | Bela branch | `development`, read through the remote `bela` (the local Bela repo). Only commits come over, never Bela's uncommitted work |
-| Last synced Bela commit | `d0777b1` (23 Oct 2026) |
-| Waiting in Bela | Nothing settled ahead (see [Bela's work waiting to come over](#belas-work-waiting-to-come-over)) |
+| Last synced Bela commit | `c2969e5` (25 Oct 2026) |
+| Waiting in Bela | The tournaments, `79d735a..86cbcec`, waiting for a decision (see [Bela's work waiting to come over](#belas-work-waiting-to-come-over)) |
 | Target branch | `master` |
 | Sync branch | `bela-sync` in the repo itself (no worktree): created from `master`, or rebased onto it, by every run |
 
@@ -78,9 +78,20 @@ Treseta directly only for what has to differ, and add it below.
 
 ## Bela's work waiting to come over
 
-Nothing: every Bela commit up to `d0777b1` (23 Oct 2026) came over by 25 Oct 2026, and what lasts from the decisions
-settled for them is under Differences. Decisions for Bela work that touches Treseta's differences before it comes
-over go here.
+Every Bela commit up to `c2969e5` (25 Oct 2026) came over by 26 Oct 2026. Decisions for Bela work that touches
+Treseta's differences before it comes over go here.
+
+**The tournaments (`79d735a..86cbcec`, 26 Oct 2026, 7 commits), not decided.** The nightly sync stops at `79d735a`
+until this is settled. Bela's Turniri (parts 1–6 and its `DECISIONS.md` entries) add the Tournament tables' date,
+place, format and waiting list (migration `20261026120000_tournaments`), Swiss pairing, sign-ups, the admin's
+Turniri and Upravljanje turnirom, the player's tournament pages, the Turniri · Liga switch on Početna and Turniri in
+the menu, and they change shared files Treseta keeps differences in (the scorepad, `AdminEntryPanel.tsx`,
+`TablePreview.tsx`, the table and lineup pages, `RoundEditing.tsx`, `RoundTables.tsx`, `rounds/open`, `HandEntryPanel.tsx`).
+Treseta has no tournament tables (Database, `getStandings.ts`). A format setting is Bela's zvanja ("bez zvanja",
+a single Bela button), and part 5 names the app Belatronika (header, title, install sheet). To decide, here:
+whether Treseta gets tournaments (then: the schema and an adapted migration, the format without zvanja, matches to
+`MATCH_THRESHOLD`, `BRAND` for Belatronika) or they are Not copied (then: their paths, and what happens to the shared
+files, Početna's switch and the menu entry).
 
 ## Differences from Bela
 
@@ -253,3 +264,4 @@ The nightly sync adds a row when it brings something over or stops.
 | 20 Oct 2026 | `da577ba..5fc3bf5` (1) | Came over as Bela has it: the admin's photo controls on the computer move onto the header avatar's badge and panel (PhotoAdmin); no migration |
 | 21 Oct 2026 | `5fc3bf5..4b0be31` (1) | Came over as Bela has it (the scorepad page's scoring import kept): Tko igra ovu rundu? every time an admin opens a table's scorepad, a finished round's lineup correctable with a ratings replay; no migration |
 | 25 Oct 2026 | `4b0be31..d0777b1` (13) | 12 came over, 1 skipped (Bela's root `CLAUDE.md`), `DECISIONS.md` left out: Zadnje večeri open that night's Dnevni poredak with the team highlighted (with the conference filter), the phone's standings rows as B1 (the conference dot kept in the name), pairing by average age (also inside every conference), `npm run ages:report`, scorepad hands as cards; no migration. Checks incomplete: the sandbox stopped `npm ci`'s Prisma engine download |
+| 26 Oct 2026 | `d0777b1..c2969e5` (5) | Stopped at `79d735a` (the tournaments, not decided). 5 came over: the account lock after 20 failed logins (1 migration, `login_failure`), Dodaj stol takes the lowest free table number, Sljedeća večer for an inactive team, Dodaj ekipu filters the league's teams on the phone, and the lead bar's test with Treseta's 41 (the bar was already Treseta's) |
