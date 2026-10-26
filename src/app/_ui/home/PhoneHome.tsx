@@ -5,16 +5,16 @@ import useIsAdmin from "@/app/_hooks/useIsAdmin";
 import useAdminViewStore from "@/app/_store/adminViewStore";
 import {useSelectedLeagueId} from "@/app/_hooks/useLeagues";
 import useMySchedule from "@/app/_hooks/useMySchedule";
-import useOpenTable, {OpenTable} from "@/app/_hooks/useOpenTable";
+import useOpenTable from "@/app/_hooks/useOpenTable";
 import useStartGame from "@/app/_hooks/useStartGame";
 import {currentLeagueHref} from "@/app/_lib/league";
-import {color, font, shadow, teamOnNavy, tint} from "@/app/_styles/tokens";
+import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {Brand} from "@/app/_ui/auth/AuthFrame";
 import {BurzaHomeCard, HomeTile, NextNightCard, NextNightPlaceholder, nextNight} from "@/app/_ui/home/HomeCards";
+import {StartCard} from "@/app/_ui/home/StartCard";
 import HomeSponsors from "@/app/_ui/home/HomeSponsors";
 import InstallSheet from "@/app/_ui/install/InstallSheet";
-import {SmokingMark} from "@/app/_ui/smoking/SmokingParts";
-import {buttonBase, ellipsis, ErrorNote, IconCircleButton, InitialsAvatar, Screen, Spinner, TeamDot, visuallyHidden} from "@/app/_ui/sp";
+import {buttonBase, ErrorNote, IconCircleButton, InitialsAvatar, Screen, visuallyHidden} from "@/app/_ui/sp";
 import useAuthStore from "@/app/_store/authStore";
 import AccountCircleRoundedIcon from "@mui/icons-material/AccountCircleRounded";
 import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
@@ -23,9 +23,9 @@ import EventRoundedIcon from "@mui/icons-material/EventRounded";
 import EmojiEventsRoundedIcon from "@mui/icons-material/EmojiEventsRounded";
 import LeaderboardRoundedIcon from "@mui/icons-material/LeaderboardRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
-import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import {Box} from "@mui/material";
-import {useTransitionRouter} from "@/app/_lib/viewTransitions";
+import {TransitionLink, useTransitionRouter} from "@/app/_lib/viewTransitions";
+import {useMyRating} from "@/app/_hooks/useRatings";
 
 // under 400 px the header holds the brand (with its logo) next to an admin's Admin button only as an icon
 const narrowPhone = "@media (max-width: 399.98px)";
@@ -45,6 +45,7 @@ export default function PhoneHome() {
   const {posts} = useBurza();
   const isAdmin = useIsAdmin();
   const setAdminView = useAdminViewStore((st) => st.setView);
+  const {me: myRating} = useMyRating();
 
   return (
     <Screen gap={12}>
@@ -85,6 +86,7 @@ export default function PhoneHome() {
               </Box>
             </Box>
           )}
+          {myRating && <RatingChip rating={myRating.rating} />}
           <IconCircleButton label="Moj profil" onClick={() => router.push("/profile")}>
             {me?.photo_url ? <InitialsAvatar name={me.username} src={me.photo_url} size={40} variant="navy" /> : <AccountCircleRoundedIcon />}
           </IconCircleButton>
@@ -128,88 +130,17 @@ export default function PhoneHome() {
   );
 }
 
-// Započni igru: the player's table of the open round (table number, the smoking mark, both teams, and the score once
-// a match is running, when it reads Nastavi igru)
-function StartCard({table, starting, onStart, errorId}: {table: OpenTable; starting: boolean; onStart: () => void; errorId?: string}) {
-  const live = table.score != null;
+// The rating next to the profile (as chess apps have it): opens Rejting
+function RatingChip({rating}: {rating: number}) {
   return (
     <Box
-      component="button"
-      type="button"
-      onClick={onStart}
-      disabled={starting}
-      aria-busy={starting || undefined}
-      aria-describedby={errorId}
-      sx={{
-        ...buttonBase,
-        position: "relative",
-        minHeight: 200,
-        flex: "none",
-        borderRadius: "24px",
-        background: color.navy,
-        color: color.white,
-        p: "20px 20px 22px 22px",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        alignItems: "stretch",
-        gap: "14px",
-        textAlign: "left",
-        boxShadow: shadow.hero,
-        // grows into the scoreboard on Započni igru (the board's root has the same name)
-        viewTransitionName: "table",
-        transition: "transform 120ms ease",
-        "&:active:not(:disabled)": {transform: "scale(.98)"},
-      }}
+      component={TransitionLink}
+      href="/ratings"
+      aria-label={`Rejting ${rating}`}
+      sx={{...buttonBase, height: 40, display: "flex", alignItems: "center", gap: "5px", pl: "10px", pr: "12px", borderRadius: "20px", background: color.white, color: color.ink, fontSize: 16, fontWeight: 800, textDecoration: "none", boxShadow: shadow.pill, fontVariantNumeric: "tabular-nums", "& svg": {fontSize: 19, color: color.navy}}}
     >
-      <Box sx={{display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px"}}>
-        <Box sx={{display: "flex", flexDirection: "column", gap: "8px", minWidth: 0}}>
-          <Box sx={{display: "flex", alignItems: "center", gap: "8px"}}>
-            <Box component="span" sx={{height: 28, display: "flex", alignItems: "center", px: "10px", borderRadius: "9px", background: color.cream, color: color.navy, fontSize: 13, fontWeight: 800, letterSpacing: ".08em"}}>
-              STOL {table.table ?? "–"}
-            </Box>
-            {table.smoking && <SmokingMark variant="onNavy" />}
-            {live && (
-              <Box component="span" sx={{fontSize: 13, fontWeight: 700, color: color.cream, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums"}}>
-                {table.score![0]} : {table.score![1]}
-              </Box>
-            )}
-          </Box>
-          <Box sx={{display: "flex", flexDirection: "column", gap: "2px", minWidth: 0, fontSize: 17, fontWeight: 600, lineHeight: 1.2}}>
-            {[table.myTeam, table.opponent].map((name, k) => (
-              <TeamName key={k} name={name} side={k} conferences={table.conferences} />
-            ))}
-          </Box>
-        </Box>
-        <Box
-          component="span"
-          aria-hidden
-          sx={{width: 52, height: 52, flex: "none", borderRadius: "50%", background: color.cream, color: color.navy, display: "flex", alignItems: "center", justifyContent: "center"}}
-        >
-          {starting ? <Spinner size={22} /> : <PlayArrowRoundedIcon sx={{fontSize: 32}} />}
-        </Box>
-      </Box>
-      <Box component="span" sx={{fontFamily: font.display, fontSize: 42, fontWeight: 800, letterSpacing: "-.02em", lineHeight: 1, whiteSpace: "nowrap"}}>
-        {live ? "Nastavi igru" : "Započni igru"}
-      </Box>
-    </Box>
-  );
-}
-
-// side 0 is the player's own team. In a league with conferences the dot is the team's conference (with a white ring,
-// as those colors are dark), otherwise the side's color.
-function TeamName({name, side, conferences}: {name: string; side: number; conferences: OpenTable["conferences"]}) {
-  const conference = conferences?.[side];
-  return (
-    <Box component="span" sx={{display: "flex", alignItems: "center", gap: "8px", minWidth: 0}}>
-      {conferences ? (
-        <TeamDot color={conference?.color ?? null} ring onNavy label={conference?.name} />
-      ) : (
-        <TeamDot color={teamOnNavy[side]} />
-      )}
-      <Box component="span" sx={ellipsis}>
-        {name}
-      </Box>
+      <LeaderboardRoundedIcon aria-hidden />
+      {rating}
     </Box>
   );
 }
