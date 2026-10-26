@@ -4,7 +4,7 @@ import {Prisma} from "@prisma/client";
 import {requireUser} from "@/app/_lib/service/auth/requireUser";
 import {prisma} from "@/app/_lib/prisma";
 import {STATUS} from "@/app/_lib/statusCodes";
-import {errorResponse} from "@/app/_lib/apiErrors";
+import {errorResponse, lookupErrorResponse} from "@/app/_lib/apiErrors";
 import {
   TEAM_NAME_TAKEN,
   TEAM_PHOTO_VISIBILITY_MEMBERS_ONLY,
@@ -59,7 +59,8 @@ export async function GET(request: NextRequest, {params}: { params: { id: string
 
         return NextResponse.json(team, {status: STATUS.OK});
     } catch (error) {
-        return NextResponse.json({error: "Ekipa se nije učitala."}, {status: STATUS.BadRequest});
+        // a database fault or a response that fails validation is the server's: a logged 500, not a 400
+        return lookupErrorResponse(error, "Ekipa se nije učitala.");
     }
 }
 

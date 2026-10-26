@@ -3,6 +3,8 @@ import {test} from "node:test";
 import {LeagueCreateRequestValidation, MAX_NIGHTS_ERROR} from "../../_interfaces/league";
 import {NETWORK_ERROR, networkError} from "../../_fetchers/errorMessage";
 import {zodMessage} from "../validation/zodMessage";
+import {z} from "zod";
+import {lookupErrorResponse} from "../apiErrors";
 
 test("an API's zod error message is ours (Croatian) or the route's fallback, never zod's English", () => {
   const fallback = "Liga nije napravljena.";
@@ -35,4 +37,18 @@ test("a request that never reached the server reads in Croatian, not the browser
   // an abort is passed on, so callers can still tell it apart
   const abort = new DOMException("The user aborted a request.", "AbortError");
   assert.equal(networkError(abort), abort);
+});
+
+test("a GET of one row (e.g. GET /api/teams/[id]) answers a server fault with a logged 500, never a silent 400", async (t) => {
+  const logged = t.mock.method(console, "error", () => {});
+  const fallback = "Ekipa se nije učitala.";
+  // a database outage, and a response that fails its own validation (a null the schema disallows)
+  const invalidResponse = z.object({team_name: z.string()}).safeParse({team_name: null});
+  assert.equal(invalidResponse.success, false);
+  for (const fault of [new Error("Can't reach database server"), invalidResponse.success ? null : invalidResponse.error]) {
+    const response = lookupErrorResponse(fault, fallback);
+    assert.equal(response.status, 500);
+    assert.deepEqual(await response.json(), {error: fallback});
+  }
+  assert.equal(logged.mock.callCount(), 2);
 });
