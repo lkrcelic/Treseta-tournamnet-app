@@ -138,8 +138,9 @@ export function ScorePanel({
 export type HandRow = {id: number | null; left: number; right: number; animate?: "in" | "flash"};
 
 // The list of hands; tapping one opens it for editing (without onOpen the list is only read: Pregled stola).
-// Each hand is its own card (Claude Design "Score pad", A6): both teams' totals with it counted beside its points, the
-// hand's winner in the team colour, and under it a bar from the middle towards the team ahead with the lead after it.
+// Each hand is a row (Claude Design "Score pad", A3): both teams' totals with it counted over its points, the hand's
+// winner in the team colour and the other team's points in grey, and in the middle the hand's number over the lead
+// after it, in the colour of the team ahead.
 // empty: what an empty list says instead of "Još nema upisanih igara".
 export function HandList({
   rows,
@@ -160,102 +161,80 @@ export function HandList({
 }) {
   const desk = size === "desktop";
   const running = runningHands(rows);
-  const listSx = {flex: 1, minHeight: 0, overflowY: "auto", overscrollBehavior: "contain"} as const;
-  if (rows.length === 0) {
-    return (
-      <Card ref={listRef} aria-label="Upisane igre" sx={[{...listSx, borderRadius: desk ? "24px" : "22px"}, ...(Array.isArray(sx) ? sx : [sx])]}>
-        {empty ?? <EmptyState>Još nema upisanih igara</EmptyState>}
-      </Card>
-    );
-  }
-  const total = (n: number) => (
-    <Box component="span" sx={{fontSize: desk ? 15 : 13, fontWeight: 600, color: color.ink}}>
-      {n}
-    </Box>
-  );
-  const points = (n: number, team: 0 | 1, winner: 0 | 1 | null) => (
-    <Box
-      component="span"
-      sx={{fontFamily: font.display, fontSize: desk ? 30 : 28, fontWeight: 800, lineHeight: 1, color: winner === team ? teamColor[team] : color.ink}}
-    >
-      {n}
-    </Box>
-  );
-  const bar = (team: 0 | 1, pct: number) => (
-    <Box
-      sx={{
-        height: 6,
-        display: "flex",
-        justifyContent: team === 0 ? "flex-end" : "flex-start",
-        borderRadius: team === 0 ? "3px 0 0 3px" : "0 3px 3px 0",
-        background: color.lineFill,
-        overflow: "hidden",
-      }}
-    >
-      <Box sx={{height: "100%", width: `${pct}%`, background: teamColor[team], transition: `width 600ms ${ease}`}} />
+  const side = (team: 0 | 1, points: number, total: number, winner: 0 | 1 | null) => (
+    <Box component="span" sx={{display: "flex", flexDirection: "column", alignItems: "center", gap: "2px"}}>
+      <Box component="span" sx={{fontSize: desk ? 14 : 12, fontWeight: 600, lineHeight: 1.2, color: color.muted}}>
+        {total}
+      </Box>
+      {/* the other team's points in faint grey: they are display-size text, which needs 3:1, not 4.5:1 */}
+      <Box
+        component="span"
+        sx={{fontFamily: font.display, fontSize: desk ? 32 : 28, fontWeight: 800, lineHeight: 1, color: winner === team ? teamColor[team] : color.faint}}
+      >
+        {points}
+      </Box>
     </Box>
   );
   return (
-    <Box ref={listRef} aria-label="Upisane igre" sx={[listSx, ...(Array.isArray(sx) ? sx : [sx])]}>
-      {/* the padding keeps the cards' shadows inside the scrolling box */}
-      <Box component="ol" sx={{listStyle: "none", m: 0, p: "2px", display: "flex", flexDirection: "column", gap: desk ? "8px" : "6px"}}>
-        {rows.map((r, i) => {
-          const h = running[i];
-          const selected = selectedId != null && selectedId === r.id;
-          return (
-            <Box component="li" key={r.id ?? `i${i}`}>
-              <Box
-                component={onOpen ? "button" : "div"}
-                type={onOpen ? "button" : undefined}
-                onClick={onOpen ? () => r.id != null && onOpen(r.id) : undefined}
-                aria-label={`Igra ${i + 1}: ${r.left} prema ${r.right}, ukupno ${h.total[0]} prema ${h.total[1]}, razlika ${h.lead}${onOpen ? ". Uredi" : ""}`}
-                aria-current={selected ? "true" : undefined}
-                sx={{
-                  ...buttonBase,
-                  width: "100%",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: desk ? "10px" : "8px",
-                  p: desk ? "12px 18px 11px" : "10px 14px 9px",
-                  borderRadius: desk ? "20px" : "18px",
-                  background: selected ? color.cream2 : color.white,
-                  boxShadow: shadow.card,
-                  textAlign: "center",
-                  ...tabular,
-                  animation:
-                    r.animate === "in" ? `spRowIn 420ms ${ease} both` : r.animate === "flash" ? "spRowFlash 900ms ease-out" : "none",
-                  ...(onOpen && {"&:active": {background: color.lineFill}, "&:hover": desk ? {background: color.paper2} : undefined}),
-                }}
-              >
+    <Card
+      ref={listRef}
+      aria-label="Upisane igre"
+      sx={[
+        {flex: 1, minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", borderRadius: desk ? "24px" : "22px"},
+        ...(Array.isArray(sx) ? sx : [sx]),
+      ]}
+    >
+      {rows.length === 0 ? (
+        empty ?? <EmptyState>Još nema upisanih igara</EmptyState>
+      ) : (
+        <Box component="ol" sx={{listStyle: "none", m: 0, p: 0}}>
+          {rows.map((r, i) => {
+            const h = running[i];
+            const selected = selectedId != null && selectedId === r.id;
+            return (
+              <Box component="li" key={r.id ?? `i${i}`}>
                 <Box
-                  component="span"
-                  sx={{display: "grid", gridTemplateColumns: desk ? "minmax(0,1fr) 56px minmax(0,1fr)" : "minmax(0,1fr) 44px minmax(0,1fr)", alignItems: "center"}}
+                  component={onOpen ? "button" : "div"}
+                  type={onOpen ? "button" : undefined}
+                  onClick={onOpen ? () => r.id != null && onOpen(r.id) : undefined}
+                  aria-label={`Igra ${i + 1}: ${r.left} prema ${r.right}, ukupno ${h.total[0]} prema ${h.total[1]}, razlika ${h.lead}${onOpen ? ". Uredi" : ""}`}
+                  aria-current={selected ? "true" : undefined}
+                  sx={{
+                    ...buttonBase,
+                    width: "100%",
+                    height: desk ? 80 : 72,
+                    display: "grid",
+                    gridTemplateColumns: desk ? "minmax(0,1fr) 110px minmax(0,1fr)" : "minmax(0,1fr) 96px minmax(0,1fr)",
+                    alignItems: "center",
+                    borderBottom: `1px solid ${color.line}`,
+                    background: selected ? color.cream2 : "transparent",
+                    textAlign: "center",
+                    ...tabular,
+                    animation:
+                      r.animate === "in" ? `spRowIn 420ms ${ease} both` : r.animate === "flash" ? "spRowFlash 900ms ease-out" : "none",
+                    ...(onOpen && {"&:active": {background: color.lineFill}, "&:hover": desk ? {background: color.paper2} : undefined}),
+                  }}
                 >
-                  <Box component="span" sx={{display: "flex", alignItems: "baseline", justifyContent: "center", gap: "8px"}}>
-                    {total(h.total[0])}
-                    {points(r.left, 0, h.winner)}
+                  {side(0, r.left, h.total[0], h.winner)}
+                  <Box component="span" sx={{display: "flex", flexDirection: "column", alignItems: "center", gap: "5px"}}>
+                    <Box component="span" sx={{fontFamily: font.display, fontSize: desk ? 24 : 22, fontWeight: 800, lineHeight: 1, color: color.ink}}>
+                      {i + 1}.
+                    </Box>
+                    <Box
+                      component="span"
+                      sx={{fontSize: desk ? 15 : 14, fontWeight: 800, lineHeight: 1, color: h.leader == null ? color.ink2 : teamColor[h.leader]}}
+                    >
+                      {h.lead === 0 ? "0" : `+${h.lead}`}
+                    </Box>
                   </Box>
-                  <Box component="span" sx={{fontFamily: font.display, fontSize: desk ? 22 : 20, fontWeight: 800, lineHeight: 1, color: color.muted}}>
-                    {i + 1}.
-                  </Box>
-                  <Box component="span" sx={{display: "flex", alignItems: "baseline", justifyContent: "center", gap: "8px"}}>
-                    {points(r.right, 1, h.winner)}
-                    {total(h.total[1])}
-                  </Box>
-                </Box>
-                <Box component="span" aria-hidden sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) 52px minmax(0,1fr)", alignItems: "center"}}>
-                  {bar(0, h.leader === 0 ? h.leadPct : 0)}
-                  <Box component="span" sx={{fontSize: desk ? 14 : 13, fontWeight: 800, lineHeight: 1, color: h.leader == null ? color.ink2 : teamColor[h.leader]}}>
-                    {h.lead === 0 ? "0" : `+${h.lead}`}
-                  </Box>
-                  {bar(1, h.leader === 1 ? h.leadPct : 0)}
+                  {side(1, r.right, h.total[1], h.winner)}
                 </Box>
               </Box>
-            </Box>
-          );
-        })}
-      </Box>
-    </Box>
+            );
+          })}
+        </Box>
+      )}
+    </Card>
   );
 }
 
