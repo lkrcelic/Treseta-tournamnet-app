@@ -9,8 +9,7 @@ own; everything else is kept identical to Bela.
 | | |
 |---|---|
 | Bela branch | `development`, read through the remote `bela` (the local Bela repo). Only commits come over, never Bela's uncommitted work |
-| Last synced Bela commit | `c2969e5` (25 Oct 2026) |
-| Waiting in Bela | The tournaments, `79d735a..86cbcec`: not copied, only their non-tournament changes come over (see [Bela's work waiting to come over](#belas-work-waiting-to-come-over)) |
+| Last synced Bela commit | `c354458` (26 Oct 2026) |
 | Target branch | `master` |
 | Sync branch | `bela-sync` in the repo itself (no worktree): created from `master`, or rebased onto it, by every run |
 
@@ -78,14 +77,10 @@ Treseta directly only for what has to differ, and add it below.
 
 ## Bela's work waiting to come over
 
-Every Bela commit up to `c2969e5` (25 Oct 2026) came over by 26 Oct 2026. Decisions for Bela work that touches
+Every Bela commit up to `c354458` (26 Oct 2026) came over by 27 Oct 2026. Decisions for Bela work that touches
 Treseta's differences before it comes over go here.
 
-**The tournaments (`79d735a..86cbcec`, 26 Oct 2026, 7 commits): Treseta doesn't get them** (decided 26 Oct 2026).
-Bring the commits over as [Bela's tournaments](#belas-tournaments) under Not copied says: drop every tournament file
-and the tournament code in the shared files, and keep each commit's changes that aren't about tournaments. A commit
-left with nothing is skipped (`86cbcec` touches only `DECISIONS.md`). Once they are synced, this entry goes and the
-rule stays under Not copied.
+Nothing is waiting.
 
 ## Differences from Bela
 
@@ -136,7 +131,6 @@ winner (`Match.winner_side`); everything else is worked out by replaying the han
 | `_hooks/useStartGame.ts`, `round/lineup/[roundId]/page.tsx`, `league/[leagueId]/daily-standings/table/TablePreview.tsx` | `1001` → `MATCH_THRESHOLD` |
 | `league/[leagueId]/daily-standings/table/[roundId]/page.tsx` | `1001` → `MATCH_THRESHOLD` (the comment says "Custom" for "Ručni unos"); after a custom hand `save` passes `run` an `after` that opens the "s ovim dosta" question (`DostaPrompt`, `askDosta` and `pickDosta`); the "Do 51" flag (`TargetFlag`) next to the admin pill; a match tab adds "· do 51" |
 | `_lib/service/admin/recalc.ts`, `_lib/service/ratings/ratings.ts` | The ratings read each match's `winner_side` through `ratedMatch`, so a "s ovim dosta" win with fewer points is a win (Bela compares the points). `recalc.ts` also has `RATINGS_FROM`, below |
-| `_lib/ui/handRows.ts`, `_lib/__tests__/handRows.test.ts` | The scorepad's lead bar is full at a lead of `MATCH_THRESHOLD` (`LEAD_BAR_FULL`; Bela: 1001, the points a Bela match is played to); the test checks a lead of 12 and 29 where Bela's checks 300 and 701 |
 | `_lib/service/round/insertPairRounds.ts` | Bye matches `BYE_MATCH_POINTS : 0` (Bela: `301 : 0`), threshold `MATCH_THRESHOLD` |
 | `ongoing-match/ui/useMatchSides.ts` | Imports `TeamSide` from `_interfaces/side` |
 | `_store/ongoingMatchStore.ts` | The hands field is `results` (Bela: `belaResults`) |
@@ -190,9 +184,9 @@ edit:
 |---|---|
 | `_interfaces/league.ts`, `_lib/service/league/leagues.ts`, `_fetchers/league/leagues.ts`, `_hooks/useLeagueTeams.ts`, `api/leagues/[id]/teams/[teamId]/route.ts`, `_ui/admin/LeaguePhone.tsx` | Create League takes conferences; a league's team list has each team's `conference_id`, and the team PATCH sets it (a team added on the phone's league screen starts with `conferenceId: null`) |
 | `_interfaces/round.ts`, `api/rounds/generate-multiple/route.ts`, `_fetchers/round/createMultipleRounds.ts`, `_ui/round/CreateRound.tsx` | Create Round (desktop): the "Samo unutar konferencija" switch (`withinConferences`, under Rounds and Window, next to the smoking tables; the fetcher sends it after `smokingTables`) and the team list's dots. The switch is local state, off for every league, outside Bela's saved Novo kolo draft; `useCreateRound` also returns `hasConferences`, `withinConferences` and `setWithinConferences` for the phone. The route gives the teams their average age, pairs (by conference when asked), checks repeats, then Bela's `seatRounds` only places the pairs at tables |
-| `_ui/admin/CreateRoundPhone.tsx`, `_ui/admin/DraftPhone.tsx` | The admin's phone: Novo kolo has the "Samo unutar konferencija" switch under the window, and Skica kola the teams' dots (its rows from `draftTableRows` with the league's conferences) |
+| `_ui/admin/CreateRoundPhone.tsx`, `_ui/admin/DraftPhone.tsx` | The admin's phone: Novo kolo has the "Samo unutar konferencija" switch under the window, and Skica kola the teams' dots (its rows from `draftTableRows` with the league's conferences; `DraftTableList` draws each name with `TeamLabel`, whose `nameSx` gives Bela's two lines) |
 | `_lib/matching/multipleRoundMatching.ts` | `generateGroupedRoundPairings` at the end of the file, which pairs every conference on its own with the unchanged pairing; a conference with too few teams throws `InvalidResultError` (a 400) |
-| `api/rounds/open/route.ts`, `_fetchers/round/getOpenByPlayerId.ts`, `_hooks/useOpenTable.ts`, `_ui/home/PhoneHome.tsx` | The Start Game card shows the two teams' conference colors (green and red in a league without conferences) |
+| `api/rounds/open/route.ts`, `_fetchers/round/getOpenByPlayerId.ts`, `_hooks/useOpenTable.ts`, `_ui/home/StartCard.tsx` | The Start Game card shows the two teams' conference colors (green and red in a league without conferences) |
 | `_lib/ui/standings.ts`, `_lib/ui/tables.ts`, `_ui/sp/Standings.tsx`, `_ui/sp/Controls.tsx`, `_ui/sp/index.ts`, `_lib/__tests__/conferences.test.ts` | Standings and table rows carry each team's conference (`conferenceOf` is a field of `toStandingsRows`' options; `toTableRows` has it as a third parameter, `draftTableRows` as a second), the standings draw its dot before the linked name (after the team's avatar, on the podium cards, the phone rows and the desktop table), a tab item can have a dot, and the kit exports `TeamDot` |
 | `league/[leagueId]/daily-standings/page.tsx`, `league/[leagueId]/daily-standings/ui/RoundTables.tsx`, `league/[leagueId]/daily-standings/ui/RoundEditing.tsx`, `league/[leagueId]/standings/page.tsx`, `_ui/home/DesktopHome.tsx`, `league/[leagueId]/manage/DraftView.tsx` | The dots (also on Skica's tables, which replaced the pairings page, in and out of Uredi stolove; at a published round's tables the phone puts the avatar before the dot and name, and the desktop row puts the avatars next to the score with the dots just outside them), and the conference filter on Daily's night table and League standings. Ukupni poredak's +/− shows on the whole league's table only, not in a conference's view. Uredi stolove's pickers (on Dnevni poredak and in Skica: the desktop's pair dialog and the phone's pair sheet) take the league's `conferenceOf` and put each team's dot before its name, in the lists and the picked fields (the bye has none); `DesktopRound` on Dnevni poredak passes it on |
 | `league/new/page.tsx`, `league/[leagueId]/manage/page.tsx`, `league/[leagueId]/manage/LeagueDetailsView.tsx` | Nova liga's Conferences switch and editor before Okupljanje (and their count in its summary); Upravljanje ligom's team picker, filter and Distribute card (Podaci shows the conferences card as its `aside`, under Okupljanje in the right column) |
@@ -243,7 +237,8 @@ first brought by `79d735a..86cbcec`, and never come here. A later Bela change to
   a partner for a sign-up).
 - Screens: `_ui/tournaments/**`.
 - Logic: `_lib/tournaments.ts`, `_lib/tournamentEntries.ts`, `_lib/matching/tournamentPairing.ts`,
-  `_lib/service/tournament/**`, `_lib/service/players/search.ts`, `_lib/__tests__/tournaments.test.ts`.
+  `_lib/service/tournament/**`, `_lib/service/players/search.ts`, `_lib/ui/tableScope.ts` (a table page's links for a
+  league's night or a tournament's Kolo), `_lib/__tests__/tournaments.test.ts`, `_lib/__tests__/lineupPass.test.ts`.
 - Data access: `_interfaces/tournament.ts`, `_fetchers/tournament.ts`, `_hooks/useTournaments.ts`.
 - Bela's game: `_lib/bela/declarations.ts` ("bez zvanja") is already covered by `_lib/bela/` above.
 - Database: the `Tournament*` models, which stay out of `prisma/schema.prisma`, the `Round.matches_per_round` and
@@ -261,6 +256,21 @@ tab bars, the middleware's public paths and so on) are merged without the tourna
 - A table always plays two matches with Treseta's hands (no `matches_per_round`, no `declarations`, no single Bela
   button).
 - No `/turniri` public paths.
+
+The shared files that differ from Bela only by the tournament code left out, or by it as well as by a difference
+listed above:
+
+| Files | Left out |
+|---|---|
+| `prisma/schema.prisma`, `_interfaces/round.ts`, `_interfaces/adminHand.ts` | The `Tournament*` models and their relations, `Round.matches_per_round` and `Round.declarations`; a round's `matches_per_round` and `declarations`; `TablePad`'s `tournamentId`, `matchesPerRound` and `declarations` |
+| `_lib/nights.ts`, `_lib/tableOverview.ts`, `_lib/publicPaths.ts`, `middleware.ts`, `_lib/ui/lineupPass.ts` | `dateTile` (a tournament card's date); `matchSlots` and `currentMatchNumber` for a table of one match; `/turniri` public and coming back after login; a tournament table's path |
+| `_lib/service/admin/tables.ts`, `_lib/service/admin/hands.ts`, `_lib/service/round/finish.ts`, `_lib/service/round/getById.ts`, `_lib/service/round/getLastOpenByPlayerId.ts`, `_lib/service/round/insertPairRounds.ts`, `_lib/service/ongoingMatch/create.ts`, `_lib/service/match/finishOngoingMatch.ts`, `_lib/service/team/create.ts`, `_lib/validation/validateResult.ts` | A table of a tournament's Kolo (`Competition`, `addCompetitionTable`), a table of one match, `roundPlayedMessage`, the open table's scope, `insertTeam` (a team made on sign-up), "bez zvanja" (`declarationsError`) |
+| `api/admin/tables/[roundId]/route.ts`, `api/admin/tables/[roundId]/finish/route.ts`, `api/matches/route.ts`, `api/rounds/open/route.ts` | The next Kolo's draft once a Kolo's last table closes; `?scope=` and `tournamentId` |
+| `_fetchers/round/getOpenByPlayerId.ts`, `_hooks/useOpenTable.ts`, `_hooks/useStartGame.ts` | The open table's scope and `tournamentId` |
+| `_ui/sp/DesktopShell.tsx`, `_ui/admin/AdminTabBar.tsx`, `_ui/home/PhoneHome.tsx`, `_ui/home/DesktopHome.tsx` | Turniri in the menu and the admin's bottom bar; Početna's Turniri · Liga switch (`LeagueHome`) and the computer's tournament strip. The rating chip next to Moj profil came over |
+| `league/[leagueId]/daily-standings/table/[roundId]/page.tsx`, `…/table/TablePreview.tsx`, `…/table/AdminEntryPanel.tsx`, `_ui/admin/TablePhone.tsx`, `round/lineup/[roundId]/page.tsx`, `round/[roundId]/result/page.tsx`, `ongoing-match/[matchId]/page.tsx`, `ongoing-match/ui/BoardParts.tsx`, `ongoing-match/ui/HandEntryPanel.tsx`, `ongoing-match/ui/WizardParts.tsx` | `tableScope` links, a table of one match (`ScorePanel`'s `of`), "bez zvanja", and Kraj kola's Poredak i rezultati |
+| `league/[leagueId]/daily-standings/ui/RoundEditing.tsx`, `…/ui/RoundTables.tsx` | `RoundAdmin.addTable` and `byeWins` (a Kolo's tables), `DesktopTableRow`'s `draft` |
+| `_lib/__tests__/adminGuards.test.ts`, `_lib/__tests__/roundPublication.test.ts`, `_lib/__tests__/session.test.ts`, `_lib/__tests__/tableOverview.test.ts` | Their tournament routes, reads, paths and `TablePad` fields |
 
 What isn't about tournaments comes over as usual. Examples are #67's fixes in Bela's `DECISIONS.md`, a long team name
 taking two lines in a draft, and a page's tab kept in its address (`?view=`, `?round=`) so a reload and Back return to
@@ -294,3 +304,4 @@ The nightly sync adds a row when it brings something over or stops.
 | 21 Oct 2026 | `5fc3bf5..4b0be31` (1) | Came over as Bela has it (the scorepad page's scoring import kept): Tko igra ovu rundu? every time an admin opens a table's scorepad, a finished round's lineup correctable with a ratings replay; no migration |
 | 25 Oct 2026 | `4b0be31..d0777b1` (13) | 12 came over, 1 skipped (Bela's root `CLAUDE.md`), `DECISIONS.md` left out: Zadnje večeri open that night's Dnevni poredak with the team highlighted (with the conference filter), the phone's standings rows as B1 (the conference dot kept in the name), pairing by average age (also inside every conference), `npm run ages:report`, scorepad hands as cards; no migration. Checks incomplete: the sandbox stopped `npm ci`'s Prisma engine download |
 | 26 Oct 2026 | `d0777b1..c2969e5` (5) | Stopped at `79d735a` (the tournaments, not decided). 5 came over: the account lock after 20 failed logins (1 migration, `login_failure`), Dodaj stol takes the lowest free table number, Sljedeća večer for an inactive team, Dodaj ekipu filters the league's teams on the phone, and the lead bar's test with Treseta's 41 (the bar was already Treseta's) |
+| 27 Oct 2026 | `c2969e5..c354458` (11) | The tournaments not copied: 7 skipped (parts 1–4, `DECISIONS.md`, the click-through fixes, Dodaj kolo), and from parts 5 and 6 only the rating chip on Početna, `StartCard.tsx` (with the conference dots), Skica kola's two-line names and a page's tab kept in its address; Bela's `/api/teams/[id]` 500 and the scorepad hands as rows (no lead bar, so Treseta's `LEAD_BAR_FULL` went); no migration |
