@@ -29,6 +29,8 @@ import {useMyRating} from "@/app/_hooks/useRatings";
 
 // under 400 px the header holds the brand (with its logo) next to an admin's Admin button only as an icon
 const narrowPhone = "@media (max-width: 399.98px)";
+// the wordmark inside Brand (its logo, then the name's column)
+const BRAND_NAME = "& > div > div > div:last-of-type";
 
 // Početna on the phone, the only Home (handoff §2; Claude Design "Burza v2" screen "home"): the top card, the Burza
 // igrača card, the 2×2 tiles and the league's sponsors. Nothing is edited here. An admin sees it after "Prikaz igrača" on Večer lige
@@ -51,8 +53,19 @@ export default function PhoneHome() {
     <Screen gap={12}>
       {/* 4 px more under the header than between the cards, as designed */}
       <Box component="header" sx={{display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "12px", px: "4px", pb: "4px"}}>
-        {/* minWidth 0: on a narrow phone the brand's logo gives way to the buttons */}
-        <Box component="h1" sx={{m: 0, fontWeight: "inherit", minWidth: 0}}>
+        {/* minWidth 0: on a narrow phone the brand's logo gives way to the buttons. Next to the rating chip the name
+            takes two lines (one word each), and under 400 px a smaller logo and name, so it still fits by an admin's
+            Admin button */}
+        <Box
+          component="h1"
+          sx={{
+            m: 0,
+            fontWeight: "inherit",
+            minWidth: 0,
+            [BRAND_NAME]: {fontSize: 30, whiteSpace: "normal", width: "min-content"},
+            [narrowPhone]: {"& > div": {gap: "8px"}, "& img": {width: 36, height: 36}, [BRAND_NAME]: {fontSize: 22}},
+          }}
+        >
           <Brand variant="home" />
         </Box>
         <Box sx={{flex: "none", display: "flex", alignItems: "center", gap: "8px"}}>
