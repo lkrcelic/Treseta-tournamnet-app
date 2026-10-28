@@ -120,16 +120,24 @@ test("league rows: running ones first, then the newest; a team missing from the 
   );
 });
 
-test("Najbolje mjesto is the best place where the team has played; a tie goes to the first row", () => {
+test("Najbolje mjesto is the best final place of a league that is over; a tie goes to the newest", () => {
   const rows = teamLeagueRows(
-    [league(1, standings([40, 9, 18], [PULENI, 9, 10])), league(2, standings([PULENI, 6, 12])), league(3, standings([41, 5, 10], [PULENI, 5, 2]))],
+    [
+      league(1, standings([40, 9, 18], [PULENI, 9, 10]), null, "2026-01-01"),
+      league(2, standings([PULENI, 6, 12]), null, "2026-02-01"),
+      league(3, standings([41, 5, 10], [PULENI, 5, 2]), "2026-03-01"),
+    ],
     PULENI,
     "2026-10-12"
   );
   assert.deepEqual(bestRank(rows), {rank: 1, league_id: 2, league_name: "Liga 2"});
-  const tie = teamLeagueRows([league(6, standings([PULENI, 1, 2]), null, "2026-01-01"), league(7, standings([PULENI, 1, 2]))], PULENI, "2026-10-12");
+  const tie = teamLeagueRows([league(6, standings([PULENI, 1, 2]), null, "2026-01-01"), league(7, standings([PULENI, 1, 2]), "2026-05-01")], PULENI, "2026-10-12");
   assert.deepEqual(bestRank(tie), {rank: 1, league_id: 7, league_name: "Liga 7"});
-  assert.equal(bestRank(teamLeagueRows([league(8, standings([PULENI, 0, 0]))], PULENI, "2026-10-12")), null);
+  // a running league doesn't count, however well the team stands there
+  const running = teamLeagueRows([league(8, standings([PULENI, 4, 8])), league(9, standings([40, 6, 12], [PULENI, 6, 4]), null, "2026-01-01")], PULENI, "2026-10-12");
+  assert.deepEqual(bestRank(running), {rank: 2, league_id: 9, league_name: "Liga 9"});
+  assert.equal(bestRank(teamLeagueRows([league(10, standings([PULENI, 4, 8]), "2026-12-31")], PULENI, "2026-10-12")), null);
+  assert.equal(bestRank(teamLeagueRows([league(11, standings([PULENI, 0, 0]), null, "2026-01-01")], PULENI, "2026-10-12")), null);
   assert.equal(bestRank([]), null);
 });
 

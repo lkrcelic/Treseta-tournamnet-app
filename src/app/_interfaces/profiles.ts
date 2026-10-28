@@ -59,7 +59,7 @@ export type TeamOverview = {
   // the team's photo (url null = its letter); visibility and the block go to its players and admins only
   photo: TeamPhotoInfo | {photo_url: string | null};
   stats: {
-    // Najbolje mjesto: the best place over the leagues the team has played in (null = "–")
+    // Najbolje mjesto: the best final place over the team's leagues that are over (null = "–")
     best: {rank: number; league_id: number; league_name: string} | null;
     players: number;
     leagues: number;

@@ -79,12 +79,12 @@ export function teamLeagueRows(leagues: TeamLeagueFacts[], teamId: number, today
     .sort((a, b) => Number(b.live) - Number(a.live) || b.league_id - a.league_id);
 }
 
-// Najbolje mjesto: the best place over the leagues the team has played in; on a tie the first in the list (running,
-// then newest). Null ("–") before the team has finished a round anywhere.
+// Najbolje mjesto: the best final place over the leagues the team has played in that are over (a running league's
+// place can still change); on a tie the newest. Null ("–") before the team has played to the end of a league.
 export function bestRank(leagues: TeamOverviewLeague[]): TeamOverview["stats"]["best"] {
   let best: TeamOverviewLeague | null = null;
   for (const l of leagues) {
-    if (l.rank != null && (best?.rank == null || l.rank < best.rank)) best = l;
+    if (!l.live && l.rank != null && (best?.rank == null || l.rank < best.rank)) best = l;
   }
   return best?.rank != null ? {rank: best.rank, league_id: best.league_id, league_name: best.league_name} : null;
 }
@@ -121,7 +121,7 @@ export function playerTeamLeagues(leagues: {league_name: string}[]): string {
 // One number on a cream header card: "NAJBOLJE MJESTO / #3 / Piatnik Bela Liga 2025"
 export type HeroTile = {label: string; value: string; sub: string};
 
-// The Team page's tiles (13f): Najbolje mjesto ("–" with no sub before the team has played), Igrači, Lige
+// The Team page's tiles (13f): Najbolje mjesto ("–" with no sub before a league of the team is over), Igrači, Lige
 export function teamTiles(stats: TeamOverview["stats"]): HeroTile[] {
   return [
     {label: "Najbolje mjesto", value: stats.best ? `#${stats.best.rank}` : "–", sub: stats.best?.league_name ?? ""},
