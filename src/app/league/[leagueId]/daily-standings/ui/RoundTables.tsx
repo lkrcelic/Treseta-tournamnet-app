@@ -4,6 +4,7 @@ import {TableRow} from "@/app/_lib/ui/tables";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, Eyebrow, InitialsAvatar, LiveDot, LiveLabel, LivePill, rowFocus, tabular, TeamLabel} from "@/app/_ui/sp";
 import {teamInitial} from "@/app/_lib/ui/profiles";
+import {formatChange} from "@/app/_lib/ui/ratings";
 import {isByeTeam} from "@/app/_lib/bye";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
@@ -25,7 +26,8 @@ function TableAvatar({name, photo, bye, size}: {name: string; photo: string | nu
 // for the player's own table still to be played straight into the game, with the pill saying so
 export type TableTarget = {href: string} | {cue: "Nastavi igru" | "Započni igru"; onClick: () => void};
 
-// Phone: one card per table, both teams with their wins (and live match points while playing). Two targets on a card
+// Phone: one card per table, both teams with their wins (and live match points while playing, each team's point
+// difference over the round once it is closed). Two targets on a card
 // (14f): a team's name opens the team (teamHref), the rest of the card the table (tableTarget). The table's link is a
 // layer under the card's content and the names are links above it, so no link is inside another; the name's area is
 // its text only, at least 44 × 44 px, and the space beside a short name opens the table. A table with the bye has no
@@ -86,7 +88,7 @@ export function PhoneRoundTables({
           const cue = target && "cue" in target ? target.cue : null;
           const notStarted = !t.started && !t.done && !t.bye;
           const status = t.bye ? "Slobodna runda" : t.done ? "Završeno" : notStarted && !draft ? "Nije počelo" : null;
-          const label = `Stol ${t.table}${t.smoking ? ", pušački" : ""}: ${t.teamA} ${t.winsA}, ${t.teamB} ${t.winsB}${t.live ? ", uživo" : status ? `, ${status.toLowerCase()}` : ""}`;
+          const label = `Stol ${t.table}${t.smoking ? ", pušački" : ""}: ${t.teamA} ${t.winsA}, ${t.teamB} ${t.winsB}${t.live ? ", uživo" : status ? `, ${status.toLowerCase()}` : ""}${t.done && t.diffA != null ? `, razlika ${formatChange(t.diffA)} : ${formatChange(t.diffB)}` : ""}`;
           const layer = {
             position: "absolute",
             inset: 0,
@@ -147,10 +149,10 @@ export function PhoneRoundTables({
                 </Box>
                 {(
                   [
-                    [t.teamA, t.teamAId, t.winsA, t.pointsA, t.winsA > t.winsB, t.conferenceA, t.photoA],
-                    [t.teamB, t.teamBId, t.winsB, t.pointsB, t.winsB > t.winsA, t.conferenceB, t.photoB],
+                    [t.teamA, t.teamAId, t.winsA, t.pointsA, t.diffA, t.winsA > t.winsB, t.conferenceA, t.photoA],
+                    [t.teamB, t.teamBId, t.winsB, t.pointsB, t.diffB, t.winsB > t.winsA, t.conferenceB, t.photoB],
                   ] as const
-                ).map(([name, id, wins, pts, ahead, conference, photo], k) => {
+                ).map(([name, id, wins, pts, diff, ahead, conference, photo], k) => {
                   const bye = isByeTeam(id);
                   const href = edit || bye ? undefined : teamHref?.(id);
                   const text = (
@@ -204,7 +206,7 @@ export function PhoneRoundTables({
                         )}
                       </Box>
                       <Box component="span" aria-hidden sx={{fontSize: 14, fontWeight: 600, color: color.muted, ...tabular}}>
-                        {t.live && pts != null ? `(${pts})` : ""}
+                        {t.live && pts != null ? `(${pts})` : t.done && diff != null ? formatChange(diff) : ""}
                       </Box>
                       <Box component="span" aria-hidden sx={{textAlign: "right", fontFamily: font.display, fontSize: 26, fontWeight: 800, ...tabular}}>
                         {bye && k ? "" : notStarted ? "–" : wins}
@@ -245,7 +247,8 @@ export function PhoneRoundTables({
   );
 }
 
-// Desktop: a dense row per table — number chip, team A, score (live points under it), team B, status.
+// Desktop: a dense row per table — number chip, team A, score (live points under it, or the teams' point differences
+// once the table is closed), team B, status.
 // height of one table row on the desktop round view (the confirmation strip is the same height)
 export const TABLE_ROW_HEIGHT = 44;
 
@@ -270,7 +273,7 @@ export function DesktopTableRow({
   confirm?: React.ReactNode;
 }) {
   const font1 = dense ? 15 : 17;
-  const label = `Stol ${t.table}${t.smoking ? ", pušački" : ""}: ${t.teamA} ${t.winsA} : ${t.winsB} ${t.teamB}${t.live ? `, uživo ${t.pointsA ?? 0} – ${t.pointsB ?? 0}` : ""}`;
+  const label = `Stol ${t.table}${t.smoking ? ", pušački" : ""}: ${t.teamA} ${t.winsA} : ${t.winsB} ${t.teamB}${t.live ? `, uživo ${t.pointsA ?? 0} – ${t.pointsB ?? 0}` : t.done && t.diffA != null ? `, razlika ${formatChange(t.diffA)} : ${formatChange(t.diffB)}` : ""}`;
   if (confirm) {
     return (
       <Box
@@ -321,6 +324,11 @@ export function DesktopTableRow({
         {t.live && (
           <Box component="span" sx={{fontSize: 12, fontWeight: 600, color: color.muted, whiteSpace: "nowrap"}}>
             {t.pointsA ?? 0} · {t.pointsB ?? 0}
+          </Box>
+        )}
+        {!t.live && t.done && t.diffA != null && (
+          <Box component="span" sx={{fontSize: 12, fontWeight: 600, color: color.muted, whiteSpace: "nowrap"}}>
+            {formatChange(t.diffA)} · {formatChange(t.diffB)}
           </Box>
         )}
       </Box>

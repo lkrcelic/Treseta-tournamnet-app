@@ -112,6 +112,28 @@ test("round tables are sorted by table and carry live match points", () => {
   assert.equal(liveCount(rows), 1);
 });
 
+test("a closed table carries each team's point difference over its matches; a table still played or the bye's none", () => {
+  const played = [
+    ...rounds.map((r) =>
+      r.id === 10
+        ? {...r, matches: [{player_pair1_score: 1034, player_pair2_score: 748}, {player_pair1_score: 1001, player_pair2_score: 1001 - 96}]}
+        : r.id === 12
+          ? {...r, matches: [{player_pair1_score: 700, player_pair2_score: 1001}, {player_pair1_score: 1001, player_pair2_score: 700}]}
+          : {...r, matches: [{player_pair1_score: 1001, player_pair2_score: 650}]}
+    ),
+    {id: 14, table_number: 5, team1_id: BYE_TEAM_ID, team2_id: 9, team1: {team_name: "Bye"}, team2: {team_name: "Zovi na babu"}, team1_wins: 0, team2_wins: 2, active: false, open: false, matches: []},
+  ];
+  const rows = toTableRows(played);
+  assert.deepEqual([rows[0].diffA, rows[0].diffB], [382, -382]);
+  // an even round is 0 on both sides
+  assert.ok(Object.is(rows[2].diffA, 0) && Object.is(rows[2].diffB, 0));
+  // live (table 2) and not started (table 4): the round is not closed yet
+  assert.deepEqual([rows[1].diffA, rows[3].diffA], [null, null]);
+  assert.deepEqual([rows[4].diffA, rows[4].diffB], [null, null]);
+  // without the matches from the API: nothing to show
+  assert.equal(toTableRows(rounds)[0].diffA, null);
+});
+
 test("a published round's tables carry the teams' photos for the avatars; rows without them (Skica) have none", () => {
   const published = rounds.map((r) => ({...r, team1: {...r.team1, photo_url: r.id === 10 ? "/api/teams/1/photo?v=7" : null}, team2: {...r.team2, photo_url: null}}));
   const rows = toTableRows(published);

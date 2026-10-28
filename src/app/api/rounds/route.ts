@@ -38,6 +38,13 @@ export async function GET(request: NextRequest) {
           player_pair2_score: true,
           },
         };
+      // the finished matches' scores: a closed table shows each team's point difference (as the standings count it)
+      includeExtra.matches = {
+        select: {
+          player_pair1_score: true,
+          player_pair2_score: true,
+        },
+      };
     }
 
     if (open !== null) {
