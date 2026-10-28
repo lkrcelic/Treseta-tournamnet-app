@@ -1,20 +1,25 @@
 "use client";
 
 import {addTeamToLeagueAPI} from "@/app/_fetchers/league/leagues";
-import {addTeamPlayerAPI, removeTeamPlayerAPI, renameTeamAPI} from "@/app/_fetchers/team/manage";
+import {addTeamPlayerAPI, deleteTeamAPI, removeTeamPlayerAPI, renameTeamAPI} from "@/app/_fetchers/team/manage";
 import {adminPlayersList} from "@/app/_hooks/useAdminPlayers";
-import {LeagueOption, updateCachedLeague} from "@/app/_hooks/useLeagues";
+import {LeagueOption, reloadLeagues, updateCachedLeague} from "@/app/_hooks/useLeagues";
 import type {Overview} from "@/app/_hooks/useOverview";
 import {teamsList} from "@/app/_hooks/useTeams";
 import type {AdminPlayerRow} from "@/app/_interfaces/player";
 import type {TeamOverview, TeamOverviewLeague, TeamOverviewPlayer} from "@/app/_interfaces/profiles";
 import {leagueDateString} from "@/app/_lib/dates";
 import {leagueEnded} from "@/app/_lib/league";
+import {startNavStack} from "@/app/_lib/navStack";
+import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {
   addPlayerTeam,
   addTeamLeague,
   addTeamMember,
+  neighbourId,
   removePlayerTeam,
+  removeTeam,
+  removeTeamEverywhere,
   removeTeamMember,
   renamePlayersTeam,
   renameTeamIn,
@@ -22,13 +27,16 @@ import {
   teamNameError,
 } from "@/app/_lib/ui/directory";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
-import {buttonBase, ErrorNote, GhostIconButton, Spinner} from "@/app/_ui/sp";
+import {buttonBase, ConfirmSheet, ErrorNote, GhostIconButton, OutlineButton, Spinner} from "@/app/_ui/sp";
+import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import ErrorRoundedIcon from "@mui/icons-material/ErrorRounded";
 import PersonRemoveRoundedIcon from "@mui/icons-material/PersonRemoveRounded";
-import {Box} from "@mui/material";
+import {Box, Dialog} from "@mui/material";
+import {usePathname} from "next/navigation";
 import React, {useCallback, useEffect, useId, useRef, useState} from "react";
+import {useDirectoryFrame} from "./PageParts";
 
 // The admin's controls on a desktop Team page (handoff §6 "Admin controls": always visible, no edit mode; design 13h,
 // Profiles P:185-186, 205-258): the pencil that renames the team, "Dodaj igrača" with a remove button per player, and
@@ -401,6 +409,147 @@ export function RemoveButton({label, onClick, icon = <PersonRemoveRoundedIcon />
     >
       {icon}
     </GhostIconButton>
+  );
+}
+
+// ---------- delete ----------
+
+const DELETE_TEXT =
+  "Ekipa nestaje iz aplikacije, zajedno s prijavama u lige i slikom; njezini igrači ostaju. Moguće je samo dok ekipa nije odigrala nijedno kolo. Ovo se ne može poništiti.";
+
+// "Obriši ekipu" (not designed; as Obriši igrača): the button, then on the computer a dialog and on the phone a sheet
+// that asks first. The server keeps a team that has played, and the reason shows in the confirmation.
+// Once deleted the team leaves the Ekipe list, its players' teams and its leagues' counts, and the page
+// goes to the next team of the list (the computer's directory), or back to Ekipe.
+export function DeleteTeam({team, phone = false}: {team: TeamOverview; phone?: boolean}) {
+  const router = useTransitionRouter();
+  const pathname = usePathname();
+  const frame = useDirectoryFrame();
+  const titleId = useId();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const {id, name} = team.team;
+
+  const ask = () => {
+    setError(null);
+    setOpen(true);
+  };
+  const close = () => {
+    if (!busy) setOpen(false);
+  };
+  const confirm = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await deleteTeamAPI(id);
+    } catch (e) {
+      setError(errorText(e, "Ekipa nije obrisana."));
+      setBusy(false);
+      return;
+    }
+    // the page is still the deleted team's (the admin hasn't picked another one meanwhile)
+    const here = window.location.pathname === pathname;
+    // where the directory goes: the next team the list shows (asked while it still has the deleted one)
+    const next = !here || phone ? null : frame ? frame.nextAfterDelete(id) : neighbourId(teamsList.peek() ?? [], id);
+    teamsList.update((list) => removeTeam(list, id));
+    adminPlayersList.update((list) => removeTeamEverywhere(list, id));
+    // its leagues' team counts
+    if (team.leagues.length) void reloadLeagues();
+    setBusy(false);
+    setOpen(false);
+    if (!here) return;
+    if (phone) {
+      router.replace("/teams", "back");
+      return;
+    }
+    // the team's page is gone: the next one opens in its place (no Back to the deleted one)
+    const to = next != null ? `/teams/${next}` : "/teams";
+    startNavStack(to, pathname);
+    router.replace(to, "morph");
+  };
+
+  const button = (
+    <OutlineButton
+      height={phone ? 52 : 44}
+      tone={color.red}
+      onClick={ask}
+      sx={{
+        flex: "none",
+        alignSelf: phone ? "stretch" : "center",
+        gap: "8px",
+        px: "16px",
+        borderRadius: phone ? "16px" : "12px",
+        border: `1.5px solid ${tint.red[35]}`,
+        background: color.white,
+        fontSize: phone ? 15 : 14,
+        fontWeight: 600,
+        "&:hover:not(:disabled)": {background: tint.red[6]},
+        "& svg": {fontSize: 20},
+      }}
+    >
+      <DeleteRoundedIcon aria-hidden />
+      Obriši ekipu
+    </OutlineButton>
+  );
+
+  if (phone) {
+    return (
+      <>
+        {button}
+        <ConfirmSheet
+          open={open}
+          onClose={close}
+          onConfirm={confirm}
+          title="Obrisati ekipu?"
+          text={`${name}: ${DELETE_TEXT}`}
+          action="Obriši ekipu"
+          icon={<DeleteRoundedIcon />}
+          busy={busy}
+          error={error}
+        />
+      </>
+    );
+  }
+  return (
+    <>
+      {button}
+      <Dialog
+        open={open}
+        onClose={close}
+        aria-labelledby={titleId}
+        slotProps={{backdrop: {sx: {background: tint.scrim[32]}}}}
+        PaperProps={{sx: {width: 500, maxWidth: "calc(100% - 32px)", borderRadius: "24px", p: "24px", display: "flex", flexDirection: "column", gap: "16px", boxShadow: shadow.dialog}}}
+      >
+        <Box component="h2" id={titleId} sx={{m: 0, fontFamily: font.display, fontSize: 26, fontWeight: 800, letterSpacing: "-.01em", overflowWrap: "anywhere"}}>
+          Obrisati ekipu {name}?
+        </Box>
+        <Box sx={{display: "flex", gap: "12px", alignItems: "flex-start", p: "14px", borderRadius: "16px", background: tint.red[8], "& > svg": {fontSize: 24, color: color.red, flex: "none"}}}>
+          <DeleteRoundedIcon aria-hidden />
+          <Box component="p" sx={{m: 0, fontSize: 15, lineHeight: 1.5, color: color.ink, textWrap: "pretty"}}>
+            {DELETE_TEXT}
+          </Box>
+        </Box>
+        {error && <ErrorNote>{error}</ErrorNote>}
+        <Box sx={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px"}}>
+          <OutlineButton height={52} onClick={close} disabled={busy} sx={{fontSize: 16, border: `1.5px solid ${color.borderControl}`}}>
+            Odustani
+          </OutlineButton>
+          <Box
+            component="button"
+            type="button"
+            onClick={confirm}
+            disabled={busy}
+            aria-busy={busy || undefined}
+            sx={{...buttonBase, height: 52, borderRadius: "16px", background: color.red, color: color.white, fontSize: 16, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px"}}
+          >
+            {busy && <Spinner size={18} tone="white" />}
+            Obriši
+          </Box>
+        </Box>
+      </Dialog>
+    </>
   );
 }
 

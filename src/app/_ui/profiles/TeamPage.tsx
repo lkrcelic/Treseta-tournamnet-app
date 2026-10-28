@@ -60,7 +60,7 @@ import {
   TEAM_GRID,
   TEAM_STACKED_GRID,
 } from "./PageParts";
-import {AddError, NameButton, NameEditing, RemoveButton, TeamAdmin, TeamNameInput, useNameFocus, useTeamAdmin} from "./TeamAdmin";
+import {AddError, DeleteTeam, NameButton, NameEditing, RemoveButton, TeamAdmin, TeamNameInput, useNameFocus, useTeamAdmin} from "./TeamAdmin";
 
 // The Team page (/teams/[teamId], handoff §6, frames 13a, 13b, 13f, 13k–13o): the cream header with the team's best
 // place, players and leagues, then its players (to their pages), its leagues (to that league's standings with the team
@@ -100,6 +100,7 @@ function useTeamPhoto(overview: Overview<TeamOverview>) {
 // rename: the admin's pencil next to the name (desktop). photo: the team's player changes the photo from its avatar
 // (the camera badge; onPhoto opens the sheet or the dialog). adminPhoto: the computer's admin badge on the photo
 // (PhotoAdminBadge), which takes the camera badge's place; an admin in the team still changes the photo by clicking it.
+// aside: the computer admin's Obriši ekipu, at the right of the name.
 function Hero({
   team,
   desktop,
@@ -108,6 +109,7 @@ function Hero({
   photo,
   onPhoto,
   adminPhoto,
+  aside,
 }: {
   team: TeamOverview;
   desktop: boolean;
@@ -116,6 +118,7 @@ function Hero({
   photo?: PhotoControls;
   onPhoto?: () => void;
   adminPhoto?: React.ReactNode;
+  aside?: React.ReactNode;
 }) {
   const focus = useNameFocus(rename?.editing ?? false);
   const letters = teamInitial(team.team.name);
@@ -150,6 +153,7 @@ function Hero({
       titleEditor={rename?.editing ? <TeamNameInput edit={rename} short={short} inputRef={focus.inputRef} /> : undefined}
       nameTag={rename ? <NameButton edit={rename} short={short} onStart={rename.start} buttonRef={focus.buttonRef} /> : undefined}
       cornerTag={team.team.mine ? <Tag variant="mine" size={desktop ? "md" : "sm"} /> : undefined}
+      aside={aside}
       tiles={teamTiles(team.stats)}
     />
   );
@@ -176,7 +180,7 @@ function PlayerNames({player, teamName, desktop}: {player: TeamOverviewPlayer; t
 // ---------- phone ----------
 
 // The admin's phone (admin-mobile 33) gets the desktop's controls: the pencil on the name, Dodaj igrača with a remove
-// button per player, and Dodaj u ligu
+// button per player, Dodaj u ligu, and Obriši ekipu at the bottom
 export function TeamPagePhone({teamId}: {teamId: number}) {
   const overview = useTeamOverview(teamId);
   const team = overview.data;
@@ -208,6 +212,7 @@ export function TeamPagePhone({teamId}: {teamId: number}) {
           <PhonePlayers team={team} admin={admin} />
           <PhoneLeagues team={team} admin={admin} />
           <PhoneNights nights={team.nights} teamId={team.team.id} />
+          {admin && <DeleteTeam team={team} phone />}
         </>
       ) : (
         <PageStatus kind="team" overview={overview} nav={nav} />
@@ -499,6 +504,7 @@ export function TeamPageDesktop({teamId, embedded = false}: {teamId: number; emb
             rename={admin?.rename}
             photo={photo}
             onPhoto={() => setPhotoOpen(true)}
+            aside={admin && !admin.rename.editing ? <DeleteTeam team={team} /> : undefined}
             adminPhoto={
               admin && (
                 <PhotoAdminBadge

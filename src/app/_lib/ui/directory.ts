@@ -126,6 +126,15 @@ export function addTeamMember(teams: DirectoryTeam[], teamId: number, player: Di
   );
 }
 
+// Obriši ekipu: out of the Ekipe list and out of every player's teams
+export function removeTeam(teams: DirectoryTeam[], teamId: number): DirectoryTeam[] {
+  return teams.filter((t) => t.id !== teamId);
+}
+
+export function removeTeamEverywhere(players: AdminPlayerRow[], teamId: number): AdminPlayerRow[] {
+  return players.map((p) => (p.teams.some((t) => t.team_id === teamId) ? {...p, teams: p.teams.filter((t) => t.team_id !== teamId)} : p));
+}
+
 export function removeTeamMember(teams: DirectoryTeam[], teamId: number, playerId: number): DirectoryTeam[] {
   return teams.map((t) => (t.id === teamId ? {...t, players: t.players.filter((p) => p.id !== playerId)} : t));
 }

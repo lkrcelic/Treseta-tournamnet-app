@@ -1,12 +1,13 @@
 // src/app/api/teams/[id]/route.ts
 import {NextRequest, NextResponse} from "next/server";
 import {Prisma} from "@prisma/client";
-import {requireUser} from "@/app/_lib/service/auth/requireUser";
+import {requireAdmin, requireUser} from "@/app/_lib/service/auth/requireUser";
 import {prisma} from "@/app/_lib/prisma";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {errorResponse, lookupErrorResponse} from "@/app/_lib/apiErrors";
 import {
   TEAM_NAME_TAKEN,
+  TEAM_NOT_FOUND,
   TEAM_PHOTO_VISIBILITY_MEMBERS_ONLY,
   TEAM_RENAME_ADMIN_ONLY,
   TeamExtendedResponseValidation,
@@ -16,12 +17,13 @@ import {PHOTO_BLOCK_ADMIN_ONLY} from "@/app/_interfaces/player";
 import {isAdminRole} from "@/app/_lib/players/admin";
 import {isByeTeam} from "@/app/_lib/bye";
 import {renameTeam} from "@/app/_lib/service/team/update";
+import {deleteTeam} from "@/app/_lib/service/team/delete";
 import {rosterView} from "@/app/_lib/players/privacy";
 import {PLAYER_PHOTO, photoContext} from "@/app/_lib/service/players/photos";
 import {isDbId} from "@/app/_lib/helpers/query/dbId";
 
 // A new response each time: a response body can only be sent once
-const teamNotFound = () => NextResponse.json({error: "Ekipa ne postoji."}, {status: STATUS.NotFound});
+const teamNotFound = () => NextResponse.json({error: TEAM_NOT_FOUND}, {status: STATUS.NotFound});
 
 // Handle GET request to fetch a single team by ID
 export async function GET(request: NextRequest, {params}: { params: { id: string } }) {
@@ -102,5 +104,21 @@ export async function PATCH(request: NextRequest, {params}: { params: { id: stri
       return NextResponse.json({error: TEAM_NAME_TAKEN}, {status: STATUS.BadRequest});
     }
     return errorResponse(error, "Ime ekipe nije spremljeno.");
+  }
+}
+
+// "Obriši ekipu" (admin): deletes a team that has never played (deleteTeam). 204; a team that has played is a 400 with
+// the reason; a missing team (or the bye) a 404.
+export async function DELETE(request: NextRequest, {params}: { params: { id: string } }) {
+  const auth = await requireAdmin(request);
+  if (auth.response) return auth.response;
+  const teamId = Number(params.id);
+  if (!isDbId(teamId)) return teamNotFound();
+
+  try {
+    await deleteTeam(teamId);
+    return new NextResponse(null, {status: STATUS.NoContent});
+  } catch (error) {
+    return errorResponse(error, "Ekipa nije obrisana.");
   }
 }

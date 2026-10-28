@@ -17,6 +17,12 @@ export async function renameTeamAPI(teamId: number, team_name: string): Promise<
   if (!response.ok) throw new Error(await responseErrorMessage(response, "Ime ekipe nije spremljeno."));
 }
 
+// Obriši ekipu: only a team that has never played; can't be undone
+export async function deleteTeamAPI(teamId: number): Promise<void> {
+  const response = await apiFetch(`/api/teams/${teamId}`, {method: "DELETE"});
+  if (!response.ok) throw new Error(await responseErrorMessage(response, "Ekipa nije obrisana."));
+}
+
 export async function addTeamPlayerAPI(teamId: number, player_id: number): Promise<void> {
   const response = await apiFetch(`/api/teams/${teamId}/players`, {
     method: "POST",

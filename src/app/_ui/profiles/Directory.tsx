@@ -99,7 +99,7 @@ function DirectoryShell({kind, children}: {kind: Kind; children: React.ReactNode
       lead={<Box ref={setLeadSlot} sx={{display: "contents"}} />}
     >
       <Box sx={{flex: 1, minHeight: 0, display: "flex", gap: "20px"}}>
-        {kind === "teams" ? <TeamDirectory selectedId={selectedId} /> : <PlayerDirectory selectedId={selectedId} afterDelete={afterDelete} />}
+        {kind === "teams" ? <TeamDirectory selectedId={selectedId} afterDelete={afterDelete} /> : <PlayerDirectory selectedId={selectedId} afterDelete={afterDelete} />}
         <DirectoryFrameContext.Provider value={frame}>{children}</DirectoryFrameContext.Provider>
       </Box>
     </DesktopShell>
@@ -205,11 +205,19 @@ function OpenFirst({
 
 // ---------- Ekipe ----------
 
-function TeamDirectory({selectedId}: {selectedId: number | null}) {
+function TeamDirectory({selectedId, afterDelete}: {selectedId: number | null; afterDelete: React.MutableRefObject<AfterDelete>}) {
   const {list, error, reload} = useTeams();
   const pathname = usePathname();
   const [query, setQuery] = useRestoredState("dir-teams-query", "");
   const visible = useMemo(() => (list ? filterTeams(list, query) : null), [list, query]);
+  // a team deleted on its page: the next one this list shows opens in its place (as for a player)
+  useEffect(() => {
+    afterDelete.current = (id) => {
+      const {next, clearSearch} = nextAfterDelete(list ?? [], query.trim() ? visible : null, id);
+      if (clearSearch) setQuery("");
+      return next;
+    };
+  });
   return (
     <DirectoryCard<DirectoryTeam>
       memory="dir-teams"
