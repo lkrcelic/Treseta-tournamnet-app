@@ -418,14 +418,17 @@ const DELETE_TEXT =
   "Ekipa nestaje iz aplikacije, zajedno s prijavama u lige i slikom; njezini igrači ostaju. Moguće je samo dok ekipa nije odigrala nijedno kolo. Ovo se ne može poništiti.";
 
 // "Obriši ekipu" (not designed; as Obriši igrača): the button, then on the computer a dialog and on the phone a sheet
-// that asks first. The server keeps a team that has played, and the reason shows in the confirmation.
-// Once deleted the team leaves the Ekipe list, its players' teams and its leagues' counts, and the page
+// that asks first. A team that has played can't be deleted (viewer.delete_blocked): the phone
+// shows the button disabled with the reason under it, the computer's header leaves it out (no room for the reason).
+// Should the server still refuse (a table made meanwhile), its reason shows in the confirmation. Once deleted the team leaves the Ekipe list, its players' teams and its leagues' counts, and the page
 // goes to the next team of the list (the computer's directory), or back to Ekipe.
 export function DeleteTeam({team, phone = false}: {team: TeamOverview; phone?: boolean}) {
   const router = useTransitionRouter();
   const pathname = usePathname();
   const frame = useDirectoryFrame();
   const titleId = useId();
+  const reasonId = useId();
+  const blocked = team.viewer.delete_blocked ?? null;
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -475,6 +478,8 @@ export function DeleteTeam({team, phone = false}: {team: TeamOverview; phone?: b
       height={phone ? 52 : 44}
       tone={color.red}
       onClick={ask}
+      disabled={blocked != null}
+      aria-describedby={blocked ? reasonId : undefined}
       sx={{
         flex: "none",
         alignSelf: phone ? "stretch" : "center",
@@ -494,10 +499,20 @@ export function DeleteTeam({team, phone = false}: {team: TeamOverview; phone?: b
     </OutlineButton>
   );
 
+  if (blocked && !phone) return null;
   if (phone) {
     return (
       <>
-        {button}
+        {blocked ? (
+          <Box sx={{flex: "none", display: "flex", flexDirection: "column", gap: "8px"}}>
+            {button}
+            <Box id={reasonId} sx={{px: "4px", fontSize: 13, lineHeight: 1.4, color: color.muted, textAlign: "center", textWrap: "pretty"}}>
+              {blocked}
+            </Box>
+          </Box>
+        ) : (
+          button
+        )}
         <ConfirmSheet
           open={open}
           onClose={close}

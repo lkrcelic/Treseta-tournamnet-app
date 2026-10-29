@@ -11,13 +11,14 @@ import {aggregateTeamNights, bestRank, teamLeagueRows} from "@/app/_lib/ui/profi
 import {PUBLISHED_ROUND} from "@/app/_lib/roundStatus";
 import {TeamNight, TeamOverview, TeamOverviewPlayer} from "@/app/_interfaces/profiles";
 import {PLAYER_PHOTO, photoContext, TEAM_PHOTO} from "@/app/_lib/service/players/photos";
+import {teamDeleteBlocker} from "@/app/_lib/service/team/delete";
 
 // Zadnje večeri shows this many nights
 const NIGHTS = 4;
 
 // The Team page (GET /api/teams/[id]/overview, any logged-in player): the team's players with their ratings, its
 // leagues with its place and points (the same numbers as Ukupni poredak) and its last nights. Usernames only for an
-// admin and the player themself. Null for a team that doesn't exist and for the bye team (404).
+// admin and the player themself; an admin also gets why the team can't be deleted. Null for a team that doesn't exist and for the bye team (404).
 export async function getTeamOverview(teamId: number, viewer: Viewer): Promise<TeamOverview | null> {
   if (!isDbId(teamId) || isByeTeam(teamId)) return null;
 
@@ -52,11 +53,13 @@ export async function getTeamOverview(teamId: number, viewer: Viewer): Promise<T
 
   const roster = team.teamPlayers.map((tp) => tp.player);
   const leagues = team.leagueTeams.map((lt) => lt.league);
-  const [ratings, standings, nights, photos] = await Promise.all([
+  const admin = isAdminRole(viewer);
+  const [ratings, standings, nights, photos, deleteBlocked] = await Promise.all([
     ratingSummaries(roster),
     Promise.all(leagues.map((l) => getLeagueStandings(l.league_id))),
     lastTeamNights(teamId),
     photoContext(viewer),
+    admin ? teamDeleteBlocker(teamId) : null,
   ]);
 
   const players: TeamOverviewPlayer[] = roster
@@ -97,7 +100,7 @@ export async function getTeamOverview(teamId: number, viewer: Viewer): Promise<T
     team: {id: team.team_id, name: team.team_name, mine},
     // its players change the photo and who sees it; an admin removes it and blocks new ones
     photo:
-      mine || isAdminRole(viewer)
+      mine || admin
         ? {photo_url, photo_visibility: team.photo_visibility === "ME" ? "TEAMMATES" : team.photo_visibility, photo_blocked: team.photo_blocked, can_edit: mine}
         : {photo_url},
     stats: {
@@ -109,7 +112,7 @@ export async function getTeamOverview(teamId: number, viewer: Viewer): Promise<T
     players,
     leagues: leagueRows,
     nights,
-    viewer: {admin: isAdminRole(viewer)},
+    viewer: admin ? {admin, delete_blocked: deleteBlocked} : {admin},
   };
 }
 

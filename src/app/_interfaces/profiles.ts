@@ -70,7 +70,8 @@ export type TeamOverview = {
   leagues: TeamOverviewLeague[];
   // at most 4, newest first
   nights: TeamNight[];
-  viewer: {admin: boolean};
+  // delete_blocked (admins): why Obriši ekipu can't delete the team (it has played); null = it can
+  viewer: {admin: boolean; delete_blocked?: string | null};
 };
 
 // ---------- Player page ----------
