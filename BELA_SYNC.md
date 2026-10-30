@@ -9,7 +9,7 @@ own; everything else is kept identical to Bela.
 | | |
 |---|---|
 | Bela branch | `development`, read through the remote `bela` (the local Bela repo). Only commits come over, never Bela's uncommitted work |
-| Last synced Bela commit | `9a16ca9` (28 Oct 2026) |
+| Last synced Bela commit | `6c84c4b` (30 Oct 2026) |
 | Target branch | `master` |
 | Sync branch | `bela-sync` in the repo itself (no worktree): created from `master`, or rebased onto it, by every run |
 
@@ -77,24 +77,10 @@ Treseta directly only for what has to differ, and add it below.
 
 ## Bela's work waiting to come over
 
-Every Bela commit up to `9a16ca9` (28 Oct 2026) came over by 30 Oct 2026. Decisions for Bela work that touches
-Treseta's differences before it comes over go here.
+Every Bela commit up to `6c84c4b` (30 Oct 2026) came over or was skipped by 30 Oct 2026. Decisions for Bela work that
+touches Treseta's differences before it comes over go here.
 
-**Waiting for a decision: Bela's Turniri v1 (`14f988f..6c84c4b`, 9 commits, 30 Oct 2026).** The sync stopped at
-`14f988f`. Most of it is the tournaments (not copied), but it also brings, for leagues:
-
-- **Vrijeme partije**: every match, league ones too, gets a time limit (`League.game_minutes`, 35 by default;
-  `OngoingMatch.started_at` / `ends_at`, `Match.time_expired`). After the deadline a hand is taken only within 2
-  minutes of its entry opening or with the score level, and a match nobody finishes is closed by the server with the
-  team with more points winning; admin corrections and the ratings count it so. It reaches Treseta's game rules (a
-  match to 41, section 10's raised target and "s ovim dosta") and their own versions (`finishOngoingMatch.ts`,
-  `ongoingResult/*`, `admin/hands.ts`, the scorepad's `MatchClock`, Nova liga's and Upravljanje ligom's setting).
-- **Zabrana prijava** (`SignupBan`, `/api/admin/bans`, `BanSection` on Ekipa and Igrač): bans from tournament
-  sign-ups, so presumably tournaments only.
-- Migration `20261030120000_turniri_v1`: league and match columns mixed with the tournament ones.
-
-To go on, decide whether Treseta's league matches get Vrijeme partije (and how a match closed by time fits section 10
-and "s ovim dosta"), and whether the bans stay out with the tournaments. Write the decision here.
+Nothing is waiting.
 
 ## Differences from Bela
 
@@ -261,6 +247,29 @@ first brought by `79d735a..86cbcec`, and never come here. A later Bela change to
   and its `_ui/sp/brand.ts`. Treseta keeps `BRAND` (`_lib/brand.ts`). Shared code that imports `_ui/sp/brand.ts`
   reads `BRAND` instead.
 
+Turniri v1 (`14f988f..6c84c4b`, 30 Oct 2026) stays out too, with two parts Bela also uses outside tournaments
+(decided 30 Oct 2026):
+
+- **Vrijeme partije** (a match's time limit): Treseta's league matches don't get it. A match ends only by Treseta's
+  rules (41, section 10's raised target, "s ovim dosta"), never by time. Not copied: `_lib/gameTime.ts`,
+  `_lib/__tests__/gameTime.test.ts`, `_lib/service/match/timeLimit.ts`, `ongoing-match/ui/MatchClock.tsx`; the columns
+  `League.game_minutes`, `OngoingMatch.started_at` / `ends_at` and `Match.time_expired`; and in shared files the
+  league's `game_minutes` (`_interfaces/league.ts`, `_lib/service/league/leagues.ts`, `_hooks/useLeagues.ts`, Nova liga
+  and Postavke lige on both screens: `league/new/page.tsx`, `league/[leagueId]/manage/LeagueDetailsView.tsx`,
+  `_ui/admin/NewLeaguePhone.tsx`, `_ui/admin/LeaguePhone.tsx`), the match's `started_at`, `ends_at` and `server_now`
+  (`_interfaces/match.ts`, `_lib/service/ongoingMatch/create.ts`, `…/getOneWithResults.ts`), closing by time
+  (`_lib/service/match/finishOngoingMatch.ts`, `_lib/service/admin/hands.ts`' `timeWinner` and `{admin: true}`, the
+  hand's `entry_started_at` in `ongoing-match/ui/handFlow.ts` and Bela's `ongoingBelaResult`), and the scorepad's timer
+  (`ongoing-match/[matchId]/page.tsx`).
+- **Zabrana prijava** (sign-up bans): tournaments only. Not copied: `_lib/bans.ts`, `_lib/service/bans/`,
+  `api/admin/bans/**`, `_ui/profiles/BanSection.tsx` and its place on `_ui/profiles/PlayerPage.tsx` and
+  `_ui/profiles/TeamPage.tsx`, and the `SignupBan` model.
+- The rest is the tournament day: `_lib/tournamentDay.ts`, `_lib/__tests__/tournamentDay.test.ts`, `_lib/tableState.ts`,
+  `_bootstrap/TournamentAttention.tsx` (and its mount in `layout.tsx`), `api/rounds/[id]/attendance/`, the
+  `Round.attendance*` columns (and the ratings' `attendance` filter in `_lib/service/admin/recalc.ts`), and
+  `_lib/dates.ts`' `leagueMoment` and `leagueClock`, which only tournaments use. Bela's migration
+  `20261030120000_turniri_v1` gets no Treseta migration.
+
 Shared files these commits change (Početna, the scorepad, the admin's tables, the open table, the round services, the
 tab bars, the middleware's public paths and so on) are merged without the tournament code:
 
@@ -322,3 +331,4 @@ The nightly sync adds a row when it brings something over or stops.
 | 27 Oct 2026 | `c2969e5..c354458` (11) | The tournaments not copied: 7 skipped (parts 1–4, `DECISIONS.md`, the click-through fixes, Dodaj kolo), and from parts 5 and 6 only the rating chip on Početna, `StartCard.tsx` (with the conference dots), Skica kola's two-line names and a page's tab kept in its address; Bela's `/api/teams/[id]` 500 and the scorepad hands as rows (no lead bar, so Treseta's `LEAD_BAR_FULL` went); no migration |
 | 29 Oct 2026 | `c354458..4b43d06` (2) | Both came over: Najbolje mjesto counts finished leagues only, and Obriši ekipu without its tournament check; no migration |
 | 30 Oct 2026 | `4b43d06..9a16ca9` (2 of 11) | Stopped at `14f988f` (Turniri v1: Vrijeme partije for league matches changes the game rules, not decided). 2 came over: Obriši ekipu disabled with its reason (without the tournament check), and a closed table's point difference on the Kolo tab (with the conference dots); no migration |
+| 30 Oct 2026 | `9a16ca9..6c84c4b` (9) | All 9 skipped (Turniri v1): decided that league matches don't get Vrijeme partije and the sign-up bans stay with the tournaments, so nothing outside tournaments was left; `DECISIONS.md` not copied; no migration |
