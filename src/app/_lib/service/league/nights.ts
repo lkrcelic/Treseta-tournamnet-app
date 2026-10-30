@@ -1,4 +1,4 @@
-import {LeagueNightRow, LeagueNightUpdate, MAX_NIGHTS_ERROR, MOVE_TO_PAST_ERROR, NIGHT_TAKEN, PAST_NIGHT_ERROR} from "@/app/_interfaces/league";
+import {LeagueNightAdd, LeagueNightRow, LeagueNightUpdate, MAX_NIGHTS_ERROR, MOVE_TO_PAST_ERROR, NIGHT_TAKEN, PAST_NIGHT_ERROR} from "@/app/_interfaces/league";
 import {leagueDateString} from "@/app/_lib/dates";
 import {effectiveLocation, effectiveTime, locationOf, MAX_NIGHTS} from "@/app/_lib/nights";
 import {prisma} from "@/app/_lib/prisma";
@@ -65,13 +65,22 @@ export async function listLeagueNights(leagueId: number): Promise<LeagueNightRow
   });
 }
 
-// startTime: the night's own start time (null: the league's)
-export async function addLeagueNight(leagueId: number, date: string, startTime: string | null = null): Promise<void> {
+// A night's own place as its three columns (null: the league's, all three cleared)
+const locationData = (location: NonNullable<LeagueNightUpdate["location"]> | null) => ({
+  location_name: location?.name.trim() || null,
+  location_address: (location && location.address?.trim()) || null,
+  location_url: (location && location.url?.trim()) || null,
+});
+
+// A new night with its own start time and place, or (left out or null) the league's
+export async function addLeagueNight(leagueId: number, night: LeagueNightAdd): Promise<void> {
   if ((await prisma.leagueNight.count({where: {league_id: leagueId}})) >= MAX_NIGHTS) {
     throw new InvalidResultError(MAX_NIGHTS_ERROR);
   }
   try {
-    await prisma.leagueNight.create({data: {league_id: leagueId, night: nightValue(date), start_time: startTime}});
+    await prisma.leagueNight.create({
+      data: {league_id: leagueId, night: nightValue(night.date), start_time: night.start_time ?? null, ...locationData(night.location ?? null)},
+    });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2002") throw new InvalidResultError(NIGHT_TAKEN);
@@ -131,13 +140,7 @@ export async function updateLeagueNight(leagueId: number, date: string, change: 
       data: {
         ...(moveTo == null ? {} : {night: nightValue(moveTo)}),
         start_time: change.start_time,
-        ...(location === undefined
-          ? {}
-          : {
-              location_name: location?.name.trim() || null,
-              location_address: (location && location.address?.trim()) || null,
-              location_url: (location && location.url?.trim()) || null,
-            }),
+        ...(location === undefined ? {} : locationData(location)),
       },
       select: {start_time: true, ...LOCATION, league: {select: {start_time: true, ...LOCATION}}},
     });

@@ -2,14 +2,17 @@
 
 import {LeagueNightUpdate, MOVE_TO_PAST_ERROR, NIGHT_TAKEN} from "@/app/_interfaces/league";
 import {effectiveTime, isIsoDate, NightLocation, nightLabelLong, ownTimeOf, sameLocation} from "@/app/_lib/nights";
+import {count, NOUN} from "@/app/_lib/ui/text";
 import {color, font} from "@/app/_styles/tokens";
 import {ErrorNote, Eyebrow, mergeSx, OutlineButton, Segmented, SolidButton, TextField, TimeField} from "@/app/_ui/sp";
 import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
+import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
+import TableRestaurantRoundedIcon from "@mui/icons-material/TableRestaurantRounded";
 import {Box, SxProps, Theme} from "@mui/material";
 import React, {useState} from "react";
 
 // Okupljanje on the admin's screens: the league's default time and place (Nova liga, Podaci, Postavke) and a single
-// night's date and own time and place (Datumi · Uredi večer).
+// night's date and own time and place (Datumi · Dodaj večer and Uredi večer).
 
 // A place being typed: the three fields as they are ("" for an empty one)
 export type PlaceDraft = {name: string; address: string; url: string};
@@ -112,20 +115,25 @@ export function timeHelp(time: string, leagueTime: string | null): string {
 // The night's date, time and place being edited
 export type NightForGathering = {date: string; start_time: string | null; location: NightLocation | null};
 
-// Why a night can't move to the date typed (null: it can)
-export function moveDateError(date: string, today: string, taken: (date: string) => boolean): string | null {
+// Why a night can't go on the date typed (null: it can). A new night may be a past one (one played but not added); an
+// existing one moves only to today or later.
+export function nightDateError(date: string, today: string, taken: (date: string) => boolean, isNew: boolean): string | null {
   if (!isIsoDate(date)) return "Upiši datum večeri.";
-  if (date < today) return MOVE_TO_PAST_ERROR;
+  if (!isNew && date < today) return MOVE_TO_PAST_ERROR;
   return taken(date) ? NIGHT_TAKEN : null;
 }
 
-// A night's date and its own time and place (Uredi večer: the desktop's card in Datumi, the sheet of Datumi on the
-// admin's phone). The time starts as the night's (its own or the league's); the place is the league's or the night's
-// own. Spremi sends only what changed (a time equal to the league's and "Zadano lige" go back to the league's), and Vrati
-// na zadano takes the night's own time and place away (the date stays). Give it key={night.date}, so another night starts
-// afresh; savedAtStart: it opens as just saved (the night moved, so it came back under its new date).
+// A night's date and its own time and place (Datumi: the desktop's card on the right, a sheet on the admin's phone).
+// The time starts as the night's (its own or the league's); the place is the league's or the night's own, so a new
+// night starts with the league's (Podaci). Uredi večer (an existing night): Spremi sends only what changed (a time
+// equal to the league's and "Zadano lige" go back to the league's), and Vrati na zadano takes the night's own time and
+// place away (the date stays). Dodaj večer (isNew): Odustani and Dodaj večer, which sends the whole night. Give it
+// key={night.date}, so another night starts afresh; savedAtStart: it opens as just saved (the night moved, so it came
+// back under its new date).
 export function NightGatheringForm({
   night,
+  isNew = false,
+  onCancel,
   today,
   taken,
   leagueTime,
@@ -140,6 +148,9 @@ export function NightGatheringForm({
   children,
 }: {
   night: NightForGathering;
+  isNew?: boolean;
+  // Dodaj večer's Odustani
+  onCancel?: () => void;
   // the league's today: a night moves to it or later
   today: string;
   // whether the league already has a night on that date
@@ -164,15 +175,16 @@ export function NightGatheringForm({
   const [place, setPlace] = useState<PlaceDraft>(placeDraftOf(night.location));
   const [saved, setSaved] = useState(savedAtStart);
 
-  const dateChanged = date !== night.date;
-  const dateError = dateChanged ? moveDateError(date, today, taken) : null;
+  const dateChanged = isNew || date !== night.date;
+  // a new night's empty date isn't an error yet, only not ready
+  const dateError = dateChanged && !(isNew && date === "") ? nightDateError(date, today, taken, isNew) : null;
   const ownTime = ownTimeOf(time, leagueTime);
   const wantedPlace = mode === "own" ? placeOfDraft(place) : null;
   const timeChanged = ownTime !== (night.start_time ?? null);
   const placeChanged = mode === "own" ? !place.name.trim() || !sameLocation(wantedPlace, night.location) : night.location != null;
   const dirty = dateChanged || timeChanged || placeChanged;
   // a place of its own needs a name
-  const canSave = dirty && !dateError && (mode === "league" || !!place.name.trim()) && !saving;
+  const canSave = dirty && isIsoDate(date) && !dateError && (mode === "league" || !!place.name.trim()) && !saving;
   const hasOwn = night.start_time != null || night.location != null;
 
   const changed = <T,>(set: (v: T) => void) => (v: T) => {
@@ -182,6 +194,10 @@ export function NightGatheringForm({
 
   const save = async () => {
     if (!canSave) return;
+    if (isNew) {
+      await onSave({date, start_time: ownTime, location: wantedPlace});
+      return;
+    }
     const change: LeagueNightUpdate = {};
     if (dateChanged) change.date = date;
     if (timeChanged) change.start_time = ownTime;
@@ -207,7 +223,16 @@ export function NightGatheringForm({
       }}
       sx={mergeSx({display: "flex", flexDirection: "column", gap: "14px"}, sx)}
     >
-      <TextField label="Datum večeri" type="date" value={date} min={today} onChange={(e) => changed(setDate)(e.target.value)} error={dateError ?? undefined} soft inputSx={inputSx} />
+      <TextField
+        label="Datum večeri"
+        type="date"
+        value={date}
+        min={isNew ? undefined : today}
+        onChange={(e) => changed(setDate)(e.target.value)}
+        error={dateError ?? undefined}
+        soft
+        inputSx={inputSx}
+      />
       <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
         <TimeField label={TIME_LABEL} value={time} onChange={changed(setTime)} clearLabel="Ukloni vrijeme okupljanja" soft inputSx={inputSx} />
         <Box sx={{fontSize: 13, lineHeight: 1.4, color: color.muted, pl: "4px"}}>{timeHelp(time, leagueTime)}</Box>
@@ -227,27 +252,84 @@ export function NightGatheringForm({
         )}
       </Box>
       {error && <ErrorNote>{error}</ErrorNote>}
-      <Box sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "10px"}}>
-        <OutlineButton height={52} onClick={reset} disabled={saving || (!hasOwn && !dirty)} sx={{fontSize: 16, borderWidth: "1.5px", borderColor: color.borderControl, color: color.navy}}>
-          Vrati na zadano
-        </OutlineButton>
-        <SolidButton type="submit" height={52} disabled={!canSave} loading={saving} sx={{fontSize: 16, ...(saved && !dirty ? {opacity: 1} : {})}}>
-          {saved && !dirty ? "Spremljeno ✓" : "Spremi"}
-        </SolidButton>
-      </Box>
+      {isNew ? (
+        <Box sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "10px"}}>
+          <OutlineButton height={52} onClick={onCancel} disabled={saving} sx={{fontSize: 16, borderWidth: "1.5px", borderColor: color.borderControl, color: color.navy}}>
+            Odustani
+          </OutlineButton>
+          <SolidButton type="submit" height={52} disabled={!canSave} loading={saving} sx={{fontSize: 16}}>
+            Dodaj večer
+          </SolidButton>
+        </Box>
+      ) : (
+        <Box sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "10px"}}>
+          <OutlineButton height={52} onClick={reset} disabled={saving || (!hasOwn && !dirty)} sx={{fontSize: 16, borderWidth: "1.5px", borderColor: color.borderControl, color: color.navy}}>
+            Vrati na zadano
+          </OutlineButton>
+          <SolidButton type="submit" height={52} disabled={!canSave} loading={saving} sx={{fontSize: 16, ...(saved && !dirty ? {opacity: 1} : {})}}>
+            {saved && !dirty ? "Spremljeno ✓" : "Spremi"}
+          </SolidButton>
+        </Box>
+      )}
       {children}
     </Box>
   );
 }
 
-// The desktop card of Datumi: UREDI VEČER, the night's long date, then the form
-export function NightGatheringHeading({date}: {date: string}) {
+// The desktop card of Datumi: UREDI VEČER (or another eyebrow) and the night's long date, or a title of its own (Nova
+// večer), then the form
+export function NightGatheringHeading({date, eyebrow = "Uredi večer", title}: {date?: string; eyebrow?: string; title?: string}) {
   return (
     <Box sx={{display: "flex", flexDirection: "column", gap: "2px"}}>
-      <Eyebrow sx={{fontSize: 12.5, fontWeight: 700}}>Uredi večer</Eyebrow>
+      <Eyebrow sx={{fontSize: 12.5, fontWeight: 700}}>{eyebrow}</Eyebrow>
       <Box component="h2" sx={{m: 0, fontFamily: font.display, fontSize: 22, fontWeight: 800}}>
-        {nightLabelLong(date)}
+        {title ?? (date ? nightLabelLong(date) : "")}
       </Box>
+    </Box>
+  );
+}
+
+// A night that keeps its date, time and place (it has passed or has rounds), as Datumi shows it when it is opened: when
+// and where it was, its rounds, why it can't change, then what can be done with it (children: Makni večer or Obriši
+// večer i kola)
+export function NightInfo({
+  night,
+  children,
+}: {
+  night: {date: string; played: boolean; rounds: number; time: string | null; place: NightLocation | null};
+  children?: React.ReactNode;
+}) {
+  const line = (icon: React.ReactNode, text: React.ReactNode) => (
+    <Box sx={{display: "flex", alignItems: "center", gap: "10px", minHeight: 24, fontSize: 15, color: color.ink, "& > svg": {flex: "none", fontSize: 22, color: color.navy}}}>
+      {icon}
+      <Box component="span" sx={{minWidth: 0}}>
+        {text}
+      </Box>
+    </Box>
+  );
+  return (
+    <Box sx={{display: "flex", flexDirection: "column", gap: "14px"}}>
+      <Box sx={{display: "flex", flexDirection: "column", gap: "10px", p: "14px", borderRadius: "14px", background: color.paper2, border: `1px solid ${color.line}`}}>
+        {line(<ScheduleRoundedIcon aria-hidden />, night.time ?? "Bez vremena okupljanja")}
+        {line(
+          <PlaceRoundedIcon aria-hidden />,
+          night.place ? (
+            <>
+              <b>{night.place.name}</b>
+              {night.place.address && <Box component="span" sx={{color: color.muted}}>{` · ${night.place.address}`}</Box>}
+            </>
+          ) : (
+            "Bez mjesta"
+          )
+        )}
+        {line(<TableRestaurantRoundedIcon aria-hidden />, night.played ? count(night.rounds, NOUN.odigranoKolo) : "Nije odigrana")}
+      </Box>
+      <Box sx={{fontSize: 13.5, lineHeight: 1.45, color: color.muted, pl: "4px"}}>
+        {night.played
+          ? "Odigrana večer više se ne mijenja. Može se obrisati, ali samo zajedno sa svojim kolima i rezultatima."
+          : "Večer je prošla bez kola i više se ne mijenja. Može se samo maknuti s popisa."}
+      </Box>
+      {children}
     </Box>
   );
 }

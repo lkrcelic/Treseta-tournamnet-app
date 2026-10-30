@@ -1,5 +1,5 @@
 import {apiFetch, responseErrorMessage} from "@/app/_fetchers/errorMessage";
-import {LeagueNightRow, LeagueNightUpdate} from "@/app/_interfaces/league";
+import {LeagueNightAdd, LeagueNightRow, LeagueNightUpdate} from "@/app/_interfaces/league";
 
 // A league's nights with whether each has rounds and when it starts (public)
 export async function getLeagueNightsAPI(leagueId: number): Promise<LeagueNightRow[]> {
@@ -8,12 +8,12 @@ export async function getLeagueNightsAPI(leagueId: number): Promise<LeagueNightR
   return response.json();
 }
 
-// startTime: the night's own start time (null: the league's)
-export async function addLeagueNightAPI(leagueId: number, date: string, startTime: string | null = null): Promise<void> {
+// A new night with its own start time and place (null: the league's)
+export async function addLeagueNightAPI(leagueId: number, night: LeagueNightAdd): Promise<void> {
   const response = await apiFetch(`/api/leagues/${leagueId}/nights`, {
     method: "POST",
     headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({date, start_time: startTime}),
+    body: JSON.stringify(night),
   });
   if (!response.ok) throw new Error(await responseErrorMessage(response, "Večer nije dodana."));
 }

@@ -25,6 +25,7 @@ import {
   ownTimeOf,
   playedNightRemovalText,
   sameLocation,
+  suggestedNightDate,
   timeLabel,
 } from "../nights";
 import {zodMessage} from "../validation/zodMessage";
@@ -156,6 +157,7 @@ type CountArgs = {where: {night?: Date}};
 function fakeDb(rounds: number, nights: string[] = [FUTURE]) {
   const updates: Update[] = [];
   const moved: Update[] = [];
+  const created: Record<string, unknown>[] = [];
   const league = {start_time: "19:30", ...KARTAS};
   const db = {
     leagueNight: {
@@ -164,6 +166,10 @@ function fakeDb(rounds: number, nights: string[] = [FUTURE]) {
         updates.push(args);
         const row = {start_time: null, ...NO_PLACE, ...args.data};
         return {...row, league};
+      },
+      create: async (args: {data: Record<string, unknown>}) => {
+        created.push(args.data);
+        return args.data;
       },
     },
     round: {count: async () => rounds},
@@ -174,14 +180,18 @@ function fakeDb(rounds: number, nights: string[] = [FUTURE]) {
       },
     },
   };
-  return {db, updates, moved};
+  return {db, updates, moved, created};
 }
 
 // The service module reads global.prisma once, on its first import, so every test goes through this one stand-in
 type Db = ReturnType<typeof fakeDb>["db"];
 let current: Db;
 const shared = {
-  leagueNight: {count: (args: CountArgs) => current.leagueNight.count(args), update: (args: Update) => current.leagueNight.update(args)},
+  leagueNight: {
+    count: (args: CountArgs) => current.leagueNight.count(args),
+    update: (args: Update) => current.leagueNight.update(args),
+    create: (args: {data: Record<string, unknown>}) => current.leagueNight.create(args),
+  },
   round: {count: () => current.round.count()},
   marketPost: {updateMany: (args: Update) => current.marketPost.updateMany(args)},
   $executeRaw: async () => 0,
@@ -259,6 +269,39 @@ test("a night moves to a free date from today on, and its Burza ads go with it",
     await assert.rejects(updateLeagueNight(1, FUTURE, {date: "2001-01-01"}), {message: MOVE_TO_PAST_ERROR});
     assert.equal(none.length, 0);
   });
+});
+
+test("Dodaj večer adds a night with its own time and place, or the league's", async () => {
+  assert.deepEqual(LeagueNightAddRequestValidation.parse({date: "2026-11-05", location: {name: "Klub Adut"}}).location, {name: "Klub Adut"});
+  assert.equal(LeagueNightAddRequestValidation.parse({date: "2026-11-05", location: null}).location, null);
+  assert.equal(message(LeagueNightAddRequestValidation.safeParse({date: "2026-11-05", location: {name: " "}})), LOCATION_NAME_REQUIRED);
+
+  const {db, created} = fakeDb(0, []);
+  await withDb(db, async () => {
+    const {addLeagueNight} = await import("../service/league/nights");
+    await addLeagueNight(1, {date: "2026-11-05", start_time: "20:00", location: {name: " Klub Adut ", address: "Vlaška 5", url: null}});
+    assert.deepEqual(created[0], {
+      league_id: 1,
+      night: new Date("2026-11-05T00:00:00.000Z"),
+      start_time: "20:00",
+      location_name: "Klub Adut",
+      location_address: "Vlaška 5",
+      location_url: null,
+    });
+    await addLeagueNight(1, {date: "2026-11-12"});
+    assert.deepEqual(created[1], {league_id: 1, night: new Date("2026-11-12T00:00:00.000Z"), start_time: null, location_name: null, location_address: null, location_url: null});
+  });
+});
+
+test("Dodaj večer starts on the league's play day after its last night, today at the earliest", () => {
+  // play day 2: Wednesday; 31.10.2026 is a Saturday
+  assert.equal(suggestedNightDate(["2026-10-07", "2026-12-16"], "2026-10-31", 2), "2026-12-23");
+  assert.equal(suggestedNightDate(["2026-10-07"], "2026-10-31", 2), "2026-11-04");
+  assert.equal(suggestedNightDate([], "2026-10-31", 2), "2026-11-04");
+  // tonight is the play day and has no night yet
+  assert.equal(suggestedNightDate(["2026-10-28"], "2026-11-04", 2), "2026-11-04");
+  assert.equal(suggestedNightDate(["2026-11-04"], "2026-11-04", 2), "2026-11-11");
+  assert.equal(suggestedNightDate(["2026-11-04"], "2026-10-31", null), "");
 });
 
 test("removing a played night says how many rounds go with it", () => {

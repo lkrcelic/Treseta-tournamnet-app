@@ -88,10 +88,18 @@ export const LeagueNotesRequestValidation = z.object({
   notes: z.string().max(5000, "Bilješke mogu imati najviše 5000 znakova."),
 });
 
-// Upravljanje ligom · Datumi: add a night, with its own start time or (left out or null) the league's
+// A night's own place: it needs a name; null goes back to the league's
+const nightLocation = z
+  .object({name: locName.min(1, LOCATION_NAME_REQUIRED), address: locAddress.nullable().optional(), url: locUrl.nullable().optional()})
+  .nullable()
+  .optional();
+
+// Upravljanje ligom · Datumi (Dodaj večer): add a night, with its own start time and place or (left out or null) the
+// league's
 export const LeagueNightAddRequestValidation = z.object({
   date: z.string().refine(isIsoDate, DATE_FORMAT_ERROR),
   start_time: startTime.optional(),
+  location: nightLocation,
 });
 
 // Upravljanje ligom · Datumi (Uredi večer): a night's date, its own start time and its own place. Any can be left out
@@ -100,14 +108,12 @@ export const LeagueNightUpdateRequestValidation = z
   .object({
     date: z.string().refine(isIsoDate, DATE_FORMAT_ERROR).optional(),
     start_time: startTime.optional(),
-    location: z
-      .object({name: locName.min(1, LOCATION_NAME_REQUIRED), address: locAddress.nullable().optional(), url: locUrl.nullable().optional()})
-      .nullable()
-      .optional(),
+    location: nightLocation,
   })
   .refine((b) => b.date !== undefined || b.start_time !== undefined || b.location !== undefined, "Nema promjene.");
 
 export type LeagueNightUpdate = z.infer<typeof LeagueNightUpdateRequestValidation>;
+export type LeagueNightAdd = z.infer<typeof LeagueNightAddRequestValidation>;
 
 // The date, start time and place of a night that has rounds or has passed don't change
 export const PAST_NIGHT_ERROR = "Datum, vrijeme i mjesto mijenjaju se samo večerima koje još nisu odigrane.";

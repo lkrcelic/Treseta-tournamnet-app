@@ -23,7 +23,6 @@ import {
   BottomSheet,
   buttonBase,
   ConfirmSheet,
-  dateInputFix,
   ellipsis,
   EmptyState,
   ErrorNote,
@@ -59,7 +58,7 @@ import React, {useEffect, useMemo, useState} from "react";
 import {LeagueGatheringFields, useLeagueDetails} from "@/app/league/[leagueId]/manage/LeagueDetailsView";
 import {DatesNight, defaultGatheringLabel, gatheringDefaults, GatheringDefaults, nightEditable, useLeagueDates} from "@/app/league/[leagueId]/manage/DatesView";
 import {adminCardSx, adminLabelSx, DayPicker, PhoneStepper} from "./AdminParts";
-import {NightGatheringForm} from "./GatheringForm";
+import {NightGatheringForm, NightInfo} from "./GatheringForm";
 import {GatheringLine} from "@/app/_ui/gathering/Gathering";
 import {LeagueSponsorsPhone} from "@/app/_ui/sponsors/LeagueSponsors";
 
@@ -461,12 +460,15 @@ const NIGHT_PILL: Record<NightStatus, {bg: string; ink: string}> = {
 function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDefaults}) {
   const data = useLeagueNights(leagueId);
   const ld = useLeagueDates(leagueId, defaults, data);
-  // the night opened to change its date, time and place or to take it out
+  // the night opened in its sheet: Uredi večer for one still to be played, else when and where it was
   const [open, setOpen] = useState<string | null>(null);
+  // Dodaj večer's sheet
+  const [creating, setCreating] = useState(false);
   // the played night asked about in Obrisati odigranu večer?
   const [asking, setAsking] = useState<DatesNight | null>(null);
   const next = ld.nextIndex >= 0 ? ld.list[ld.nextIndex] : null;
   const opened = ld.list.find((n) => n.date === open) ?? null;
+  const openedEditable = opened != null && nightEditable(opened, ld.today);
   const defaultLabel = defaultGatheringLabel(defaults);
 
   return (
@@ -491,26 +493,22 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
         <EventRepeatRoundedIcon aria-hidden sx={{fontSize: 36, color: color.cream}} />
       </Box>
 
-      <Box component="form" aria-label="Dodaj večer" noValidate onSubmit={(e: React.FormEvent) => (e.preventDefault(), ld.add())} sx={{flex: "none", display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: "8px"}}>
-        <Box
-          component="input"
-          type="date"
-          aria-label="Datum nove večeri"
-          value={ld.draft}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => ld.setDraft(e.target.value)}
-          aria-invalid={ld.duplicate || undefined}
-          sx={{...dateInputFix, width: "100%", height: 52, boxSizing: "border-box", borderRadius: "16px", border: `1.5px solid ${ld.duplicate ? color.red : color.border}`, background: color.white, px: "14px", font: "inherit", fontSize: 16, color: color.ink, outline: "none", "&:focus": {borderColor: color.navy}}}
-        />
-        <SolidButton type="submit" height={52} disabled={!ld.canAdd} loading={ld.adding} sx={{px: "16px", borderRadius: "16px", fontSize: 16}}>
-          <AddRoundedIcon aria-hidden sx={{fontSize: 22}} />
-          Dodaj
-        </SolidButton>
-      </Box>
-      {ld.duplicate && <ErrorNote>Ta večer je već na popisu.</ErrorNote>}
+      <SolidButton
+        height={52}
+        aria-haspopup="dialog"
+        onClick={() => {
+          ld.clearError();
+          setCreating(true);
+        }}
+        sx={{flex: "none", borderRadius: "16px", fontSize: 16}}
+      >
+        <AddRoundedIcon aria-hidden sx={{fontSize: 22}} />
+        Dodaj večer
+      </SolidButton>
       {ld.actionError && !open && <ErrorNote>{ld.actionError}</ErrorNote>}
       {ld.list.length > 0 && (
         <Box component="p" sx={{flex: "none", m: 0, px: "6px", fontSize: 13.5, lineHeight: 1.45, color: color.muted}}>
-          {defaultLabel ? `Zadano okupljanje: ${defaultLabel}. ` : ""}Dodirni nadolazeću večer za drugi datum, vrijeme ili mjesto.
+          {defaultLabel ? `Zadano okupljanje: ${defaultLabel}. ` : ""}Dodirni večer za njezine podatke.
         </Box>
       )}
 
@@ -521,80 +519,96 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
           <LoadingRows rows={6} height={58} />
         </Box>
       ) : ld.list.length === 0 ? (
-        <EmptyState>Liga još nema večeri. Dodaj prvu gore.</EmptyState>
+        <EmptyState>Liga još nema večeri. Dodaj prvu gumbom Dodaj večer.</EmptyState>
       ) : (
         <Box component="ol" aria-label="Večeri lige" sx={{flex: "none", listStyle: "none", m: 0, p: 0, background: color.white, borderRadius: "22px", overflow: "hidden", boxShadow: shadow.card}}>
           {ld.list.map((n, i) => {
             const isNext = i === ld.nextIndex;
             const status = nightStatus(n.date, isNext, ld.today, n.played);
             const future = n.date >= ld.today;
-            // a night still to be played opens in a sheet; one with rounds or one that has passed keeps its date, time
-            // and place and can only be removed (a played one after Obrisati odigranu večer?)
-            const editable = nightEditable(n, ld.today);
             const gathering = gatheringLabel(n.time, n.place);
             const own = exceptionLabel(n.start_time != null, n.location != null);
-            const row = (
-              <>
-                <Box component="span" sx={{width: 28, flex: "none", fontSize: 14, fontWeight: 600, color: color.muted, ...tabular}}>
-                  {i + 1}
-                </Box>
-                <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "1px"}}>
-                  <Box component="span" sx={{fontSize: 16, fontWeight: isNext ? 700 : 600, color: future ? color.ink : color.muted}}>
-                    {nightLabel(n.date)}
-                  </Box>
-                  <GatheringLine time={n.time} place={n.place} ownTime={n.start_time != null} ownPlace={n.location != null} size={12.5} />
-                </Box>
-                <Box component="span" sx={{flex: "none", height: 26, display: "flex", alignItems: "center", px: "9px", borderRadius: "8px", background: NIGHT_PILL[status].bg, color: NIGHT_PILL[status].ink, fontSize: 13, fontWeight: 700}}>
-                  {NIGHT_STATUS_LABEL[status]}
-                </Box>
-              </>
-            );
-            const rowSx = {minHeight: 58, py: "7px", boxSizing: "border-box", display: "flex", alignItems: "center", gap: "10px", pl: "16px", pr: "12px", background: isNext ? color.cream2 : "transparent", boxShadow: isNext ? shadow.mineBar : "none"} as const;
             return (
               <Box component="li" key={n.date} sx={{borderTop: i ? `1px solid ${color.line}` : "none"}}>
-                {editable ? (
-                  <Box
-                    component="button"
-                    type="button"
-                    aria-haspopup="dialog"
-                    aria-label={`${nightLabel(n.date)}${gathering ? `, ${gathering}` : ""}${own ? ` (${own.toLowerCase()})` : ""}: ${NIGHT_STATUS_LABEL[status].toLowerCase()}. Uredi večer`}
-                    onClick={() => {
-                      setOpen(n.date);
-                      ld.clearError();
-                    }}
-                    sx={{...buttonBase, ...rowSx, width: "100%", textAlign: "left"}}
-                  >
-                    {row}
-                    <ChevronRightRoundedIcon aria-hidden sx={{flex: "none", fontSize: 22, color: color.navy}} />
+                {/* every night opens: one still to be played in Uredi večer, the others to see them or take them out */}
+                <Box
+                  component="button"
+                  type="button"
+                  aria-haspopup="dialog"
+                  aria-label={`${nightLabel(n.date)}${gathering ? `, ${gathering}` : ""}${own ? ` (${own.toLowerCase()})` : ""}: ${NIGHT_STATUS_LABEL[status].toLowerCase()}. ${nightEditable(n, ld.today) ? "Uredi večer" : "Otvori večer"}`}
+                  onClick={() => {
+                    ld.clearError();
+                    setOpen(n.date);
+                  }}
+                  sx={{
+                    ...buttonBase,
+                    width: "100%",
+                    textAlign: "left",
+                    minHeight: 58,
+                    py: "7px",
+                    boxSizing: "border-box",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    pl: "16px",
+                    pr: "12px",
+                    background: isNext ? color.cream2 : "transparent",
+                    boxShadow: isNext ? shadow.mineBar : "none",
+                  }}
+                >
+                  <Box component="span" sx={{width: 28, flex: "none", fontSize: 14, fontWeight: 600, color: color.muted, ...tabular}}>
+                    {i + 1}
                   </Box>
-                ) : (
-                  <Box sx={{...rowSx, pr: "6px"}}>
-                    {row}
-                    <Box
-                      component="button"
-                      type="button"
-                      onClick={() => {
-                        ld.clearError();
-                        if (n.played) setAsking(n);
-                        else ld.remove(n.date);
-                      }}
-                      disabled={ld.removing != null}
-                      aria-haspopup={n.played ? "dialog" : undefined}
-                      aria-label={`${n.played ? "Obriši odigranu večer" : "Ukloni večer"} ${nightLabel(n.date)}`}
-                      sx={{...buttonBase, width: 44, height: 44, flex: "none", borderRadius: "12px", color: color.faint, display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 22}, "&:active": {color: color.red}}}
-                    >
-                      <DeleteRoundedIcon />
+                  <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "1px"}}>
+                    <Box component="span" sx={{fontSize: 16, fontWeight: isNext ? 700 : 600, color: future ? color.ink : color.muted}}>
+                      {nightLabel(n.date)}
                     </Box>
+                    <GatheringLine time={n.time} place={n.place} ownTime={n.start_time != null} ownPlace={n.location != null} size={12.5} />
                   </Box>
-                )}
+                  <Box component="span" sx={{flex: "none", height: 26, display: "flex", alignItems: "center", px: "9px", borderRadius: "8px", background: NIGHT_PILL[status].bg, color: NIGHT_PILL[status].ink, fontSize: 13, fontWeight: 700}}>
+                    {NIGHT_STATUS_LABEL[status]}
+                  </Box>
+                  <ChevronRightRoundedIcon aria-hidden sx={{flex: "none", fontSize: 22, color: color.navy}} />
+                </Box>
               </Box>
             );
           })}
         </Box>
       )}
 
-      <BottomSheet open={opened != null} onClose={() => setOpen(null)} title={opened ? `Uredi večer · ${nightLabel(opened.date)}` : ""} closable tall busy={ld.saving != null || ld.removing != null}>
-        {opened && (
+      <BottomSheet open={creating} onClose={() => setCreating(false)} title="Nova večer" closable tall busy={ld.adding}>
+        {creating && (
+          <NightGatheringForm
+            key="new"
+            isNew
+            night={{date: ld.suggestedDate, start_time: null, location: null}}
+            onCancel={() => setCreating(false)}
+            today={ld.today}
+            taken={ld.taken}
+            leagueTime={defaults.time}
+            leaguePlace={defaults.location}
+            settingsTab="Postavke"
+            onSave={async (night) => {
+              const added = await ld.add({date: night.date!, start_time: night.start_time, location: night.location});
+              if (added) setCreating(false);
+              return added;
+            }}
+            saving={ld.adding}
+            error={ld.saveError}
+            inputSx={{height: 52, borderRadius: "14px", fontSize: 16}}
+          />
+        )}
+      </BottomSheet>
+
+      <BottomSheet
+        open={opened != null}
+        onClose={() => setOpen(null)}
+        title={opened ? `${openedEditable ? "Uredi večer" : opened.played ? "Odigrana večer" : "Prošla večer"} · ${nightLabel(opened.date)}` : ""}
+        closable
+        tall={openedEditable}
+        busy={ld.saving != null || ld.removing != null}
+      >
+        {opened && openedEditable && (
           <NightGatheringForm
             key={opened.date}
             night={opened}
@@ -614,22 +628,44 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
             savedAtStart={ld.movedTo === opened.date}
             inputSx={{height: 52, borderRadius: "14px", fontSize: 16}}
           >
-            {!opened.played && (
-              <OutlineButton
-                height={52}
-                tone={color.red}
-                disabled={ld.removing != null || ld.saving != null}
-                onClick={async () => {
-                  await ld.remove(opened.date);
-                  setOpen(null);
-                }}
-                sx={{fontSize: 16, borderWidth: "1.5px", borderColor: tint.red[35]}}
-              >
-                <DeleteRoundedIcon aria-hidden sx={{fontSize: 20}} />
-                Makni večer
-              </OutlineButton>
-            )}
+            <OutlineButton
+              height={52}
+              tone={color.red}
+              disabled={ld.removing != null || ld.saving != null}
+              onClick={async () => {
+                await ld.remove(opened.date);
+                setOpen(null);
+              }}
+              sx={{fontSize: 16, borderWidth: "1.5px", borderColor: tint.red[35]}}
+            >
+              <DeleteRoundedIcon aria-hidden sx={{fontSize: 20}} />
+              Makni večer
+            </OutlineButton>
           </NightGatheringForm>
+        )}
+        {opened && !openedEditable && (
+          <NightInfo night={opened}>
+            <OutlineButton
+              height={52}
+              tone={color.red}
+              disabled={ld.removing != null}
+              aria-haspopup={opened.played ? "dialog" : undefined}
+              onClick={async () => {
+                // a played night asks first, in its own sheet
+                if (opened.played) {
+                  setOpen(null);
+                  setAsking(opened);
+                  return;
+                }
+                await ld.remove(opened.date);
+                setOpen(null);
+              }}
+              sx={{fontSize: 16, borderWidth: "1.5px", borderColor: tint.red[35]}}
+            >
+              <DeleteRoundedIcon aria-hidden sx={{fontSize: 20}} />
+              {opened.played ? "Obriši večer i kola" : "Makni večer"}
+            </OutlineButton>
+          </NightInfo>
         )}
       </BottomSheet>
       <ConfirmSheet

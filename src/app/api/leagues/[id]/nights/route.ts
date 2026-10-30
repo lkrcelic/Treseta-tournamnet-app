@@ -25,17 +25,17 @@ export async function GET(_request: NextRequest, {params}: {params: {id: string}
   }
 }
 
-// Add a night, with its own start time or the league's (admin)
+// Add a night, with its own start time and place or the league's (admin)
 export async function POST(request: NextRequest, {params}: {params: {id: string}}) {
   const auth = await requireAdmin(request);
   if (auth.response) return auth.response;
 
   try {
-    const {date, start_time} = LeagueNightAddRequestValidation.parse(await request.json());
+    const night = LeagueNightAddRequestValidation.parse(await request.json());
     const leagueId = Number(params.id);
     if (!isDbId(leagueId)) return leagueNotFound();
-    await addLeagueNight(leagueId, date, start_time ?? null);
-    return NextResponse.json({date, played: false, rounds: 0, start_time: start_time ?? null}, {status: STATUS.Created});
+    await addLeagueNight(leagueId, night);
+    return NextResponse.json({date: night.date, played: false, rounds: 0, start_time: night.start_time ?? null}, {status: STATUS.Created});
   } catch (error) {
     return errorResponse(error, "Večer nije dodana.");
   }

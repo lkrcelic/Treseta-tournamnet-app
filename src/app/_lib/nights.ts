@@ -39,6 +39,17 @@ export function generateNights(start: string | null | undefined, end: string | n
   return nights;
 }
 
+// Dodaj večer's date to start with: the league's play day after its last night, today at the earliest ("" without a
+// play day)
+export function suggestedNightDate(nights: string[], today: string, playDay: number | null | undefined): string {
+  if (playDay == null) return "";
+  const last = nights.reduce((a, b) => (b > a ? b : a), "");
+  const lastTime = last ? utcTime(last) : null;
+  const from = lastTime != null && last >= today ? isoOf(lastTime + DAY_MS) : today;
+  const fromTime = utcTime(from);
+  return fromTime == null ? "" : (generateNights(from, isoOf(fromTime + 6 * DAY_MS), playDay)[0] ?? "");
+}
+
 // The nights without repeats, in date order
 export function sortNights(nights: string[]): string[] {
   return Array.from(new Set(nights)).sort();
