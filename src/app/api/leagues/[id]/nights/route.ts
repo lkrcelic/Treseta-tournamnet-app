@@ -35,7 +35,7 @@ export async function POST(request: NextRequest, {params}: {params: {id: string}
     const leagueId = Number(params.id);
     if (!isDbId(leagueId)) return leagueNotFound();
     await addLeagueNight(leagueId, date, start_time ?? null);
-    return NextResponse.json({date, played: false, start_time: start_time ?? null}, {status: STATUS.Created});
+    return NextResponse.json({date, played: false, rounds: 0, start_time: start_time ?? null}, {status: STATUS.Created});
   } catch (error) {
     return errorResponse(error, "Večer nije dodana.");
   }

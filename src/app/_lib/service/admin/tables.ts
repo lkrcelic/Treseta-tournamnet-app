@@ -47,6 +47,9 @@ const tableSelect = {
   draft_order: true,
 } as const;
 
+// The league's edit lock (the one round creation takes), for a change of its nights that round creation mustn't cross
+export const lockLeague = (tx: Tx, leagueId: number) => tx.$executeRaw`SELECT pg_advisory_xact_lock(${leagueId})`;
+
 // The table and the league it belongs to, with the league locked for edits (same lock as round creation)
 async function loadTable(tx: Tx, roundId: number): Promise<{table: TableRound; leagueId: number}> {
   const link = await tx.leagueRound.findFirst({where: {round_id: roundId}, select: {league_id: true}});
@@ -262,4 +265,18 @@ export async function deleteLeagueRound(leagueId: number, roundDate: Date, round
     await settle(tx, leagueId, tables, []);
     return tables.length;
   }, {timeout: 60000});
+}
+
+// Deletes every table of a league's night, drafts too, with what was played at them (Datumi · Obrisati odigranu
+// večer?). Returns how many tables went.
+export async function deleteNightTables(tx: Tx, leagueId: number, night: Date): Promise<number> {
+  await lockLeague(tx, leagueId);
+  const tables = await tx.round.findMany({where: {leagueRounds: {some: {league_id: leagueId}}, round_date: night}, select: tableSelect});
+  if (tables.length === 0) return 0;
+  const ids = tables.map((t) => t.id);
+  await tx.ongoingMatch.deleteMany({where: {round_id: {in: ids}}});
+  await tx.match.deleteMany({where: {round_id: {in: ids}}});
+  await tx.round.deleteMany({where: {id: {in: ids}}});
+  await settle(tx, leagueId, tables, []);
+  return tables.length;
 }

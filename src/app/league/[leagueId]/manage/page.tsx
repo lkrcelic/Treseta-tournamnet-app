@@ -448,7 +448,7 @@ function ManageLeagueDesktop() {
       ) : shown === "rounds" ? (
         <RoundsView leagueId={leagueId} data={leagueRounds} />
       ) : shown === "dates" ? (
-        <DatesView leagueId={leagueId} defaults={gatheringDefaults(leagues.find((l) => l.id === leagueId))} data={leagueNights} />
+        <DatesView leagueId={leagueId} defaults={gatheringDefaults(leagues.find((l) => l.id === leagueId))} data={leagueNights} onRoundsGone={leagueRounds.reload} />
       ) : shown === "sponsors" ? (
         <LeagueSponsorsDesktop key={leagueId} leagueId={leagueId} leagueName={leagueName} />
       ) : (

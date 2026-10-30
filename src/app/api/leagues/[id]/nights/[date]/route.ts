@@ -10,8 +10,8 @@ import {NextRequest, NextResponse} from "next/server";
 // A new response each time: a response body can only be sent once
 const nightNotFound = () => NextResponse.json({error: "Liga nema tu večer."}, {status: STATUS.NotFound});
 
-// A night's own start time and place, or null for the league's; only a night still to be played (admin). Returns the
-// night as Datumi shows it.
+// A night's new date, its own start time and place (null: the league's); only a night still to be played (admin).
+// Returns the night as Datumi shows it.
 export async function PATCH(request: NextRequest, {params}: {params: {id: string; date: string}}) {
   const auth = await requireAdmin(request);
   if (auth.response) return auth.response;
@@ -24,18 +24,19 @@ export async function PATCH(request: NextRequest, {params}: {params: {id: string
     if (!night) return nightNotFound();
     return NextResponse.json(night, {status: STATUS.OK});
   } catch (error) {
-    return errorResponse(error, "Okupljanje večeri nije spremljeno.");
+    return errorResponse(error, "Večer nije spremljena.");
   }
 }
 
-// Remove a night that has no rounds (admin)
+// Remove a night that has no rounds; ?with_rounds=1 removes a played one with its rounds and results (admin)
 export async function DELETE(request: NextRequest, {params}: {params: {id: string; date: string}}) {
   const auth = await requireAdmin(request);
   if (auth.response) return auth.response;
   if (!isIsoDate(params.date)) return NextResponse.json({error: DATE_FORMAT_ERROR}, {status: STATUS.BadRequest});
 
   try {
-    if (!(await removeLeagueNight(Number(params.id), params.date))) {
+    const withRounds = request.nextUrl.searchParams.get("with_rounds") === "1";
+    if (!(await removeLeagueNight(Number(params.id), params.date, withRounds))) {
       return nightNotFound();
     }
     return new NextResponse(null, {status: STATUS.NoContent});

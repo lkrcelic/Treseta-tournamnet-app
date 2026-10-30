@@ -1,7 +1,7 @@
 "use client";
 
-import {LeagueNightUpdate} from "@/app/_interfaces/league";
-import {effectiveTime, NightLocation, nightLabelLong, ownTimeOf, sameLocation} from "@/app/_lib/nights";
+import {LeagueNightUpdate, MOVE_TO_PAST_ERROR, NIGHT_TAKEN} from "@/app/_interfaces/league";
+import {effectiveTime, isIsoDate, NightLocation, nightLabelLong, ownTimeOf, sameLocation} from "@/app/_lib/nights";
 import {color, font} from "@/app/_styles/tokens";
 import {ErrorNote, Eyebrow, mergeSx, OutlineButton, Segmented, SolidButton, TextField, TimeField} from "@/app/_ui/sp";
 import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
@@ -9,7 +9,7 @@ import {Box, SxProps, Theme} from "@mui/material";
 import React, {useState} from "react";
 
 // Okupljanje on the admin's screens: the league's default time and place (Nova liga, Podaci, Postavke) and a single
-// night's own (Datumi).
+// night's date and own time and place (Datumi · Uredi večer).
 
 // A place being typed: the three fields as they are ("" for an empty one)
 export type PlaceDraft = {name: string; address: string; url: string};
@@ -109,26 +109,41 @@ export function timeHelp(time: string, leagueTime: string | null): string {
   return own ? `Zadano za ligu je ${leagueTime}, ova večer počinje u ${own}.` : `Zadano za ligu: ${leagueTime}`;
 }
 
-// The night's time and place being edited
+// The night's date, time and place being edited
 export type NightForGathering = {date: string; start_time: string | null; location: NightLocation | null};
 
-// A night's own time and place (Okupljanje večeri: the desktop's card in Datumi, the sheet of Datumi on the admin's
-// phone). The time starts as the night's (its own or the league's); the place is the league's or the night's own.
-// Spremi sends only what changed (a time equal to the league's and "Zadano lige" go back to the league's), and Vrati na
-// zadano takes the night's own time and place away. Give it key={night.date}, so another night starts afresh.
+// Why a night can't move to the date typed (null: it can)
+export function moveDateError(date: string, today: string, taken: (date: string) => boolean): string | null {
+  if (!isIsoDate(date)) return "Upiši datum večeri.";
+  if (date < today) return MOVE_TO_PAST_ERROR;
+  return taken(date) ? NIGHT_TAKEN : null;
+}
+
+// A night's date and its own time and place (Uredi večer: the desktop's card in Datumi, the sheet of Datumi on the
+// admin's phone). The time starts as the night's (its own or the league's); the place is the league's or the night's
+// own. Spremi sends only what changed (a time equal to the league's and "Zadano lige" go back to the league's), and Vrati
+// na zadano takes the night's own time and place away (the date stays). Give it key={night.date}, so another night starts
+// afresh; savedAtStart: it opens as just saved (the night moved, so it came back under its new date).
 export function NightGatheringForm({
   night,
+  today,
+  taken,
   leagueTime,
   leaguePlace,
   settingsTab,
   onSave,
   saving,
   error,
+  savedAtStart = false,
   inputSx,
   sx,
   children,
 }: {
   night: NightForGathering;
+  // the league's today: a night moves to it or later
+  today: string;
+  // whether the league already has a night on that date
+  taken: (date: string) => boolean;
   leagueTime: string | null;
   leaguePlace: NightLocation | null;
   // where the league's own time and place are changed: "Podaci" (desktop) or "Postavke" (phone)
@@ -137,23 +152,27 @@ export function NightGatheringForm({
   onSave: (change: LeagueNightUpdate) => Promise<boolean>;
   saving: boolean;
   error: string | null;
+  savedAtStart?: boolean;
   inputSx?: SxProps<Theme>;
   sx?: SxProps<Theme>;
   // under the buttons (the phone's Makni večer)
   children?: React.ReactNode;
 }) {
+  const [date, setDate] = useState(night.date);
   const [time, setTime] = useState(effectiveTime(night.start_time, leagueTime) ?? "");
   const [mode, setMode] = useState<Mode>(night.location ? "own" : "league");
   const [place, setPlace] = useState<PlaceDraft>(placeDraftOf(night.location));
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState(savedAtStart);
 
+  const dateChanged = date !== night.date;
+  const dateError = dateChanged ? moveDateError(date, today, taken) : null;
   const ownTime = ownTimeOf(time, leagueTime);
   const wantedPlace = mode === "own" ? placeOfDraft(place) : null;
   const timeChanged = ownTime !== (night.start_time ?? null);
   const placeChanged = mode === "own" ? !place.name.trim() || !sameLocation(wantedPlace, night.location) : night.location != null;
-  const dirty = timeChanged || placeChanged;
+  const dirty = dateChanged || timeChanged || placeChanged;
   // a place of its own needs a name
-  const canSave = dirty && (mode === "league" || !!place.name.trim()) && !saving;
+  const canSave = dirty && !dateError && (mode === "league" || !!place.name.trim()) && !saving;
   const hasOwn = night.start_time != null || night.location != null;
 
   const changed = <T,>(set: (v: T) => void) => (v: T) => {
@@ -164,6 +183,7 @@ export function NightGatheringForm({
   const save = async () => {
     if (!canSave) return;
     const change: LeagueNightUpdate = {};
+    if (dateChanged) change.date = date;
     if (timeChanged) change.start_time = ownTime;
     if (placeChanged) change.location = wantedPlace;
     if (await onSave(change)) setSaved(true);
@@ -187,6 +207,7 @@ export function NightGatheringForm({
       }}
       sx={mergeSx({display: "flex", flexDirection: "column", gap: "14px"}, sx)}
     >
+      <TextField label="Datum večeri" type="date" value={date} min={today} onChange={(e) => changed(setDate)(e.target.value)} error={dateError ?? undefined} soft inputSx={inputSx} />
       <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
         <TimeField label={TIME_LABEL} value={time} onChange={changed(setTime)} clearLabel="Ukloni vrijeme okupljanja" soft inputSx={inputSx} />
         <Box sx={{fontSize: 13, lineHeight: 1.4, color: color.muted, pl: "4px"}}>{timeHelp(time, leagueTime)}</Box>
@@ -219,11 +240,11 @@ export function NightGatheringForm({
   );
 }
 
-// The desktop card of Datumi: OKUPLJANJE VEČERI, the night's long date, then the form
+// The desktop card of Datumi: UREDI VEČER, the night's long date, then the form
 export function NightGatheringHeading({date}: {date: string}) {
   return (
     <Box sx={{display: "flex", flexDirection: "column", gap: "2px"}}>
-      <Eyebrow sx={{fontSize: 12.5, fontWeight: 700}}>Okupljanje večeri</Eyebrow>
+      <Eyebrow sx={{fontSize: 12.5, fontWeight: 700}}>Uredi večer</Eyebrow>
       <Box component="h2" sx={{m: 0, fontFamily: font.display, fontSize: 22, fontWeight: 800}}>
         {nightLabelLong(date)}
       </Box>

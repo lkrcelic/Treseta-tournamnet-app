@@ -18,19 +18,20 @@ export async function addLeagueNightAPI(leagueId: number, date: string, startTim
   if (!response.ok) throw new Error(await responseErrorMessage(response, "Večer nije dodana."));
 }
 
-// A night's own start time and place (Okupljanje večeri); either left out stays as it is, null goes back to the
-// league's. Returns the night as saved.
+// A night's new date, own start time and place (Uredi večer); any left out stays as it is, null goes back to the
+// league's. Returns the night as saved (under its new date when it moved).
 export async function updateLeagueNightAPI(leagueId: number, date: string, change: LeagueNightUpdate): Promise<LeagueNightRow> {
   const response = await apiFetch(`/api/leagues/${leagueId}/nights/${date}`, {
     method: "PATCH",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify(change),
   });
-  if (!response.ok) throw new Error(await responseErrorMessage(response, "Okupljanje večeri nije spremljeno."));
+  if (!response.ok) throw new Error(await responseErrorMessage(response, "Večer nije spremljena."));
   return response.json();
 }
 
-export async function removeLeagueNightAPI(leagueId: number, date: string): Promise<void> {
-  const response = await apiFetch(`/api/leagues/${leagueId}/nights/${date}`, {method: "DELETE"});
+// withRounds: a played night goes with its rounds and their results
+export async function removeLeagueNightAPI(leagueId: number, date: string, withRounds = false): Promise<void> {
+  const response = await apiFetch(`/api/leagues/${leagueId}/nights/${date}${withRounds ? "?with_rounds=1" : ""}`, {method: "DELETE"});
   if (!response.ok) throw new Error(await responseErrorMessage(response, "Večer nije uklonjena."));
 }

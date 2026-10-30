@@ -94,29 +94,33 @@ export const LeagueNightAddRequestValidation = z.object({
   start_time: startTime.optional(),
 });
 
-// Upravljanje ligom · Datumi (Okupljanje večeri): a night's own start time and place. Either can be left out (it stays
-// as it is); null goes back to the league's.
+// Upravljanje ligom · Datumi (Uredi večer): a night's date, its own start time and its own place. Any can be left out
+// (it stays as it is); null goes back to the league's time or place.
 export const LeagueNightUpdateRequestValidation = z
   .object({
+    date: z.string().refine(isIsoDate, DATE_FORMAT_ERROR).optional(),
     start_time: startTime.optional(),
     location: z
       .object({name: locName.min(1, LOCATION_NAME_REQUIRED), address: locAddress.nullable().optional(), url: locUrl.nullable().optional()})
       .nullable()
       .optional(),
   })
-  .refine((b) => b.start_time !== undefined || b.location !== undefined, "Nema promjene.");
+  .refine((b) => b.date !== undefined || b.start_time !== undefined || b.location !== undefined, "Nema promjene.");
 
 export type LeagueNightUpdate = z.infer<typeof LeagueNightUpdateRequestValidation>;
 
-// The start time and place of a night that has rounds or has passed don't change
-export const PAST_NIGHT_ERROR = "Vrijeme i mjesto mijenjaju se samo večerima koje još nisu odigrane.";
+// The date, start time and place of a night that has rounds or has passed don't change
+export const PAST_NIGHT_ERROR = "Datum, vrijeme i mjesto mijenjaju se samo večerima koje još nisu odigrane.";
+// A night moves only to today or later: one moved into the past couldn't be changed any more
+export const MOVE_TO_PAST_ERROR = "Večer se može premjestiti samo na današnji ili kasniji datum.";
 
-// A league night and whether it has rounds (a played night can't be removed). start_time: its own start time (null:
-// the league's); time: when it starts, its own or the league's (null: no time). location: its own place (null: the
-// league's); place: where it is played, its own or the league's (null: nowhere set).
+// A league night and its published rounds (played: it has some). start_time: its own start time (null: the league's);
+// time: when it starts, its own or the league's (null: no time). location: its own place (null: the league's); place:
+// where it is played, its own or the league's (null: nowhere set).
 export type LeagueNightRow = {
   date: string;
   played: boolean;
+  rounds: number;
   start_time: string | null;
   time: string | null;
   location: NightLocation | null;

@@ -13,7 +13,7 @@ import useNavStack from "@/app/_hooks/useNavStack";
 import {useLeagueStandings} from "@/app/_hooks/useStandings";
 import {isPlaying} from "@/app/_lib/createRoundDraft";
 import {leagueNightString} from "@/app/_lib/dates";
-import {exceptionLabel, gatheringLabel, NIGHT_STATUS_LABEL, NightStatus, nightLabel, nightsLeftLabel, nightStatus} from "@/app/_lib/nights";
+import {exceptionLabel, gatheringLabel, NIGHT_STATUS_LABEL, NightStatus, nightLabel, nightsLeftLabel, nightStatus, playedNightRemovalText} from "@/app/_lib/nights";
 import {count, matchesQuery, NOUN} from "@/app/_lib/ui/text";
 import {roundName} from "@/app/_lib/roundStatus";
 import {replaceAddress, TransitionLink, useTransitionRouter} from "@/app/_lib/viewTransitions";
@@ -53,10 +53,11 @@ import EventRepeatRoundedIcon from "@mui/icons-material/EventRepeatRounded";
 import GroupAddRoundedIcon from "@mui/icons-material/GroupAddRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import WarningRoundedIcon from "@mui/icons-material/WarningRounded";
 import {Box} from "@mui/material";
 import React, {useEffect, useMemo, useState} from "react";
 import {LeagueGatheringFields, useLeagueDetails} from "@/app/league/[leagueId]/manage/LeagueDetailsView";
-import {defaultGatheringLabel, gatheringDefaults, GatheringDefaults, nightEditable, useLeagueDates} from "@/app/league/[leagueId]/manage/DatesView";
+import {DatesNight, defaultGatheringLabel, gatheringDefaults, GatheringDefaults, nightEditable, useLeagueDates} from "@/app/league/[leagueId]/manage/DatesView";
 import {adminCardSx, adminLabelSx, DayPicker, PhoneStepper} from "./AdminParts";
 import {NightGatheringForm} from "./GatheringForm";
 import {GatheringLine} from "@/app/_ui/gathering/Gathering";
@@ -460,8 +461,10 @@ const NIGHT_PILL: Record<NightStatus, {bg: string; ink: string}> = {
 function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDefaults}) {
   const data = useLeagueNights(leagueId);
   const ld = useLeagueDates(leagueId, defaults, data);
-  // the night opened to change its time and place or to take it out
+  // the night opened to change its date, time and place or to take it out
   const [open, setOpen] = useState<string | null>(null);
+  // the played night asked about in Obrisati odigranu večer?
+  const [asking, setAsking] = useState<DatesNight | null>(null);
   const next = ld.nextIndex >= 0 ? ld.list[ld.nextIndex] : null;
   const opened = ld.list.find((n) => n.date === open) ?? null;
   const defaultLabel = defaultGatheringLabel(defaults);
@@ -507,7 +510,7 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
       {ld.actionError && !open && <ErrorNote>{ld.actionError}</ErrorNote>}
       {ld.list.length > 0 && (
         <Box component="p" sx={{flex: "none", m: 0, px: "6px", fontSize: 13.5, lineHeight: 1.45, color: color.muted}}>
-          {defaultLabel ? `Zadano okupljanje: ${defaultLabel}. ` : ""}Dodirni nadolazeću večer za drugo vrijeme ili mjesto.
+          {defaultLabel ? `Zadano okupljanje: ${defaultLabel}. ` : ""}Dodirni nadolazeću večer za drugi datum, vrijeme ili mjesto.
         </Box>
       )}
 
@@ -525,8 +528,8 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
             const isNext = i === ld.nextIndex;
             const status = nightStatus(n.date, isNext, ld.today, n.played);
             const future = n.date >= ld.today;
-            // a night still to be played opens in a sheet; one with rounds or one that has passed keeps its time and
-            // place
+            // a night still to be played opens in a sheet; one with rounds or one that has passed keeps its date, time
+            // and place and can only be removed (a played one after Obrisati odigranu večer?)
             const editable = nightEditable(n, ld.today);
             const gathering = gatheringLabel(n.time, n.place);
             const own = exceptionLabel(n.start_time != null, n.location != null);
@@ -554,7 +557,7 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
                     component="button"
                     type="button"
                     aria-haspopup="dialog"
-                    aria-label={`${nightLabel(n.date)}${gathering ? `, ${gathering}` : ""}${own ? ` (${own.toLowerCase()})` : ""}: ${NIGHT_STATUS_LABEL[status].toLowerCase()}. Promijeni okupljanje`}
+                    aria-label={`${nightLabel(n.date)}${gathering ? `, ${gathering}` : ""}${own ? ` (${own.toLowerCase()})` : ""}: ${NIGHT_STATUS_LABEL[status].toLowerCase()}. Uredi večer`}
                     onClick={() => {
                       setOpen(n.date);
                       ld.clearError();
@@ -565,7 +568,24 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
                     <ChevronRightRoundedIcon aria-hidden sx={{flex: "none", fontSize: 22, color: color.navy}} />
                   </Box>
                 ) : (
-                  <Box sx={rowSx}>{row}</Box>
+                  <Box sx={{...rowSx, pr: "6px"}}>
+                    {row}
+                    <Box
+                      component="button"
+                      type="button"
+                      onClick={() => {
+                        ld.clearError();
+                        if (n.played) setAsking(n);
+                        else ld.remove(n.date);
+                      }}
+                      disabled={ld.removing != null}
+                      aria-haspopup={n.played ? "dialog" : undefined}
+                      aria-label={`${n.played ? "Obriši odigranu večer" : "Ukloni večer"} ${nightLabel(n.date)}`}
+                      sx={{...buttonBase, width: 44, height: 44, flex: "none", borderRadius: "12px", color: color.faint, display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 22}, "&:active": {color: color.red}}}
+                    >
+                      <DeleteRoundedIcon />
+                    </Box>
+                  </Box>
                 )}
               </Box>
             );
@@ -573,17 +593,25 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
         </Box>
       )}
 
-      <BottomSheet open={opened != null} onClose={() => setOpen(null)} title={opened ? `Okupljanje · ${nightLabel(opened.date)}` : ""} closable tall busy={ld.saving != null || ld.removing != null}>
+      <BottomSheet open={opened != null} onClose={() => setOpen(null)} title={opened ? `Uredi večer · ${nightLabel(opened.date)}` : ""} closable tall busy={ld.saving != null || ld.removing != null}>
         {opened && (
           <NightGatheringForm
             key={opened.date}
             night={opened}
+            today={ld.today}
+            taken={ld.taken}
             leagueTime={defaults.time}
             leaguePlace={defaults.location}
             settingsTab="Postavke"
-            onSave={(change) => ld.update(opened.date, change)}
+            onSave={async (change) => {
+              const date = await ld.update(opened.date, change);
+              // a moved night stays open under its new date
+              if (date) setOpen(date);
+              return date != null;
+            }}
             saving={ld.saving === opened.date}
             error={ld.saveError}
+            savedAtStart={ld.movedTo === opened.date}
             inputSx={{height: 52, borderRadius: "14px", fontSize: 16}}
           >
             {!opened.played && (
@@ -604,6 +632,19 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
           </NightGatheringForm>
         )}
       </BottomSheet>
+      <ConfirmSheet
+        open={asking != null}
+        onClose={() => setAsking(null)}
+        onConfirm={async () => {
+          if (asking && (await ld.removePlayed(asking.date))) setAsking(null);
+        }}
+        title="Obrisati odigranu večer?"
+        text={asking ? playedNightRemovalText(asking.date, asking.rounds) : ""}
+        action="Obriši večer i kola"
+        icon={<WarningRoundedIcon />}
+        busy={asking != null && ld.removing === asking.date}
+        error={asking ? ld.removeError : null}
+      />
     </>
   );
 }

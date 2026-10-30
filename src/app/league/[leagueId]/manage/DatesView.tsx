@@ -16,24 +16,27 @@ import {
   nightsSummaryLabel,
   nightStatus,
   NightStatus,
+  playedNightRemovalText,
 } from "@/app/_lib/nights";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {NightGatheringForm, NightGatheringHeading} from "@/app/_ui/admin/GatheringForm";
 import {GatheringLine} from "@/app/_ui/gathering/Gathering";
-import {buttonBase, Card, cardSx, dateInputFix, EmptyState, ErrorNote, LoadingRows, tabular, TimeInput} from "@/app/_ui/sp";
+import {buttonBase, Card, cardSx, dateInputFix, EmptyState, ErrorNote, LoadingRows, OutlineButton, PrimaryButton, tabular, TimeInput} from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
-import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import PersonSearchRoundedIcon from "@mui/icons-material/PersonSearchRounded";
 import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
 import SmartphoneRoundedIcon from "@mui/icons-material/SmartphoneRounded";
-import {Box} from "@mui/material";
-import React, {useEffect, useState} from "react";
+import WarningRoundedIcon from "@mui/icons-material/WarningRounded";
+import {Box, Dialog} from "@mui/material";
+import React, {useEffect, useId, useState} from "react";
 
-// Upravljanje ligom · Datumi (design 11b "Datumi i okupljanje lige"): the league's nights, adding a night and removing
-// one that has no rounds. Players see them in Raspored; Burza igrača offers only these nights to a team that needs a
-// substitute. Each night gathers at the league's time and place (Podaci) unless it has its own, which the admin sets
-// in Okupljanje večeri for a night still to be played (a click on its row) and can take back to the league's.
+// Upravljanje ligom · Datumi (design 11b "Datumi i okupljanje lige"): the league's nights, adding one and removing one.
+// Players see them in Raspored; Burza igrača offers only these nights to a team that needs a substitute. Each night
+// gathers at the league's time and place (Podaci) unless it has its own. A night still to be played opens in Uredi
+// večer (a click on its row), where it moves to another date and gets its own time and place or the league's back. A
+// night that has passed can only be removed; a played one goes with its rounds and results, after Obrisati odigranu
+// večer?.
 
 const GRID = "56px minmax(0,1fr) 140px 52px";
 const PILL: Record<NightStatus, {bg: string; ink: string}> = {
@@ -59,9 +62,11 @@ export type DatesNight = LeagueNightRow;
 // Whether a night's time and place can still change: one with rounds or one that has passed keeps them
 export const nightEditable = (n: {played: boolean; date: string}, today: string) => !n.played && n.date >= today;
 
-// A league's nights being edited (Datumi on the desktop and on the admin's phone): adding a night, removing one that
-// has no rounds, and a night's own time and place.
-export function useLeagueDates(leagueId: number, defaults: GatheringDefaults, data: ReturnType<typeof useLeagueNights>) {
+const byDate = (a: {date: string}, b: {date: string}) => a.date.localeCompare(b.date);
+
+// A league's nights being edited (Datumi on the desktop and on the admin's phone): adding a night, removing one (a
+// played one with its rounds: onRoundsGone tells the page), and a night's date and own time and place.
+export function useLeagueDates(leagueId: number, defaults: GatheringDefaults, data: ReturnType<typeof useLeagueNights>, onRoundsGone?: () => void) {
   const {nights, setNights, error, reload} = data;
   const today = leagueDateString();
   const [draft, setDraft] = useState("");
@@ -72,8 +77,12 @@ export function useLeagueDates(leagueId: number, defaults: GatheringDefaults, da
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  // why a night's time and place weren't saved (shown in Okupljanje večeri, apart from adding and removing nights)
+  // why a night's date, time and place weren't saved (shown in Uredi večer, apart from adding and removing nights)
   const [saveError, setSaveError] = useState<string | null>(null);
+  // the date a night was just moved to: its form opens as saved
+  const [movedTo, setMovedTo] = useState<string | null>(null);
+  // why a played night wasn't removed (shown in Obrisati odigranu večer?)
+  const [removeError, setRemoveError] = useState<string | null>(null);
   // a night the server already had (another admin added it meanwhile), until the list is fetched again or the date
   // changes
   const [takenNight, setTakenNight] = useState<string | null>(null);
@@ -100,11 +109,7 @@ export function useLeagueDates(leagueId: number, defaults: GatheringDefaults, da
       const own = draftTime && draftTime !== defaultTime ? draftTime : null;
       await addLeagueNightAPI(leagueId, draft, own);
       // a new night gathers at the league's place; Okupljanje večeri gives it another
-      setNights((prev) =>
-        [...(prev ?? []), {date: draft, played: false, start_time: own, time: effectiveTime(own, defaultTime), location: null, place: defaults.location}].sort((a, b) =>
-          a.date.localeCompare(b.date)
-        )
-      );
+      setNights((prev) => [...(prev ?? []), {date: draft, played: false, rounds: 0, start_time: own, time: effectiveTime(own, defaultTime), location: null, place: defaults.location}].sort(byDate));
       setDraft("");
       setDraftTime("");
     } catch (err) {
@@ -133,21 +138,42 @@ export function useLeagueDates(leagueId: number, defaults: GatheringDefaults, da
     setRemoving(null);
   };
 
-  // a night's own time and place (null: the league's); resolves to whether they were saved
-  const update = async (date: string, change: LeagueNightUpdate): Promise<boolean> => {
+  // a played night with its rounds and their results (Obrisati odigranu večer?); resolves to whether it went
+  const removePlayed = async (date: string): Promise<boolean> => {
+    setRemoving(date);
+    setRemoveError(null);
+    try {
+      await removeLeagueNightAPI(leagueId, date, true);
+      setNights((prev) => prev?.filter((n) => n.date !== date) ?? prev);
+      onRoundsGone?.();
+      return true;
+    } catch (err) {
+      setRemoveError(err instanceof Error ? err.message : "Večer nije uklonjena.");
+      return false;
+    } finally {
+      setRemoving(null);
+    }
+  };
+
+  // a night's new date, own time and place (null: the league's); resolves to the night's date once saved (the new one
+  // when it moved), or null
+  const update = async (date: string, change: LeagueNightUpdate): Promise<string | null> => {
     setSaving(date);
     setSaveError(null);
     try {
       const night = await updateLeagueNightAPI(leagueId, date, change);
-      setNights((prev) => prev?.map((n) => (n.date === date ? {...n, start_time: night.start_time, location: night.location} : n)) ?? prev);
-      return true;
+      setNights((prev) => prev?.map((n) => (n.date === date ? {...n, date: night.date, start_time: night.start_time, location: night.location} : n)).sort(byDate) ?? prev);
+      setMovedTo(night.date === date ? null : night.date);
+      return night.date;
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Okupljanje večeri nije spremljeno.");
-      return false;
+      setSaveError(err instanceof Error ? err.message : "Večer nije spremljena.");
+      return null;
     } finally {
       setSaving(null);
     }
   };
+  // whether the league already has a night on that date (the form's Datum večeri)
+  const taken = (date: string) => date === takenNight || list.some((n) => n.date === date);
 
   // a new date: the night the server had (by now the fetched list has it) no longer marks it
   const changeDraft = (value: string) => {
@@ -157,6 +183,8 @@ export function useLeagueDates(leagueId: number, defaults: GatheringDefaults, da
   const clearError = () => {
     setActionError(null);
     setSaveError(null);
+    setRemoveError(null);
+    setMovedTo(null);
   };
   return {
     nights,
@@ -176,12 +204,16 @@ export function useLeagueDates(leagueId: number, defaults: GatheringDefaults, da
     removing,
     actionError,
     saveError,
+    removeError,
+    movedTo,
     clearError,
     duplicate,
     canAdd,
     add,
     remove,
+    removePlayed,
     update,
+    taken,
   };
 }
 
@@ -190,12 +222,25 @@ export function defaultGatheringLabel(defaults: GatheringDefaults): string | nul
   return gatheringLabel(defaults.time, defaults.location);
 }
 
-export default function DatesView({leagueId, defaults, data}: {leagueId: number; defaults: GatheringDefaults; data: ReturnType<typeof useLeagueNights>}) {
-  const {nights, list, error, reload, today, nextIndex, played, toGo, draft, setDraft, draftTime, setDraftTime, saving, adding, removing, actionError, saveError, clearError, duplicate, canAdd, add, remove, update} =
-    useLeagueDates(leagueId, defaults, data);
-  // the night whose time and place are shown in Okupljanje večeri: the one clicked, else the next one still to be
-  // played (tonight's night with rounds is past changing, so the one after it)
+export default function DatesView({
+  leagueId,
+  defaults,
+  data,
+  onRoundsGone,
+}: {
+  leagueId: number;
+  defaults: GatheringDefaults;
+  data: ReturnType<typeof useLeagueNights>;
+  // a played night went with its rounds (the page's Kola list is out of date)
+  onRoundsGone?: () => void;
+}) {
+  const ld = useLeagueDates(leagueId, defaults, data, onRoundsGone);
+  const {nights, list, error, reload, today, nextIndex, played, toGo, draft, setDraft, draftTime, setDraftTime, saving, adding, removing, actionError, saveError, clearError, duplicate, canAdd, add, remove, update} = ld;
+  // the night shown in Uredi večer: the one clicked, else the next one still to be played (tonight's night with rounds
+  // is past changing, so the one after it)
   const [picked, setPicked] = useState<string | null>(null);
+  // the played night asked about in Obrisati odigranu večer?
+  const [asking, setAsking] = useState<DatesNight | null>(null);
   const selected = list.find((n) => n.date === picked && nightEditable(n, today)) ?? list.find((n) => nightEditable(n, today)) ?? null;
   const pick = (date: string) => {
     if (date === selected?.date) return;
@@ -239,7 +284,7 @@ export default function DatesView({leagueId, defaults, data}: {leagueId: number;
             {list.map((n, i) => {
               const isNext = i === nextIndex;
               const status = nightStatus(n.date, isNext, today, n.played);
-              // a night still to be played opens in Okupljanje večeri; one with rounds or one that has passed keeps its
+              // a night still to be played opens in Uredi večer; one with rounds or one that has passed keeps its date,
               // time and place
               const editable = nightEditable(n, today);
               const isSelected = selected?.date === n.date;
@@ -275,7 +320,7 @@ export default function DatesView({leagueId, defaults, data}: {leagueId: number;
                         component="button"
                         type="button"
                         aria-pressed={isSelected}
-                        aria-label={`Okupljanje večeri ${nightLabelLong(n.date)}`}
+                        aria-label={`Uredi večer ${nightLabelLong(n.date)}`}
                         onClick={(e: React.MouseEvent) => {
                           e.stopPropagation();
                           pick(n.date);
@@ -294,48 +339,33 @@ export default function DatesView({leagueId, defaults, data}: {leagueId: number;
                   <Box component="span" sx={{justifySelf: "start", height: 26, display: "flex", alignItems: "center", px: "10px", borderRadius: "9px", background: PILL[status].bg, color: PILL[status].ink, fontSize: 12.5, fontWeight: 700}}>
                     {NIGHT_STATUS_LABEL[status]}
                   </Box>
-                  {n.played ? (
-                    <span />
-                  ) : (
-                    <Box
-                      component="button"
-                      type="button"
-                      onClick={(e: React.MouseEvent) => {
-                        // removing a night doesn't open it in Okupljanje večeri
-                        e.stopPropagation();
-                        remove(n.date);
-                      }}
-                      disabled={removing != null}
-                      aria-label={`Ukloni večer ${nightLabelLong(n.date)}`}
-                      title="Ukloni večer"
-                      sx={{...buttonBase, width: 44, height: 44, borderRadius: "12px", color: color.faint, display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 22}, "&:hover": {background: tint.red[10], color: color.red}}}
-                    >
-                      <DeleteRoundedIcon />
-                    </Box>
-                  )}
+                  <Box
+                    component="button"
+                    type="button"
+                    onClick={(e: React.MouseEvent) => {
+                      // removing a night doesn't open it in Uredi večer; a played one asks first
+                      e.stopPropagation();
+                      if (n.played) {
+                        clearError();
+                        setAsking(n);
+                      } else remove(n.date);
+                    }}
+                    disabled={removing != null}
+                    aria-haspopup={n.played ? "dialog" : undefined}
+                    aria-label={`${n.played ? "Obriši odigranu večer" : "Ukloni večer"} ${nightLabelLong(n.date)}`}
+                    title={n.played ? "Obriši odigranu večer" : "Ukloni večer"}
+                    sx={{...buttonBase, width: 44, height: 44, borderRadius: "12px", color: color.faint, display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 22}, "&:hover": {background: tint.red[10], color: color.red}}}
+                  >
+                    <DeleteRoundedIcon />
+                  </Box>
                 </Box>
               );
             })}
           </Box>
         )}
       </Card>
+      {/* Dodaj večer first: below Uredi večer it fell out of a laptop's screen */}
       <Box sx={{minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: "16px"}}>
-        {selected && (
-          <Card component="section" aria-label="Okupljanje večeri" sx={{flex: "none", borderRadius: "24px", p: "20px", display: "flex", flexDirection: "column", gap: "14px"}}>
-            <NightGatheringHeading date={selected.date} />
-            <NightGatheringForm
-              key={selected.date}
-              night={selected}
-              leagueTime={defaultTime}
-              leaguePlace={defaults.location}
-              settingsTab="Podaci"
-              onSave={(change) => update(selected.date, change)}
-              saving={saving === selected.date}
-              error={saveError}
-              inputSx={{height: 48, borderRadius: "14px", fontSize: 15}}
-            />
-          </Card>
-        )}
         <Box component="form" onSubmit={(e: React.FormEvent) => {
             e.preventDefault();
             add();
@@ -347,7 +377,7 @@ export default function DatesView({leagueId, defaults, data}: {leagueId: number;
             <Box
               component="input"
               type="date"
-              aria-label="Datum večeri"
+              aria-label="Datum nove večeri"
               value={draft}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDraft(e.target.value)}
               aria-invalid={duplicate || undefined}
@@ -382,6 +412,30 @@ export default function DatesView({leagueId, defaults, data}: {leagueId: number;
             Dodaj večer
           </Box>
         </Box>
+        {selected && (
+          <Card component="section" aria-label="Uredi večer" sx={{flex: "none", borderRadius: "24px", p: "20px", display: "flex", flexDirection: "column", gap: "14px"}}>
+            <NightGatheringHeading date={selected.date} />
+            <NightGatheringForm
+              key={selected.date}
+              night={selected}
+              today={today}
+              taken={ld.taken}
+              leagueTime={defaultTime}
+              leaguePlace={defaults.location}
+              settingsTab="Podaci"
+              onSave={async (change) => {
+                const date = await update(selected.date, change);
+                // a moved night stays open under its new date
+                if (date) setPicked(date);
+                return date != null;
+              }}
+              saving={saving === selected.date}
+              error={saveError}
+              savedAtStart={ld.movedTo === selected.date}
+              inputSx={{height: 48, borderRadius: "14px", fontSize: 15}}
+            />
+          </Card>
+        )}
         <Card component="section" aria-labelledby="nights-used" sx={{flex: "none", borderRadius: "24px", p: "20px", display: "flex", flexDirection: "column", gap: "10px"}}>
           <Box component="h2" id="nights-used" sx={{m: 0, fontFamily: font.display, fontSize: 20, fontWeight: 800}}>
             Gdje se koristi
@@ -393,10 +447,54 @@ export default function DatesView({leagueId, defaults, data}: {leagueId: number;
           <UsedLine icon={<PlaceRoundedIcon />}>
             Raspored i Početna pokazuju vrijeme i mjesto okupljanja. Zadano je na kartici <b>Podaci</b>, a ovdje ga mijenjaš pojedinoj večeri.
           </UsedLine>
-          <UsedLine icon={<LockRoundedIcon />}>Odigrane večeri ne mogu se ukloniti ovdje. Prvo obriši njihova kola na kartici Kola.</UsedLine>
+          <UsedLine icon={<WarningRoundedIcon />}>Odigrana večer briše se zajedno sa svojim kolima i svim upisanim rezultatima.</UsedLine>
         </Card>
       </Box>
+      {asking && (
+        <RemovePlayedNightDialog
+          night={asking}
+          busy={removing === asking.date}
+          error={ld.removeError}
+          onClose={() => setAsking(null)}
+          onConfirm={async () => {
+            if (await ld.removePlayed(asking.date)) setAsking(null);
+          }}
+        />
+      )}
     </Box>
+  );
+}
+
+// Obrisati odigranu večer? on the computer: the night's rounds and results go with it, Odustani and the red action
+function RemovePlayedNightDialog({night, busy, error, onClose, onConfirm}: {night: DatesNight; busy: boolean; error: string | null; onClose: () => void; onConfirm: () => void}) {
+  const titleId = useId();
+  return (
+    <Dialog
+      open
+      onClose={busy ? undefined : onClose}
+      aria-labelledby={titleId}
+      slotProps={{backdrop: {sx: {background: tint.scrim[32]}}}}
+      PaperProps={{sx: {width: 520, maxWidth: "calc(100% - 32px)", borderRadius: "24px", p: "24px", display: "flex", flexDirection: "column", gap: "16px", boxShadow: shadow.dialog}}}
+    >
+      <Box component="h2" id={titleId} sx={{m: 0, fontFamily: font.display, fontSize: 26, fontWeight: 800, letterSpacing: "-.01em", lineHeight: 1.15}}>
+        Obrisati odigranu večer?
+      </Box>
+      <Box sx={{display: "flex", gap: "12px", alignItems: "flex-start", p: "14px", borderRadius: "16px", background: tint.red[8], "& > svg": {fontSize: 26, color: color.red, flex: "none"}}}>
+        <WarningRoundedIcon aria-hidden />
+        <Box component="p" sx={{m: 0, fontSize: 15, lineHeight: 1.5, color: color.ink, textWrap: "pretty"}}>
+          {playedNightRemovalText(night.date, night.rounds)}
+        </Box>
+      </Box>
+      {error && <ErrorNote>{error}</ErrorNote>}
+      <Box sx={{display: "flex", gap: "10px"}}>
+        <OutlineButton height={52} onClick={onClose} disabled={busy} sx={{flex: 1, fontSize: 16, border: `1.5px solid ${tint.navy[25]}`}}>
+          Odustani
+        </OutlineButton>
+        <PrimaryButton height={52} bg={color.red} onClick={onConfirm} loading={busy} sx={{flex: 1, fontSize: 16, borderRadius: "16px", boxShadow: "none"}}>
+          Obriši večer i kola
+        </PrimaryButton>
+      </Box>
+    </Dialog>
   );
 }
 

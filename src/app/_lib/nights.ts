@@ -116,6 +116,11 @@ export function nightLabelLong(iso: string): string {
   return time == null ? iso : `${nightLabel(iso)} ${new Date(time).getUTCFullYear()}.`;
 }
 
+// Obrisati odigranu večer? (Datumi): what goes with a night that has rounds
+export function playedNightRemovalText(iso: string, rounds: number): string {
+  return `Večer ${nightLabelLong(iso)} ima ${count(rounds, NOUN.odigranoKolo)}. Uz večer se brišu i ${rounds === 1 ? "to kolo" : "sva ta kola"} sa svim upisanim rezultatima, a poredak lige i rejting igrača računaju se ponovno. Ovo se ne može poništiti.`;
+}
+
 // The next night (tonight counts as next), or -1 when the season is over; nights are in date order
 export function nextNightIndex(nights: string[], today: string): number {
   return nights.findIndex((n) => n >= today);
