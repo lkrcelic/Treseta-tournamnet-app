@@ -1,9 +1,12 @@
 "use client";
 
+import {getLeagueArrivalsAPI, setLeagueArrivalsAPI} from "@/app/_fetchers/league/arrival";
 import {createMultipleRoundsAPI, DraftWaitingError, RepeatMatchupsError} from "@/app/_fetchers/round/createMultipleRounds";
 import {getCreateRoundDraftAPI, saveCreateRoundDraftAPI} from "@/app/_fetchers/round/createRoundDraft";
 import useLeagueTeams, {LeagueTeam} from "@/app/_hooks/useLeagueTeams";
 import {updateCachedLeague} from "@/app/_hooks/useLeagues";
+import {LeagueArrivals, LeagueArrivalView} from "@/app/_interfaces/leagueArrival";
+import {leagueClock} from "@/app/_lib/dates";
 import {CreateRoundDraft, isPlaying, MAX_ROUNDS, MAX_WINDOW, switchTeams} from "@/app/_lib/createRoundDraft";
 import {onBeforeLogout} from "@/app/_utils/beforeLogout";
 import {smokingSummary} from "@/app/_lib/ui/smoking";
@@ -22,6 +25,23 @@ import {SmokingPlanOverlay, SmokingTablesCard} from "./SmokingTables";
 // the smoking tables picked when the switch goes on and the league remembers none (the design's default)
 const FIRST_SMOKING_TABLES = [1, 2];
 const SAVE_DELAY_MS = 500;
+// how often Novo kolo asks for tonight's arrivals, so a team's Tu smo switches it on by itself
+const ARRIVALS_POLL_MS = 15_000;
+
+// Why a team sits out: on a night with Potvrda dolaska it isn't here (didn't confirm, or left); Upravljanje ligom marks
+// it inactive; or it was switched off here
+export type OutReason = "absent" | "inactive" | "off";
+export const OUT_LABEL: Record<OutReason, string> = {absent: "Nije tu", inactive: "Neaktivna", off: "Isključena"};
+
+// The chip beside a team in the list: on a night with Potvrda dolaska whether it came ("Tu · 19:42", "Otišla ·
+// 22:10", "Nije potvrdila"); otherwise Neaktivna. title: what a hover says.
+export type TeamChip = {label: string; tone: "green" | "muted" | "red"; title?: string};
+
+// A team's arrival after the admin's switch, before the server answers
+function switchedArrival(a: LeagueArrivalView | undefined, here: boolean, now: string): LeagueArrivalView | undefined {
+  if (here) return a?.here ? a : {here: true, arrived_at: now, by: null, by_admin: true, left_at: null, left_by_admin: false};
+  return a?.here ? {...a, here: false, left_at: now, left_by_admin: true} : a;
+}
 
 // the league's teams, loaded once by Upravljanje ligom for its Ekipe and Novo kolo views, so a team added on Ekipe is here
 // at once
@@ -72,6 +92,68 @@ export function useCreateRound(
   // the teams' conference dots in the list
   const conferences = useConferences(leagueId);
   const hasConferences = conferences.conferences.length > 0;
+
+  // Potvrda dolaska tonight (DECISIONS #73). On a night with a start time the switches are the arrivals: a team that
+  // pressed Tu smo is on, and the admin's switch marks a team here or not, for every admin and the team's phones.
+  const [arrivals, setArrivals] = useState<LeagueArrivals | null>(null);
+  const [arrivalsStatus, setArrivalsStatus] = useState<"loading" | "loadError" | "ready">("loading");
+  const [arrivalsNonce, setArrivalsNonce] = useState(0);
+  const [arrivalError, setArrivalError] = useState<string | null>(null);
+  // every switch counts it up, so an answer that left before the switch doesn't put the old state back
+  const arrivalsVersion = useRef(0);
+  // a night without Potvrda dolaska isn't asked again
+  const polling = useRef(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = (first: boolean) => {
+      if (!first && (document.visibilityState !== "visible" || !polling.current)) return;
+      const version = arrivalsVersion.current;
+      getLeagueArrivalsAPI(leagueId)
+        .then((a) => {
+          if (cancelled || version !== arrivalsVersion.current) return;
+          polling.current = a.window != null;
+          setArrivals(a);
+          setArrivalsStatus("ready");
+        })
+        .catch(() => {
+          if (!cancelled && first) setArrivalsStatus("loadError");
+        });
+    };
+    setArrivalsStatus("loading");
+    load(true);
+    const id = window.setInterval(() => load(false), ARRIVALS_POLL_MS);
+    const onVisible = () => load(false);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [leagueId, arrivalsNonce]);
+
+  const arrivalNight = arrivals?.window != null;
+
+  const switchArrivals = (ids: number[], here: boolean) => {
+    if (!arrivals || ids.length === 0) return;
+    const version = ++arrivalsVersion.current;
+    const previous = arrivals;
+    const now = new Date().toISOString();
+    const next = {...arrivals.teams};
+    for (const id of ids) {
+      const a = switchedArrival(next[id], here, now);
+      if (a) next[id] = a;
+    }
+    setArrivals({...arrivals, teams: next});
+    setArrivalError(null);
+    setLeagueArrivalsAPI(leagueId, ids, here)
+      .then((a) => version === arrivalsVersion.current && setArrivals(a))
+      .catch((e) => {
+        if (version !== arrivalsVersion.current) return;
+        setArrivals(previous);
+        setArrivalError(e instanceof Error ? e.message : "Nije spremljeno.");
+      });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -163,8 +245,9 @@ export function useCreateRound(
     if (draft) save(draft);
   };
 
-  // until a change the active teams play; an inactive team (one that stopped coming) can still be switched on for tonight
-  const isOn = (t: LeagueTeam) => isPlaying(t, sittingOut);
+  // On a night with Potvrda dolaska the teams that are here play; otherwise, until a change, the active teams, and an
+  // inactive team (one that stopped coming) can still be switched on for tonight.
+  const isOn = (t: LeagueTeam) => (arrivalNight ? arrivals!.teams[t.id]?.here === true : isPlaying(t, sittingOut));
   const visible = useMemo(() => (teams ?? []).filter((t) => matchesQuery(t.name, query)), [teams, query]);
   // "Označi sve" is about the active teams on the list (as in the design): an inactive team is switched on only by its
   // own switch, so one click can't pair the teams that stopped coming
@@ -180,17 +263,30 @@ export function useCreateRound(
 
   const toggle = (id: number) => {
     const team = (teams ?? []).find((t) => t.id === id);
-    if (team) change({sitting_out: switchTeams(teams ?? [], sittingOut, [id], !isOn(team))});
+    if (!team) return;
+    if (arrivalNight) switchArrivals([id], !isOn(team));
+    else change({sitting_out: switchTeams(teams ?? [], sittingOut, [id], !isOn(team))});
   };
-  const toggleAll = () =>
-    change({
-      sitting_out: switchTeams(
-        teams ?? [],
-        sittingOut,
-        activeVisible.map((t) => t.id),
-        !allOn
-      ),
-    });
+  const toggleAll = () => {
+    const ids = activeVisible.map((t) => t.id);
+    if (arrivalNight) switchArrivals(ids, !allOn);
+    else change({sitting_out: switchTeams(teams ?? [], sittingOut, ids, !allOn)});
+  };
+
+  const chipOf = (t: LeagueTeam): TeamChip | null => {
+    if (arrivalNight) {
+      const a = arrivals!.teams[t.id];
+      if (a?.here) return {label: `Tu · ${leagueClock(new Date(a.arrived_at))}`, tone: "green", title: a.by_admin ? "Uključio organizator" : `Potvrdio ${a.by ?? "igrač"}`};
+      if (a?.left_at) return {label: `Otišla · ${leagueClock(new Date(a.left_at))}`, tone: "muted", title: a.left_by_admin ? "Isključio organizator" : "Ekipa je stisnula Odlazimo"};
+      return {label: "Nije potvrdila", tone: "muted"};
+    }
+    return inactive.has(t.id) ? {label: OUT_LABEL.inactive, tone: "muted"} : null;
+  };
+  const outReason = (t: LeagueTeam): OutReason => (arrivalNight ? "absent" : inactive.has(t.id) ? "inactive" : "off");
+  // the line over the list on a night with Potvrda dolaska
+  const arrivalNote = arrivals?.window
+    ? `Tu smo od ${leagueClock(new Date(arrivals.window.opens))}: ekipa se uključi sama kad potvrdi dolazak. Ekipu bez mobitela uključi ovdje.`
+    : null;
 
   const create = async ({window = windowSize, allowRepeats = false}: {window?: number; allowRepeats?: boolean} = {}) => {
     if (leagueId == null || playing < 2 || creating || waiting) return;
@@ -304,7 +400,11 @@ export function useCreateRound(
     <ErrorNote onRetry={() => setDraftNonce((n) => n + 1)} sx={{m: "12px"}}>
       Odabir za novo kolo se nije učitao.
     </ErrorNote>
-  ) : loading || draftStatus === "loading" ? (
+  ) : arrivalsStatus === "loadError" ? (
+    <ErrorNote onRetry={() => setArrivalsNonce((n) => n + 1)} sx={{m: "12px"}}>
+      Dolasci ekipa se nisu učitali.
+    </ErrorNote>
+  ) : loading || draftStatus === "loading" || arrivalsStatus === "loading" ? (
     <LoadingRows rows={8} height={56} />
   ) : null;
 
@@ -342,10 +442,15 @@ export function useCreateRound(
     toggleAll,
     allOn,
     canToggleAll: activeVisible.length > 0,
+    // Potvrda dolaska tonight: the chip beside each team, why one sits out, and the line over the list
+    arrivalNight,
+    chipOf,
+    outReason,
+    arrivalNote,
     query,
     setQuery,
     createError,
-    saveError: saveError && <ErrorNote onRetry={retrySave}>Odabir nije spremljen.</ErrorNote>,
+    saveError: saveError ? <ErrorNote onRetry={retrySave}>Odabir nije spremljen.</ErrorNote> : arrivalError ? <ErrorNote>{arrivalError}</ErrorNote> : null,
     blocked,
     steppers,
     smokingCard,
@@ -358,22 +463,22 @@ export function useCreateRound(
   };
 }
 
-// Why a team sits out: "inactive" teams are off because Upravljanje ligom marks them inactive, "off" ones were switched
-// off here
-type OutReason = "inactive" | "off";
-const OUT_LABEL: Record<OutReason, string> = {inactive: "Neaktivna", off: "Isključena"};
 const OUT_HINT: Record<OutReason, string> = {
+  absent: "Nije potvrdila dolazak · klikni ako je ekipa tu",
   inactive: "Neaktivna u Upravljanju ligom · klikni da je dodaš za večeras",
   off: "Klikni za vraćanje",
 };
 
-function InactiveBadge() {
+// The chip beside a team on the list (TeamChip): Zabrana in red, Tu in green, the rest muted
+export function TeamChipBadge({chip}: {chip: TeamChip}) {
+  const tone = chip.tone === "red" ? {background: tint.red[10], color: color.red} : chip.tone === "green" ? {background: tint.green[12], color: color.green} : {background: color.paper, color: color.muted};
   return (
     <Box
       component="span"
-      sx={{height: 22, px: "8px", borderRadius: "11px", background: color.paper, color: color.muted, fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", display: "inline-flex", alignItems: "center", flex: "none"}}
+      title={chip.title}
+      sx={{height: 22, px: "8px", borderRadius: "11px", ...tone, fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", display: "inline-flex", alignItems: "center", flex: "none", whiteSpace: "nowrap"}}
     >
-      {OUT_LABEL.inactive}
+      {chip.label}
     </Box>
   );
 }
@@ -430,7 +535,12 @@ export function CreateRoundView({
       </Box>
       {cr.repeatsDialog}
       <Card {...hidden} component="section" aria-label="Prisutne ekipe" sx={{minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden", borderRadius: "24px"}}>
-        {!cr.teamState && cr.teams && <NotInRound teams={cr.teams} isOn={cr.isOn} inactive={cr.inactive} onAddBack={cr.toggle} />}
+        {!cr.teamState && cr.teams && <NotInRound teams={cr.teams} isOn={cr.isOn} reasonOf={cr.outReason} onAddBack={cr.toggle} />}
+        {cr.arrivalNote && (
+          <Box component="p" sx={{m: 0, p: "10px 20px 0", fontSize: 13, lineHeight: 1.45, color: color.muted}}>
+            {cr.arrivalNote}
+          </Box>
+        )}
         <Box sx={{display: "flex", alignItems: "center", gap: "12px", p: "14px", borderBottom: `1px solid ${tint.navy[10]}`}}>
           <SearchInput soft height={48} placeholder="Traži" aria-label="Traži ekipu" value={cr.query} onChange={(e) => cr.setQuery(e.target.value)} sx={{flex: 1}} />
           <Box
@@ -448,12 +558,15 @@ export function CreateRoundView({
         </Box>
         {cr.teamState ?? (
           <Box sx={{flex: 1, minHeight: 0, overflowY: "auto", display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gridAutoRows: "56px", columnGap: "24px", p: "4px 14px"}}>
-            {cr.visible.map((t) => (
-              <SwitchRow key={t.id} checked={cr.isOn(t)} onChange={() => cr.toggle(t.id)} sx={{px: "4px", minHeight: 56}}>
-                <TeamLabel name={t.name} conference={cr.conferenceOf(t.id)} />
-                {cr.inactive.has(t.id) && <InactiveBadge />}
-              </SwitchRow>
-            ))}
+            {cr.visible.map((t) => {
+              const chip = cr.chipOf(t);
+              return (
+                <SwitchRow key={t.id} checked={cr.isOn(t)} onChange={() => cr.toggle(t.id)} sx={{px: "4px", minHeight: 56}}>
+                  <TeamLabel name={t.name} conference={cr.conferenceOf(t.id)} />
+                  {chip && <TeamChipBadge chip={chip} />}
+                </SwitchRow>
+              );
+            })}
           </Box>
         )}
       </Card>
@@ -554,21 +667,32 @@ function RepeatsDialog({
   );
 }
 
+// "3 nisu tu · 2 neaktivne"
+const OUT_NOUN: Record<OutReason, Parameters<typeof count>[1]> = {
+  absent: ["nije tu", "nisu tu", "nije tu"],
+  inactive: NOUN.neaktivna,
+  off: NOUN.isključena,
+};
+const OUT_ORDER: OutReason[] = ["absent", "inactive", "off"];
+
 // The teams that won't be paired tonight, so the admin sees who's missing without scanning the list; a click on one
 // puts the team back in the round.
 function NotInRound({
   teams,
   isOn,
-  inactive,
+  reasonOf,
   onAddBack,
 }: {
   teams: LeagueTeam[];
   isOn: (t: LeagueTeam) => boolean;
-  inactive: Set<number>;
+  reasonOf: (t: LeagueTeam) => OutReason;
   onAddBack: (id: number) => void;
 }) {
   const out = teams.filter((t) => !isOn(t));
-  const inactiveOut = out.filter((t) => inactive.has(t.id)).length;
+  const summary = OUT_ORDER.map((r) => [r, out.filter((t) => reasonOf(t) === r).length] as const)
+    .filter(([, n]) => n > 0)
+    .map(([r, n]) => count(n, OUT_NOUN[r]))
+    .join(" · ");
   return (
     <Box component="section" aria-labelledby="cr-out" sx={{flex: "none", display: "flex", flexDirection: "column", gap: "8px", p: "14px 14px 0"}}>
       <Box sx={{px: "6px", display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "8px"}}>
@@ -589,14 +713,15 @@ function NotInRound({
           </Box>
           {out.length > 0 && (
             <Box component="span" sx={{ml: "auto", fontSize: 12, fontWeight: 600, color: color.muted, whiteSpace: "nowrap"}}>
-              {count(inactiveOut, NOUN.neaktivna)} · {count(out.length - inactiveOut, NOUN.isključena)}
+              {summary}
             </Box>
           )}
         </Box>
         {out.length > 0 ? (
           <Box component="ul" aria-label="Ekipe koje ne igraju" sx={{listStyle: "none", m: 0, p: 0, display: "flex", flexWrap: "wrap", alignContent: "flex-start", gap: "6px", maxHeight: 76, overflowY: "auto", scrollbarGutter: "stable"}}>
             {out.map((t) => {
-              const why: OutReason = inactive.has(t.id) ? "inactive" : "off";
+              const why = reasonOf(t);
+              const quiet = why === "inactive" || why === "absent";
               return (
                 <Box component="li" key={t.id} sx={{minWidth: 0, maxWidth: "100%"}}>
                   <Box
@@ -615,8 +740,8 @@ function NotInRound({
                       pl: "12px",
                       pr: "6px",
                       borderRadius: "16px",
-                      background: why === "inactive" ? color.paper : tint.red[10],
-                      color: why === "inactive" ? color.muted : color.red,
+                      background: quiet ? color.paper : tint.red[10],
+                      color: quiet ? color.muted : color.red,
                       fontSize: 13,
                       fontWeight: 600,
                       whiteSpace: "nowrap",

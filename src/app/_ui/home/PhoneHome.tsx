@@ -42,7 +42,7 @@ export default function PhoneHome() {
   const leagueId = useSelectedLeagueId();
   const {table: openTable, loading: openTableLoading} = useOpenTable();
   const {start, starting, error} = useStartGame();
-  const {schedule, error: scheduleError} = useMySchedule();
+  const {schedule, error: scheduleError, reload: reloadSchedule} = useMySchedule();
   const next = nextNight(schedule);
   const {posts} = useBurza();
   const isAdmin = useIsAdmin();
@@ -115,7 +115,7 @@ export default function PhoneHome() {
           <NextNightPlaceholder />
         </Box>
       ) : next ? (
-        <NextNightCard league={next.league} night={next.night} today={schedule!.today} />
+        <NextNightCard league={next.league} night={next.night} today={schedule!.today} onArrivalChanged={reloadSchedule} />
       ) : schedule || scheduleError ? (
         <NoRoundCard />
       ) : (

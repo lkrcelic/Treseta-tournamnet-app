@@ -3,6 +3,8 @@
 import {deleteLeagueRoundAPI, LeagueRoundSummary} from "@/app/_fetchers/admin/daily";
 import {addTeamToLeagueAPI, removeTeamFromLeagueAPI, setLeagueTeamActiveAPI} from "@/app/_fetchers/league/leagues";
 import {getCreateRoundDraftAPI} from "@/app/_fetchers/round/createRoundDraft";
+import {getLeagueArrivalsAPI} from "@/app/_fetchers/league/arrival";
+import {LeagueArrivals} from "@/app/_interfaces/leagueArrival";
 import useLeagueNights from "@/app/_hooks/useLeagueNights";
 import useLeagueRounds from "@/app/_hooks/useLeagueRounds";
 import useLeagueTeams, {LeagueTeam} from "@/app/_hooks/useLeagueTeams";
@@ -124,20 +126,26 @@ export default function LeaguePhone({leagueId, view}: {leagueId: number; view: T
   );
 }
 
-// The navy Novo kolo card: tonight and how many teams play (the admin's choice for tonight, else the active teams)
+// The navy Novo kolo card: tonight and how many teams play (on a night with Potvrda dolaska the teams that are here;
+// otherwise the admin's choice for tonight, else the active teams)
 function NewRoundCard({leagueId, teams}: {leagueId: number; teams: LeagueTeam[] | null}) {
   const tonight = useMemo(() => leagueNightString(), []);
   const [sittingOut, setSittingOut] = useState<Set<number> | null | undefined>(undefined);
+  const [arrivals, setArrivals] = useState<LeagueArrivals | null | undefined>(undefined);
   useEffect(() => {
     let cancelled = false;
     getCreateRoundDraftAPI(leagueId)
       .then((d) => !cancelled && setSittingOut(d ? new Set(d.sitting_out) : null))
       .catch(() => !cancelled && setSittingOut(null));
+    getLeagueArrivalsAPI(leagueId)
+      .then((a) => !cancelled && setArrivals(a))
+      .catch(() => !cancelled && setArrivals(null));
     return () => {
       cancelled = true;
     };
   }, [leagueId]);
-  const playing = teams && sittingOut !== undefined ? teams.filter((t) => isPlaying(t, sittingOut)).length : null;
+  const plays = (t: LeagueTeam) => (arrivals?.window ? arrivals.teams[t.id]?.here === true : isPlaying(t, sittingOut ?? null));
+  const playing = teams && sittingOut !== undefined && arrivals !== undefined ? teams.filter(plays).length : null;
   return (
     <Box
       component={TransitionLink}

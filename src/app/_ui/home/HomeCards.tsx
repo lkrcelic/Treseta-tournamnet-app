@@ -16,6 +16,7 @@ import PersonSearchRoundedIcon from "@mui/icons-material/PersonSearchRounded";
 import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
 import {Box, Skeleton} from "@mui/material";
 import React from "react";
+import {LeagueArrival} from "./LeagueArrival";
 
 // Početna's Burza igrača cards (Claude Design "Burza igrača · spojeno", Početna)
 
@@ -63,9 +64,11 @@ export function GatheringRow({time, place}: {time: string | null | undefined; pl
 }
 
 // Sljedeća večer: the team, its players, where and when it gathers, and the night (opening Raspored); Nađi zamjenu
-// opens the substitute form
-export function NextNightCard({league, night, today}: {league: MyLeague; night: string; today: string}) {
+// opens the substitute form. Tonight it holds Potvrda dolaska (Tu smo) when the night has a start time;
+// onArrivalChanged: a button there changed it (the schedule is asked again).
+export function NextNightCard({league, night, today, onArrivalChanged}: {league: MyLeague; night: string; today: string; onArrivalChanged?: () => void}) {
   const tonight = night === today;
+  const arrival = league.arrival?.night === night ? league.arrival : null;
   const time = league.times[night];
   const place = league.places?.[night];
   // "sri 14. 10. · 19:00", or only the date when the night has no start time; with a place, the time is in its row
@@ -107,6 +110,7 @@ export function NextNightCard({league, night, today}: {league: MyLeague; night: 
         ))}
       </Box>
       {place && <GatheringRow time={time} place={place} />}
+      {arrival && <LeagueArrival leagueId={league.league_id} teamId={league.team_id} initial={arrival} onChanged={onArrivalChanged} />}
       <Box
         component={TransitionLink}
         href={`/burza/novi/zamjena?from=home&league=${league.league_id}&night=${night}`}

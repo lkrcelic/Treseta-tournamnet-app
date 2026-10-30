@@ -87,6 +87,7 @@ model Player {
   createRoundDrafts              CreateRoundDraft[]
   photo                          PlayerPhoto?
   teamPhotosUpdated              Team[]                          @relation("TeamPhotoUpdater")
+  leagueArrivals                 LeagueArrival[]                 @relation("LeagueArrival")
 }
 
 // A player's profile photo: a 512×512 WebP or PNG cropped in the browser, up to 512 KB (CHECK in the migration script).
@@ -176,6 +177,30 @@ model League {
   createRoundDrafts CreateRoundDraft[]
   sponsors     LeagueSponsor[]
   sponsorStats SponsorDailyStat[]
+  arrivals     LeagueArrival[]
+}
+
+// Potvrda dolaska in a league: a team has come to one of the league's nights (Tu smo, pressed by one of its players, or
+// the admin's switch in Novo kolo). It is here while arrived and not left, and Novo kolo pairs the teams that are here.
+// Ipak otkazujemo deletes the row; Odlazimo (or the admin's switch off) sets left_at, and Tu smo again clears it.
+model LeagueArrival {
+  league_id     Int
+  // the league night (until 06:00 still the evening before)
+  night         DateTime  @db.Date
+  team_id       Int
+  arrived_at    DateTime  @default(now())
+  // the player who pressed Tu smo; null when the admin switched the team on (by_admin)
+  arrived_by    Int?
+  by_admin      Boolean   @default(false)
+  left_at       DateTime?
+  left_by_admin Boolean   @default(false)
+
+  league  League  @relation(fields: [league_id], references: [league_id], onDelete: Cascade)
+  team    Team    @relation(fields: [team_id], references: [team_id], onDelete: Cascade)
+  arriver Player? @relation("LeagueArrival", fields: [arrived_by], references: [id], onDelete: SetNull)
+
+  @@id([league_id, night, team_id])
+  @@index([team_id])
 }
 
 // A group of a league's teams (e.g. "Sjever" and "Jug"): a colored dot before the team's name and its own standings.
@@ -358,6 +383,7 @@ model Team {
   teamScore       TeamScore[]
   roundPlayers    RoundPlayer[]
   marketPosts     MarketPost[]
+  leagueArrivals  LeagueArrival[]
 }
 
 model TeamPhoto {

@@ -1,7 +1,7 @@
 "use client";
 
 import useLeagueRounds from "@/app/_hooks/useLeagueRounds";
-import useLeagueTeams, {LeagueTeam} from "@/app/_hooks/useLeagueTeams";
+import useLeagueTeams from "@/app/_hooks/useLeagueTeams";
 import useLeagues from "@/app/_hooks/useLeagues";
 import useNavStack from "@/app/_hooks/useNavStack";
 import {MAX_ROUNDS, MAX_WINDOW} from "@/app/_lib/createRoundDraft";
@@ -11,7 +11,7 @@ import {nightLabel} from "@/app/_lib/nights";
 import {count, NOUN, plural} from "@/app/_lib/ui/text";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, font, tint} from "@/app/_styles/tokens";
-import {DraftWaitingNote, useCreateRound} from "@/app/_ui/round/CreateRound";
+import {DraftWaitingNote, OUT_LABEL, TeamChipBadge, useCreateRound} from "@/app/_ui/round/CreateRound";
 import LeagueNotes from "@/app/_ui/round/LeagueNotes";
 import {SmokingTablesCard} from "@/app/_ui/round/SmokingTables";
 import {adminCardSx, adminLabelSx, PhoneStepper} from "./AdminParts";
@@ -20,9 +20,6 @@ import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import {Box} from "@mui/material";
 import React, {useMemo, useState} from "react";
-
-// Why a team doesn't play tonight: inactive in Upravljanje ligom, or switched off here
-const OUT = {inactive: "Neaktivna", off: "Isključena"} as const;
 
 const cardSx = adminCardSx;
 const labelSx = adminLabelSx;
@@ -59,7 +56,6 @@ export default function CreateRoundPhone({leagueId}: {leagueId: number}) {
 
   const all = cr.teams ?? [];
   const out = all.filter((t) => !cr.isOn(t));
-  const reason = (t: LeagueTeam): keyof typeof OUT => (cr.inactive.has(t.id) ? "inactive" : "off");
 
   return (
     <Screen fill gap={14}>
@@ -145,14 +141,15 @@ export default function CreateRoundPhone({leagueId}: {leagueId: number}) {
                   </Box>
                   <Box component="ul" aria-label="Ekipe koje ne igraju" sx={{listStyle: "none", m: 0, p: 0, display: "flex", flexWrap: "wrap", gap: "8px"}}>
                     {out.map((t) => {
-                      const why = reason(t);
+                      const why = cr.outReason(t);
+                      const quiet = why === "inactive" || why === "absent";
                       return (
                         <Box component="li" key={t.id} sx={{minWidth: 0, maxWidth: "100%"}}>
                           <Box
                             component="button"
                             type="button"
                             onClick={() => cr.toggle(t.id)}
-                            aria-label={`${t.name}, ${OUT[why].toLowerCase()}. Dodaj u kolo`}
+                            aria-label={`${t.name}, ${OUT_LABEL[why].toLowerCase()}. Dodaj u kolo`}
                             sx={{
                               ...buttonBase,
                               maxWidth: "100%",
@@ -163,8 +160,8 @@ export default function CreateRoundPhone({leagueId}: {leagueId: number}) {
                               pl: "14px",
                               pr: "8px",
                               borderRadius: "14px",
-                              background: why === "inactive" ? color.lineFill : tint.red[10],
-                              color: why === "inactive" ? color.ink2 : color.red,
+                              background: quiet ? color.lineFill : tint.red[10],
+                              color: quiet ? color.ink2 : color.red,
                               fontSize: 15,
                               fontWeight: 600,
                             }}
@@ -173,7 +170,7 @@ export default function CreateRoundPhone({leagueId}: {leagueId: number}) {
                               {t.name}
                             </Box>
                             <Box component="span" aria-hidden sx={{flex: "none", height: 22, px: "7px", borderRadius: "7px", background: tint.white[70], fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center"}}>
-                              {OUT[why]}
+                              {OUT_LABEL[why]}
                             </Box>
                           </Box>
                         </Box>
@@ -215,7 +212,7 @@ export default function CreateRoundPhone({leagueId}: {leagueId: number}) {
       <BottomSheet open={sheet} onClose={() => setSheet(false)} title="Tko igra večeras?" closable tall>
         <Box sx={{flex: "none", display: "flex", alignItems: "center", gap: "12px"}}>
           <Box component="p" sx={{m: 0, flex: 1, minWidth: 0, fontSize: 14, lineHeight: 1.45, color: color.ink2}}>
-            Isključene ekipe ne ulaze u ovo kolo. Neaktivnu ekipu možeš uključiti samo za večeras.
+            {cr.arrivalNote ?? "Isključene ekipe ne ulaze u ovo kolo. Neaktivnu ekipu možeš uključiti samo za večeras."}
           </Box>
           <SolidButton height={44} onClick={() => setSheet(false)} sx={{flex: "none", px: "18px", borderRadius: "14px", fontSize: 16}}>
             Gotovo
@@ -227,20 +224,19 @@ export default function CreateRoundPhone({leagueId}: {leagueId: number}) {
               <EmptyState>{all.length ? "Nijedna ekipa ne odgovara pretrazi." : "Ova liga još nema ekipa."}</EmptyState>
             </Box>
           ) : (
-            cr.visible.map((t) => (
-              <Box component="li" key={t.id}>
-                <SwitchRow checked={cr.isOn(t)} onChange={() => cr.toggle(t.id)} sx={{minHeight: 48, pl: "16px", pr: "12px", fontSize: 16, fontWeight: 600}}>
-                  <Box component="span" sx={{overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: cr.inactive.has(t.id) ? color.muted : undefined}}>
-                    {t.name}
-                  </Box>
-                  {cr.inactive.has(t.id) && (
-                    <Box component="span" sx={{flex: "none", height: 22, px: "8px", borderRadius: "11px", background: color.lineFill, color: color.muted, fontSize: 11, fontWeight: 700, display: "inline-flex", alignItems: "center"}}>
-                      {OUT.inactive}
+            cr.visible.map((t) => {
+              const chip = cr.chipOf(t);
+              return (
+                <Box component="li" key={t.id}>
+                  <SwitchRow checked={cr.isOn(t)} onChange={() => cr.toggle(t.id)} sx={{minHeight: 48, pl: "16px", pr: "12px", fontSize: 16, fontWeight: 600}}>
+                    <Box component="span" sx={{overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: cr.inactive.has(t.id) ? color.muted : undefined}}>
+                      {t.name}
                     </Box>
-                  )}
-                </SwitchRow>
-              </Box>
-            ))
+                    {chip && <TeamChipBadge chip={chip} />}
+                  </SwitchRow>
+                </Box>
+              );
+            })
           )}
         </Box>
         {/* last, so it stays right above the keyboard (07b) */}

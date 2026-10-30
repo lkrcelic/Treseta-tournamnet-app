@@ -1,4 +1,5 @@
 import {DATE_FORMAT_ERROR} from "@/app/_interfaces/league";
+import {MyLeagueArrival} from "@/app/_interfaces/leagueArrival";
 import {isIsoDate, NightLocation} from "@/app/_lib/nights";
 import {isValidPhone, PHONE_ERROR} from "@/app/_lib/phone";
 import {z} from "zod";
@@ -124,6 +125,8 @@ export type MyLeague = {
   places: Record<string, NightLocation>;
   // the nights with their own start time or place (Raspored marks them)
   ownPlace: string[];
+  // Potvrda dolaska tonight (Tu smo on Početna · Večeras); absent when the league doesn't play tonight with a start time
+  arrival?: MyLeagueArrival;
 };
 
 export type MySchedule = {today: string; leagues: MyLeague[]};

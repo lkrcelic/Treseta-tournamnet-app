@@ -1,6 +1,7 @@
 import {MyLeague, MySchedule} from "@/app/_interfaces/burza";
 import {BYE_TEAM_ID} from "@/app/_lib/bye";
-import {leagueDateString} from "@/app/_lib/dates";
+import {leagueDateString, leagueNightString} from "@/app/_lib/dates";
+import {myTonight} from "@/app/_lib/service/league/arrival";
 import {effectiveLocation, effectiveTime, nextNightIndex, NightLocation} from "@/app/_lib/nights";
 import {prisma} from "@/app/_lib/prisma";
 import {playedNightKeys} from "@/app/_lib/service/league/nights";
@@ -82,6 +83,14 @@ export async function mySchedule(viewer: Viewer): Promise<MySchedule> {
       };
     })
   );
+
+  // Potvrda dolaska for the leagues that play tonight (until 06:00 still last evening's night)
+  const tonight = leagueNightString();
+  const arrivals = await myTonight(leagues.filter((l) => l.nights.includes(tonight)).map((l) => ({league_id: l.league_id, team_id: l.team_id, start: l.times[tonight] ?? null})));
+  for (const l of leagues) {
+    const arrival = arrivals.get(`${l.league_id}|${l.team_id}`);
+    if (arrival) l.arrival = arrival;
+  }
 
   const next = (l: MyLeague) => {
     const i = nextNightIndex(l.nights, today);

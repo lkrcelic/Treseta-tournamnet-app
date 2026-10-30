@@ -43,3 +43,34 @@ export function combineDateAndTime(date: Date | null | undefined, time: Date | n
   const clock = time.toISOString().slice(11, 23);
   return new Date(`${day}T${clock}Z`);
 }
+
+// The offset of league time from UTC at a moment, in minutes (60 in winter, 120 in summer)
+function leagueOffsetMinutes(moment: Date): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: LEAGUE_TIME_ZONE,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(moment);
+  const part = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  const asUtc = Date.UTC(part("year"), part("month") - 1, part("day"), part("hour"), part("minute"));
+  return Math.round((asUtc - Math.floor(moment.getTime() / 60_000) * 60_000) / 60_000);
+}
+
+// The moment a league-time wall clock shows: day YYYY-MM-DD at HH:MM in Zagreb (a tournament's Okupljanje and Početak)
+export function leagueMoment(day: string, time: string): Date {
+  const [y, mo, d] = day.split("-").map(Number);
+  const [h, mi] = time.split(":").map(Number);
+  const wall = Date.UTC(y, mo - 1, d, h, mi);
+  const first = wall - leagueOffsetMinutes(new Date(wall)) * 60_000;
+  // around a clock change the offset at the guess can differ from the offset at the result
+  return new Date(wall - leagueOffsetMinutes(new Date(first)) * 60_000);
+}
+
+// "9:43": a moment's league-time clock, as the screens write a time of day
+export function leagueClock(moment: Date): string {
+  return new Intl.DateTimeFormat("hr-HR", {timeZone: LEAGUE_TIME_ZONE, hour: "numeric", minute: "2-digit", hourCycle: "h23"}).format(moment);
+}
