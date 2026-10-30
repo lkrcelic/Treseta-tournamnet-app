@@ -9,7 +9,7 @@ own; everything else is kept identical to Bela.
 | | |
 |---|---|
 | Bela branch | `development`, read through the remote `bela` (the local Bela repo). Only commits come over, never Bela's uncommitted work |
-| Last synced Bela commit | `4b43d06` (28 Oct 2026) |
+| Last synced Bela commit | `9a16ca9` (28 Oct 2026) |
 | Target branch | `master` |
 | Sync branch | `bela-sync` in the repo itself (no worktree): created from `master`, or rebased onto it, by every run |
 
@@ -77,10 +77,24 @@ Treseta directly only for what has to differ, and add it below.
 
 ## Bela's work waiting to come over
 
-Every Bela commit up to `4b43d06` (28 Oct 2026) came over by 29 Oct 2026. Decisions for Bela work that touches
+Every Bela commit up to `9a16ca9` (28 Oct 2026) came over by 30 Oct 2026. Decisions for Bela work that touches
 Treseta's differences before it comes over go here.
 
-Nothing is waiting.
+**Waiting for a decision: Bela's Turniri v1 (`14f988f..6c84c4b`, 9 commits, 30 Oct 2026).** The sync stopped at
+`14f988f`. Most of it is the tournaments (not copied), but it also brings, for leagues:
+
+- **Vrijeme partije**: every match, league ones too, gets a time limit (`League.game_minutes`, 35 by default;
+  `OngoingMatch.started_at` / `ends_at`, `Match.time_expired`). After the deadline a hand is taken only within 2
+  minutes of its entry opening or with the score level, and a match nobody finishes is closed by the server with the
+  team with more points winning; admin corrections and the ratings count it so. It reaches Treseta's game rules (a
+  match to 41, section 10's raised target and "s ovim dosta") and their own versions (`finishOngoingMatch.ts`,
+  `ongoingResult/*`, `admin/hands.ts`, the scorepad's `MatchClock`, Nova liga's and Upravljanje ligom's setting).
+- **Zabrana prijava** (`SignupBan`, `/api/admin/bans`, `BanSection` on Ekipa and Igrač): bans from tournament
+  sign-ups, so presumably tournaments only.
+- Migration `20261030120000_turniri_v1`: league and match columns mixed with the tournament ones.
+
+To go on, decide whether Treseta's league matches get Vrijeme partije (and how a match closed by time fits section 10
+and "s ovim dosta"), and whether the bans stay out with the tournaments. Write the decision here.
 
 ## Differences from Bela
 
@@ -265,7 +279,7 @@ listed above:
 | `prisma/schema.prisma`, `_interfaces/round.ts`, `_interfaces/adminHand.ts` | The `Tournament*` models and their relations, `Round.matches_per_round` and `Round.declarations`; a round's `matches_per_round` and `declarations`; `TablePad`'s `tournamentId`, `matchesPerRound` and `declarations` |
 | `_lib/nights.ts`, `_lib/tableOverview.ts`, `_lib/publicPaths.ts`, `middleware.ts`, `_lib/ui/lineupPass.ts` | `dateTile` (a tournament card's date); `matchSlots` and `currentMatchNumber` for a table of one match; `/turniri` public and coming back after login; a tournament table's path |
 | `_lib/service/admin/tables.ts`, `_lib/service/admin/hands.ts`, `_lib/service/round/finish.ts`, `_lib/service/round/getById.ts`, `_lib/service/round/getLastOpenByPlayerId.ts`, `_lib/service/round/insertPairRounds.ts`, `_lib/service/ongoingMatch/create.ts`, `_lib/service/match/finishOngoingMatch.ts`, `_lib/service/team/create.ts`, `_lib/validation/validateResult.ts` | A table of a tournament's Kolo (`Competition`, `addCompetitionTable`), a table of one match, `roundPlayedMessage`, the open table's scope, `insertTeam` (a team made on sign-up), "bez zvanja" (`declarationsError`) |
-| `_lib/service/team/delete.ts`, `_interfaces/team.ts`, `api/teams/[id]/route.ts`, `_ui/profiles/TeamAdmin.tsx` | Obriši ekipu's tournament check (`TEAM_DELETE_TOURNAMENT`) and the comments that mention it |
+| `_lib/service/team/delete.ts`, `_interfaces/team.ts`, `_interfaces/profiles.ts`, `api/teams/[id]/route.ts`, `_ui/profiles/TeamAdmin.tsx` | Obriši ekipu's tournament check (`TEAM_DELETE_TOURNAMENT`; `teamDeleteBlocker` counts only the team's tables) and the comments that mention it |
 | `api/admin/tables/[roundId]/route.ts`, `api/admin/tables/[roundId]/finish/route.ts`, `api/matches/route.ts`, `api/rounds/open/route.ts` | The next Kolo's draft once a Kolo's last table closes; `?scope=` and `tournamentId` |
 | `_fetchers/round/getOpenByPlayerId.ts`, `_hooks/useOpenTable.ts`, `_hooks/useStartGame.ts` | The open table's scope and `tournamentId` |
 | `_ui/sp/DesktopShell.tsx`, `_ui/admin/AdminTabBar.tsx`, `_ui/home/PhoneHome.tsx`, `_ui/home/DesktopHome.tsx` | Turniri in the menu and the admin's bottom bar; Početna's Turniri · Liga switch (`LeagueHome`) and the computer's tournament strip. The rating chip next to Moj profil came over |
@@ -307,3 +321,4 @@ The nightly sync adds a row when it brings something over or stops.
 | 26 Oct 2026 | `d0777b1..c2969e5` (5) | Stopped at `79d735a` (the tournaments, not decided). 5 came over: the account lock after 20 failed logins (1 migration, `login_failure`), Dodaj stol takes the lowest free table number, Sljedeća večer for an inactive team, Dodaj ekipu filters the league's teams on the phone, and the lead bar's test with Treseta's 41 (the bar was already Treseta's) |
 | 27 Oct 2026 | `c2969e5..c354458` (11) | The tournaments not copied: 7 skipped (parts 1–4, `DECISIONS.md`, the click-through fixes, Dodaj kolo), and from parts 5 and 6 only the rating chip on Početna, `StartCard.tsx` (with the conference dots), Skica kola's two-line names and a page's tab kept in its address; Bela's `/api/teams/[id]` 500 and the scorepad hands as rows (no lead bar, so Treseta's `LEAD_BAR_FULL` went); no migration |
 | 29 Oct 2026 | `c354458..4b43d06` (2) | Both came over: Najbolje mjesto counts finished leagues only, and Obriši ekipu without its tournament check; no migration |
+| 30 Oct 2026 | `4b43d06..9a16ca9` (2 of 11) | Stopped at `14f988f` (Turniri v1: Vrijeme partije for league matches changes the game rules, not decided). 2 came over: Obriši ekipu disabled with its reason (without the tournament check), and a closed table's point difference on the Kolo tab (with the conference dots); no migration |
