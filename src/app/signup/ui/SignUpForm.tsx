@@ -12,7 +12,8 @@ const EMPTY: SignupValues = {username: "", password: "", confirm: "", email: "",
 // Server messages come back keyed by field (e.g. a taken username or email)
 const SERVER_FIELDS: (keyof SignupValues)[] = ["username", "password", "email", "first_name", "last_name", "birth_date"];
 
-export default function SignUpForm({onSuccess, twoColumn = false}: {onSuccess: () => void; twoColumn?: boolean}) {
+// autoFocus: the phone's Registriraj se emailom opens the form on Korisničko ime
+export default function SignUpForm({onSuccess, twoColumn = false, autoFocus = false}: {onSuccess: () => void; twoColumn?: boolean; autoFocus?: boolean}) {
   const [values, setValues] = useState<SignupValues>(EMPTY);
   // "Pušiš li?", Ne until the player picks Da
   const [smoker, setSmoker] = useState(false);
@@ -87,7 +88,15 @@ export default function SignUpForm({onSuccess, twoColumn = false}: {onSuccess: (
 
   return (
     <Box component="form" onSubmit={handleSubmit} noValidate sx={{display: "flex", flexDirection: "column", gap: "14px"}}>
-      <TextField label="Korisničko ime" placeholder="mmarkovic" autoComplete="username" autoCapitalize="none" spellCheck={false} {...field("username")} />
+      <TextField
+        label="Korisničko ime"
+        placeholder="mmarkovic"
+        autoComplete="username"
+        autoCapitalize="none"
+        spellCheck={false}
+        autoFocus={autoFocus}
+        {...field("username")}
+      />
       <Box sx={twoColumn ? pair : {display: "flex", flexDirection: "column", gap: "14px"}}>
         <PasswordField label="Lozinka" placeholder="••••••••" autoComplete="new-password" {...field("password")} />
         <PasswordField label="Potvrdi lozinku" placeholder="••••••••" autoComplete="new-password" {...field("confirm")} />

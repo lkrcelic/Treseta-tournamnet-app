@@ -18,8 +18,19 @@ function GoogleMark() {
   );
 }
 
-// onStart: the player pressed it (Prijava hides an older error)
-export default function GoogleLoginButton({pill = false, callbackUrl = "/", onStart}: {pill?: boolean; callbackUrl?: string; onStart?: () => void}) {
+// label: Registracija says "Registriraj se s Googleom" (the same login: a Google account the app doesn't know yet
+// becomes a new player). onStart: the player pressed it (Prijava hides an older error).
+export default function GoogleLoginButton({
+  pill = false,
+  callbackUrl = "/",
+  label = "Prijava s Googleom",
+  onStart,
+}: {
+  pill?: boolean;
+  callbackUrl?: string;
+  label?: string;
+  onStart?: () => void;
+}) {
   const [redirecting, setRedirecting] = useState(false);
 
   const handleGoogleLogin = () => {
@@ -55,7 +66,7 @@ export default function GoogleLoginButton({pill = false, callbackUrl = "/", onSt
       }}
     >
       <GoogleMark />
-      Prijava s Googleom
+      {label}
     </Box>
   );
 }
