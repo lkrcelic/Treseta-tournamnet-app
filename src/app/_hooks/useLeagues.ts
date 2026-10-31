@@ -21,7 +21,8 @@ export type LeagueOption = {
   // the last scheduled night (YYYY-MM-DD): with endDate, whether the league is over (leagueEnded)
   lastNight?: string | null;
   playDay?: number | null; // 0 = Monday ... 6 = Sunday
-  startTime?: string | null; // "HH:MM", when its nights start unless a night has its own
+  startTime?: string | null; // "HH:MM", when its nights start (Početak) unless a night has its own
+  gatheringTime?: string | null; // "HH:MM", when its nights start gathering (Okupljanje) unless a night has its own
   location?: NightLocation | null; // where its nights are played unless a night has its own place
   teamCount?: number;
 };
@@ -55,6 +56,7 @@ function toOption(l: LeagueSummary): LeagueOption {
     lastNight: l.last_night,
     playDay: l.play_day,
     startTime: l.start_time,
+    gatheringTime: l.gathering_time,
     location: locationOf(l),
     teamCount: l.team_count,
     meta: leagueMeta(l.team_count, l.play_day, l.active),

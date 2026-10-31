@@ -8,14 +8,14 @@ import {generateNights, isIsoDate, nightLabel, sortNights} from "@/app/_lib/nigh
 import {count, NOUN} from "@/app/_lib/ui/text";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, shadow} from "@/app/_styles/tokens";
-import {buttonBase, dateInputFix, ErrorNote, PrimaryButton, Screen, ScrollArea, SectionLabel, SolidButton, TextField, TimeField, TopBar} from "@/app/_ui/sp";
+import {buttonBase, dateInputFix, ErrorNote, PrimaryButton, Screen, ScrollArea, SectionLabel, SolidButton, TextField, TopBar} from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import EmojiEventsRoundedIcon from "@mui/icons-material/EmojiEventsRounded";
 import {Box} from "@mui/material";
 import React, {useMemo, useState} from "react";
 import {adminCardSx, DayPicker, PhoneStepper} from "./AdminParts";
-import {EMPTY_PLACE, PlaceDraft, PlaceFields, placePayload, TIME_LABEL} from "./GatheringForm";
+import {EMPTY_PLACE, PlaceDraft, PlaceFields, placePayload, timesError, TimesFields} from "./GatheringForm";
 
 // Nova liga on the admin's phone (admin-mobile 13, 13b): the name, season, dates, play day and the rounds per night,
 // then the league's nights, filled in from the dates and the play day (a night can be taken out or added), and last
@@ -31,6 +31,8 @@ export default function NewLeaguePhone() {
   const [endDate, setEndDate] = useState("");
   const [playDay, setPlayDay] = useState<number | null>(null);
   const [startTime, setStartTime] = useState("");
+  const [gatheringTime, setGatheringTime] = useState("");
+  const timeError = timesError(gatheringTime, startTime);
   const [place, setPlace] = useState<PlaceDraft>(EMPTY_PLACE);
   const [rounds, setRounds] = useState(3);
   const [removed, setRemoved] = useState<string[]>([]);
@@ -47,7 +49,7 @@ export default function NewLeaguePhone() {
     [startDate, endDate, playDay, removed, extra]
   );
   const canAddNight = isIsoDate(newNight) && !nights.includes(newNight);
-  const ok = !!trimmed && !taken && datesOk && !submitting;
+  const ok = !!trimmed && !taken && datesOk && !timeError && !submitting;
 
   const create = async () => {
     if (!ok) return;
@@ -61,6 +63,7 @@ export default function NewLeaguePhone() {
         end_date: endDate || null,
         play_day: playDay,
         start_time: startTime || null,
+        gathering_time: gatheringTime || null,
         ...placePayload(place),
         rounds_per_night: rounds,
         team_ids: [],
@@ -161,7 +164,7 @@ export default function NewLeaguePhone() {
 
         <SectionLabel id="nl-gathering">Okupljanje</SectionLabel>
         <Box role="group" aria-labelledby="nl-gathering" sx={{...adminCardSx, gap: "14px"}}>
-          <TimeField label={TIME_LABEL} value={startTime} onChange={setStartTime} clearLabel="Ukloni vrijeme okupljanja" soft inputSx={inputSx} />
+          <TimesFields gathering={gatheringTime} start={startTime} onGathering={setGatheringTime} onStart={setStartTime} error={timeError} inputSx={inputSx} />
           <PlaceFields value={place} onChange={setPlace} inputSx={inputSx} />
         </Box>
       </ScrollArea>

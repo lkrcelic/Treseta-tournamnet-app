@@ -121,9 +121,11 @@ export type MyLeague = {
   played: string[]; // the nights that have rounds
   // when each night starts (its own time or the league's), "HH:MM"; a night without a time isn't in it
   times: Record<string, string>;
+  // when each night starts gathering (Okupljanje, its own or the league's), the same way
+  gatherings: Record<string, string>;
   // where each night is played (its own place or the league's); a night without a place isn't in it
   places: Record<string, NightLocation>;
-  // the nights with their own start time or place (Raspored marks them)
+  // the nights with their own Početak, Okupljanje or place (Raspored marks them)
   ownPlace: string[];
   // Potvrda dolaska tonight (Tu smo on Početna · Večeras); absent when the league doesn't play tonight with a start time
   arrival?: MyLeagueArrival;

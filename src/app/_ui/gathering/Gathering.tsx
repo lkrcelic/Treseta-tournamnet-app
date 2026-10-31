@@ -27,14 +27,16 @@ export function ExceptionMark({label, size = 20}: {label: string | null; size?: 
   );
 }
 
-// "19:30 · Caffe bar Kartaš" under a night's date, with "!" when the night has its own time or place. A night's own
-// time or place is bold and darker and the league's is muted (Datumi); `plain` keeps both muted and marks the night
+// "19:30 · Caffe bar Kartaš" under a night's date (its Početak and place), with "!" when the night has its own time
+// (Početak or Okupljanje: ownGathering) or place. A night's own Početak or place is bold and darker and the league's
+// is muted (Datumi); `plain` keeps both muted and marks the night
 // with `mark` (Raspored, which knows only that the night differs). It stays on one line, cut with "…", unless `wrap`
 // (Raspored, where the player needs the whole place). Nothing when the night has neither.
 export function GatheringLine({
   time,
   place,
   ownTime = false,
+  ownGathering = false,
   ownPlace = false,
   plain = false,
   mark,
@@ -45,6 +47,7 @@ export function GatheringLine({
   time: string | null | undefined;
   place: NightLocation | null | undefined;
   ownTime?: boolean;
+  ownGathering?: boolean;
   ownPlace?: boolean;
   plain?: boolean;
   mark?: string | null;
@@ -72,7 +75,7 @@ export function GatheringLine({
           </Box>
         )}
       </Box>
-      <ExceptionMark label={plain ? (mark ?? null) : exceptionLabel(ownTime, ownPlace)} size={size < 13 ? 18 : 20} />
+      <ExceptionMark label={plain ? (mark ?? null) : exceptionLabel(ownTime || ownGathering, ownPlace)} size={size < 13 ? 18 : 20} />
     </Box>
   );
 }

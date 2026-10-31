@@ -41,6 +41,8 @@ type Shown = {
   played: Set<string>;
   // when each night starts, "HH:MM" (a night without a time isn't in it)
   times: Record<string, string>;
+  // when each night starts gathering (Okupljanje), the same way
+  gatherings: Record<string, string>;
   // where each night gathers (a night without a place isn't in it)
   places: Record<string, NightLocation>;
   // the nights with their own time or place (marked with "!")
@@ -100,6 +102,7 @@ export default function RasporedPage() {
       nights: current.nights,
       played: new Set(current.played),
       times: current.times,
+      gatherings: current.gatherings ?? {},
       places: current.places ?? {},
       own: new Set(current.ownPlace ?? []),
       canAsk: current.active,
@@ -113,8 +116,9 @@ export default function RasporedPage() {
       nights: other.nights.map((n) => n.date),
       played: new Set(other.nights.filter((n) => n.played).map((n) => n.date)),
       times: Object.fromEntries(other.nights.flatMap((n) => (n.time ? [[n.date, n.time]] : []))),
+      gatherings: Object.fromEntries(other.nights.flatMap((n) => (n.gathering ? [[n.date, n.gathering]] : []))),
       places: Object.fromEntries(other.nights.flatMap((n) => (n.place ? [[n.date, n.place]] : []))),
-      own: new Set(other.nights.filter((n) => n.start_time || n.location).map((n) => n.date)),
+      own: new Set(other.nights.filter((n) => n.start_time || n.gathering_time || n.location).map((n) => n.date)),
       canAsk: false,
     };
   }
@@ -255,6 +259,11 @@ function Schedule({shown, today, desktop}: {shown: Shown; today: string; desktop
         <Box component="span" sx={{fontFamily: font.display, fontSize: 26, fontWeight: 800, lineHeight: 1.05}}>
           {dateLabel(cardNight)}
         </Box>
+        {shown.gatherings[cardNight] && (
+          <Box component="span" sx={{fontSize: 14, fontWeight: 700, color: color.white}}>
+            Okupljanje od {shown.gatherings[cardNight]}
+          </Box>
+        )}
         <Box component="span" sx={{fontSize: 14, color: color.cream}}>
           {nightsLeftLabel(left)}
         </Box>

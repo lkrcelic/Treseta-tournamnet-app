@@ -30,10 +30,10 @@ export async function tonightOf(leagueId: number, now = new Date(), db: Db = pri
   const night = leagueNightString(now);
   const row = await db.leagueNight.findUnique({
     where: {league_id_night: {league_id: leagueId, night: nightValue(night)}},
-    select: {start_time: true, league: {select: {start_time: true}}},
+    select: {start_time: true, gathering_time: true, league: {select: {start_time: true, gathering_time: true}}},
   });
   if (!row) return null;
-  return {night, window: leagueArrivalWindow(night, effectiveTime(row.start_time, row.league.start_time))};
+  return {night, window: leagueArrivalWindow(night, effectiveTime(row.start_time, row.league.start_time), effectiveTime(row.gathering_time, row.league.gathering_time))};
 }
 
 const arrivalSelect = {
@@ -58,12 +58,17 @@ function view(r: ArrivalRow): LeagueArrivalView {
   };
 }
 
-// Početna · Večeras for the player's teams whose league plays tonight with Potvrda dolaska (start: the night's start
-// time, "HH:MM"): the window and the team's arrival. Keyed "league_id|team_id"; a night that is over isn't in it.
-export async function myTonight(entries: {league_id: number; team_id: number; start: string | null}[], now = new Date(), db: Db = prisma): Promise<Map<string, MyLeagueArrival>> {
+// Početna · Večeras for the player's teams whose league plays tonight with Potvrda dolaska (start and gathering: the
+// night's Početak and Okupljanje, "HH:MM"): the window and the team's arrival. Keyed "league_id|team_id"; a night that
+// is over isn't in it.
+export async function myTonight(
+  entries: {league_id: number; team_id: number; start: string | null; gathering?: string | null}[],
+  now = new Date(),
+  db: Db = prisma
+): Promise<Map<string, MyLeagueArrival>> {
   const night = leagueNightString(now);
   const open = entries
-    .map((e) => ({...e, window: leagueArrivalWindow(night, e.start)}))
+    .map((e) => ({...e, window: leagueArrivalWindow(night, e.start, e.gathering)}))
     .filter((e): e is typeof e & {window: LeagueArrivalWindow} => e.window != null && leagueArrivalPhase(e.window, now) !== "over");
   if (open.length === 0) return new Map();
   const rows = await db.leagueArrival.findMany({

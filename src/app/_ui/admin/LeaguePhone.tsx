@@ -527,7 +527,8 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
             const status = nightStatus(n.date, isNext, ld.today, n.played);
             const future = n.date >= ld.today;
             const gathering = gatheringLabel(n.time, n.place);
-            const own = exceptionLabel(n.start_time != null, n.location != null);
+            const ownTime = n.start_time != null || n.gathering_time != null;
+            const own = exceptionLabel(ownTime, n.location != null);
             return (
               <Box component="li" key={n.date} sx={{borderTop: i ? `1px solid ${color.line}` : "none"}}>
                 {/* every night opens: one still to be played in Uredi večer, the others to see them or take them out */}
@@ -563,7 +564,7 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
                     <Box component="span" sx={{fontSize: 16, fontWeight: isNext ? 700 : 600, color: future ? color.ink : color.muted}}>
                       {nightLabel(n.date)}
                     </Box>
-                    <GatheringLine time={n.time} place={n.place} ownTime={n.start_time != null} ownPlace={n.location != null} size={12.5} />
+                    <GatheringLine time={n.time} place={n.place} ownTime={n.start_time != null} ownGathering={n.gathering_time != null} ownPlace={n.location != null} size={12.5} />
                   </Box>
                   <Box component="span" sx={{flex: "none", height: 26, display: "flex", alignItems: "center", px: "9px", borderRadius: "8px", background: NIGHT_PILL[status].bg, color: NIGHT_PILL[status].ink, fontSize: 13, fontWeight: 700}}>
                     {NIGHT_STATUS_LABEL[status]}
@@ -581,15 +582,16 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
           <NightGatheringForm
             key="new"
             isNew
-            night={{date: ld.suggestedDate, start_time: null, location: null}}
+            night={{date: ld.suggestedDate, start_time: null, gathering_time: null, location: null}}
             onCancel={() => setCreating(false)}
             today={ld.today}
             taken={ld.taken}
             leagueTime={defaults.time}
+            leagueGathering={defaults.gathering ?? null}
             leaguePlace={defaults.location}
             settingsTab="Postavke"
             onSave={async (night) => {
-              const added = await ld.add({date: night.date!, start_time: night.start_time, location: night.location});
+              const added = await ld.add({date: night.date!, start_time: night.start_time, gathering_time: night.gathering_time, location: night.location});
               if (added) setCreating(false);
               return added;
             }}
@@ -615,6 +617,7 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
             today={ld.today}
             taken={ld.taken}
             leagueTime={defaults.time}
+            leagueGathering={defaults.gathering ?? null}
             leaguePlace={defaults.location}
             settingsTab="Postavke"
             onSave={async (change) => {

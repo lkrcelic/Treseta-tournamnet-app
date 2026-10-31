@@ -33,8 +33,9 @@ export async function mySchedule(viewer: Viewer): Promise<MySchedule> {
               league_id: true,
               league_name: true,
               start_time: true,
+              gathering_time: true,
               ...LOCATION,
-              nights: {select: {night: true, start_time: true, ...LOCATION}, orderBy: {night: "asc"}},
+              nights: {select: {night: true, start_time: true, gathering_time: true, ...LOCATION}, orderBy: {night: "asc"}},
             },
           },
         },
@@ -49,14 +50,17 @@ export async function mySchedule(viewer: Viewer): Promise<MySchedule> {
     t.leagueTeams.map(({active, league}) => {
       const nights = league.nights.map((n) => isoDate(n.night));
       const times: Record<string, string> = {};
+      const gatherings: Record<string, string> = {};
       const places: Record<string, NightLocation> = {};
       const ownPlace: string[] = [];
       league.nights.forEach((n, i) => {
         const time = effectiveTime(n.start_time, league.start_time);
         if (time) times[nights[i]] = time;
+        const gathering = effectiveTime(n.gathering_time, league.gathering_time);
+        if (gathering) gatherings[nights[i]] = gathering;
         const place = effectiveLocation(n, league);
         if (place) places[nights[i]] = place;
-        if (n.start_time || n.location_name) ownPlace.push(nights[i]);
+        if (n.start_time || n.gathering_time || n.location_name) ownPlace.push(nights[i]);
       });
       return {
         league_id: league.league_id,
@@ -78,6 +82,7 @@ export async function mySchedule(viewer: Viewer): Promise<MySchedule> {
         nights,
         played: nights.filter((n) => played.has(`${league.league_id}|${n}`)),
         times,
+        gatherings,
         places,
         ownPlace,
       };
@@ -86,7 +91,11 @@ export async function mySchedule(viewer: Viewer): Promise<MySchedule> {
 
   // Potvrda dolaska for the leagues that play tonight (until 06:00 still last evening's night)
   const tonight = leagueNightString();
-  const arrivals = await myTonight(leagues.filter((l) => l.nights.includes(tonight)).map((l) => ({league_id: l.league_id, team_id: l.team_id, start: l.times[tonight] ?? null})));
+  const arrivals = await myTonight(
+    leagues
+      .filter((l) => l.nights.includes(tonight))
+      .map((l) => ({league_id: l.league_id, team_id: l.team_id, start: l.times[tonight] ?? null, gathering: l.gatherings[tonight] ?? null}))
+  );
   for (const l of leagues) {
     const arrival = arrivals.get(`${l.league_id}|${l.team_id}`);
     if (arrival) l.arrival = arrival;

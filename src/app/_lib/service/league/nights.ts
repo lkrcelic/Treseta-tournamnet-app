@@ -46,7 +46,7 @@ async function publishedRounds(leagueId: number): Promise<Map<string, number>> {
 export async function listLeagueNights(leagueId: number): Promise<LeagueNightRow[] | null> {
   const league = await prisma.league.findUnique({
     where: {league_id: leagueId},
-    select: {start_time: true, ...LOCATION, nights: {select: {night: true, start_time: true, ...LOCATION}, orderBy: {night: "asc"}}},
+    select: {start_time: true, gathering_time: true, ...LOCATION, nights: {select: {night: true, start_time: true, gathering_time: true, ...LOCATION}, orderBy: {night: "asc"}}},
   });
   if (!league) return null;
   const published = await publishedRounds(leagueId);
@@ -59,6 +59,8 @@ export async function listLeagueNights(leagueId: number): Promise<LeagueNightRow
       rounds,
       start_time: n.start_time,
       time: effectiveTime(n.start_time, league.start_time),
+      gathering_time: n.gathering_time,
+      gathering: effectiveTime(n.gathering_time, league.gathering_time),
       location: locationOf(n),
       place: effectiveLocation(n, league),
     };
@@ -72,14 +74,20 @@ const locationData = (location: NonNullable<LeagueNightUpdate["location"]> | nul
   location_url: (location && location.url?.trim()) || null,
 });
 
-// A new night with its own start time and place, or (left out or null) the league's
+// A new night with its own Početak, Okupljanje and place, or (left out or null) the league's
 export async function addLeagueNight(leagueId: number, night: LeagueNightAdd): Promise<void> {
   if ((await prisma.leagueNight.count({where: {league_id: leagueId}})) >= MAX_NIGHTS) {
     throw new InvalidResultError(MAX_NIGHTS_ERROR);
   }
   try {
     await prisma.leagueNight.create({
-      data: {league_id: leagueId, night: nightValue(night.date), start_time: night.start_time ?? null, ...locationData(night.location ?? null)},
+      data: {
+        league_id: leagueId,
+        night: nightValue(night.date),
+        start_time: night.start_time ?? null,
+        gathering_time: night.gathering_time ?? null,
+        ...locationData(night.location ?? null),
+      },
     });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -115,7 +123,7 @@ export async function removeLeagueNight(leagueId: number, date: string, withRoun
   return count > 0;
 }
 
-// Moves a night to another date and sets its own start time and place (Uredi večer); any left out stays as it is, and
+// Moves a night to another date and sets its own Početak, Okupljanje and place (Uredi večer); any left out stays as it is, and
 // null goes back to the league's (a null location clears all three location fields). Only a night still to be played:
 // one that has passed or has rounds keeps its date, time and place. A moved night takes its Burza igrača ads along.
 // Returns the night as Datumi shows it, or null when the league doesn't have that night.
@@ -140,9 +148,10 @@ export async function updateLeagueNight(leagueId: number, date: string, change: 
       data: {
         ...(moveTo == null ? {} : {night: nightValue(moveTo)}),
         start_time: change.start_time,
+        ...(change.gathering_time === undefined ? {} : {gathering_time: change.gathering_time}),
         ...(location === undefined ? {} : locationData(location)),
       },
-      select: {start_time: true, ...LOCATION, league: {select: {start_time: true, ...LOCATION}}},
+      select: {start_time: true, gathering_time: true, ...LOCATION, league: {select: {start_time: true, gathering_time: true, ...LOCATION}}},
     });
     // a team looking for a substitute for that night looks for the new one
     if (moveTo != null) await tx.marketPost.updateMany({where: {league_id: leagueId, night}, data: {night: nightValue(moveTo)}});
@@ -152,6 +161,8 @@ export async function updateLeagueNight(leagueId: number, date: string, change: 
       rounds: 0,
       start_time: updated.start_time,
       time: effectiveTime(updated.start_time, updated.league.start_time),
+      gathering_time: updated.gathering_time,
+      gathering: effectiveTime(updated.gathering_time, updated.league.gathering_time),
       location: locationOf(updated),
       place: effectiveLocation(updated, updated.league),
     };

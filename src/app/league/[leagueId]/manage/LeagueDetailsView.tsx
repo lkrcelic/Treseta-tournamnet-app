@@ -4,9 +4,9 @@ import {updateLeagueAPI} from "@/app/_fetchers/league/leagues";
 import {LeagueOption, updateCachedLeague} from "@/app/_hooks/useLeagues";
 import {END_DATE_ERROR, endsAfterStart, LEAGUE_NAME_TAKEN, leagueNameTaken, START_TIME_ERROR} from "@/app/_interfaces/league";
 import {isStartTime} from "@/app/_lib/nights";
-import {PlaceFields, placeOfDraft, placePayload, TIME_LABEL} from "@/app/_ui/admin/GatheringForm";
+import {PlaceFields, placeOfDraft, placePayload, timesError, TimesFields} from "@/app/_ui/admin/GatheringForm";
 import {color, font, tint} from "@/app/_styles/tokens";
-import {buttonBase, Card, ErrorNote, IconCircleButton, OutlineButton, PrimaryButton, TextField, TimeField} from "@/app/_ui/sp";
+import {buttonBase, Card, ErrorNote, IconCircleButton, OutlineButton, PrimaryButton, TextField} from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ErrorRoundedIcon from "@mui/icons-material/ErrorRounded";
 import RemoveRoundedIcon from "@mui/icons-material/RemoveRounded";
@@ -16,7 +16,8 @@ import React, {useState} from "react";
 export const DAYS = ["Pon", "Uto", "Sri", "Čet", "Pet", "Sub", "Ned"];
 export const DAY_NAMES = ["ponedjeljak", "utorak", "srijeda", "četvrtak", "petak", "subota", "nedjelja"];
 
-// time: when the nights start, "HH:MM" ("": none); place, address, url: where they are played ("": none)
+// time and gathering: when the nights start (Početak) and start gathering (Okupljanje), "HH:MM" ("": none); place,
+// address, url: where they are played ("": none)
 export type Details = {
   name: string;
   season: string;
@@ -24,6 +25,7 @@ export type Details = {
   end: string;
   day: number | null;
   time: string;
+  gathering: string;
   place: string;
   address: string;
   url: string;
@@ -37,6 +39,7 @@ const fromLeague = (l: LeagueOption | undefined): Details => ({
   end: l?.endDate ?? "",
   day: l?.playDay ?? null,
   time: l?.startTime ?? "",
+  gathering: l?.gatheringTime ?? "",
   place: l?.location?.name ?? "",
   address: l?.location?.address ?? "",
   url: l?.location?.url ?? "",
@@ -70,9 +73,9 @@ export function useLeagueDetails(leagueId: number, leagues: LeagueOption[]) {
         ? "Početak je obavezan."
         : !endsAfterStart(d.start, d.end)
           ? END_DATE_ERROR
-          : d.time && !isStartTime(d.time)
+          : (d.time && !isStartTime(d.time)) || (d.gathering && !isStartTime(d.gathering))
             ? START_TIME_ERROR
-            : "";
+            : (timesError(d.gathering, d.time) ?? "");
   const dirty = (Object.keys(base) as (keyof Details)[]).some((k) => String(base[k]) !== String(d[k]));
   const canSave = dirty && !error && !saving;
 
@@ -89,6 +92,7 @@ export function useLeagueDetails(leagueId: number, leagues: LeagueOption[]) {
         end_date: d.end || null,
         play_day: d.day,
         start_time: d.time || null,
+        gathering_time: d.gathering || null,
         ...placePayload(place),
         rounds_per_night: d.rounds,
       });
@@ -99,6 +103,7 @@ export function useLeagueDetails(leagueId: number, leagues: LeagueOption[]) {
         endDate: d.end || null,
         playDay: d.day,
         startTime: d.time || null,
+        gatheringTime: d.gathering || null,
         location: placeOfDraft(place),
         roundsPerNight: d.rounds,
       });
@@ -117,23 +122,12 @@ export function useLeagueDetails(leagueId: number, leagues: LeagueOption[]) {
   return {d, set, error, dirty, canSave, save, saving, saved, serverError, discard};
 }
 
-// Okupljanje of the league being edited: Vrijeme okupljanja, Ime mjesta, Adresa and Link na Google Mape, the defaults of
-// every night (Podaci on the desktop, Postavke on the admin's phone). timeSx: the time field's box (narrower on the
-// desktop).
-export function LeagueGatheringFields({
-  d,
-  set,
-  inputSx,
-  timeSx,
-}: {
-  d: Details;
-  set: <K extends keyof Details>(k: K, v: Details[K]) => void;
-  inputSx: SxProps<Theme>;
-  timeSx?: SxProps<Theme>;
-}) {
+// Okupljanje of the league being edited: Okupljanje and Početak, Ime mjesta, Adresa and Link na Google Mape, the
+// defaults of every night (Podaci on the desktop, Postavke on the admin's phone)
+export function LeagueGatheringFields({d, set, inputSx}: {d: Details; set: <K extends keyof Details>(k: K, v: Details[K]) => void; inputSx: SxProps<Theme>}) {
   return (
     <>
-      <TimeField label={TIME_LABEL} value={d.time} onChange={(v) => set("time", v)} clearLabel="Ukloni vrijeme okupljanja" soft sx={timeSx} inputSx={inputSx} />
+      <TimesFields gathering={d.gathering} start={d.time} onGathering={(v) => set("gathering", v)} onStart={(v) => set("time", v)} error={timesError(d.gathering, d.time)} inputSx={inputSx} />
       <PlaceFields
         value={{name: d.place, address: d.address, url: d.url}}
         onChange={(p) => {
@@ -264,10 +258,10 @@ export default function LeagueDetailsView({leagueId, leagues, aside}: {leagueId:
                 Okupljanje
               </Box>
               <Box sx={{fontSize: 14, lineHeight: 1.45, color: color.muted}}>
-                Zadano vrijeme i mjesto za sve večeri lige. Iznimku za pojedinu večer postavi u Datumima. Sprema se gumbom Spremi promjene.
+                Zadano okupljanje, početak i mjesto za sve večeri lige. Iznimku za pojedinu večer postavi u Datumima. Sprema se gumbom Spremi promjene.
               </Box>
             </Box>
-            <LeagueGatheringFields d={d} set={set} inputSx={inputSx} timeSx={{maxWidth: "calc(50% - 6px)"}} />
+            <LeagueGatheringFields d={d} set={set} inputSx={inputSx} />
           </Box>
         </Card>
         {aside}

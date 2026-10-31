@@ -23,6 +23,19 @@ test("Tu smo opens half an hour before the night's start and holds until 06:00 t
   assert.equal(leagueArrivalWindow("2026-11-04", null), null);
 });
 
+test("with an Okupljanje, Tu smo opens then; one that isn't before the start doesn't count", () => {
+  const w = leagueArrivalWindow("2026-11-04", "20:00", "19:00")!;
+  assert.equal(w.opens.toISOString(), "2026-11-04T18:00:00.000Z");
+  assert.equal(w.start.toISOString(), "2026-11-04T19:00:00.000Z");
+  assert.equal(leagueArrivalPhase(w, new Date("2026-11-04T18:10:00Z")), "open");
+  // at or after the start: half an hour before, as without one
+  assert.equal(leagueArrivalWindow("2026-11-04", "20:00", "20:00")!.opens.toISOString(), "2026-11-04T18:30:00.000Z");
+  assert.equal(leagueArrivalWindow("2026-11-04", "20:00", "21:00")!.opens.toISOString(), "2026-11-04T18:30:00.000Z");
+  assert.equal(leagueArrivalWindow("2026-11-04", "20:00", null)!.opens.toISOString(), "2026-11-04T18:30:00.000Z");
+  // an Okupljanje without a Početak still has no confirmation
+  assert.equal(leagueArrivalWindow("2026-11-04", null, "19:00"), null);
+});
+
 test("a team is here while it has come and hasn't left", () => {
   assert.equal(isHere(null), false);
   assert.equal(isHere({left_at: null}), true);

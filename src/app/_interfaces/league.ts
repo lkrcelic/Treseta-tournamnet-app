@@ -53,8 +53,9 @@ export const LeagueCreateRequestValidation = z
     end_date: isoDate.optional().nullable(),
     // 0 = Monday ... 6 = Sunday
     play_day: z.number().int().min(0).max(6).optional().nullable(),
-    // when the nights start; optional
+    // when the nights start (Početak) and start gathering (Okupljanje); both optional
     start_time: startTime.optional(),
+    gathering_time: startTime.optional(),
     // where the nights are played; optional
     location_name: locName.nullable().optional(),
     location_address: locAddress.nullable().optional(),
@@ -78,6 +79,7 @@ export const LeagueUpdateRequestValidation = z.object({
   end_date: isoDate.nullable().optional(),
   play_day: z.number().int().min(0).max(6).nullable().optional(),
   start_time: startTime.optional(),
+  gathering_time: startTime.optional(),
   location_name: locName.nullable().optional(),
   location_address: locAddress.nullable().optional(),
   location_url: locUrl.nullable().optional(),
@@ -94,23 +96,25 @@ const nightLocation = z
   .nullable()
   .optional();
 
-// Upravljanje ligom · Datumi (Dodaj večer): add a night, with its own start time and place or (left out or null) the
-// league's
+// Upravljanje ligom · Datumi (Dodaj večer): add a night, with its own Početak, Okupljanje and place or (left out or
+// null) the league's
 export const LeagueNightAddRequestValidation = z.object({
   date: z.string().refine(isIsoDate, DATE_FORMAT_ERROR),
   start_time: startTime.optional(),
+  gathering_time: startTime.optional(),
   location: nightLocation,
 });
 
-// Upravljanje ligom · Datumi (Uredi večer): a night's date, its own start time and its own place. Any can be left out
-// (it stays as it is); null goes back to the league's time or place.
+// Upravljanje ligom · Datumi (Uredi večer): a night's date, its own Početak, Okupljanje and place. Any can be left out
+// (it stays as it is); null goes back to the league's.
 export const LeagueNightUpdateRequestValidation = z
   .object({
     date: z.string().refine(isIsoDate, DATE_FORMAT_ERROR).optional(),
     start_time: startTime.optional(),
+    gathering_time: startTime.optional(),
     location: nightLocation,
   })
-  .refine((b) => b.date !== undefined || b.start_time !== undefined || b.location !== undefined, "Nema promjene.");
+  .refine((b) => b.date !== undefined || b.start_time !== undefined || b.gathering_time !== undefined || b.location !== undefined, "Nema promjene.");
 
 export type LeagueNightUpdate = z.infer<typeof LeagueNightUpdateRequestValidation>;
 export type LeagueNightAdd = z.infer<typeof LeagueNightAddRequestValidation>;
@@ -120,15 +124,18 @@ export const PAST_NIGHT_ERROR = "Datum, vrijeme i mjesto mijenjaju se samo veče
 // A night moves only to today or later: one moved into the past couldn't be changed any more
 export const MOVE_TO_PAST_ERROR = "Večer se može premjestiti samo na današnji ili kasniji datum.";
 
-// A league night and its published rounds (played: it has some). start_time: its own start time (null: the league's);
-// time: when it starts, its own or the league's (null: no time). location: its own place (null: the league's); place:
-// where it is played, its own or the league's (null: nowhere set).
+// A league night and its published rounds (played: it has some). start_time: its own Početak (null: the league's);
+// time: when it starts, its own or the league's (null: no time). gathering_time and gathering: the same for
+// Okupljanje. location: its own place (null: the league's); place: where it is played, its own or the league's (null:
+// nowhere set).
 export type LeagueNightRow = {
   date: string;
   played: boolean;
   rounds: number;
   start_time: string | null;
   time: string | null;
+  gathering_time: string | null;
+  gathering: string | null;
   location: NightLocation | null;
   place: NightLocation | null;
 };
@@ -169,7 +176,8 @@ export type LeagueSummary = {
   start_date: string | null;
   end_date: string | null;
   play_day: number | null;
-  start_time: string | null; // "HH:MM", when the nights start unless a night has its own
+  start_time: string | null; // "HH:MM", when the nights start (Početak) unless a night has its own
+  gathering_time: string | null; // "HH:MM", when the nights start gathering (Okupljanje) unless a night has its own
   // where the nights are played unless a night has its own place (null name: no place)
   location_name: string | null;
   location_address: string | null;

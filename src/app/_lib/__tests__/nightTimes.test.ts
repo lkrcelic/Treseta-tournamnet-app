@@ -141,6 +141,14 @@ test("a night's own place: with a time, alone, or null for the league's; it need
   assert.equal(message(LeagueNightUpdateRequestValidation.safeParse({location: {name: "Adut", url: "javascript:alert(1)"}})), LOCATION_URL_ERROR);
 });
 
+test("a night's Okupljanje: with Početak or alone, null for the league's, HH:MM", () => {
+  assert.deepEqual(LeagueNightUpdateRequestValidation.parse({gathering_time: "18:30"}), {gathering_time: "18:30"});
+  assert.deepEqual(LeagueNightUpdateRequestValidation.parse({gathering_time: null, start_time: "20:00"}), {gathering_time: null, start_time: "20:00"});
+  assert.equal(message(LeagueNightUpdateRequestValidation.safeParse({gathering_time: "18.30"})), START_TIME_ERROR);
+  assert.equal(LeagueCreateRequestValidation.parse({league_name: "Jesen", gathering_time: "18:30"}).gathering_time, "18:30");
+  assert.equal(LeagueUpdateRequestValidation.parse({gathering_time: null}).gathering_time, null);
+});
+
 test("a night moves to a new date, alone or with its time and place", () => {
   assert.deepEqual(LeagueNightUpdateRequestValidation.parse({date: "2026-11-05"}), {date: "2026-11-05"});
   assert.deepEqual(LeagueNightUpdateRequestValidation.parse({date: "2026-11-05", start_time: "20:00"}), {date: "2026-11-05", start_time: "20:00"});
@@ -158,7 +166,7 @@ function fakeDb(rounds: number, nights: string[] = [FUTURE]) {
   const updates: Update[] = [];
   const moved: Update[] = [];
   const created: Record<string, unknown>[] = [];
-  const league = {start_time: "19:30", ...KARTAS};
+  const league = {start_time: "19:30", gathering_time: "19:00", ...KARTAS};
   const db = {
     leagueNight: {
       count: async (args: CountArgs) => (args.where.night && nights.includes(args.where.night.toISOString().slice(0, 10)) ? 1 : 0),
@@ -245,6 +253,20 @@ test("a null location clears all three fields of the night; a left-out one isn't
   });
 });
 
+test("a night's own Okupljanje is saved apart from its Početak, and the league's fills in", async () => {
+  const {db, updates} = fakeDb(0);
+  await withDb(db, async () => {
+    const {updateLeagueNight} = await import("../service/league/nights");
+    const own = await updateLeagueNight(1, FUTURE, {gathering_time: "18:15"});
+    assert.deepEqual(updates[0].data, {start_time: undefined, gathering_time: "18:15"});
+    assert.equal(own?.gathering, "18:15");
+    assert.equal(own?.time, "19:30");
+    const back = await updateLeagueNight(1, FUTURE, {gathering_time: null});
+    assert.equal(back?.gathering_time, null);
+    assert.equal(back?.gathering, "19:00");
+  });
+});
+
 test("a night moves to a free date from today on, and its Burza ads go with it", async () => {
   const LATER = "2099-01-13";
   const {db, updates, moved} = fakeDb(0);
@@ -279,17 +301,26 @@ test("Dodaj večer adds a night with its own time and place, or the league's", a
   const {db, created} = fakeDb(0, []);
   await withDb(db, async () => {
     const {addLeagueNight} = await import("../service/league/nights");
-    await addLeagueNight(1, {date: "2026-11-05", start_time: "20:00", location: {name: " Klub Adut ", address: "Vlaška 5", url: null}});
+    await addLeagueNight(1, {date: "2026-11-05", start_time: "20:00", gathering_time: "19:30", location: {name: " Klub Adut ", address: "Vlaška 5", url: null}});
     assert.deepEqual(created[0], {
       league_id: 1,
       night: new Date("2026-11-05T00:00:00.000Z"),
       start_time: "20:00",
+      gathering_time: "19:30",
       location_name: "Klub Adut",
       location_address: "Vlaška 5",
       location_url: null,
     });
     await addLeagueNight(1, {date: "2026-11-12"});
-    assert.deepEqual(created[1], {league_id: 1, night: new Date("2026-11-12T00:00:00.000Z"), start_time: null, location_name: null, location_address: null, location_url: null});
+    assert.deepEqual(created[1], {
+      league_id: 1,
+      night: new Date("2026-11-12T00:00:00.000Z"),
+      start_time: null,
+      gathering_time: null,
+      location_name: null,
+      location_address: null,
+      location_url: null,
+    });
   });
 });
 

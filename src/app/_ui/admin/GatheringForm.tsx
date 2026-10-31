@@ -34,7 +34,34 @@ export function placeOfDraft(p: PlaceDraft): NightLocation | null {
   return location_name ? {name: location_name, address: location_address, url: location_url} : null;
 }
 
-export const TIME_LABEL = "Vrijeme okupljanja · neobavezno";
+// Okupljanje and Početak side by side, as in Novi turnir: when the people start coming and when the night starts (the
+// main time: Raspored, Početna and Tu smo count from it). Both optional; error goes under Okupljanje.
+export function TimesFields({
+  gathering,
+  start,
+  onGathering,
+  onStart,
+  error,
+  inputSx,
+}: {
+  gathering: string;
+  start: string;
+  onGathering: (v: string) => void;
+  onStart: (v: string) => void;
+  error?: string;
+  inputSx?: SxProps<Theme>;
+}) {
+  return (
+    <Box sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "12px", alignItems: "start"}}>
+      <TimeField label="Okupljanje" value={gathering} onChange={onGathering} clearLabel="Ukloni vrijeme okupljanja" soft inputSx={inputSx} error={error} />
+      <TimeField label="Početak" value={start} onChange={onStart} clearLabel="Ukloni početak" soft inputSx={inputSx} />
+    </Box>
+  );
+}
+
+// Okupljanje after Početak (both "HH:MM") can't be (undefined: it's fine, or either is missing)
+export const timesError = (gathering: string | null | undefined, start: string | null | undefined) =>
+  gathering && start && gathering >= start ? "Okupljanje mora biti prije početka." : undefined;
 
 // Ime mjesta, Adresa and Link na Google Mape, in that order (no help text: the link is only checked to be http(s), and
 // a wrong one is said in the form's error note)
@@ -105,15 +132,16 @@ const MODES: {key: Mode; label: string}[] = [
   {key: "own", label: "Drugo mjesto"},
 ];
 
-// "Zadano za ligu: 19:30", or with a time of its own "Zadano za ligu je 19:30, ova večer počinje u 20:00."
-export function timeHelp(time: string, leagueTime: string | null): string {
-  const own = ownTimeOf(time, leagueTime);
-  if (!leagueTime) return own ? `Liga nema zadano vrijeme, ova večer počinje u ${own}.` : "Liga nema zadano vrijeme.";
-  return own ? `Zadano za ligu je ${leagueTime}, ova večer počinje u ${own}.` : `Zadano za ligu: ${leagueTime}`;
+// Under a night's Okupljanje and Početak: "Zadano za ligu: okupljanje 18:30, početak 19:00." and, when the night has a
+// time of its own, "Ova večer ima svoje vrijeme."
+export function timesHelp(gathering: string, start: string, leagueGathering: string | null, leagueStart: string | null): string {
+  const league = [leagueGathering && `okupljanje ${leagueGathering}`, leagueStart && `početak ${leagueStart}`].filter(Boolean).join(", ");
+  const own = ownTimeOf(gathering, leagueGathering) != null || ownTimeOf(start, leagueStart) != null;
+  return `${league ? `Zadano za ligu: ${league}.` : "Liga nema zadano vrijeme."}${own ? " Ova večer ima svoje vrijeme." : ""}`;
 }
 
-// The night's date, time and place being edited
-export type NightForGathering = {date: string; start_time: string | null; location: NightLocation | null};
+// The night's date, times and place being edited
+export type NightForGathering = {date: string; start_time: string | null; gathering_time: string | null; location: NightLocation | null};
 
 // Why a night can't go on the date typed (null: it can). A new night may be a past one (one played but not added); an
 // existing one moves only to today or later.
@@ -123,11 +151,11 @@ export function nightDateError(date: string, today: string, taken: (date: string
   return taken(date) ? NIGHT_TAKEN : null;
 }
 
-// A night's date and its own time and place (Datumi: the desktop's card on the right, a sheet on the admin's phone).
-// The time starts as the night's (its own or the league's); the place is the league's or the night's own, so a new
-// night starts with the league's (Podaci). Uredi večer (an existing night): Spremi sends only what changed (a time
-// equal to the league's and "Zadano lige" go back to the league's), and Vrati na zadano takes the night's own time and
-// place away (the date stays). Dodaj večer (isNew): Odustani and Dodaj večer, which sends the whole night. Give it
+// A night's date and its own Okupljanje, Početak and place (Datumi: the desktop's card on the right, a sheet on the
+// admin's phone). The times start as the night's (its own or the league's); the place is the league's or the night's
+// own, so a new night starts with the league's (Podaci). Uredi večer (an existing night): Spremi sends only what changed
+// (a time equal to the league's and "Zadano lige" go back to the league's), and Vrati na zadano takes the night's own
+// times and place away (the date stays). Dodaj večer (isNew): Odustani and Dodaj večer, which sends the whole night. Give it
 // key={night.date}, so another night starts afresh; savedAtStart: it opens as just saved (the night moved, so it came
 // back under its new date).
 export function NightGatheringForm({
@@ -137,6 +165,7 @@ export function NightGatheringForm({
   today,
   taken,
   leagueTime,
+  leagueGathering,
   leaguePlace,
   settingsTab,
   onSave,
@@ -155,7 +184,9 @@ export function NightGatheringForm({
   today: string;
   // whether the league already has a night on that date
   taken: (date: string) => boolean;
+  // the league's Početak and Okupljanje
   leagueTime: string | null;
+  leagueGathering: string | null;
   leaguePlace: NightLocation | null;
   // where the league's own time and place are changed: "Podaci" (desktop) or "Postavke" (phone)
   settingsTab: string;
@@ -171,6 +202,7 @@ export function NightGatheringForm({
 }) {
   const [date, setDate] = useState(night.date);
   const [time, setTime] = useState(effectiveTime(night.start_time, leagueTime) ?? "");
+  const [gathering, setGathering] = useState(effectiveTime(night.gathering_time, leagueGathering) ?? "");
   const [mode, setMode] = useState<Mode>(night.location ? "own" : "league");
   const [place, setPlace] = useState<PlaceDraft>(placeDraftOf(night.location));
   const [saved, setSaved] = useState(savedAtStart);
@@ -179,13 +211,16 @@ export function NightGatheringForm({
   // a new night's empty date isn't an error yet, only not ready
   const dateError = dateChanged && !(isNew && date === "") ? nightDateError(date, today, taken, isNew) : null;
   const ownTime = ownTimeOf(time, leagueTime);
+  const ownGathering = ownTimeOf(gathering, leagueGathering);
+  // an emptied time is the league's again, so the check is on the times the night will have
+  const timeError = timesError(gathering || leagueGathering, time || leagueTime);
   const wantedPlace = mode === "own" ? placeOfDraft(place) : null;
-  const timeChanged = ownTime !== (night.start_time ?? null);
+  const timeChanged = ownTime !== (night.start_time ?? null) || ownGathering !== (night.gathering_time ?? null);
   const placeChanged = mode === "own" ? !place.name.trim() || !sameLocation(wantedPlace, night.location) : night.location != null;
   const dirty = dateChanged || timeChanged || placeChanged;
   // a place of its own needs a name
-  const canSave = dirty && isIsoDate(date) && !dateError && (mode === "league" || !!place.name.trim()) && !saving;
-  const hasOwn = night.start_time != null || night.location != null;
+  const canSave = dirty && isIsoDate(date) && !dateError && !timeError && (mode === "league" || !!place.name.trim()) && !saving;
+  const hasOwn = night.start_time != null || night.gathering_time != null || night.location != null;
 
   const changed = <T,>(set: (v: T) => void) => (v: T) => {
     set(v);
@@ -195,22 +230,24 @@ export function NightGatheringForm({
   const save = async () => {
     if (!canSave) return;
     if (isNew) {
-      await onSave({date, start_time: ownTime, location: wantedPlace});
+      await onSave({date, start_time: ownTime, gathering_time: ownGathering, location: wantedPlace});
       return;
     }
     const change: LeagueNightUpdate = {};
     if (dateChanged) change.date = date;
-    if (timeChanged) change.start_time = ownTime;
+    if (ownTime !== (night.start_time ?? null)) change.start_time = ownTime;
+    if (ownGathering !== (night.gathering_time ?? null)) change.gathering_time = ownGathering;
     if (placeChanged) change.location = wantedPlace;
     if (await onSave(change)) setSaved(true);
   };
 
   const reset = async () => {
     setTime(leagueTime ?? "");
+    setGathering(leagueGathering ?? "");
     setMode("league");
     setPlace(EMPTY_PLACE);
     setSaved(false);
-    if (hasOwn && (await onSave({start_time: null, location: null}))) setSaved(true);
+    if (hasOwn && (await onSave({start_time: null, gathering_time: null, location: null}))) setSaved(true);
   };
 
   return (
@@ -234,8 +271,8 @@ export function NightGatheringForm({
         inputSx={inputSx}
       />
       <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
-        <TimeField label={TIME_LABEL} value={time} onChange={changed(setTime)} clearLabel="Ukloni vrijeme okupljanja" soft inputSx={inputSx} />
-        <Box sx={{fontSize: 13, lineHeight: 1.4, color: color.muted, pl: "4px"}}>{timeHelp(time, leagueTime)}</Box>
+        <TimesFields gathering={gathering} start={time} onGathering={changed(setGathering)} onStart={changed(setTime)} error={timeError} inputSx={inputSx} />
+        <Box sx={{fontSize: 13, lineHeight: 1.4, color: color.muted, pl: "4px"}}>{timesHelp(gathering, time, leagueGathering, leagueTime)}</Box>
       </Box>
       <Box role="group" aria-labelledby={`place-${night.date}`} sx={{display: "flex", flexDirection: "column", gap: "8px"}}>
         <Box id={`place-${night.date}`} sx={{fontSize: 14, fontWeight: 600, color: color.ink2, pl: "4px"}}>
@@ -296,7 +333,7 @@ export function NightInfo({
   night,
   children,
 }: {
-  night: {date: string; played: boolean; rounds: number; time: string | null; place: NightLocation | null};
+  night: {date: string; played: boolean; rounds: number; time: string | null; gathering: string | null; place: NightLocation | null};
   children?: React.ReactNode;
 }) {
   const line = (icon: React.ReactNode, text: React.ReactNode) => (
@@ -310,7 +347,10 @@ export function NightInfo({
   return (
     <Box sx={{display: "flex", flexDirection: "column", gap: "14px"}}>
       <Box sx={{display: "flex", flexDirection: "column", gap: "10px", p: "14px", borderRadius: "14px", background: color.paper2, border: `1px solid ${color.line}`}}>
-        {line(<ScheduleRoundedIcon aria-hidden />, night.time ?? "Bez vremena okupljanja")}
+        {line(
+          <ScheduleRoundedIcon aria-hidden />,
+          night.time || night.gathering ? [night.time && `Početak ${night.time}`, night.gathering && `okupljanje od ${night.gathering}`].filter(Boolean).join(" · ") : "Bez vremena"
+        )}
         {line(
           <PlaceRoundedIcon aria-hidden />,
           night.place ? (
