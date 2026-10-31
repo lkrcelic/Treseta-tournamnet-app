@@ -5,6 +5,7 @@ import {MyLeagueArrival} from "@/app/_interfaces/leagueArrival";
 import {LeagueArrivalAction, leagueArrivalPhase} from "@/app/_lib/leagueArrival";
 import {leagueClock} from "@/app/_lib/dates";
 import {color, tint} from "@/app/_styles/tokens";
+import {leaveButton} from "@/app/_ui/home/LeaveParts";
 import {buttonBase, ConfirmSheet, Spinner} from "@/app/_ui/sp";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import HowToRegRoundedIcon from "@mui/icons-material/HowToRegRounded";
@@ -121,7 +122,8 @@ export function LeagueArrival({leagueId, teamId, initial, onChanged}: {leagueId:
           </>
         )}
         {phase === "started" ? (
-          <Box component="button" type="button" disabled={busy != null} onClick={() => setLeaving(true)} sx={quietButton}>
+          <Box component="button" type="button" disabled={busy != null} onClick={() => setLeaving(true)} sx={leaveButton}>
+            <LogoutRoundedIcon aria-hidden />
             Odlazimo
           </Box>
         ) : (
