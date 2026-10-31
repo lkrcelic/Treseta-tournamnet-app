@@ -8,6 +8,7 @@ import {color, tint} from "@/app/_styles/tokens";
 import {leaveButton} from "@/app/_ui/home/LeaveParts";
 import {buttonBase, ConfirmSheet, Spinner} from "@/app/_ui/sp";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import HowToRegRoundedIcon from "@mui/icons-material/HowToRegRounded";
 import LockClockRoundedIcon from "@mui/icons-material/LockClockRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
@@ -38,8 +39,6 @@ const lightButton = {
   "& svg": {fontSize: 22},
   "&:disabled": {opacity: 0.45},
 } as const;
-
-const quietButton = {...buttonBase, alignSelf: "flex-start", height: 36, color: color.cream, fontSize: 15, fontWeight: 700, textDecoration: "underline", textUnderlineOffset: "3px"} as const;
 
 // "Potvrdio Marko u 19:42", or the admin's switch in Novo kolo
 function arrivedLine(a: NonNullable<MyLeagueArrival["arrival"]>): string {
@@ -127,8 +126,9 @@ export function LeagueArrival({leagueId, teamId, initial, onChanged}: {leagueId:
             Odlazimo
           </Box>
         ) : (
-          <Box component="button" type="button" disabled={busy != null} onClick={() => act("leave")} sx={quietButton}>
-            {busy === "leave" ? <Spinner size={18} tone="white" /> : "Ipak otkazujemo"}
+          <Box component="button" type="button" disabled={busy != null} onClick={() => act("leave")} sx={leaveButton}>
+            {busy === "leave" ? <Spinner size={18} tone="white" /> : <CloseRoundedIcon aria-hidden />}
+            Ipak otkazujemo
           </Box>
         )}
         {errorLine}
