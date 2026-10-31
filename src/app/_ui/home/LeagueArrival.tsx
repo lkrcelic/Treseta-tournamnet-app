@@ -50,7 +50,7 @@ function arrivedLine(a: NonNullable<MyLeagueArrival["arrival"]>): string {
 const clockOf = (iso: string) => leagueClock(new Date(iso));
 
 // The time now, again every 20 s, so the window opens and the night starts on screen by themselves
-function useNow(): Date {
+export function useNow(): Date {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), 20_000);
