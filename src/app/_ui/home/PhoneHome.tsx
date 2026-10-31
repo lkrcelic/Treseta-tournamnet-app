@@ -12,6 +12,10 @@ import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {Brand} from "@/app/_ui/auth/AuthFrame";
 import {BurzaHomeCard, HomeTile, NextNightCard, NextNightPlaceholder, nextNight} from "@/app/_ui/home/HomeCards";
 import {StartCard} from "@/app/_ui/home/StartCard";
+import {useNow} from "@/app/_ui/home/LeagueArrival";
+import {LeaveRow} from "@/app/_ui/home/LeaveParts";
+import {leagueArrivalAPI} from "@/app/_fetchers/league/arrival";
+import {leagueArrivalPhase} from "@/app/_lib/leagueArrival";
 import HomeSponsors from "@/app/_ui/home/HomeSponsors";
 import InstallSheet from "@/app/_ui/install/InstallSheet";
 import {buttonBase, ErrorNote, IconCircleButton, InitialsAvatar, Screen, visuallyHidden} from "@/app/_ui/sp";
@@ -45,6 +49,9 @@ export default function PhoneHome() {
   const {schedule, error: scheduleError, reload: reloadSchedule} = useMySchedule();
   const next = nextNight(schedule);
   const {posts} = useBurza();
+  const now = useNow();
+  // the team at the table tonight that is here (Tu smo): Odlazimo under Započni igru
+  const here = schedule?.leagues.find((l) => l.arrival?.night === schedule.today && l.arrival.arrival?.here && leagueArrivalPhase(l.arrival, now) !== "over");
   const isAdmin = useIsAdmin();
   const setAdminView = useAdminViewStore((st) => st.setView);
   const {me: myRating} = useMyRating();
@@ -109,7 +116,19 @@ export default function PhoneHome() {
       {/* the table to play tonight; the rest of the week, the team's next night. While the open round loads, the
           neutral frame (named like the Start card, so the scoreboard still shrinks into it on the way back) */}
       {openTable ? (
-        <StartCard table={openTable} starting={starting} onStart={start} errorId={error ? "start-error" : undefined} />
+        <>
+          <StartCard table={openTable} starting={starting} onStart={start} errorId={error ? "start-error" : undefined} />
+          {here && (
+            <LeaveRow
+              title="Odlazite?"
+              text="Ekipa ne ulazi u iduće novo kolo. Kola koja su već objavljena ostaju kakva jesu."
+              onLeave={async () => {
+                await leagueArrivalAPI(here.league_id, here.team_id, "leave");
+                reloadSchedule();
+              }}
+            />
+          )}
+        </>
       ) : openTableLoading ? (
         <Box sx={{flex: "none", borderRadius: "24px", viewTransitionName: "table"}}>
           <NextNightPlaceholder />
