@@ -80,16 +80,18 @@ Treseta directly only for what has to differ, and add it below.
 Every Bela commit up to `bed3e29` (30 Oct 2026) came over or was skipped by 31 Oct 2026. Decisions for Bela work that
 touches Treseta's differences before it comes over go here.
 
-- **`de2001c` (league: Tu smo, DECISIONS #73), not decided.** Potvrda dolaska for league nights (Tu smo, Ipak
-  otkazujemo, Odlazimo on Početna's Večeras card; Novo kolo's switches are the night's arrivals; migration
-  `20261031180000_league_arrival`, the `LeagueArrival` table) is a league feature, but the same commit makes Zabrana
-  prijava keep a banned team, or one with a banned player, from the league's nights (`assertMayPlay` in Tu smo, Novo
-  kolo, Novi stol, Uredi stolove, Dodaj ekipu, Nova liga and publishing a Skica; the ban chip in Novo kolo and on
-  Početna). Bans are Not copied as tournaments only (30 Oct 2026). Decide: bans come to Treseta's leagues (then the
-  `SignupBan` model, `_lib/bans.ts`, `_lib/service/bans/` and the admin's Zabrana come too), or Tu smo comes without
-  the ban checks. Either way `_lib/dates.ts`' `leagueMoment` and `leagueClock` come over, since Tu smo uses them. The
-  sync stops here until this is decided; Bela's later league work (`92df912` standings tie-break, `0b58c0e`
-  Registracija s Googleom, `5501f78` and `ff65713` Datumi, `f26f7f8` Okupljanje with its migration) waits behind it.
+- **`de2001c` (league: Tu smo, DECISIONS #73): Tu smo comes, without the bans (decided 31 Oct 2026).** Potvrda
+  dolaska for league nights comes over: Tu smo, Ipak otkazujemo, Odlazimo and Želimo uskočiti on Početna's Večeras
+  card, Novo kolo's switches as the night's arrivals (merged around the conference switch and dots in
+  `_ui/round/CreateRound.tsx` and `_ui/admin/CreateRoundPhone.tsx`), `POST /api/leagues/[id]/arrival`, `GET`/`POST
+  /api/leagues/[id]/arrivals`, and the `LeagueArrival` table with a Treseta migration of Bela's
+  `20261031180000_league_arrival` (named after the newest migration here). `_lib/dates.ts`' `leagueMoment` and
+  `leagueClock` come over too, since Tu smo uses them. Zabrana prijava stays tournaments only and Not copied: none of
+  the commit's ban code comes, so no `assertMayPlay` or `assertPlayersMayPlay` (Tu smo, Novo kolo, Novi stol, Uredi
+  stolove, Dodaj ekipu, Nova liga and publishing a Skica don't check bans), no `teamPlayBans`, no `PlayBan` helpers in
+  `_lib/bans.ts`, no ban on the league's teams (`_hooks/useLeagueTeams.ts`, `_interfaces/league.ts`), and no ban
+  chip or ban text in Novo kolo, `_ui/admin/LeaguePhone.tsx` or Početna's card (`MyLeagueArrival` has no `ban`).
+  Later Bela changes to Tu smo come over the same way, without their ban parts.
 
 ## Differences from Bela
 
@@ -274,11 +276,12 @@ Turniri v1 (`14f988f..6c84c4b`, 30 Oct 2026) stays out too, with two parts Bela 
   (`ongoing-match/[matchId]/page.tsx`).
 - **Zabrana prijava** (sign-up bans): tournaments only. Not copied: `_lib/bans.ts`, `_lib/service/bans/`,
   `api/admin/bans/**`, `_ui/profiles/BanSection.tsx` and its place on `_ui/profiles/PlayerPage.tsx` and
-  `_ui/profiles/TeamPage.tsx`, and the `SignupBan` model.
+  `_ui/profiles/TeamPage.tsx`, and the `SignupBan` model. Bela's bans on league nights (`de2001c`, DECISIONS #73) stay
+  out too (decided 31 Oct 2026): Treseta's league Tu smo comes without them.
 - The rest is the tournament day: `_lib/tournamentDay.ts`, `_lib/__tests__/tournamentDay.test.ts`, `_lib/tableState.ts`,
   `_bootstrap/TournamentAttention.tsx` (and its mount in `layout.tsx`), `api/rounds/[id]/attendance/`, the
   `Round.attendance*` columns (and the ratings' `attendance` filter in `_lib/service/admin/recalc.ts`), and
-  `_lib/dates.ts`' `leagueMoment` and `leagueClock`, which only tournaments use. Bela's migration
+  `_lib/dates.ts`' `leagueMoment` and `leagueClock` until the league's Tu smo (`de2001c`) brings them. Bela's migration
   `20261030120000_turniri_v1` gets no Treseta migration.
 
 Shared files these commits change (Početna, the scorepad, the admin's tables, the open table, the round services, the
