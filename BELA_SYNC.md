@@ -9,7 +9,7 @@ own; everything else is kept identical to Bela.
 | | |
 |---|---|
 | Bela branch | `development`, read through the remote `bela` (the local Bela repo). Only commits come over, never Bela's uncommitted work |
-| Last synced Bela commit | `6c84c4b` (30 Oct 2026) |
+| Last synced Bela commit | `bed3e29` (30 Oct 2026) |
 | Target branch | `master` |
 | Sync branch | `bela-sync` in the repo itself (no worktree): created from `master`, or rebased onto it, by every run |
 
@@ -77,10 +77,19 @@ Treseta directly only for what has to differ, and add it below.
 
 ## Bela's work waiting to come over
 
-Every Bela commit up to `6c84c4b` (30 Oct 2026) came over or was skipped by 30 Oct 2026. Decisions for Bela work that
+Every Bela commit up to `bed3e29` (30 Oct 2026) came over or was skipped by 31 Oct 2026. Decisions for Bela work that
 touches Treseta's differences before it comes over go here.
 
-Nothing is waiting.
+- **`de2001c` (league: Tu smo, DECISIONS #73), not decided.** Potvrda dolaska for league nights (Tu smo, Ipak
+  otkazujemo, Odlazimo on Početna's Večeras card; Novo kolo's switches are the night's arrivals; migration
+  `20261031180000_league_arrival`, the `LeagueArrival` table) is a league feature, but the same commit makes Zabrana
+  prijava keep a banned team, or one with a banned player, from the league's nights (`assertMayPlay` in Tu smo, Novo
+  kolo, Novi stol, Uredi stolove, Dodaj ekipu, Nova liga and publishing a Skica; the ban chip in Novo kolo and on
+  Početna). Bans are Not copied as tournaments only (30 Oct 2026). Decide: bans come to Treseta's leagues (then the
+  `SignupBan` model, `_lib/bans.ts`, `_lib/service/bans/` and the admin's Zabrana come too), or Tu smo comes without
+  the ban checks. Either way `_lib/dates.ts`' `leagueMoment` and `leagueClock` come over, since Tu smo uses them. The
+  sync stops here until this is decided; Bela's later league work (`92df912` standings tie-break, `0b58c0e`
+  Registracija s Googleom, `5501f78` and `ff65713` Datumi, `f26f7f8` Okupljanje with its migration) waits behind it.
 
 ## Differences from Bela
 
@@ -225,6 +234,8 @@ The database part (the `Conference` table and `LeagueTeam.conference_id`) is und
   `trump-caller/`, `announcement/`; `…/ui/pages/TrumpCallerPage.tsx`, `…/ui/pages/AnnouncementPage.tsx`). Their
   Treseta counterparts are under Game rules.
 - Bela's tournaments (Turniri). See [Bela's tournaments](#belas-tournaments) below.
+- The clock's backup `api/cron/tick/` with `_lib/cron.ts` and `_lib/__tests__/cron.test.ts` (Bela's `faf4836`): it
+  runs the tournaments' day and closes matches out of time (Vrijeme partije), neither of which Treseta has.
 - Unused images: `public/TitleBackground.png`, `public/TitleBackgroundSponsors.png`, `public/background.png`,
   `public/title.png`.
 
@@ -332,3 +343,4 @@ The nightly sync adds a row when it brings something over or stops.
 | 29 Oct 2026 | `c354458..4b43d06` (2) | Both came over: Najbolje mjesto counts finished leagues only, and Obriši ekipu without its tournament check; no migration |
 | 30 Oct 2026 | `4b43d06..9a16ca9` (2 of 11) | Stopped at `14f988f` (Turniri v1: Vrijeme partije for league matches changes the game rules, not decided). 2 came over: Obriši ekipu disabled with its reason (without the tournament check), and a closed table's point difference on the Kolo tab (with the conference dots); no migration |
 | 30 Oct 2026 | `9a16ca9..6c84c4b` (9) | All 9 skipped (Turniri v1): decided that league matches don't get Vrijeme partije and the sign-up bans stay with the tournaments, so nothing outside tournaments was left; `DECISIONS.md` not copied; no migration |
+| 31 Oct 2026 | `6c84c4b..bed3e29` (6 of 27) | Stopped at `de2001c` (league Tu smo also makes the sign-up bans keep teams from league nights, not decided). The 6 before it skipped: the cron clock backup (tournaments and Vrijeme partije), `CHANGELOG.md` twice, Kolo drafts and Automatska kola (tournaments, with migration `tournament_auto_publish`), `DECISIONS.md`; no migration |
