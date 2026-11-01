@@ -1,6 +1,7 @@
 import {Prisma} from "@prisma/client";
 import {replayRatings} from "@/app/_lib/service/admin/recalc";
 import {RoundStatus} from "@/app/_lib/roundStatus";
+import {Side} from "@/app/_lib/game/scoring";
 
 // A round between two teams is two matches.
 export const MATCHES_PER_ROUND = 2;
@@ -9,6 +10,17 @@ export async function lockRound(tx: Prisma.TransactionClient, roundId: number) {
   const [round] = await tx.$queryRaw<{id: number, open: boolean, status: RoundStatus}[]>`
       SELECT id, open, status FROM "Round" WHERE id = ${roundId} FOR UPDATE`;
   return round;
+}
+
+// What the round gets once one of its matches is stored: the winner's side counts one more won match
+export function roundWinsIncrement(winner: Side) {
+  return winner === 1 ? {team1_wins: {increment: 1}} : {team2_wins: {increment: 1}};
+}
+
+// After a match is stored: the round is played once it has its matches (MATCHES_PER_ROUND) ("close"), else its next match
+// opens ("next")
+export function roundAfterMatch(playedMatches: number, matchesPerRound: number): "close" | "next" {
+  return playedMatches >= matchesPerRound ? "close" : "next";
 }
 
 // Marks the round as played, recomputes both teams' standings and the ratings.

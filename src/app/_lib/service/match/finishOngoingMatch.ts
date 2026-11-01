@@ -2,7 +2,7 @@ import {prisma} from "@/app/_lib/prisma";
 import {MatchAllIncluded, transformMatch} from "@/app/_lib/helpers/databaseHelpers";
 import {MATCH_THRESHOLD, matchState} from "@/app/_lib/game/scoring";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
-import {closeRound, lockRound, MATCHES_PER_ROUND} from "@/app/_lib/service/round/finish";
+import {closeRound, lockRound, MATCHES_PER_ROUND, roundAfterMatch, roundWinsIncrement} from "@/app/_lib/service/round/finish";
 import {combineDateAndTime} from "@/app/_lib/dates";
 
 export class MatchAlreadyFinishedError extends Error {
@@ -58,11 +58,11 @@ export async function finishOngoingMatch(ongoingMatchId: number): Promise<Finish
     await lockRound(tx, roundId);
     await tx.round.update({
       where: {id: roundId},
-      data: winner === 1 ? {team1_wins: {increment: 1}} : {team2_wins: {increment: 1}},
+      data: roundWinsIncrement(winner),
     });
 
     const playedMatches = await tx.match.count({where: {round_id: roundId}});
-    if (playedMatches >= MATCHES_PER_ROUND) {
+    if (roundAfterMatch(playedMatches, MATCHES_PER_ROUND) === "close") {
       await closeRound(tx, roundId);
       return {roundId, roundFinished: true, nextOngoingMatchId: null};
     }
