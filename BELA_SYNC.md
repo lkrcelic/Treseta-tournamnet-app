@@ -9,7 +9,7 @@ own; everything else is kept identical to Bela.
 | | |
 |---|---|
 | Bela branch | `development`, read through the remote `bela` (the local Bela repo). Only commits come over, never Bela's uncommitted work |
-| Last synced Bela commit | `bed3e29` (30 Oct 2026) |
+| Last synced Bela commit | `92df912` (30 Oct 2026) |
 | Target branch | `master` |
 | Sync branch | `bela-sync` in the repo itself (no worktree): created from `master`, or rebased onto it, by every run |
 
@@ -77,21 +77,8 @@ Treseta directly only for what has to differ, and add it below.
 
 ## Bela's work waiting to come over
 
-Every Bela commit up to `bed3e29` (30 Oct 2026) came over or was skipped by 31 Oct 2026. Decisions for Bela work that
+Every Bela commit up to `92df912` (30 Oct 2026) came over or was skipped by 1 Nov 2026. Decisions for Bela work that
 touches Treseta's differences before it comes over go here.
-
-- **`de2001c` (league: Tu smo, DECISIONS #73): Tu smo comes, without the bans (decided 31 Oct 2026).** Potvrda
-  dolaska for league nights comes over: Tu smo, Ipak otkazujemo, Odlazimo and Želimo uskočiti on Početna's Večeras
-  card, Novo kolo's switches as the night's arrivals (merged around the conference switch and dots in
-  `_ui/round/CreateRound.tsx` and `_ui/admin/CreateRoundPhone.tsx`), `POST /api/leagues/[id]/arrival`, `GET`/`POST
-  /api/leagues/[id]/arrivals`, and the `LeagueArrival` table with a Treseta migration of Bela's
-  `20261031180000_league_arrival` (named after the newest migration here). `_lib/dates.ts`' `leagueMoment` and
-  `leagueClock` come over too, since Tu smo uses them. Zabrana prijava stays tournaments only and Not copied: none of
-  the commit's ban code comes, so no `assertMayPlay` or `assertPlayersMayPlay` (Tu smo, Novo kolo, Novi stol, Uredi
-  stolove, Dodaj ekipu, Nova liga and publishing a Skica don't check bans), no `teamPlayBans`, no `PlayBan` helpers in
-  `_lib/bans.ts`, no ban on the league's teams (`_hooks/useLeagueTeams.ts`, `_interfaces/league.ts`), and no ban
-  chip or ban text in Novo kolo, `_ui/admin/LeaguePhone.tsx` or Početna's card (`MyLeagueArrival` has no `ban`).
-  Later Bela changes to Tu smo come over the same way, without their ban parts.
 
 ## Differences from Bela
 
@@ -277,11 +264,11 @@ Turniri v1 (`14f988f..6c84c4b`, 30 Oct 2026) stays out too, with two parts Bela 
 - **Zabrana prijava** (sign-up bans): tournaments only. Not copied: `_lib/bans.ts`, `_lib/service/bans/`,
   `api/admin/bans/**`, `_ui/profiles/BanSection.tsx` and its place on `_ui/profiles/PlayerPage.tsx` and
   `_ui/profiles/TeamPage.tsx`, and the `SignupBan` model. Bela's bans on league nights (`de2001c`, DECISIONS #73) stay
-  out too (decided 31 Oct 2026): Treseta's league Tu smo comes without them.
+  out too (decided 31 Oct 2026): Treseta's league Tu smo came without them (see [Tu smo without the
+  bans](#tu-smo-without-the-bans)), and later Bela changes to Tu smo come the same way.
 - The rest is the tournament day: `_lib/tournamentDay.ts`, `_lib/__tests__/tournamentDay.test.ts`, `_lib/tableState.ts`,
-  `_bootstrap/TournamentAttention.tsx` (and its mount in `layout.tsx`), `api/rounds/[id]/attendance/`, the
-  `Round.attendance*` columns (and the ratings' `attendance` filter in `_lib/service/admin/recalc.ts`), and
-  `_lib/dates.ts`' `leagueMoment` and `leagueClock` until the league's Tu smo (`de2001c`) brings them. Bela's migration
+  `_bootstrap/TournamentAttention.tsx` (and its mount in `layout.tsx`), `api/rounds/[id]/attendance/`, and the
+  `Round.attendance*` columns (and the ratings' `attendance` filter in `_lib/service/admin/recalc.ts`). Bela's migration
   `20261030120000_turniri_v1` gets no Treseta migration.
 
 Shared files these commits change (Početna, the scorepad, the admin's tables, the open table, the round services, the
@@ -316,6 +303,21 @@ it. A new shared file that both kinds of code use (`_ui/home/StartCard.tsx`, `_l
 without its tournament part, or isn't copied if nothing outside tournaments uses it. If a change can't be told apart
 from the tournaments, the sync stops at that commit.
 
+### Tu smo without the bans
+
+Bela's league Tu smo (`de2001c`, DECISIONS #73) came on 1 Nov 2026 without its ban checks (decided 31 Oct 2026): Tu smo,
+Novo kolo, Novi stol, Uredi stolove, Dodaj ekipu, Nova liga, publishing a Skica and a new team don't check bans, the
+league's teams carry no `ban`, and Novo kolo has no Zabrana chip or reason (`OutReason` is `absent`, `inactive`, `off`).
+Bela's head-to-head (`92df912`) reads a tournament's `rankTeams`, which Treseta carries in its own file.
+
+| Files | Left out, or Treseta's |
+|---|---|
+| `_interfaces/leagueArrival.ts`, `_lib/service/league/arrival.ts`, `_lib/service/league/schedule.ts`, `_ui/home/LeagueArrival.tsx`, `_lib/__tests__/leagueArrival.test.ts` | `MyLeagueArrival` has no `ban`, so `myTonight` takes no viewer and Početna's card has no Zabrana; no `assertMayPlay` in Tu smo or the admin's switches; the test has no `playBan*` case. `LeagueArrival.tsx` formats its times with `leagueClock` (`_lib/dates.ts`) where Bela imports the tournaments' `clockOf` from `_ui/tournaments/DayParts.tsx` |
+| `_ui/round/CreateRound.tsx`, `_ui/admin/CreateRoundPhone.tsx`, `_ui/admin/LeaguePhone.tsx`, `_hooks/useLeagueTeams.ts`, `_interfaces/league.ts`, `league/[leagueId]/daily-standings/ui/RoundEditing.tsx` | A banned team's switch, chip, reason and count (`banned`, `playBanChip`, `playBanText`), Uredi stolove's ban note, Novo kolo card's `!t.ban`, and `LeagueTeam`'s / `LeagueTeamDetails`' `ban`. Novo kolo's switch rows keep the conference dot (`TeamLabel`) beside Bela's `TeamChipBadge` |
+| `_lib/service/league/leagues.ts`, `_lib/service/round/publication.ts`, `_lib/service/team/create.ts`, `_lib/service/admin/tables.ts`, `api/rounds/generate-multiple/route.ts` | `assertMayPlay`, `assertPlayersMayPlay` and `teamPlayBans` (Nova liga, Dodaj ekipu, the league's teams, publishing a Skica, a new team in a league, Novi stol and Uredi stolove, Novo kolo) |
+| `_lib/__tests__/adminGuards.test.ts` | Bela's other new player routes are the tournaments'; `leagues/[id]/arrival` and `leagues/[id]/arrivals` came |
+| `_lib/leagueOrder.ts` | Holds the standings part of Bela's `_lib/tournaments.ts` (`TableResult`, `TeamTotals`, `tournamentTotals`, `rankTeams`, not exported) where Bela imports `rankTeams` from it. A Bela change to that part of `_lib/tournaments.ts` is carried here |
+
 ### Adding a difference
 
 1. Make the change on `master`, as small as it can be: a constant in `_lib/game/scoring.ts` or a field in
@@ -347,3 +349,4 @@ The nightly sync adds a row when it brings something over or stops.
 | 30 Oct 2026 | `4b43d06..9a16ca9` (2 of 11) | Stopped at `14f988f` (Turniri v1: Vrijeme partije for league matches changes the game rules, not decided). 2 came over: Obriši ekipu disabled with its reason (without the tournament check), and a closed table's point difference on the Kolo tab (with the conference dots); no migration |
 | 30 Oct 2026 | `9a16ca9..6c84c4b` (9) | All 9 skipped (Turniri v1): decided that league matches don't get Vrijeme partije and the sign-up bans stay with the tournaments, so nothing outside tournaments was left; `DECISIONS.md` not copied; no migration |
 | 31 Oct 2026 | `6c84c4b..bed3e29` (6 of 27) | Stopped at `de2001c` (league Tu smo also makes the sign-up bans keep teams from league nights, not decided). The 6 before it skipped: the cron clock backup (tournaments and Vrijeme partije), `CHANGELOG.md` twice, Kolo drafts and Automatska kola (tournaments, with migration `tournament_auto_publish`), `DECISIONS.md`; no migration |
+| 1 Nov 2026 | `bed3e29..92df912` (2 of 25) | Stopped at `3b85bfa` (Gost i poziv: a guest's Početna is built on the tournaments, Turniri · Liga, PlayerFrame and TournamentsOverview, and the league's season table needs a login; not decided). 2 came over: league Tu smo without the bans (1 migration, `20261031180000_league_arrival`, Bela's SQL), and the standings' head-to-head with `rankTeams` carried into `_lib/leagueOrder.ts` |
