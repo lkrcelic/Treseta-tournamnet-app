@@ -3,7 +3,7 @@
 import {addHandAPI, deleteHandAPI, finishTableMatchAPI, getTablePadAPI, HandTarget, updateHandAPI} from "@/app/_fetchers/admin/daily";
 import {PadHand, PadMatch, TablePad} from "@/app/_interfaces/adminHand";
 import {currentMatchNumber, matchSlots, matchTabSub, roundWins, TABLE_MATCHES} from "@/app/_lib/tableOverview";
-import {blankEntry, canSave, clearPoints, EntryState, fromPadHand, manualFields, setActive, toAdminHand, typeDigit} from "@/app/_lib/ui/adminEntry";
+import {blankEntry, canSave, clearPoints, EntryState, fromPadHand, manualFields, roundBackBy, setActive, toAdminHand, typeDigit} from "@/app/_lib/ui/adminEntry";
 import {dostaCallers, MATCH_THRESHOLD, PlayedHand, Side} from "@/app/_lib/game/scoring";
 import {navigateWithTransition, useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {leaveRoundPages, lineupPassed} from "@/app/_lib/ui/lineupPass";
@@ -54,6 +54,16 @@ const playedHands = (m: PadMatch): PlayedHand[] =>
 // How many entry steps were opened from the board in this tab, so saving goes back to the board in the browser's
 // history too (a reload in the middle doesn't know, and replaces the address instead)
 let stepsFromBoard = 0;
+
+// the path this document was loaded at (a reload or a link from outside), null when unknown
+function documentPath(): string | null {
+  try {
+    const entry = performance.getEntriesByType("navigation")[0];
+    return entry ? new URL(entry.name).pathname : null;
+  } catch {
+    return null;
+  }
+}
 
 // One of the table's two matches: played (finished), being played (ongoing with id), or the next one (ongoing
 // without id; its first hand starts it). null: a match that can't be played yet.
@@ -142,8 +152,8 @@ export default function TablePhone() {
   }
   const base = `/league/${leagueId}/daily-standings/table/${roundId}`;
   const roundHref = `/league/${leagueId}/daily-standings${pad.date ? `?date=${pad.date}${pad.roundNumber ? `&round=${pad.roundNumber}` : ""}` : ""}`;
-  // back to the round the table was opened from (or, opened directly, to that night's round)
-  const toRound = () => (window.history.length > 1 ? router.back() : router.push(roundHref, "back"));
+  // back to the round the table was opened from (or, opened directly or reloaded, to that night's round)
+  const toRound = () => (roundBackBy(documentPath(), base, window.history.length) === "back" ? router.back() : router.push(roundHref, "back"));
   if (kraj) return <RoundEnd pad={pad} onBack={() => router.replace(base, "back")} />;
   if (pad.bye) {
     return (

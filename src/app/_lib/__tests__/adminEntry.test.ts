@@ -81,3 +81,15 @@ test("a saved hand opens with its points, a custom one as custom", () => {
   assert.equal(custom.mode, "man");
   assert.deepEqual(custom.points, [14, 3]);
 });
+
+// Natrag na kolo (Bela's tableScope test, with the league's table path)
+test("the scorepad goes Back to its round, or by its address after a reload at the table", async () => {
+  const {roundBackBy} = await import("../ui/adminEntry");
+  const table = "/league/2/daily-standings/table/42";
+  assert.equal(roundBackBy("/league/2/daily-standings", table, 3), "back");
+  assert.equal(roundBackBy("/", table, 5), "back");
+  assert.equal(roundBackBy(table, table, 6), "address");
+  assert.equal(roundBackBy(null, table, 1), "address");
+  assert.equal(roundBackBy("/league/2/daily-standings", table, 1), "address");
+  assert.equal(roundBackBy("/league/2/daily-standings/table/41", table, 4), "back");
+});

@@ -63,3 +63,10 @@ export function manualFields(a: string, b: string): {bad: boolean; points: [numb
   const points: [number, number] | null = ok(a) && ok(b) && Number(a) + Number(b) > 0 ? [Number(a), Number(b)] : null;
   return {bad, points};
 }
+
+// How the admin's scorepad goes back to its round (Bela's roundBackBy in _lib/ui/tableScope.ts, not copied): Back,
+// when the round's page is the entry before it; by the round's address when the tab has no history, or when the
+// document was loaded at the table itself (a reload, a link from outside), as what is behind it then isn't known.
+export function roundBackBy(loadedAt: string | null, tablePath: string, historyLength: number): "back" | "address" {
+  return historyLength > 1 && loadedAt !== tablePath ? "back" : "address";
+}
