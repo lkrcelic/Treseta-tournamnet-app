@@ -3,7 +3,7 @@ import {prisma} from "@/app/_lib/prisma";
 import {AdminHand, HandKind, PadHand, PadMatch, TablePad} from "@/app/_interfaces/adminHand";
 import {ResultCreateRequest} from "@/app/_interfaces/result";
 import {isByeTeam, teamLabel} from "@/app/_lib/bye";
-import {MATCH_THRESHOLD, matchState} from "@/app/_lib/game/scoring";
+import {MATCH_THRESHOLD, MatchState, matchState, Side} from "@/app/_lib/game/scoring";
 import {InvalidResultError, normalizeResult} from "@/app/_lib/validation/validateResult";
 import {transformResult} from "@/app/_lib/helpers/databaseHelpers";
 import {createResult} from "@/app/_lib/service/ongoingResult/create";
@@ -112,15 +112,27 @@ async function assertEditableTable(roundId: number) {
   if (round.status !== "PUBLISHED") throw new InvalidResultError(ROUND_NOT_PUBLISHED);
 }
 
+// A change of a finished match's hands may move its win to the other team, but never leave a match that had a winner
+// without one (the round would count it for neither team and turn a 2:0 into a draw). before: the match's
+// winner_side; after: the hands replayed.
+export function lostWinnerError(before: Side | null, after: Pick<MatchState, "score1" | "score2" | "target" | "winner">): string | null {
+  if (before == null || after.winner != null) return null;
+  const score = `${after.score1}:${after.score2}`;
+  const why = after.score1 === after.score2 ? score : `${score}, nitko nema ${after.target}`;
+  return `Meč bi ostao bez pobjednika (${why}). Ispravi bodove tako da jedna ekipa i dalje pobjeđuje.`;
+}
+
 // After a finished match's hands changed: its score and winner, the round's wins, and for a finished round the
-// standings (and the ratings when the round's outcome changed)
+// standings (and the ratings when the round's outcome changed). Refused when the match would be left without a winner.
 async function recountFinishedMatch(tx: Tx, matchId: number) {
-  const {score_threshold, results} = await tx.match.findUniqueOrThrow({
+  const {score_threshold, winner_side, results} = await tx.match.findUniqueOrThrow({
     where: {id: matchId},
-    select: {score_threshold: true, results: {orderBy: {result_id: "asc"}}},
+    select: {score_threshold: true, winner_side: true, results: {orderBy: {result_id: "asc"}}},
   });
   const state = matchState(results, score_threshold ?? MATCH_THRESHOLD);
   assertCallStands(state);
+  const error = lostWinnerError(winner_side as Side | null, state);
+  if (error) throw new InvalidResultError(error);
   const match = await tx.match.update({
     where: {id: matchId},
     data: {player_pair1_score: state.score1, player_pair2_score: state.score2, winner_side: state.winner},
@@ -141,7 +153,7 @@ async function recountFinishedMatch(tx: Tx, matchId: number) {
       matches: {select: {winner_side: true}},
     },
   });
-  // a match without a winner (nobody over the threshold after an edit) counts for neither team
+  // a match without a winner (only one stored so before this guard) counts for neither team
   const team1Wins = round.matches.filter((m) => m.winner_side === 1).length;
   const team2Wins = round.matches.filter((m) => m.winner_side === 2).length;
   await tx.round.update({where: {id: round.id}, data: {team1_wins: team1Wins, team2_wins: team2Wins}});
