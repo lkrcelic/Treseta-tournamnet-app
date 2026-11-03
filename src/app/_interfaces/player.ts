@@ -113,6 +113,8 @@ export type AdminPlayerRow = {
   rating?: number;
   // the avatar (an admin sees every photo); null = the initials
   photo_url?: string | null;
+  // when the account was made (ISO), for "Najnoviji"
+  created_at?: string;
 };
 
 export type PlayerCreateInterface = z.infer<typeof PlayerCreate>;

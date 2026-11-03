@@ -105,6 +105,8 @@ type DirectoryPlayer = {
   rating?: number;
   // the avatar (an admin sees every photo)
   photo_url?: string | null;
+  // when the account was made (ISO)
+  created_at?: string;
 };
 
 // The Igrači directory rows (GET /api/admin/players): by name in Croatian order (the database's collation puts "Č"

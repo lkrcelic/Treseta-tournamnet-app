@@ -15,8 +15,12 @@ import {
   DirectoryTeam,
   filterPlayers,
   filterTeams,
+  joinedLabel,
   nextAfterDelete,
+  PLAYER_SORTS,
   playerDirectorySub,
+  PlayerSort,
+  sortPlayers,
   teamDirectorySub,
 } from "@/app/_lib/ui/directory";
 import {teamInitial} from "@/app/_lib/ui/profiles";
@@ -40,6 +44,7 @@ import {
   rowFocus,
   scrollIntoMiddle,
   SearchInput,
+  Segmented,
   Tag,
 } from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
@@ -263,7 +268,8 @@ const LOGIN_COPIED = "Poveznica za prijavu je kopirana.";
 function PlayerDirectory({selectedId, afterDelete}: {selectedId: number | null; afterDelete: React.MutableRefObject<AfterDelete>}) {
   const {list, error, reload} = useAdminPlayers();
   const [query, setQuery] = useRestoredState("dir-players-query", "");
-  const visible = useMemo(() => (list ? filterPlayers(list, query) : null), [list, query]);
+  const [sort, setSort] = useRestoredState<PlayerSort>("dir-players-sort", "name");
+  const visible = useMemo(() => (list ? sortPlayers(filterPlayers(list, query), sort) : null), [list, query, sort]);
   // a player deleted in "Uredi osobne podatke": the next one this list shows opens in its place, so the page and the
   // selected row stay together; a search that shows no other player is cleared
   useEffect(() => {
@@ -305,7 +311,15 @@ function PlayerDirectory({selectedId, afterDelete}: {selectedId: number | null; 
       noun={NOUN.igrač}
       empty={query.trim() ? "Nijedan igrač ne odgovara pretrazi." : "Još nema igrača."}
       selectedId={selectedId}
-      row={(p) => ({id: p.id, href: `/players/${p.id}`, name: p.name, src: p.photo_url, sub: playerDirectorySub(p), inactive: !p.active})}
+      row={(p) => ({
+        id: p.id,
+        href: `/players/${p.id}`,
+        name: p.name,
+        src: p.photo_url,
+        sub: [playerDirectorySub(p), sort === "newest" ? joinedLabel(p) : null].filter(Boolean).join(" · "),
+        inactive: !p.active,
+      })}
+      controls={<Segmented<PlayerSort> items={PLAYER_SORTS} value={sort} onChange={setSort} label="Poredak igrača" variant="track" asTabs={false} size={34} />}
       notice={notice}
       footer={
         <Box component="button" type="button" onClick={invite} sx={footerButton}>
@@ -365,6 +379,7 @@ function DirectoryCard<T>({
   row,
   footer,
   notice,
+  controls,
 }: {
   memory: string;
   title: string;
@@ -381,6 +396,8 @@ function DirectoryCard<T>({
   row: (item: T) => RowData;
   footer: React.ReactNode;
   notice?: Notice | null;
+  // under the search (the Igrači order)
+  controls?: React.ReactNode;
 }) {
   const titleId = useId();
   const [asked, setPages] = useRestoredState(`${memory}-pages`, 1);
@@ -457,6 +474,7 @@ function DirectoryCard<T>({
           spellCheck={false}
           sx={{"& input::placeholder": {color: color.muted}}}
         />
+        {controls}
       </Box>
       <Box sx={{flex: 1, minHeight: 0, display: "flex", flexDirection: "column"}}>
         {error && !data ? (

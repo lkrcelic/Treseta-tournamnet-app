@@ -10,6 +10,7 @@ import {
   directoryPages,
   filterPlayers,
   filterTeams,
+  joinedLabel,
   leagueAddOptions,
   leagueOptionSub,
   neighbourId,
@@ -18,6 +19,7 @@ import {
   playerDirectorySub,
   playerTeamFromDirectory,
   removeAdminPlayer,
+  sortPlayers,
   removeMemberEverywhere,
   removePlayerTeam,
   removeTeamMember,
@@ -248,4 +250,13 @@ test("with a search on, the next player the search shows opens; a search with no
   assert.deepEqual(nextAfterDelete(all, [{id: 1}], 3), {next: 4, clearSearch: true});
   assert.deepEqual(nextAfterDelete(all, [], 5), {next: 4, clearSearch: true});
   assert.deepEqual(nextAfterDelete([{id: 7}], [{id: 7}], 7), {next: null, clearSearch: true});
+});
+
+test("Najnoviji puts the newest accounts first; A–Ž keeps the server's name order", () => {
+  const row = (id: number, created_at?: string): AdminPlayerRow => ({id, first_name: "", last_name: "", name: `P${id}`, username: `p${id}`, teams: [], active: true, created_at});
+  const players = [row(1, "2026-10-01T10:00:00.000Z"), row(2, "2026-11-03T18:00:00.000Z"), row(3, "2026-11-03T18:00:00.000Z"), row(4)];
+  assert.deepEqual(sortPlayers(players, "newest").map((p) => p.id), [3, 2, 1, 4]);
+  assert.deepEqual(sortPlayers(players, "name").map((p) => p.id), [1, 2, 3, 4]);
+  assert.equal(joinedLabel(row(5)), null);
+  assert.match(joinedLabel(row(6, "2026-11-03T12:00:00.000Z")) ?? "", /^od 03\.11\.2026$/);
 });

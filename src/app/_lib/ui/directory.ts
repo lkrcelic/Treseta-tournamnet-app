@@ -51,6 +51,29 @@ export function filterPlayers(players: AdminPlayerRow[], query: string): AdminPl
   return players.filter((p) => matchesQuery(`${p.name} ${p.username}`, query));
 }
 
+// The Igrači directory's order: by name (as the server sends it) or the newest accounts first ("Najnoviji")
+export type PlayerSort = "name" | "newest";
+
+export const PLAYER_SORTS: {key: PlayerSort; label: string}[] = [
+  {key: "name", label: "A–Ž"},
+  {key: "newest", label: "Najnoviji"},
+];
+
+export function sortPlayers(players: AdminPlayerRow[], sort: PlayerSort): AdminPlayerRow[] {
+  if (sort === "name") return players;
+  return [...players].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "") || b.id - a.id);
+}
+
+// "od 03.11.2026" on a row while the newest are first, so the admin sees when the account was made
+// (the day where the admin is: a sign-up just after midnight is that day's, not the day before in UTC)
+export function joinedLabel(p: Pick<AdminPlayerRow, "created_at">): string | null {
+  if (!p.created_at) return null;
+  const d = new Date(p.created_at);
+  if (Number.isNaN(d.getTime())) return null;
+  const two = (n: number) => String(n).padStart(2, "0");
+  return `od ${two(d.getDate())}.${two(d.getMonth() + 1)}.${d.getFullYear()}`;
+}
+
 // A directory row's second line: "3 igrača · 2 lige" for a team; "@iperic · Dalmatinci" for a player (all their teams;
 // only the username for a player in none)
 export function teamDirectorySub(t: DirectoryTeam): string {

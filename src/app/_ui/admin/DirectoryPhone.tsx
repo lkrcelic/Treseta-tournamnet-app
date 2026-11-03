@@ -3,12 +3,12 @@
 import useAdminPlayers from "@/app/_hooks/useAdminPlayers";
 import {useRestoredState, useScrollMemory} from "@/app/_hooks/useBackRestore";
 import useTeams from "@/app/_hooks/useTeams";
-import {DIRECTORY_PAGE, filterPlayers, filterTeams} from "@/app/_lib/ui/directory";
+import {DIRECTORY_PAGE, filterPlayers, filterTeams, joinedLabel, PLAYER_SORTS, PlayerSort, sortPlayers} from "@/app/_lib/ui/directory";
 import {teamInitial} from "@/app/_lib/ui/profiles";
 import {count, NOUN, NounForms} from "@/app/_lib/ui/text";
 import {TransitionLink, useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
-import {buttonBase, ellipsis, EmptyState, ErrorState, IconCircleButton, InitialsAvatar, LoadingRows, LoadMoreButton, Screen, SearchInput, SuccessNote} from "@/app/_ui/sp";
+import {buttonBase, ellipsis, EmptyState, ErrorState, IconCircleButton, InitialsAvatar, LoadingRows, LoadMoreButton, Screen, SearchInput, Segmented, SuccessNote} from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
@@ -35,6 +35,7 @@ function DirectoryPhone({
   empty,
   action,
   notice,
+  controls,
 }: {
   tab: AdminTab;
   eyebrow: string;
@@ -50,6 +51,8 @@ function DirectoryPhone({
   empty: (searching: boolean) => string;
   action: React.ReactNode;
   notice?: React.ReactNode;
+  // under the search (the Igrači order); a change starts again from the first page
+  controls?: (resetPages: () => void) => React.ReactNode;
 }) {
   const [query, setQuery] = useRestoredState(`${memory}-query`, "");
   const [pages, setPages] = useRestoredState(`${memory}-pages`, 1);
@@ -84,6 +87,7 @@ function DirectoryPhone({
           setPages(1);
         }}
       />
+      {controls?.(() => setPages(1))}
       {notice}
       <Box ref={shown ? scroller.ref : undefined} sx={{flex: 1, minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", mx: "-20px", px: "20px", pb: "4px"}}>
         {error && !all ? (
@@ -179,6 +183,7 @@ const LOGIN_COPIED = "Poveznica za prijavu je kopirana.";
 // Igrači (34): "Dalmatinci · rejting 1712", the Admin and Neaktivan tags
 export function PlayersDirectoryPhone() {
   const {list, error, reload} = useAdminPlayers();
+  const [sort, setSort] = useRestoredState<PlayerSort>("phone-players-sort", "name");
   const [notice, setNotice] = useState<string | null>(null);
   useEffect(() => {
     if (!notice) return;
@@ -198,19 +203,19 @@ export function PlayersDirectoryPhone() {
     () =>
       (query: string): Row[] | null =>
         list
-          ? filterPlayers(list, query).map((p) => {
+          ? sortPlayers(filterPlayers(list, query), sort).map((p) => {
               const teams = p.teams.map((t) => t.team_name).join(", ");
               return {
                 id: p.id,
                 href: `/players/${p.id}`,
                 name: p.name,
                 src: p.photo_url,
-                sub: [teams || `@${p.username}`, p.rating != null ? `rejting ${p.rating}` : null].filter(Boolean).join(" · "),
+                sub: [teams || `@${p.username}`, sort === "newest" ? joinedLabel(p) : p.rating != null ? `rejting ${p.rating}` : null].filter(Boolean).join(" · "),
                 tag: !p.active ? ("inactive" as const) : p.admin ? ("admin" as const) : undefined,
               };
             })
           : null,
-    [list]
+    [list, sort]
   );
   return (
     <DirectoryPhone
@@ -230,6 +235,20 @@ export function PlayersDirectoryPhone() {
           <LinkRoundedIcon />
         </IconCircleButton>
       }
+      controls={(resetPages) => (
+        <Segmented<PlayerSort>
+          items={PLAYER_SORTS}
+          value={sort}
+          onChange={(s) => {
+            setSort(s);
+            resetPages();
+          }}
+          label="Poredak igrača"
+          variant="track"
+          asTabs={false}
+          size={36}
+        />
+      )}
       notice={notice && <SuccessNote>{notice}</SuccessNote>}
     />
   );

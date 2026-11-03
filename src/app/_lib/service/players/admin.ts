@@ -32,13 +32,15 @@ export async function listAdminPlayers(viewer: Viewer): Promise<AdminPlayerRow[]
       active: true,
       player_role: true,
       rating: true,
+      created_at: true,
       ...PLAYER_PHOTO,
       teamPlayers: {select: {team: {select: {team_id: true, team_name: true}}}},
     },
   });
   return adminPlayerRows(
-    players.map(({teamPlayers, player_role, rating, photo_updated_at, photo_visibility, ...p}) => ({
+    players.map(({teamPlayers, player_role, rating, created_at, photo_updated_at, photo_visibility, ...p}) => ({
       ...p,
+      created_at: created_at.toISOString(),
       admin: isAdminRole({player_role}),
       rating,
       teams: teamPlayers.map((tp) => tp.team),
