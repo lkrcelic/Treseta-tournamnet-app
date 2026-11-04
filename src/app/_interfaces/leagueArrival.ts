@@ -23,6 +23,8 @@ export type LeagueArrivalTimes = {opens: string; start: string; closes: string};
 export type MyLeagueArrival = LeagueArrivalTimes & {
   night: string;
   arrival: LeagueArrivalView | null;
+  // the night's last round (Kola po večeri) is published: a team that isn't here can't come any more (no Tu smo)
+  last_round: boolean;
 };
 
 // The admin's Novo kolo: tonight's night, its window (null: no Potvrda dolaska tonight, so Novo kolo pairs the active

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {arrivalEffect, isHere, leagueArrivalPhase, leagueArrivalWindow} from "@/app/_lib/leagueArrival";
+import {arrivalEffect, isHere, lastRoundOut, leagueArrivalPhase, leagueArrivalWindow} from "@/app/_lib/leagueArrival";
 
 // Potvrda dolaska in the league: the window and what each button does
 
@@ -54,4 +54,13 @@ test("Tu smo works once the window is open; leaving is Ipak otkazujemo before th
   assert.equal(arrivalEffect("started", "leave", true), "leave");
   assert.equal(arrivalEffect("started", "leave", false), "none");
   assert.equal(arrivalEffect("over", "leave", true), "over");
+});
+
+test("once the night's last round is published Tu smo can't bring a team in; a team already here can still leave", () => {
+  assert.equal(lastRoundOut(2, 3), false);
+  assert.equal(lastRoundOut(3, 3), true);
+  assert.equal(arrivalEffect("started", "confirm", false, true), "last_round");
+  assert.equal(arrivalEffect("started", "confirm", false, false), "arrive");
+  assert.equal(arrivalEffect("started", "confirm", true, true), "none");
+  assert.equal(arrivalEffect("started", "leave", true, true), "leave");
 });

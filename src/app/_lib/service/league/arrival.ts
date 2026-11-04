@@ -2,7 +2,7 @@ import {Prisma} from "@prisma/client";
 import {prisma} from "@/app/_lib/prisma";
 import {leagueClock, leagueNightString} from "@/app/_lib/dates";
 import {effectiveTime} from "@/app/_lib/nights";
-import {arrivalEffect, isHere, LeagueArrivalAction, leagueArrivalPhase, leagueArrivalWindow, LeagueArrivalWindow} from "@/app/_lib/leagueArrival";
+import {arrivalEffect, isHere, LeagueArrivalAction, lastRoundOut, leagueArrivalPhase, leagueArrivalWindow, LeagueArrivalWindow} from "@/app/_lib/leagueArrival";
 import {LeagueArrivals, LeagueArrivalTimes, LeagueArrivalView, MyLeagueArrival} from "@/app/_interfaces/leagueArrival";
 import {displayName} from "@/app/_lib/players/names";
 import {Viewer} from "@/app/_lib/players/privacy";
@@ -34,6 +34,22 @@ export async function tonightOf(leagueId: number, now = new Date(), db: Db = pri
   });
   if (!row) return null;
   return {night, window: leagueArrivalWindow(night, effectiveTime(row.start_time, row.league.start_time), effectiveTime(row.gathering_time, row.league.gathering_time))};
+}
+
+// The leagues whose last round of the night (Kola po večeri) is published: Tu smo can't bring a team in any more
+async function lastRoundLeagues(leagueIds: number[], night: string, db: Db): Promise<Set<number>> {
+  const ids = Array.from(new Set(leagueIds));
+  if (ids.length === 0) return new Set();
+  const [leagues, rounds] = await Promise.all([
+    db.league.findMany({where: {league_id: {in: ids}}, select: {league_id: true, rounds_per_night: true}}),
+    db.leagueRound.findMany({
+      where: {league_id: {in: ids}, round: {round_date: nightValue(night), status: "PUBLISHED"}},
+      select: {league_id: true, round: {select: {round_number: true}}},
+    }),
+  ]);
+  const numbers = new Map<number, Set<number | null>>();
+  for (const r of rounds) numbers.set(r.league_id, (numbers.get(r.league_id) ?? new Set()).add(r.round.round_number));
+  return new Set(leagues.filter((l) => lastRoundOut(numbers.get(l.league_id)?.size ?? 0, l.rounds_per_night)).map((l) => l.league_id));
 }
 
 const arrivalSelect = {
@@ -71,16 +87,19 @@ export async function myTonight(
     .map((e) => ({...e, window: leagueArrivalWindow(night, e.start, e.gathering)}))
     .filter((e): e is typeof e & {window: LeagueArrivalWindow} => e.window != null && leagueArrivalPhase(e.window, now) !== "over");
   if (open.length === 0) return new Map();
-  const rows = await db.leagueArrival.findMany({
-    where: {night: nightValue(night), OR: open.map((e) => ({league_id: e.league_id, team_id: e.team_id}))},
-    select: arrivalSelect,
-  });
+  const [rows, last] = await Promise.all([
+    db.leagueArrival.findMany({
+      where: {night: nightValue(night), OR: open.map((e) => ({league_id: e.league_id, team_id: e.team_id}))},
+      select: arrivalSelect,
+    }),
+    lastRoundLeagues(open.map((e) => e.league_id), night, db),
+  ]);
   const key = (leagueId: number, teamId: number) => `${leagueId}|${teamId}`;
   const arrivals = new Map(rows.map((r) => [key(r.league_id, r.team_id), r]));
   return new Map(
     open.map((e) => {
       const row = arrivals.get(key(e.league_id, e.team_id));
-      return [key(e.league_id, e.team_id), {night, ...timesOf(e.window), arrival: row ? view(row) : null}];
+      return [key(e.league_id, e.team_id), {night, ...timesOf(e.window), arrival: row ? view(row) : null, last_round: last.has(e.league_id)}];
     })
   );
 }
@@ -99,9 +118,11 @@ export async function teamArrivalAction(leagueId: number, teamId: number, viewer
     const night = nightValue(tonight.night);
     const key = {league_id_night_team_id: {league_id: leagueId, night, team_id: teamId}};
     const row = await tx.leagueArrival.findUnique({where: key, select: {left_at: true}});
-    const effect = arrivalEffect(leagueArrivalPhase(tonight.window, now), action, isHere(row));
+    const lastRound = action === "confirm" && (await lastRoundLeagues([leagueId], tonight.night, tx)).has(leagueId);
+    const effect = arrivalEffect(leagueArrivalPhase(tonight.window, now), action, isHere(row), lastRound);
     if (effect === "not_open") throw new InvalidResultError(`Potvrda dolaska otvara se u ${leagueClock(tonight.window.opens)}.`);
     if (effect === "over") throw new InvalidResultError("Večer je završila.");
+    if (effect === "last_round") throw new InvalidResultError("Zadnje kolo večeri je već počelo: više se ne može uskočiti.");
     if (effect === "arrive") {
       const data = {arrived_at: now, arrived_by: viewer.id, by_admin: false, left_at: null, left_by_admin: false};
       await tx.leagueArrival.upsert({where: key, create: {league_id: leagueId, night, team_id: teamId, ...data}, update: data});
@@ -116,8 +137,11 @@ export async function teamArrivalAction(leagueId: number, teamId: number, viewer
 
 // The card of one team (after its button), read inside the button's transaction
 async function myTonightFor(tx: Tx, leagueId: number, teamId: number, night: string, window: LeagueArrivalWindow): Promise<MyLeagueArrival> {
-  const row = await tx.leagueArrival.findUnique({where: {league_id_night_team_id: {league_id: leagueId, night: nightValue(night), team_id: teamId}}, select: arrivalSelect});
-  return {night, ...timesOf(window), arrival: row ? view(row) : null};
+  const [row, last] = await Promise.all([
+    tx.leagueArrival.findUnique({where: {league_id_night_team_id: {league_id: leagueId, night: nightValue(night), team_id: teamId}}, select: arrivalSelect}),
+    lastRoundLeagues([leagueId], night, tx),
+  ]);
+  return {night, ...timesOf(window), arrival: row ? view(row) : null, last_round: last.has(leagueId)};
 }
 
 // The admin's Novo kolo: tonight's window (null: the league doesn't play tonight, or the night has no start time) and

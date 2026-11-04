@@ -43,6 +43,9 @@ export function leagueArrivalPhase(w: {opens: Moment; start: Moment; closes: Mom
   return "over";
 }
 
+// The night's published rounds reach its Kola po večeri: its last round is out
+export const lastRoundOut = (publishedRounds: number, roundsPerNight: number): boolean => publishedRounds >= roundsPerNight;
+
 // A team is here: it came (a row) and hasn't left since
 export const isHere = (a: {left_at: Moment | null} | null | undefined): boolean => a != null && a.left_at == null;
 
@@ -50,13 +53,14 @@ export const isHere = (a: {left_at: Moment | null} | null | undefined): boolean 
 // otkazujemo before the start (withdraw: as if it never confirmed) and Odlazimo after it (leave: it is out of the next
 // Novo kolo). not_open and over: the button doesn't work now.
 export type LeagueArrivalAction = "confirm" | "leave";
-export type LeagueArrivalEffect = "arrive" | "withdraw" | "leave" | "none" | "not_open" | "over";
+export type LeagueArrivalEffect = "arrive" | "withdraw" | "leave" | "none" | "not_open" | "over" | "last_round";
 
-export function arrivalEffect(phase: LeagueArrivalPhase, action: LeagueArrivalAction, here: boolean): LeagueArrivalEffect {
+export function arrivalEffect(phase: LeagueArrivalPhase, action: LeagueArrivalAction, here: boolean, lastRound = false): LeagueArrivalEffect {
   if (phase === "over") return "over";
   if (action === "confirm") {
     if (phase === "before") return "not_open";
-    return here ? "none" : "arrive";
+    if (here) return "none";
+    return lastRound ? "last_round" : "arrive";
   }
   if (!here) return "none";
   return phase === "started" ? "leave" : "withdraw";

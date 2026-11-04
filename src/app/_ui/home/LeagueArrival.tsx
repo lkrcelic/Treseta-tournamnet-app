@@ -153,11 +153,13 @@ export function LeagueArrival({leagueId, teamId, initial, onChanged}: {leagueId:
       <Box component="section" aria-label="Potvrda dolaska" sx={box}>
         {head(<PersonOffRoundedIcon aria-hidden />, left ? "Otišli ste" : "Niste potvrdili dolazak")}
         {line(
-          left && card.arrival?.left_by_admin
-            ? `Organizator vas je u ${clockOf(left)} maknuo iz idućeg kola. Ako ste tu, uskočite.`
-            : "Ako ste tu, uskočite: igrate od idućeg kola."
+          card.last_round
+            ? "Zadnje kolo večeri je već počelo, pa se više ne može uskočiti."
+            : left && card.arrival?.left_by_admin
+              ? `Organizator vas je u ${clockOf(left)} maknuo iz idućeg kola. Ako ste tu, uskočite.`
+              : "Ako ste tu, uskočite: igrate od idućeg kola."
         )}
-        {tuSmo("Tu smo · Želimo uskočiti")}
+        {!card.last_round && tuSmo("Tu smo · Želimo uskočiti")}
         {errorLine}
       </Box>
     );
