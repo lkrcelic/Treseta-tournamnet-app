@@ -8,27 +8,13 @@ import {PHOTO_VISIBILITIES} from "@/app/_interfaces/photo";
 const DATE_FORMAT = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/;
 const NO_CHANGES = "Nema promjena za spremanje.";
 
-export const PlayerCreate = z.object({
-  username: z.string().min(3),
-  password: z.string().min(5),
-  email: z.string().email(),
-  first_name: z.string().min(3),
-  last_name: z.string().min(3),
-  birth_date: z.string().regex(DATE_FORMAT, "Neispravan datum."),
-  // "Pušiš li?", right after the birth date; a sign-up page from before the question leaves it out
-  smoker: z.boolean().optional(),
-  created_at: z.date().optional(),
-  last_updated_at: z.date().optional(),
-});
-
 export const BIRTH_DATE_ERROR = "Neispravan datum rođenja.";
 
-// The fields a player (or an admin) changes after sign-up, shared by the profile and "Uredi osobne podatke":
-// a birth date as YYYY-MM-DD that exists (no 31 February) and isn't in the future
-const BirthDateField = z
-  .string()
-  .regex(DATE_FORMAT, "Neispravan datum.")
-  .refine((d) => isIsoDate(d) && d >= "1900-01-01" && d <= new Date().toISOString().slice(0, 10), BIRTH_DATE_ERROR);
+// A birth date as YYYY-MM-DD that exists (no 31 February), from 1900 and not in the future
+export const isBirthDate = (d: string) => isIsoDate(d) && d >= "1900-01-01" && d <= new Date().toISOString().slice(0, 10);
+
+// The fields a player gives at sign-up and changes later, shared by Registracija, the profile and "Uredi osobne podatke"
+const BirthDateField = z.string().regex(DATE_FORMAT, "Neispravan datum.").refine(isBirthDate, BIRTH_DATE_ERROR);
 // a new username, stored lowercase (rules in validation/username.ts)
 const UsernameField = z
   .string()
@@ -37,6 +23,20 @@ const UsernameField = z
     const message = usernameError(u);
     if (message) ctx.addIssue({code: z.ZodIssueCode.custom, message});
   });
+
+export const PlayerCreate = z.object({
+  username: UsernameField,
+  password: z.string().min(5),
+  email: z.string().email(),
+  first_name: z.string().min(3),
+  last_name: z.string().min(3),
+  birth_date: BirthDateField,
+  // "Pušiš li?", right after the birth date; a sign-up page from before the question leaves it out
+  smoker: z.boolean().optional(),
+  created_at: z.date().optional(),
+  last_updated_at: z.date().optional(),
+});
+
 // the optional phone number ("" or null removes it), stored as "+385 91 234 5678"
 const PhoneField = z
   .string()

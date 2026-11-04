@@ -1,5 +1,7 @@
 // Client-side checks for the signup form, with Croatian messages. The API validates again with the same limits
 // (PlayerCreate in _interfaces/player.ts).
+import {BIRTH_DATE_ERROR, isBirthDate} from "@/app/_interfaces/player";
+import {usernameError} from "@/app/_lib/validation/username";
 
 export type SignupValues = {
   username: string;
@@ -18,8 +20,7 @@ export function validateSignupField(field: keyof SignupValues, v: SignupValues):
   switch (field) {
     case "username":
       if (!value) return "Obavezno polje.";
-      if (value.length < 3) return "Najmanje 3 znaka.";
-      return undefined;
+      return usernameError(value);
     case "password":
       if (!v.password) return "Obavezno polje.";
       if (v.password.length < 5) return "Najmanje 5 znakova.";
@@ -40,6 +41,7 @@ export function validateSignupField(field: keyof SignupValues, v: SignupValues):
     case "birth_date":
       if (!value) return "Obavezno polje.";
       if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return "Neispravan datum.";
+      if (!isBirthDate(value)) return BIRTH_DATE_ERROR;
       return undefined;
   }
 }

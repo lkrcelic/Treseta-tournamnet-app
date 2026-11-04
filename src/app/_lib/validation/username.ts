@@ -1,6 +1,6 @@
 import {count, NOUN} from "@/app/_lib/ui/text";
 
-// The rules for a new username, shared by the Profile edit field and PATCH /api/players/[id].
+// The rules for a new username, shared by Registracija (POST /api/signup), the Profile edit field and PATCH /api/players/[id].
 // Older usernames (e.g. made from a Google email) may break them; they only apply when a player picks a new one.
 
 export const USERNAME_MIN = 3;
