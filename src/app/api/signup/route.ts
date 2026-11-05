@@ -6,6 +6,8 @@ import argon2 from "argon2";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {validateUniqueConstraintsPlayer, ValidationError} from "@/app/_lib/validation/playerUniqueConstraints";
 import {zodMessage} from "@/app/_lib/validation/zodMessage";
+import {countSignup} from "@/app/_lib/rateLimiting/accountLimiting";
+import {requestIp} from "@/app/_lib/rateLimiting/loginLimiting";
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,6 +21,11 @@ export async function POST(request: NextRequest) {
     // TODO: make username case insensitive?
     const playerVal = PlayerCreateValidation.parse(req_data);
     await validateUniqueConstraintsPlayer(playerVal);
+
+    // Only a sign-up that would go through counts, so a player fixing a taken username isn't held back
+    if (await countSignup(prisma, requestIp(request))) {
+      return NextResponse.json({error: "Previše registracija s ove mreže. Pokušaj ponovno za sat vremena."}, {status: STATUS.TooManyRequests});
+    }
 
     playerVal.password_hash = await argon2.hash(playerVal.password_hash);
 

@@ -18,8 +18,11 @@ const failureStore = new Map<string, Entry>();
 // Per address and account, so someone else can't lock a player out by failing logins with their username.
 // The address comes from the proxy's X-Forwarded-For when the platform doesn't give one.
 export function loginLimitKey(request: NextRequest, account: string): string {
-  const ip = request.ip || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  return `${ip}|${account}`;
+  return `${requestIp(request)}|${account}`;
+}
+
+export function requestIp(request: NextRequest): string {
+  return request.ip || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 }
 
 export function isLoginLocked(key: string, now = Date.now()): boolean {

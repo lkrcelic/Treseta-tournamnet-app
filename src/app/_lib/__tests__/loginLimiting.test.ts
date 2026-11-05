@@ -7,7 +7,7 @@ import {
   recordFailedLogin,
   WINDOW_DURATION,
 } from "../rateLimiting/loginLimiting";
-import {ACCOUNT_MAX_FAILURES, countAccountLogin} from "../rateLimiting/accountLimiting";
+import {ACCOUNT_MAX_FAILURES, countAccountLogin, countSignup, SIGNUP_MAX} from "../rateLimiting/accountLimiting";
 import {verifyPassword} from "../service/auth/verifyPassword";
 import argon2 from "argon2";
 
@@ -62,6 +62,27 @@ test("old rows are dropped when a new window starts, not on every attempt", asyn
   await countAccountLogin(db, "login:nobody");
   await countAccountLogin(db, "login:nobody");
   assert.deepEqual(calls, ["upsert", "delete", "upsert"]);
+});
+
+test("an address may make SIGNUP_MAX accounts, then the next is refused", async () => {
+  const {db} = fakeDb();
+  for (let i = 0; i < SIGNUP_MAX; i++) assert.equal(await countSignup(db, "1.2.3.4"), false);
+  assert.equal(await countSignup(db, "1.2.3.4"), true);
+});
+
+test("a login's cleanup leaves the sign-up counts alone, and the other way round", async () => {
+  const sql: string[] = [];
+  const db = {
+    $queryRaw: async () => [{count: 1}],
+    $executeRaw: async (strings: TemplateStringsArray, ...values: unknown[]) => {
+      sql.push(strings.join("?") + " " + values.slice(1).join(","));
+      return 0;
+    },
+  } as unknown as Parameters<typeof countAccountLogin>[0];
+  await countAccountLogin(db, "login:nobody");
+  await countSignup(db, "1.2.3.4");
+  assert.match(sql[0], /NOT LIKE \? signup:%$/);
+  assert.match(sql[1], /"key" LIKE \? signup:%$/);
 });
 
 test("a missing account or a Google one never logs in, a real hash still does", async () => {
