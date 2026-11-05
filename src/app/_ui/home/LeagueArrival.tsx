@@ -169,7 +169,14 @@ export function LeagueArrival({leagueId, teamId, initial, onChanged}: {leagueId:
     return (
       <Box component="section" aria-label="Potvrda dolaska" sx={box}>
         {head(<RadioButtonUncheckedRoundedIcon aria-hidden />, `Potvrdite dolazak do ${start}`)}
-        {line("Jeste li stigli? U kolo ulaze samo ekipe koje su potvrdile dolazak. Dovoljno je da potvrdi jedan od vas.")}
+        {line(
+          <>
+            Jeste li stigli? U kolo ulaze samo ekipe koje su potvrdile dolazak.{" "}
+            <Box component="strong" sx={{fontWeight: 700}}>
+              Dovoljno je da potvrdi jedan od vas.
+            </Box>
+          </>
+        )}
         {tuSmo("Tu smo")}
         {errorLine}
       </Box>
