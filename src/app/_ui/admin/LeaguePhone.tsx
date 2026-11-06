@@ -598,6 +598,7 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
             saving={ld.adding}
             error={ld.saveError}
             inputSx={{height: 52, borderRadius: "14px", fontSize: 16}}
+            scrollFields
           />
         )}
       </BottomSheet>
@@ -630,6 +631,7 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
             error={ld.saveError}
             savedAtStart={ld.movedTo === opened.date}
             inputSx={{height: 52, borderRadius: "14px", fontSize: 16}}
+            scrollFields
           >
             <OutlineButton
               height={52}

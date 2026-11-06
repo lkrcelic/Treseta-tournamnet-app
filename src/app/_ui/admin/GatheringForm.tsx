@@ -157,7 +157,8 @@ export function nightDateError(date: string, today: string, taken: (date: string
 // (a time equal to the league's and "Zadano lige" go back to the league's), and Vrati na zadano takes the night's own
 // times and place away (the date stays). Dodaj večer (isNew): Odustani and Dodaj večer, which sends the whole night. Give it
 // key={night.date}, so another night starts afresh; savedAtStart: it opens as just saved (the night moved, so it came
-// back under its new date).
+// back under its new date). scrollFields: the form fills a tall sheet (the admin's phone), its fields scroll and the
+// buttons stay under them, so Drugo mjesto, an error or the keyboard can't push Spremi off the sheet.
 export function NightGatheringForm({
   night,
   isNew = false,
@@ -173,6 +174,7 @@ export function NightGatheringForm({
   error,
   savedAtStart = false,
   inputSx,
+  scrollFields = false,
   sx,
   children,
 }: {
@@ -196,6 +198,7 @@ export function NightGatheringForm({
   error: string | null;
   savedAtStart?: boolean;
   inputSx?: SxProps<Theme>;
+  scrollFields?: boolean;
   sx?: SxProps<Theme>;
   // under the buttons (the phone's Makni večer)
   children?: React.ReactNode;
@@ -258,37 +261,46 @@ export function NightGatheringForm({
         e.preventDefault();
         void save();
       }}
-      sx={mergeSx({display: "flex", flexDirection: "column", gap: "14px"}, sx)}
+      sx={mergeSx({display: "flex", flexDirection: "column", gap: "14px", ...(scrollFields && {flex: 1, minHeight: 0})}, sx)}
     >
-      <TextField
-        label="Datum večeri"
-        type="date"
-        value={date}
-        min={isNew ? undefined : today}
-        onChange={(e) => changed(setDate)(e.target.value)}
-        error={dateError ?? undefined}
-        soft
-        inputSx={inputSx}
-      />
-      <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
-        <TimesFields gathering={gathering} start={time} onGathering={changed(setGathering)} onStart={changed(setTime)} error={timeError} inputSx={inputSx} />
-        <Box sx={{fontSize: 13, lineHeight: 1.4, color: color.muted, pl: "4px"}}>{timesHelp(gathering, time, leagueGathering, leagueTime)}</Box>
-      </Box>
-      <Box role="group" aria-labelledby={`place-${night.date}`} sx={{display: "flex", flexDirection: "column", gap: "8px"}}>
-        <Box id={`place-${night.date}`} sx={{fontSize: 14, fontWeight: 600, color: color.ink2, pl: "4px"}}>
-          Mjesto
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "14px",
+          ...(scrollFields && {flex: 1, minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", mx: "-4px", px: "4px", pb: "4px"}),
+        }}
+      >
+        <TextField
+          label="Datum večeri"
+          type="date"
+          value={date}
+          min={isNew ? undefined : today}
+          onChange={(e) => changed(setDate)(e.target.value)}
+          error={dateError ?? undefined}
+          soft
+          inputSx={inputSx}
+        />
+        <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
+          <TimesFields gathering={gathering} start={time} onGathering={changed(setGathering)} onStart={changed(setTime)} error={timeError} inputSx={inputSx} />
+          <Box sx={{fontSize: 13, lineHeight: 1.4, color: color.muted, pl: "4px"}}>{timesHelp(gathering, time, leagueGathering, leagueTime)}</Box>
         </Box>
-        <Segmented<Mode> items={MODES} value={mode} onChange={changed<Mode>(setMode)} label="Mjesto večeri" variant="track" asTabs={false} size={40} />
-        {mode === "league" ? (
-          <>
-            <LeaguePlaceBox place={leaguePlace} />
-            <Box sx={{fontSize: 13, lineHeight: 1.4, color: color.muted, pl: "4px"}}>Zadano vrijeme i mjesto lige mijenjaju se na kartici {settingsTab}.</Box>
-          </>
-        ) : (
-          <PlaceFields value={place} onChange={changed(setPlace)} inputSx={inputSx} gap="12px" />
-        )}
+        <Box role="group" aria-labelledby={`place-${night.date}`} sx={{display: "flex", flexDirection: "column", gap: "8px"}}>
+          <Box id={`place-${night.date}`} sx={{fontSize: 14, fontWeight: 600, color: color.ink2, pl: "4px"}}>
+            Mjesto
+          </Box>
+          <Segmented<Mode> items={MODES} value={mode} onChange={changed<Mode>(setMode)} label="Mjesto večeri" variant="track" asTabs={false} size={40} />
+          {mode === "league" ? (
+            <>
+              <LeaguePlaceBox place={leaguePlace} />
+              <Box sx={{fontSize: 13, lineHeight: 1.4, color: color.muted, pl: "4px"}}>Zadano vrijeme i mjesto lige mijenjaju se na kartici {settingsTab}.</Box>
+            </>
+          ) : (
+            <PlaceFields value={place} onChange={changed(setPlace)} inputSx={inputSx} gap="12px" />
+          )}
+        </Box>
+        {error && <ErrorNote>{error}</ErrorNote>}
       </Box>
-      {error && <ErrorNote>{error}</ErrorNote>}
       {isNew ? (
         <Box sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "10px"}}>
           <OutlineButton height={52} onClick={onCancel} disabled={saving} sx={{fontSize: 16, borderWidth: "1.5px", borderColor: color.borderControl, color: color.navy}}>
