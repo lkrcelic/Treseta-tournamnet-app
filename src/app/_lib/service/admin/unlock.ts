@@ -165,8 +165,13 @@ export async function unlockTable(roundId: number, minutes: number, by: number |
     if (!kind) throw new InvalidResultError(NOT_LOCKED);
 
     const now = new Date();
-    // the Vrijeme partije of this table from now on: the match resumed here, and every match started at it later
-    await tx.round.update({where: {id: roundId}, data: {game_minutes: minutes, open: true, active: false, attendance: null, attendance_team_id: null, attendance_by: null, attendance_at: null}});
+    // The table answers Tu smo from here on (the admin says the teams are at it): the Vrijeme partije is the table's
+    // own from now on, and the question "Jesu li … za stolom?" can't come back at a table that was just unlocked —
+    // its Kolo went out long ago, so the clock would be past the skip at once and close the table again.
+    await tx.round.update({
+      where: {id: roundId},
+      data: {game_minutes: minutes, open: true, active: false, attendance: "PRESENT", attendance_team_id: table.team1_id, attendance_by: by, attendance_at: now},
+    });
 
     // Nedolazak: the matches its answer wrote (NO_SHOW_SCORE, no hands) are not play and go; one an admin has entered
     // hands into is a real result and stays

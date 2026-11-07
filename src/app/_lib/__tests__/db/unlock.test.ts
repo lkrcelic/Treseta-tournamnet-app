@@ -90,7 +90,7 @@ test("Nedolazak unlocked: the 5 : 0 (NO_SHOW_SCORE) goes, the team is back in th
   assert.deepEqual([out.kind, out.minutes, out.resumed, out.bans_lifted], ["no_show", 20, false, 1]);
   assert.equal(await prisma.match.count({where: {round_id: roundId}}), 0);
   const round = await prisma.round.findUniqueOrThrow({where: {id: roundId}});
-  assert.deepEqual([round.open, round.attendance, round.team1_wins, round.team2_wins, round.game_minutes], [true, null, 0, 0, 20]);
+  assert.deepEqual([round.open, round.attendance, round.team1_wins, round.team2_wins, round.game_minutes], [true, "PRESENT", 0, 0, 20]);
   const back = await entry(teams[1]);
   assert.deepEqual([back.excluded_at, back.excluded_reason, back.active], [null, null, true]);
   // the ban and the player's ban under it are lifted
@@ -103,6 +103,10 @@ test("Nedolazak unlocked: the 5 : 0 (NO_SHOW_SCORE) goes, the team is back in th
   assert.equal(pad.gameMinutes, 20);
   // an open table can't be unlocked again
   await assert.rejects(unlockTable(roundId, 20, adminId), {message: NOT_LOCKED});
+  // and the question doesn't come back at it: its Kolo went out long ago, so the skip would close it again at once
+  assert.equal(round.attendance, "PRESENT");
+  assert.deepEqual(await skipDueTables(tournamentId), []);
+  assert.equal((await prisma.round.findUniqueOrThrow({where: {id: roundId}})).open, true);
 });
 
 test("Preskočen unlocked: both teams come back and the table is new again", async () => {
@@ -115,7 +119,9 @@ test("Preskočen unlocked: both teams come back and the table is new again", asy
   assert.deepEqual([out.kind, out.resumed, out.restored.length], ["skipped", false, 2]);
   for (const t of [teams[2], teams[3]]) assert.equal((await entry(t)).excluded_at, null);
   const round = await prisma.round.findUniqueOrThrow({where: {id: roundId}});
-  assert.deepEqual([round.open, round.attendance, round.active, round.game_minutes], [true, null, false, 45]);
+  assert.deepEqual([round.open, round.attendance, round.active, round.game_minutes], [true, "PRESENT", false, 45]);
+  // the skipped table isn't skipped again the moment the clock is read
+  assert.deepEqual(await skipDueTables(tournamentId), []);
   assert.equal(await prisma.signupBan.count({where: {tournament_id: tournamentId, lifted_at: null}}), 0);
 });
 
