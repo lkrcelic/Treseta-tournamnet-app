@@ -296,7 +296,7 @@ function Schedule({shown, today, desktop}: {shown: Shown; today: string; desktop
           Android, where the gesture stays with the box it started in. */}
       <Card
         component="ol"
-        sx={{listStyle: "none", m: 0, p: 0, ...(desktop ? {overflowY: "auto", overscrollBehavior: "contain", flex: 1} : {overflow: "visible", flex: "none"}), minHeight: 0}}
+        sx={{listStyle: "none", m: 0, p: 0, ...(desktop ? {overflowY: "auto", overscrollBehavior: "contain", flex: 1} : {overflow: "clip", flex: "none"}), minHeight: 0}}
       >
         {!hasNights ? (
           <EmptyState>Admin još nije upisao večeri lige.</EmptyState>
