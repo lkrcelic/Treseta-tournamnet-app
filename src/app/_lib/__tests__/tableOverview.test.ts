@@ -37,6 +37,8 @@ const pad = (matches: PadMatch[], done = false): TablePad => ({
   done,
   bye: false,
   hasLineup: true,
+  lock: done ? {kind: "done" as const, absent: null} : null,
+  gameMinutes: 35,
   matches,
 });
 
