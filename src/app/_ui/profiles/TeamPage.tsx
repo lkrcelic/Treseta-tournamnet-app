@@ -38,11 +38,10 @@ import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
 import PersonAddRoundedIcon from "@mui/icons-material/PersonAddRounded";
 import {Box} from "@mui/material";
 import React, {useId, useMemo, useState} from "react";
-import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import type {TeamPhotoInfo} from "@/app/_interfaces/photo";
 import type {Overview} from "@/app/_hooks/useOverview";
 import {teamsList} from "@/app/_hooks/useTeams";
-import {BlockedNote, EditableAvatar, PhotoControls, PhotoInfo, usePhoto, visibilityLabel} from "@/app/_ui/photo/PhotoParts";
+import {EditableAvatar, PhotoControls, PhotoInfo, usePhoto} from "@/app/_ui/photo/PhotoParts";
 import {PhotoSheet} from "@/app/_ui/photo/PhotoSheet";
 import {PhotoDialog} from "@/app/_ui/photo/PhotoDialog";
 import {PhotoAdminBadge, PhotoAdminCard} from "@/app/_ui/photo/PhotoAdmin";
@@ -144,8 +143,7 @@ function Hero({
             hover={desktop}
             blocked={blocked}
             label={photo.info.photo_url ? "Promijeni sliku ekipe" : "Dodaj sliku ekipe"}
-            // the computer has nothing to open while it is blocked
-            onClick={() => (desktop && blocked ? undefined : onPhoto())}
+            onClick={() => onPhoto()}
             sx={desktop ? {fontSize: short ? 20 : 28} : undefined}
           />
         ) : undefined
@@ -204,7 +202,6 @@ export function TeamPagePhone({teamId}: {teamId: number}) {
       {team ? (
         <>
           <Hero team={team} desktop={false} rename={admin?.rename} photo={photo} onPhoto={() => setPhotoOpen(true)} />
-          {settings?.can_edit && <TeamPhotoVisibility photo={photo} onOpen={() => setPhotoOpen(true)} />}
           {admin && canModerate && (
             <PhotoAdminCard
               target={{kind: "team", id: team.team.id}}
@@ -229,35 +226,6 @@ export function TeamPagePhone({teamId}: {teamId: number}) {
         <PageStatus kind="team" overview={overview} nav={nav} />
       )}
     </PhoneFrame>
-  );
-}
-
-// "Tko vidi sliku ekipe" under the header card, for the team's players (T1): Vidljivost › opens Slika ekipe; while an
-// admin has blocked the team's photo, a note says so (T3)
-function TeamPhotoVisibility({photo, onOpen}: {photo: PhotoControls; onOpen: () => void}) {
-  const titleId = useId();
-  return (
-    <Box component="section" aria-labelledby={titleId} sx={{flex: "none", display: "flex", flexDirection: "column", gap: "8px"}}>
-      {photo.info.photo_blocked && <BlockedNote kind="team" sx={{background: color.white}} />}
-      <SectionLabel id={titleId}>Tko vidi sliku ekipe</SectionLabel>
-      <Card sx={{overflow: "hidden"}}>
-        <Box
-          component="button"
-          type="button"
-          aria-haspopup="dialog"
-          onClick={onOpen}
-          sx={{...buttonBase, width: "100%", height: 52, display: "flex", alignItems: "center", gap: "8px", pl: "16px", pr: "10px", textAlign: "left"}}
-        >
-          <Box component="span" sx={{flex: 1, fontSize: 15, color: color.muted}}>
-            Vidljivost
-          </Box>
-          <Box component="span" sx={{fontSize: 15, fontWeight: 600, color: color.navy}}>
-            {visibilityLabel(photo.info.photo_visibility)}
-          </Box>
-          <ChevronRightRoundedIcon aria-hidden sx={{fontSize: 24, color: color.navy}} />
-        </Box>
-      </Card>
-    </Box>
   );
 }
 

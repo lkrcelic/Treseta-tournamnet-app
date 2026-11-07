@@ -22,8 +22,7 @@ import {HeroRating, ProfileHero} from "@/app/_ui/profiles/ProfileHero";
 import {TeamCards} from "@/app/_ui/profiles/TeamCards";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import AddAPhotoRoundedIcon from "@mui/icons-material/AddAPhotoRounded";
-import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
-import {BlockedNote, EditableAvatar, PHOTO_TEXT, PhotoControls, PhotoInfo, usePhoto, visibilityLabel, VisibilityChoices} from "@/app/_ui/photo/PhotoParts";
+import {EditableAvatar, PhotoInfo, usePhoto} from "@/app/_ui/photo/PhotoParts";
 import {PhotoSheet} from "@/app/_ui/photo/PhotoSheet";
 import {PhotoDialog} from "@/app/_ui/photo/PhotoDialog";
 import SmokingRoomsRoundedIcon from "@mui/icons-material/SmokingRoomsRounded";
@@ -47,7 +46,7 @@ import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import {Box, Skeleton} from "@mui/material";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
-import {useCallback, useEffect, useId, useMemo, useState} from "react";
+import {useCallback, useEffect, useMemo, useState} from "react";
 import {useRole} from "@/app/_hooks/useCan";
 
 export default function ProfilePage() {
@@ -122,8 +121,7 @@ export default function ProfilePage() {
           hover={desktop}
           blocked={blocked}
           label={photo.info.photo_url ? "Promijeni profilnu sliku" : "Dodaj profilnu sliku"}
-          // the computer has nothing to open while it is blocked (the card on the right says why)
-          onClick={() => (desktop && blocked ? undefined : setPhotoOpen(true))}
+          onClick={() => setPhotoOpen(true)}
           sx={desktop ? {fontSize: 40} : undefined}
         />
       }
@@ -149,7 +147,6 @@ export default function ProfilePage() {
             if (user?.id === player.id) setUser({...user, username: saved});
           }}
         />
-        {!desktop && player && <PhotoVisibilityRow photo={photo} onOpen={() => setPhotoOpen(true)} />}
         {details.map((d) => (
           <Box
             key={d.k}
@@ -203,7 +200,6 @@ export default function ProfilePage() {
 
   const teamsBlock = (desktop: boolean) => (
     <>
-      {desktop && player && <PhotoVisibilityCard photo={photo} />}
       <TeamCards
       title="Moje ekipe"
       desktop={desktop}
@@ -273,66 +269,6 @@ function AddPhotoPill({onClick}: {onClick: () => void}) {
     >
       <AddAPhotoRoundedIcon aria-hidden />
       Dodaj sliku
-    </Box>
-  );
-}
-
-// "Tko vidi sliku" in Podaci, under Korisničko ime (M1): the choice in navy and ›, opening Profilna slika; "Isključio
-// admin" (muted) while an admin has blocked new photos
-function PhotoVisibilityRow({photo, onOpen}: {photo: PhotoControls; onOpen: () => void}) {
-  const blocked = photo.info.photo_blocked;
-  const value = blocked ? "Isključio admin" : visibilityLabel(photo.info.photo_visibility);
-  return (
-    // the whole row opens the sheet: the button in dd stretches over it
-    <Box sx={{position: "relative", height: 52, display: "flex", alignItems: "center", gap: "8px", pl: "16px", pr: "10px", borderBottom: `1px solid ${color.line}`}}>
-      <Box component="dt" sx={{flex: 1, whiteSpace: "nowrap", fontSize: 15, color: color.muted}}>
-        Tko vidi sliku
-      </Box>
-      <Box component="dd" sx={{m: 0}}>
-        <Box
-          component="button"
-          type="button"
-          aria-haspopup="dialog"
-          aria-label={`Tko vidi sliku: ${value}`}
-          onClick={onOpen}
-          sx={{
-            ...buttonBase,
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            fontSize: 15,
-            fontWeight: 600,
-            color: blocked ? color.muted : color.navy,
-            whiteSpace: "nowrap",
-            "&::after": {content: '""', position: "absolute", inset: 0},
-            "& svg": {fontSize: 24, color: color.navy},
-          }}
-        >
-          {value}
-          <ChevronRightRoundedIcon aria-hidden />
-        </Box>
-      </Box>
-    </Box>
-  );
-}
-
-// "Tko vidi moju sliku" on the computer (D1): the same choice, saved as it is picked
-function PhotoVisibilityCard({photo}: {photo: PhotoControls}) {
-  const titleId = useId();
-  return (
-    <Box component="section" aria-labelledby={titleId} sx={{display: "flex", flexDirection: "column", gap: "8px"}}>
-      <SectionLabel id={titleId}>Tko vidi moju sliku</SectionLabel>
-      {photo.info.photo_blocked ? (
-        <BlockedNote kind="player" sx={{background: color.white}} />
-      ) : (
-        <>
-          <Card sx={{overflow: "hidden"}}>
-            <VisibilityChoices kind="player" value={photo.info.photo_visibility} onChange={photo.setVisibility} labelId={titleId} />
-          </Card>
-          {photo.error && <ErrorNote>{photo.error}</ErrorNote>}
-          <Box sx={{fontSize: 13, color: color.muted, pl: "4px"}}>{PHOTO_TEXT.player.hiddenNote} Admin vidi sve slike.</Box>
-        </>
-      )}
     </Box>
   );
 }

@@ -12,12 +12,12 @@ import UploadRoundedIcon from "@mui/icons-material/UploadRounded";
 import {Box, Dialog} from "@mui/material";
 import React, {useId, useState} from "react";
 import {CropSource, PhotoCropper, usePhotoCrop, ZoomSlider} from "./PhotoCropper";
-import {PHOTO_TEXT, PhotoControls, PhotoKind, useFilePicker, VisibilityChoices} from "./PhotoParts";
+import {BlockedNote, PHOTO_TEXT, PhotoControls, PhotoKind, useFilePicker, VisibilityChoices} from "./PhotoParts";
 import {GoogleCard} from "./PhotoSheet";
 
 // "Profilna slika" / "Slika ekipe" on the computer (Claude Design D2, 820 px): on the left the photo in its circle with
-// the zoom, Okreni and Vrati; on the right a file dropped or picked, and the Google picture as a suggestion (a team
-// also picks who sees its photo here); at the bottom the bin (Makni sliku), Odustani and Spremi.
+// the zoom, Okreni and Vrati; on the right a file dropped or picked, and the Google picture as a suggestion, and who sees
+// the photo (the only place it is set, as on the phone); at the bottom the bin (Makni sliku), Odustani and Spremi.
 export function PhotoDialog({kind, photo, google, onClose}: {kind: PhotoKind; photo: PhotoControls; google?: {email: string} | null; onClose: () => void}) {
   const text = PHOTO_TEXT[kind];
   const {photo_url} = photo.info;
@@ -38,6 +38,25 @@ export function PhotoDialog({kind, photo, google, onClose}: {kind: PhotoKind; ph
     if (await photo.remove()) onClose();
   };
   const softButton = {boxShadow: "none", background: color.paper, "& svg": {fontSize: 22}} as const;
+
+  // an admin has stopped new photos: nothing to crop or to choose, only why (M6, T3)
+  if (photo.info.photo_blocked)
+    return (
+      <Dialog open onClose={onClose} aria-labelledby={titleId} maxWidth={false} slotProps={{backdrop: {sx: {background: tint.scrim[42]}}}} PaperProps={{sx: {width: 460, maxWidth: "calc(100% - 32px)", borderRadius: "28px", p: "28px", boxShadow: shadow.dialog, display: "flex", flexDirection: "column", gap: "16px"}}}>
+        <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px"}}>
+          <Box component="h2" id={titleId} sx={{m: 0, fontFamily: font.display, fontSize: 28, fontWeight: 800, letterSpacing: "-.01em"}}>
+            {text.title}
+          </Box>
+          <IconCircleButton label="Zatvori" size={44} onClick={onClose} sx={softButton}>
+            <CloseRoundedIcon />
+          </IconCircleButton>
+        </Box>
+        <BlockedNote kind={kind} />
+        <OutlineButton height={52} onClick={onClose} sx={{fontSize: 16, border: `1.5px solid ${color.borderControl}`}}>
+          U redu
+        </OutlineButton>
+      </Dialog>
+    );
 
   return (
     <Dialog
@@ -124,15 +143,13 @@ export function PhotoDialog({kind, photo, google, onClose}: {kind: PhotoKind; ph
           </Box>
         </Box>
         {google && <GoogleCard desktop email={google.email} onUse={() => c.take({src: `${GOOGLE_PHOTO_PATH}?t=${Date.now()}`, fresh: true})} />}
-        {kind === "team" && (
-          <Box sx={{display: "flex", flexDirection: "column", gap: "8px"}}>
-            <Box id={whoId} sx={{fontSize: 13, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: color.muted, pl: "4px"}}>
-              {text.who}
-            </Box>
-            <VisibilityChoices kind="team" value={photo.info.photo_visibility} onChange={photo.setVisibility} labelId={whoId} />
-            <Box sx={{fontSize: 13, color: color.muted, pl: "4px"}}>{text.hiddenNote}</Box>
+        <Box sx={{display: "flex", flexDirection: "column", gap: "8px"}}>
+          <Box id={whoId} sx={{fontSize: 13, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: color.muted, pl: "4px"}}>
+            {text.who}
           </Box>
-        )}
+          <VisibilityChoices kind={kind} value={photo.info.photo_visibility} onChange={photo.setVisibility} labelId={whoId} />
+          <Box sx={{fontSize: 13, color: color.muted, pl: "4px"}}>{text.hiddenNote}</Box>
+        </Box>
         {(c.error || photo.error) && <ErrorNote>{c.error || photo.error}</ErrorNote>}
         <Box sx={{flex: 1}} />
         <Box sx={{display: "flex", alignItems: "center", gap: "10px"}}>
