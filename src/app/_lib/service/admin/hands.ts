@@ -4,7 +4,7 @@ import {AdminHand, HandKind, PadHand, PadMatch, TablePad} from "@/app/_interface
 import {ResultCreateRequest} from "@/app/_interfaces/result";
 import {isByeTeam, teamLabel} from "@/app/_lib/bye";
 import {MATCH_THRESHOLD, MatchState, matchState, Side} from "@/app/_lib/game/scoring";
-import {InvalidResultError, normalizeResult} from "@/app/_lib/validation/validateResult";
+import {InvalidResultError, NoWinnerWarning, normalizeResult} from "@/app/_lib/validation/validateResult";
 import {transformResult} from "@/app/_lib/helpers/databaseHelpers";
 import {createResult} from "@/app/_lib/service/ongoingResult/create";
 import {updateOngoingResult} from "@/app/_lib/service/ongoingResult/update";
@@ -120,27 +120,32 @@ async function assertEditableTable(roundId: number) {
   if (round.status !== "PUBLISHED") throw new InvalidResultError(ROUND_NOT_PUBLISHED);
 }
 
-// A change of a finished match's hands may move its win to the other team, but never leave a match that had a winner
-// without one (the round would count it for neither team and turn a 2:0 into a draw). before: the match's
+// A change of a finished match's hands that leaves a match that had a winner without one: the warning the admin
+// confirms first, since the round then counts that match for neither team (a 2:0 can turn into a draw). Moving the win
+// to the other team, or correcting a match that already had no winner, needs no warning. before: the match's
 // winner_side; after: the hands replayed.
-export function lostWinnerError(before: Side | null, after: Pick<MatchState, "score1" | "score2" | "target" | "winner">): string | null {
+export function noWinnerWarning(before: Side | null, after: Pick<MatchState, "score1" | "score2" | "target" | "winner">): string | null {
   if (before == null || after.winner != null) return null;
   const score = `${after.score1}:${after.score2}`;
-  const why = after.score1 === after.score2 ? score : `${score}, nitko nema ${after.target}`;
-  return `Meč bi ostao bez pobjednika (${why}). Ispravi bodove tako da jedna ekipa i dalje pobjeđuje.`;
+  const why = after.score1 === after.score2 ? score : `${score} i nitko nema ${after.target}`;
+  return `Nakon ove promjene meč je ${why}, pa se ne broji nijednoj ekipi. Rezultat stola, poredak i rejting ponovno se računaju.`;
 }
 
+// Options of a change of a finished match: allowNoWinner, the admin confirmed the "Meč ostaje bez pobjednika" warning
+export type HandEditOptions = {allowNoWinner?: boolean};
+
 // After a finished match's hands changed: its score and winner, the round's wins, and for a finished round the
-// standings (and the ratings when the round's outcome changed). Refused when the match would be left without a winner.
-async function recountFinishedMatch(tx: Tx, matchId: number) {
+// standings (and the ratings when the round's outcome changed). A match left without a winner needs the admin's
+// confirmation.
+async function recountFinishedMatch(tx: Tx, matchId: number, allowNoWinner: boolean) {
   const {score_threshold, winner_side, results} = await tx.match.findUniqueOrThrow({
     where: {id: matchId},
     select: {score_threshold: true, winner_side: true, results: {orderBy: {result_id: "asc"}}},
   });
   const state = matchState(results, score_threshold ?? MATCH_THRESHOLD);
   assertCallStands(state);
-  const error = lostWinnerError(winner_side as Side | null, state);
-  if (error) throw new InvalidResultError(error);
+  const warning = allowNoWinner ? null : noWinnerWarning(winner_side as Side | null, state);
+  if (warning) throw new NoWinnerWarning(warning);
   const match = await tx.match.update({
     where: {id: matchId},
     data: {player_pair1_score: state.score1, player_pair2_score: state.score2, winner_side: state.winner},
@@ -161,7 +166,7 @@ async function recountFinishedMatch(tx: Tx, matchId: number) {
       matches: {select: {winner_side: true}},
     },
   });
-  // a match without a winner (only one stored so before this guard) counts for neither team
+  // a match without a winner (the admin confirmed it) counts for neither team
   const team1Wins = round.matches.filter((m) => m.winner_side === 1).length;
   const team2Wins = round.matches.filter((m) => m.winner_side === 2).length;
   await tx.round.update({where: {id: round.id}, data: {team1_wins: team1Wins, team2_wins: team2Wins}});
@@ -177,19 +182,19 @@ async function recountFinishedMatch(tx: Tx, matchId: number) {
 }
 
 // Runs a change of a finished match's hands with the round locked, then recounts
-async function changeFinishedMatch(matchId: number, change: (tx: Tx) => Promise<void>) {
+async function changeFinishedMatch(matchId: number, change: (tx: Tx) => Promise<void>, options: HandEditOptions) {
   await prisma.$transaction(async (tx) => {
     const match = await tx.match.findUnique({where: {id: matchId}, select: {round_id: true}});
     if (!match) throw new NotFoundError("Meč ne postoji.");
     if (match.round_id != null) await lockRound(tx, match.round_id);
     await change(tx);
-    await recountFinishedMatch(tx, matchId);
+    await recountFinishedMatch(tx, matchId, options.allowNoWinner === true);
   }, {timeout: 60000});
 }
 
 export type HandTarget = {kind: "ongoing"} | {kind: "finished"; matchId: number};
 
-export async function addHand(roundId: number, target: HandTarget, hand: AdminHand): Promise<void> {
+export async function addHand(roundId: number, target: HandTarget, hand: AdminHand, options: HandEditOptions = {}): Promise<void> {
   await assertEditableTable(roundId);
   if (target.kind === "ongoing") {
     // a table that hasn't started gets its first match here (refused when the round is over)
@@ -207,7 +212,7 @@ export async function addHand(roundId: number, target: HandTarget, hand: AdminHa
   const result = adminHandToResult(hand, target.matchId);
   await changeFinishedMatch(target.matchId, async (tx) => {
     await tx.result.create({data: transformResult(result)});
-  });
+  }, options);
 }
 
 /**
@@ -224,7 +229,7 @@ export async function refuseUnlessMyHand(kind: HandKind, resultId: number, viewe
   await refuseUnlessMyTable(roundId, viewer);
 }
 
-export async function updateHand(kind: HandKind, resultId: number, hand: AdminHand): Promise<void> {
+export async function updateHand(kind: HandKind, resultId: number, hand: AdminHand, options: HandEditOptions = {}): Promise<void> {
   if (kind === "ongoing") {
     const stored = await prisma.ongoingResult.findUnique({where: {result_id: resultId}, select: {match_id: true}});
     if (!stored) throw new NotFoundError("Igra ne postoji.");
@@ -246,10 +251,10 @@ export async function updateHand(kind: HandKind, resultId: number, hand: AdminHa
         dosta_side: result.dosta_side ?? null,
       },
     });
-  });
+  }, options);
 }
 
-export async function deleteHand(kind: HandKind, resultId: number): Promise<void> {
+export async function deleteHand(kind: HandKind, resultId: number, options: HandEditOptions = {}): Promise<void> {
   if (kind === "ongoing") {
     await prisma.$transaction(async (tx) => {
       const [hand] = await tx.$queryRaw<{match_id: number; team1_game_points: number; team2_game_points: number}[]>`
@@ -278,7 +283,7 @@ export async function deleteHand(kind: HandKind, resultId: number): Promise<void
   if (!stored) throw new NotFoundError("Igra ne postoji.");
   await changeFinishedMatch(stored.match_id, async (tx) => {
     await tx.result.delete({where: {result_id: resultId}});
-  });
+  }, options);
 }
 
 // Finishes the table's match in progress (as "Završi meč" on the scoreboard)

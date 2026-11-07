@@ -9,7 +9,10 @@ type Params = {params: {kind: string; resultId: string}};
 
 // The scorepad's hands: the admin on a league night, the organizer on a Kolo of their own tournament
 // (refuseUnlessMyHand looks up the table the hand was played at).
-// kind: "ongoing" (a hand of the match being played) or "finished" (a hand of a finished match)
+// kind: "ongoing" (a hand of the match being played) or "finished" (a hand of a finished match). allow_no_winner=1: the
+// admin confirmed that a finished match is left without a winner.
+const allowNoWinner = (request: NextRequest) => ({allowNoWinner: request.nextUrl.searchParams.get("allow_no_winner") === "1"});
+
 export async function PUT(request: NextRequest, {params}: Params) {
   const auth = await requireCan(request, "tournament.manage.own");
   if (auth.response) return auth.response;
@@ -17,7 +20,7 @@ export async function PUT(request: NextRequest, {params}: Params) {
     const kind = HandKindValidation.parse(params.kind);
     const hand = AdminHandValidation.parse(await request.json());
     await refuseUnlessMyHand(kind, Number(params.resultId), auth.user);
-    await updateHand(kind, Number(params.resultId), hand);
+    await updateHand(kind, Number(params.resultId), hand, allowNoWinner(request));
     return NextResponse.json({ok: true}, {status: STATUS.OK});
   } catch (error) {
     return errorResponse(error, "Igra nije spremljena.");
@@ -30,7 +33,7 @@ export async function DELETE(request: NextRequest, {params}: Params) {
   try {
     const kind = HandKindValidation.parse(params.kind);
     await refuseUnlessMyHand(kind, Number(params.resultId), auth.user);
-    await deleteHand(kind, Number(params.resultId));
+    await deleteHand(kind, Number(params.resultId), allowNoWinner(request));
     return new NextResponse(null, {status: STATUS.NoContent});
   } catch (error) {
     return errorResponse(error, "Igra nije obrisana.");

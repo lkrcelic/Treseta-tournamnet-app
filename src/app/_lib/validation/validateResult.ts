@@ -8,6 +8,17 @@ export class InvalidResultError extends Error {
   }
 }
 
+// The admin's change of a finished match would leave it without a winner: not an error, a warning the admin confirms
+// (the scorepad sends the change again with allow_no_winner=1). The API answers it with 409 and code "no_winner".
+export class NoWinnerWarning extends InvalidResultError {
+  constructor(message: string) {
+    super(message);
+    this.name = "NoWinnerWarning";
+  }
+}
+
+export const NO_WINNER_CODE = "no_winner";
+
 // Checks a hand sent by the client, so a buggy or tampered client can't store points that break the rules:
 // a normal hand adds up to 11, a custom one stays within its limit, and only a custom hand has "s ovim dosta".
 // (Whether the calling team reached the target is checked against the match's hands when it is saved.)

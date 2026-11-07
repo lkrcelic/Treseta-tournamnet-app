@@ -1,7 +1,7 @@
 import {NextResponse} from "next/server";
 import {z} from "zod";
 import {STATUS} from "@/app/_lib/statusCodes";
-import {InvalidResultError} from "@/app/_lib/validation/validateResult";
+import {InvalidResultError, NO_WINNER_CODE, NoWinnerWarning} from "@/app/_lib/validation/validateResult";
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {zodMessage} from "@/app/_lib/validation/zodMessage";
 import {ImageError} from "@/app/_lib/images";
@@ -19,6 +19,10 @@ export function errorResponse(error: unknown, fallbackMessage: string): NextResp
   }
   if (error instanceof NotFoundError) {
     return NextResponse.json({error: error.message}, {status: STATUS.NotFound});
+  }
+  // a warning the admin confirms (the scorepad asks and sends the change again), not a refusal
+  if (error instanceof NoWinnerWarning) {
+    return NextResponse.json({error: error.message, code: NO_WINNER_CODE}, {status: STATUS.Conflict});
   }
   if (error instanceof InvalidResultError || error instanceof ImageError) {
     return NextResponse.json({error: error.message}, {status: STATUS.BadRequest});

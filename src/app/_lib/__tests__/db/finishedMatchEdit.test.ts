@@ -6,8 +6,8 @@ import {deleteHand, updateHand} from "@/app/_lib/service/admin/hands";
 import {MATCH_THRESHOLD} from "@/app/_lib/game/scoring";
 
 // The admin scorepad changing a finished league round against a real Postgres: a change that would leave a match
-// without a winner is refused and the round, its matches and the standings stay as they were; a change that keeps the
-// winner recounts the match. Run with `npm run test:db` on a throwaway database (never production).
+// without a winner is held back (NoWinnerWarning) and the round, its matches and the standings stay as they were until
+// the admin confirms it; a change that keeps the winner recounts the match. Run with `npm run test:db` on a throwaway database (never production).
 
 const tag = `fm${Date.now()}`;
 let leagueId = 0;
@@ -51,7 +51,7 @@ const state = async (roundId: number) => {
   return {round, score};
 };
 
-test("deleting the hand that took a 2:0 winner over 41 is refused and nothing changes", async () => {
+test("deleting the hand that took a 2:0 winner over 41 asks first, and saves once confirmed", async () => {
   const round = await prisma.round.create({
     data: {team1_id: teams[0], team2_id: teams[1], status: "PUBLISHED", published_at: new Date(), leagueRounds: {create: {league_id: leagueId}}},
   });
@@ -62,8 +62,8 @@ test("deleting the hand that took a 2:0 winner over 41 is refused and nothing ch
   assert.deepEqual(before.score, {wins: 1, draws: 0, score: 2});
 
   const lastHand = before.round.matches[0].results[1];
-  await assert.rejects(deleteHand("finished", lastHand.result_id), /Meč bi ostao bez pobjednika \(30:20, nitko nema 41\)/);
-  await assert.rejects(updateHand("finished", lastHand.result_id, {custom: true, points1: 0, points2: 10}), /bez pobjednika/);
+  await assert.rejects(deleteHand("finished", lastHand.result_id), (e: Error) => e.name === "NoWinnerWarning" && /meč je 30:20 i nitko nema 41/.test(e.message));
+  await assert.rejects(updateHand("finished", lastHand.result_id, {custom: true, points1: 0, points2: 10}), {name: "NoWinnerWarning"});
 
   const after = await state(round.id);
   assert.deepEqual([after.round.team1_wins, after.round.team2_wins], [2, 0]);
@@ -77,4 +77,12 @@ test("deleting the hand that took a 2:0 winner over 41 is refused and nothing ch
   assert.deepEqual([fixed.round.matches[0].player_pair1_score, fixed.round.matches[0].player_pair2_score], [43, 22]);
   assert.deepEqual([fixed.round.team1_wins, fixed.round.team2_wins], [2, 0]);
   assert.deepEqual(fixed.score, {wins: 1, draws: 0, score: 2});
+
+  // confirmed (Obriši svejedno): the match is left at 30:20 without a winner, the round reads 1:0 and is still a win
+  await deleteHand("finished", lastHand.result_id, {allowNoWinner: true});
+  const confirmed = await state(round.id);
+  assert.deepEqual([confirmed.round.matches[0].player_pair1_score, confirmed.round.matches[0].player_pair2_score], [30, 20]);
+  assert.equal(confirmed.round.matches[0].results.length, 1);
+  assert.deepEqual([confirmed.round.team1_wins, confirmed.round.team2_wins], [1, 0]);
+  assert.deepEqual(confirmed.score, {wins: 1, draws: 0, score: 2});
 });

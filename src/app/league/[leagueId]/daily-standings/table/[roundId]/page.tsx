@@ -1,10 +1,11 @@
 "use client";
 
-import {addHandAPI, deleteHandAPI, finishTableMatchAPI, getTablePadAPI, HandTarget, updateHandAPI} from "@/app/_fetchers/admin/daily";
+import {addHandAPI, deleteHandAPI, finishTableMatchAPI, getTablePadAPI, HandTarget, NoWinnerError, updateHandAPI} from "@/app/_fetchers/admin/daily";
 import {PadHand, PadMatch, TablePad} from "@/app/_interfaces/adminHand";
 import useManagePhone from "@/app/_hooks/useManagePhone";
 import useCan from "@/app/_hooks/useCan";
 import TablePhone from "@/app/_ui/admin/TablePhone";
+import {NoWinnerAsk, NoWinnerConfirm} from "@/app/_ui/admin/NoWinnerConfirm";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useShortWindow from "@/app/_hooks/useShortWindow";
 import {blankEntry, EntryState, fromPadHand, toAdminHand} from "@/app/_lib/ui/adminEntry";
@@ -63,6 +64,8 @@ function TableScorepadDesktop() {
   // after a custom hand: ask about "s ovim dosta" on the match's last hand (null: the hand just added)
   const [askDosta, setAskDosta] = useState<{match: number; hand: number | null} | null>(null);
   const [dostaError, setDostaError] = useState<string | null>(null);
+  // a change that leaves a finished match without a winner, waiting for the admin's Spremi svejedno
+  const [noWinner, setNoWinner] = useState<NoWinnerAsk | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -110,16 +113,19 @@ function TableScorepadDesktop() {
     setError(null);
   };
 
-  const run = async (action: () => Promise<unknown>, fallback: string, after?: () => void) => {
+  // allow: the admin confirmed the "Meč ostaje bez pobjednika?" warning, so the change is sent again allowed
+  const run = async (action: (allow: boolean) => Promise<unknown>, fallback: string, after?: () => void, anyway = "Spremi svejedno", allow = false) => {
     setSaving(true);
     setError(null);
     try {
-      await action();
+      await action(allow);
+      setNoWinner(null);
       await load();
       resetEntry();
       after?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : fallback);
+      if (e instanceof NoWinnerError && !allow) setNoWinner({text: e.message, action: anyway, retry: () => run(action, fallback, after, anyway, true)});
+      else setError(e instanceof Error ? e.message : fallback);
     }
     setSaving(false);
   };
@@ -127,13 +133,13 @@ function TableScorepadDesktop() {
     if (!match || saving) return;
     const hand = toAdminHand(entry);
     const ask = hand.custom ? () => setAskDosta({match: match.number, hand: editing?.id ?? null}) : undefined;
-    if (editing) return run(() => updateHandAPI(match.kind, editing.id, hand), "Igra nije spremljena.", ask);
+    if (editing) return run((allow) => updateHandAPI(match.kind, editing.id, hand, allow), "Igra nije spremljena.", ask);
     const target: HandTarget = match.kind === "finished" ? {kind: "finished", matchId: match.id} : {kind: "ongoing"};
-    return run(() => addHandAPI(roundId, target, hand), "Igra nije spremljena.", ask);
+    return run((allow) => addHandAPI(roundId, target, hand, allow), "Igra nije spremljena.", ask);
   };
   const remove = () => {
     if (!match || !editing) return;
-    run(() => deleteHandAPI(match.kind, editing.id), "Igra nije obrisana.");
+    run((allow) => deleteHandAPI(match.kind, editing.id, allow), "Igra nije obrisana.", undefined, "Obriši svejedno");
   };
   const finish = () =>
     run(async () => {
@@ -281,7 +287,7 @@ function TableScorepadDesktop() {
             title={editing ? `Uredi igru ${match.hands.findIndex((h) => h.id === editing.id) + 1}` : `Igra ${match.hands.length + 1}`}
             editing={editing != null}
             saving={saving}
-            error={error}
+            error={noWinner ? null : error}
             onSave={save}
             onCancel={() => resetEntry()}
             onDelete={remove}
@@ -294,6 +300,7 @@ function TableScorepadDesktop() {
         </Box>
       )}
       <DostaPrompt teams={dostaTeams} onPick={pickDosta} onSkip={skipDosta} busy={saving} error={dostaError} />
+      <NoWinnerConfirm ask={noWinner} phone={false} busy={saving} error={noWinner ? error : null} onClose={() => setNoWinner(null)} />
     </DesktopShell>
   );
 }
