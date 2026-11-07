@@ -291,7 +291,13 @@ function Schedule({shown, today, desktop}: {shown: Shown; today: string; desktop
           {nightsCountLabel(shown.nights.length, playedCount)}
         </Box>
       )}
-      <Card component="ol" sx={{listStyle: "none", m: 0, p: 0, overflowY: "auto", overscrollBehavior: "contain", flex: desktop ? 1 : "none", minHeight: 0}}>
+      {/* On the phone the whole page scrolls, so the list is never a scroller of its own: with many nights (a league
+          with 480 of them) a card that can scroll even a fraction of a pixel catches the finger and nothing moves on
+          Android, where the gesture stays with the box it started in. */}
+      <Card
+        component="ol"
+        sx={{listStyle: "none", m: 0, p: 0, ...(desktop ? {overflowY: "auto", overscrollBehavior: "contain", flex: 1} : {overflow: "visible", flex: "none"}), minHeight: 0}}
+      >
         {!hasNights ? (
           <EmptyState>Admin još nije upisao večeri lige.</EmptyState>
         ) : (
