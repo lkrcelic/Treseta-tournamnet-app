@@ -111,8 +111,8 @@ export type AdminPlayerRow = {
   last_name: string;
   // the full name, or "Igrač bez imena"
   name: string;
-  // private: the player themselves and an admin (an organizer gets names and teams, not usernames)
-  username?: string;
+  // public (#88): everyone who gets the row gets the username
+  username: string;
   // Zovi: an admin and an organizer (they call the teams of their tournament); left out for everyone else
   phone?: string | null;
   // in Croatian name order
@@ -153,12 +153,13 @@ export const PlayerPartialResponseValidation = z.object({
   last_name: z.string(),
 });
 
-// Another player as a regular user sees them (GET /api/players/[id]): the name and whether the account is active.
-// The username, email, phone, birth date and smoker flag are only for the player themselves and admins.
+// Another player as a regular user sees them (GET /api/players/[id]): the name, the username and whether the account
+// is active. The email, phone, birth date and smoker flag are only for the player themselves and admins (#88).
 export const PlayerPublicResponseValidation = z.object({
   id: z.number().int(),
   first_name: z.string(),
   last_name: z.string(),
+  username: z.string(),
   active: z.boolean(),
 });
 
@@ -167,12 +168,11 @@ export const PLAYER_NOT_FOUND = "Igrač ne postoji.";
 // A deactivated player can't be added to a team, old or new (400)
 export const PLAYER_DEACTIVATED = "Igrač je deaktiviran.";
 
-// A player on a page (privacy filter in _lib/players/privacy.ts): everyone gets the first five fields; the personal
-// keys are ABSENT (not null) unless the viewer is the player or an admin
-export type PlayerView = {id: number; first_name: string; last_name: string; name: string; active: boolean} & Partial<{
+// A player on a page (privacy filter in _lib/players/privacy.ts): everyone gets the first six fields (the username is
+// public, #88); the personal keys are ABSENT (not null) unless the viewer is the player or an admin
+export type PlayerView = {id: number; first_name: string; last_name: string; name: string; active: boolean; username: string} & Partial<{
   // ADMIN or ORGANIZER, for the label on the profile; left out for a plain player (privacy.ts, publicRole)
   role: Role;
-  username: string;
   email: string;
   phone: string | null;
   birth_date: string | null; // YYYY-MM-DD

@@ -155,7 +155,7 @@ test("a change on a Team page shows in both directories", () => {
 
   const added = addTeamMember(teams, 2, {id: 20, first_name: "Đuro", last_name: "Šimić", username: "djuro"});
   assert.equal(teamDirectorySub(added[1]), "1 igrač · 0 liga");
-  assert.equal(addTeamMember(added, 2, {id: 20, first_name: "Đuro", last_name: "Šimić"})[1].players.length, 1);
+  assert.equal(addTeamMember(added, 2, {id: 20, first_name: "Đuro", last_name: "Šimić", username: "djuro"})[1].players.length, 1);
   assert.equal(teamDirectorySub(removeTeamMember(added, 2, 20)[1]), "0 igrača · 0 liga");
 
   const joined = addTeamLeague(teams, 2, {id: 5, name: "Kup"});
@@ -195,10 +195,10 @@ test("a team added on a Player page shows with its leagues (newest first) and th
   assert.equal(row.team_name, "Dalmatinci");
   assert.deepEqual(row.leagues, [{league_id: 3, league_name: "Nova"}, {league_id: 1, league_name: "Stara"}]);
   assert.deepEqual(row.players.map((p) => p.id), [10, 11, 12, 20]);
-  // usernames stay private on the page; the avatar is the initials until the server sends the photo
-  assert.deepEqual(row.players[3], {id: 20, first_name: "Đuro", last_name: "Šimić", photo_url: null});
+  // the username comes along (#88); the avatar is the initials until the server sends the photo
+  assert.deepEqual(row.players[3], {id: 20, first_name: "Đuro", last_name: "Šimić", username: "djuro", photo_url: null});
   // already a member: not twice
-  assert.equal(playerTeamFromDirectory(team, {id: 10, first_name: "Ivo", last_name: "Kovač"}).players.length, 3);
+  assert.equal(playerTeamFromDirectory(team, {id: 10, first_name: "Ivo", last_name: "Kovač", username: "ikovac"}).players.length, 3);
 });
 
 test("a change on a Player page shows in both directories", () => {

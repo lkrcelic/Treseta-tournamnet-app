@@ -116,8 +116,8 @@ export type MyLeague = {
   // the team is active in the league (inactive teams aren't signed in for rounds)
   active: boolean;
   // active: false for a deactivated player (still on the roster, but not offered in Trebam zamjenu)
-  // photo_url: the avatar (null = the initials)
-  players: {id: number; name: string; rating: number; me: boolean; active: boolean; photo_url?: string | null}[];
+  // photo_url: the avatar (null = the initials); username: public (#88), under the name on Početna and Raspored
+  players: {id: number; name: string; username: string; rating: number; me: boolean; active: boolean; photo_url?: string | null}[];
   nights: string[]; // YYYY-MM-DD, in date order
   played: string[]; // the nights that have rounds
   // when each night starts (its own time or the league's), "HH:MM"; a night without a time isn't in it

@@ -50,7 +50,7 @@ export async function getPlayerOverview(playerId: number, viewer: Viewer): Promi
         leagueTeams: {select: {league: {select: {league_id: true, league_name: true}}}, orderBy: {league_id: "desc"}},
         teamPlayers: {
           where: {player: {deleted_at: null}},
-          select: {player: {select: {id: true, first_name: true, last_name: true, ...PLAYER_PHOTO}}},
+          select: {player: {select: {id: true, first_name: true, last_name: true, username: true, ...PLAYER_PHOTO}}},
         },
       },
     }),
@@ -70,7 +70,7 @@ export async function getPlayerOverview(playerId: number, viewer: Viewer): Promi
       team_name: t.team_name,
       leagues: t.leagueTeams.map((lt) => lt.league),
       players: inRatingOrder(
-        t.teamPlayers.map(({player: p}) => ({id: p.id, first_name: p.first_name, last_name: p.last_name, photo_url: photos.player(p)})),
+        t.teamPlayers.map(({player: p}) => ({id: p.id, first_name: p.first_name, last_name: p.last_name, username: p.username, photo_url: photos.player(p)})),
         list
       ),
       photo_url: photos.team(t),

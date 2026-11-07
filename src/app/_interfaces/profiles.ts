@@ -14,8 +14,8 @@ export type TeamOverviewPlayer = {
   name: string;
   first_name: string;
   last_name: string;
-  // only for an admin and the player themself, null for everyone else (the second line then shows the team name)
-  username: string | null;
+  // public (#88): the second line shows "@username" for every player
+  username: string;
   // as on Rejting
   rating: number;
   rounds: number;
@@ -95,8 +95,8 @@ export type PlayerOverviewTeam = {
   // newest first
   leagues: {league_id: number; league_name: string}[];
   // every player of the team (the player too) in the team's rating order, as the Team page lists them (frame 13c);
-  // the chips show the first name and the initials of the full name
-  players: {id: number; first_name: string; last_name: string; photo_url: string | null}[];
+  // the chips show "@username" with the full name on hover (#88)
+  players: {id: number; first_name: string; last_name: string; username: string; photo_url: string | null}[];
   // the team's avatar
   photo_url: string | null;
 };

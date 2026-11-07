@@ -27,7 +27,7 @@ export async function mySchedule(viewer: Viewer): Promise<MySchedule> {
     select: {
       team_id: true,
       team_name: true,
-      teamPlayers: {select: {player: {select: {id: true, first_name: true, last_name: true, rating: true, active: true, ...PLAYER_PHOTO}}}},
+      teamPlayers: {select: {player: {select: {id: true, first_name: true, last_name: true, username: true, rating: true, active: true, ...PLAYER_PHOTO}}}},
       // Podjela: the team's place on the nights played at two places
       nightPlaces: {select: {league_id: true, night: true, slot: true}},
       leagueTeams: {
@@ -85,6 +85,8 @@ export async function mySchedule(viewer: Viewer): Promise<MySchedule> {
           .map(({player}) => ({
             id: player.id,
             name: displayName(player),
+            // the username is public (#88): under the name on Početna and Raspored
+            username: player.username,
             rating: player.rating,
             me: player.id === playerId,
             active: player.active,

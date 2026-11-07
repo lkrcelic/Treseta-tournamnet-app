@@ -8,7 +8,7 @@ import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import {Box} from "@mui/material";
 import React, {useId} from "react";
 
-const PRIVATE_NOTE = "Ostali osobni podaci vidljivi su samo igraču i administratorima.";
+const PRIVATE_NOTE = "Email, mobitel, datum rođenja i Pušač vidljivi su samo igraču i administratorima.";
 
 // The rows and, for another player's page, the lock note (P:96-102 phone, P:298-306 desktop)
 function PersonalDataList({player, full, desktop}: {player: PlayerView; full: boolean; desktop: boolean}) {
@@ -60,8 +60,8 @@ function PersonalDataList({player, full, desktop}: {player: PlayerView; full: bo
   );
 }
 
-// "Osobni podaci" of a Player page: first and last name for everyone, all seven rows for the player and admins (full;
-// the server sends nothing else). On the phone a section with a card (13c), on the desktop a column (13g); both can
+// "Osobni podaci" of a Player page: name and username for everyone (#88), all seven rows for the player and admins
+// (full; the server sends nothing else). On the phone a section with a card (13c), on the desktop a column (13g); both can
 // hold an action next to the title (the admin's "Uredi podatke").
 export function PersonalDataCard({player, full, desktop = false, action}: {player: PlayerView; full: boolean; desktop?: boolean; action?: React.ReactNode}) {
   const titleId = useId();

@@ -39,7 +39,7 @@ export async function GET(request: NextRequest, {params}: { params: { id: string
                 team_id: teamId,
             },
             // the response includes the players, so load them (without this every request failed validation);
-            // rosterView below drops the usernames others may not see and puts the players in Croatian name order
+            // rosterView below puts the players in Croatian name order (the username is public, #88)
             include: {
                 teamPlayers: {select: {player: {select: {id: true, first_name: true, last_name: true, username: true, ...PLAYER_PHOTO}}}},
                 leagueTeams: {select: {active: true, league: {select: {league_id: true, league_name: true}}}},
@@ -54,7 +54,6 @@ export async function GET(request: NextRequest, {params}: { params: { id: string
             ...dbTeam,
             photo_url: photos.team(dbTeam),
             teamPlayers: rosterView(
-                auth.user,
                 dbTeam.teamPlayers.map(({player: {photo_updated_at, photo_visibility, ...p}}) => ({...p, photo_url: photos.player({id: p.id, photo_updated_at, photo_visibility})}))
             ).map((player) => ({player})),
         });

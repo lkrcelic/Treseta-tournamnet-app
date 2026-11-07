@@ -39,16 +39,14 @@ export async function listAdminPlayers(viewer: Viewer): Promise<AdminPlayerRow[]
       teamPlayers: {select: {team: {select: {team_id: true, team_name: true}}}},
     },
   });
-  // The username is private (an organizer gets names and teams); the phone is for whoever may call (privacy.ts)
-  const usernames = can(viewer, "player.private");
+  // The username is public (#88); the phone is for whoever may call (privacy.ts)
   const phones = can(viewer, "player.contact");
   return adminPlayerRows(
-    players.map(({teamPlayers, player_role, phone, rating, created_at, photo_updated_at, photo_visibility, username, ...p}) => ({
+    players.map(({teamPlayers, player_role, phone, rating, created_at, photo_updated_at, photo_visibility, ...p}) => ({
       ...p,
       created_at: created_at.toISOString(),
       admin: isAdminRole({player_role}),
       role: publicRole({player_role}),
-      ...(usernames && {username}),
       ...(phones && {phone}),
       rating,
       teams: teamPlayers.map((tp) => tp.team),

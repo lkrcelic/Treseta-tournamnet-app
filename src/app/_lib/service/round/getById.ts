@@ -19,11 +19,12 @@ export async function getRoundById(id: number, admin = false): Promise<RoundExte
                     teamPlayers: {
                         include: {
                             player: {
-                                // no usernames: they are private (handoff §6), and any logged-in player reads this
+                                // the username is public (#88)
                                 select: {
                                     id: true,
                                     first_name: true,
                                     last_name: true,
+                                    username: true,
                                 },
                             },
                         },
@@ -35,11 +36,12 @@ export async function getRoundById(id: number, admin = false): Promise<RoundExte
                     teamPlayers: {
                         include: {
                             player: {
-                                // no usernames: they are private (handoff §6), and any logged-in player reads this
+                                // the username is public (#88)
                                 select: {
                                     id: true,
                                     first_name: true,
                                     last_name: true,
+                                    username: true,
                                 },
                             },
                         },

@@ -468,7 +468,7 @@ test("Moji oglasi says what each ad is and when it closes", () => {
 });
 
 test("Tko traži zamjenu? lists the player first, then the active teammates", () => {
-  const p = (id: number, me = false, active = true) => ({id, name: `Igrač ${id}`, rating: 1500, me, active});
+  const p = (id: number, me = false, active = true) => ({id, name: `Igrač ${id}`, username: `igrac${id}`, rating: 1500, me, active});
   assert.deepEqual(substituteRoster([p(1), p(2, false, false), p(3, true), p(4)]).map((x) => x.id), [3, 1, 4]);
   assert.deepEqual(substituteRoster([]), []);
 });

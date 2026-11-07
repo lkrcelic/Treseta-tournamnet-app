@@ -10,12 +10,12 @@ export type TeamCardData = {
   team_id: number;
   team_name: string;
   // shown as given (Moj profil: name order; the Player page: the team's rating order)
-  players: {id: number; first_name: string; last_name: string; photo_url?: string | null}[];
+  players: {id: number; first_name: string; last_name: string; username: string; photo_url?: string | null}[];
 };
 
 // One card per team (Moj profil "Moje ekipe" 13e/12f, a phone Player page's "Ekipe" 13c): the team's name with
-// "Stranica ekipe ›" to its page, and its players as chips with their first names (usernames are private). The name is
-// never cut short: when it and the pill don't fit on one line (a narrow desktop column), the pill goes under the name.
+// "Stranica ekipe ›" to its page, and its players as chips with their usernames, the full name on hover (#88; the
+// design shows the handles in 13e). The name is never cut short: when it and the pill don't fit on one line (a narrow desktop column), the pill goes under the name.
 export function TeamCards({
   title,
   teams,
@@ -72,8 +72,8 @@ export function TeamCards({
             <Box component="ul" aria-label="Igrači" sx={{listStyle: "none", m: 0, p: 0, display: "flex", flexWrap: "wrap", gap: "8px"}}>
               {t.players.map((p) => (
                 <Box component="li" key={p.id}>
-                  {/* first names: usernames are private (handoff §6) */}
-                  <PlayerChip name={p.first_name || p.last_name} fullName={fullName(p)} src={p.photo_url} />
+                  {/* the handle, with the full name on hover (#88) */}
+                  <PlayerChip name={`@${p.username}`} fullName={fullName(p)} src={p.photo_url} />
                 </Box>
               ))}
             </Box>

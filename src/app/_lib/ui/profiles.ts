@@ -183,18 +183,19 @@ export function longestWord(name: string): number {
   return Math.max(0, ...name.replace(/-/g, "- ").split(/\s+/).map((w) => Array.from(w).length));
 }
 
-// The Osobni podaci rows of a Player page (P:467): first and last name for everyone; for the player themself and
-// admins (full) also the username, email, phone, birth date and Pušač. A missing value is "—".
+// The Osobni podaci rows of a Player page (P:467): the name and the username for everyone (#88); for the player
+// themself and admins (full) also the email, phone, birth date and Pušač. A missing value is "—".
 export function personalRows(player: PlayerView, full: boolean): {key: string; value: string}[] {
   const or = (v: string | null | undefined) => (v && v.trim() ? v : "—");
   const rows = [
     {key: "Ime", value: or(player.first_name)},
     {key: "Prezime", value: or(player.last_name)},
+    // public (#88): how a player is known in the league
+    {key: "Korisničko ime", value: player.username ? `@${player.username}` : "—"},
   ];
   if (!full) return rows;
   return [
     ...rows,
-    {key: "Korisničko ime", value: player.username ? `@${player.username}` : "—"},
     {key: "Email", value: or(player.email)},
     {key: "Mobitel", value: or(player.phone)},
     {key: "Datum rođenja", value: player.birth_date ? `${displayDate(player.birth_date)}.` : "—"},

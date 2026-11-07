@@ -4,6 +4,7 @@ export type RatingRow = {
   id: number;
   rank: number; // players with the same rating share a rank
   name: string;
+  username: string; // public (#88): the search matches it and the detail shows it under the name
   team: string | null; // the team they played for most recently
   rating: number;
   change: number | null; // at the last night they played; null before their first

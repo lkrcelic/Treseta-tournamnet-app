@@ -4,7 +4,7 @@ import {leagueDateString} from "@/app/_lib/dates";
 import {isDbId} from "@/app/_lib/helpers/query/dbId";
 import {isAdminRole} from "@/app/_lib/players/admin";
 import {displayName} from "@/app/_lib/players/names";
-import {rosterUsername, Viewer} from "@/app/_lib/players/privacy";
+import {Viewer} from "@/app/_lib/players/privacy";
 import {getLeagueStandings} from "@/app/_lib/service/league/getStandings";
 import {ratingSummaries} from "@/app/_lib/service/ratings/ratings";
 import {aggregateTeamNights, bestRank, teamLeagueRows} from "@/app/_lib/ui/profiles";
@@ -70,7 +70,7 @@ export async function getTeamOverview(teamId: number, viewer: Viewer): Promise<T
         name: displayName(p),
         first_name: p.first_name,
         last_name: p.last_name,
-        username: rosterUsername(viewer, p.id, p.username),
+        username: p.username,
         rating: r.rating,
         rounds: r.rounds,
         provisional: r.provisional,
