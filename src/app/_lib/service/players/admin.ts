@@ -3,6 +3,7 @@ import {prisma} from "@/app/_lib/prisma";
 import {AdminPlayerRow, AdminPlayerUpdate, PLAYER_NOT_FOUND, PlayerActiveResponse, PlayerView} from "@/app/_interfaces/player";
 import {AdminAction, AdminTarget, adminActionError, adminPlayerRows, anonymisedPlayerData, isAdminRole} from "@/app/_lib/players/admin";
 import {playerView, publicRole, Viewer} from "@/app/_lib/players/privacy";
+import {can} from "@/app/_lib/auth/permissions";
 import {anyCase} from "@/app/_lib/helpers/query/anyCase";
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {lockRatings} from "@/app/_lib/service/admin/recalc";
@@ -31,18 +32,24 @@ export async function listAdminPlayers(viewer: Viewer): Promise<AdminPlayerRow[]
       username: true,
       active: true,
       player_role: true,
+      phone: true,
       rating: true,
       created_at: true,
       ...PLAYER_PHOTO,
       teamPlayers: {select: {team: {select: {team_id: true, team_name: true}}}},
     },
   });
+  // The username is private (an organizer gets names and teams); the phone is for whoever may call (privacy.ts)
+  const usernames = can(viewer, "player.private");
+  const phones = can(viewer, "player.contact");
   return adminPlayerRows(
-    players.map(({teamPlayers, player_role, rating, created_at, photo_updated_at, photo_visibility, ...p}) => ({
+    players.map(({teamPlayers, player_role, phone, rating, created_at, photo_updated_at, photo_visibility, username, ...p}) => ({
       ...p,
       created_at: created_at.toISOString(),
       admin: isAdminRole({player_role}),
       role: publicRole({player_role}),
+      ...(usernames && {username}),
+      ...(phones && {phone}),
       rating,
       teams: teamPlayers.map((tp) => tp.team),
       photo_url: playerPhotoUrl({id: p.id, photo_updated_at, photo_visibility}, viewer, new Set()),

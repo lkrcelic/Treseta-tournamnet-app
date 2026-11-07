@@ -6,7 +6,7 @@ import {Prisma} from "@prisma/client";
 import {errorResponse} from "@/app/_lib/apiErrors";
 import {NextRequest, NextResponse} from "next/server";
 import {STATUS} from "@/app/_lib/statusCodes";
-import {requireAdmin, requireUser} from "@/app/_lib/service/auth/requireUser";
+import {requireCan, requireUser} from "@/app/_lib/service/auth/requireUser";
 import {createTeam} from "@/app/_lib/service/team/create";
 import {BYE_TEAM_ID} from "@/app/_lib/bye";
 import {escapeLike} from "@/app/_lib/helpers/query/anyCase";
@@ -56,8 +56,9 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Nova ekipa (admin or organizer)
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin(request);
+  const auth = await requireCan(request, "team.create");
   if (auth.response) return auth.response;
 
   try {

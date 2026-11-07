@@ -111,7 +111,10 @@ export type AdminPlayerRow = {
   last_name: string;
   // the full name, or "Igrač bez imena"
   name: string;
-  username: string;
+  // private: the player themselves and an admin (an organizer gets names and teams, not usernames)
+  username?: string;
+  // Zovi: an admin and an organizer (they call the teams of their tournament); left out for everyone else
+  phone?: string | null;
   // in Croatian name order
   teams: {team_id: number; team_name: string}[];
   active: boolean;
