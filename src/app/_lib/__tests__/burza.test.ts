@@ -456,6 +456,9 @@ test("Moji oglasi says what each ad is and when it closes", () => {
 
   assert.equal(dayMonth("2026-09-29"), "29. 9.");
   assert.equal(dayMonth("2026-12-05"), "5. 12.");
+  // a moment is taken in league time: 00:28 in Zagreb is still the 30th in UTC
+  assert.equal(dayMonth("2026-10-30T23:28:00.000Z"), "31. 10.");
+  assert.equal(dayMonth("2026-07-14T22:10:00.000Z"), "15. 7.");
   assert.deepEqual(
     (["ACTIVE", "EXPIRED", "CLOSED"] as const).map((s) => STATUS_PILL[s].label),
     ["Aktivan", "Istekao", "Zatvoren"]
