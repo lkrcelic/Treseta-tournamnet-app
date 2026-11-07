@@ -2,6 +2,7 @@
 
 import {color, crop as cropColor} from "@/app/_styles/tokens";
 import {buttonBase, InitialsAvatar} from "@/app/_ui/sp";
+import {useBackToClose} from "@/app/_hooks/useBackToClose";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import {Box, Dialog, Fade, SxProps, Theme} from "@mui/material";
 import React, {useId, useState} from "react";
@@ -12,6 +13,7 @@ import type {PhotoKind} from "./PhotoParts";
 // the screen lets it (at most the photo's own 512 px). A tap anywhere, ✕, Esc or Back closes it.
 export function PhotoViewer({kind, name, src, onClose}: {kind: PhotoKind; name: string; src: string; onClose: () => void}) {
   const titleId = useId();
+  useBackToClose(true, onClose);
   return (
     <Dialog
       open

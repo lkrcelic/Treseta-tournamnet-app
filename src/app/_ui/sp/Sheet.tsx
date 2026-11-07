@@ -1,11 +1,13 @@
 import useKeyboardInset from "@/app/_hooks/useKeyboardInset";
+import {useBackToClose} from "@/app/_hooks/useBackToClose";
 import {color, ease, font, shadow, tint} from "@/app/_styles/tokens";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import {Box, Drawer} from "@mui/material";
 import React, {useId} from "react";
 import {IconCircleButton} from "./Buttons";
 
-// Bottom sheet with a grabber and a title. MUI Drawer gives focus trap, Escape and scrim click to close.
+// Bottom sheet with a grabber and a title. MUI Drawer gives focus trap, Escape and scrim click to close; the phone's
+// Back closes it too (useBackToClose).
 // paper: the paper background with a close button next to the title (Burza · Što objavljuješ?).
 // closable: the admin's white sheets (admin-mobile design): a close button next to the title, 20 px gutters and 14 px
 // between the parts. busy: something the sheet started is on its way, so it can't be closed until it answers.
@@ -39,6 +41,8 @@ export function BottomSheet({
   const close = () => {
     if (!busy) onClose();
   };
+  // the phone's Back closes the sheet, not the page under it
+  useBackToClose(open, onClose, busy);
   const withClose = paper || closable;
   const heading = (
     <Box

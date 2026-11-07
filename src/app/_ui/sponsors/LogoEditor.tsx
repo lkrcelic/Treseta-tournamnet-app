@@ -19,6 +19,7 @@ import ZoomOutRoundedIcon from "@mui/icons-material/ZoomOutRounded";
 import {Box, Dialog} from "@mui/material";
 import React, {useEffect, useId, useRef, useState} from "react";
 import {LogoCropper} from "./LogoCropper";
+import {useBackToClose} from "@/app/_hooks/useBackToClose";
 
 export type LogoResult = {upload: LogoUpload & {preview: string}; background: LogoBackground};
 
@@ -317,6 +318,8 @@ export function LogoScreen({file, src, background, onClose, onDone}: {file: File
   const e = useLogoEditor({src, file, background});
   const other = useFilePicker(e.pick);
   const titleId = useId();
+  // the phone's Back closes the screen, not Novi sponzor under it
+  useBackToClose(true, onClose);
   const pill = {
     ...buttonBase,
     height: 44,

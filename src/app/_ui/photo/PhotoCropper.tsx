@@ -25,6 +25,7 @@ import ZoomOutRoundedIcon from "@mui/icons-material/ZoomOutRounded";
 import {Box, Dialog} from "@mui/material";
 import React, {useCallback, useEffect, useId, useLayoutEffect, useRef, useState} from "react";
 import {useFilePicker} from "./PhotoParts";
+import {useBackToClose} from "@/app/_hooks/useBackToClose";
 
 // Cropping a profile photo to its circle (Claude Design "Pomakni i zumiraj" M3 and the dialog D2): the photo, the circle
 // it is cut to with the shade around it, and the 3×3 grid while it is dragged. Drag to move it, two fingers, the wheel
@@ -271,6 +272,8 @@ export function PhotoScreen({source, onClose, onSave}: {source: CropSource; onCl
   const other = useFilePicker(c.pick);
   const titleId = useId();
   const [saving, setSaving] = useState(false);
+  // the phone's Back closes the screen (not while the photo is being saved)
+  useBackToClose(true, onClose, saving);
   const save = async () => {
     const data = c.render();
     if (!data || saving) return;

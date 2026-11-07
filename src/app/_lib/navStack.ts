@@ -227,6 +227,11 @@ export function notePop(path: string) {
   popTo = path;
 }
 
+// a Back that only closed a sheet on the page at `path` (_lib/overlayHistory.ts): no step back in the stack
+export function cancelPop(path: string) {
+  if (popTo === path) popTo = null;
+}
+
 export function noteReplace(path: string) {
   replaceTo = path;
 }
