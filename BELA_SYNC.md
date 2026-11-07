@@ -225,6 +225,12 @@ The database part (the `Conference` table and `LeagueTeam.conference_id`) is und
 - Bela's tournaments (Turniri). See [Bela's tournaments](#belas-tournaments) below.
 - The clock's backup `api/cron/tick/` with `_lib/cron.ts` and `_lib/__tests__/cron.test.ts` (Bela's `faf4836`): it
   runs the tournaments' day and closes matches out of time (Vrijeme partije), neither of which Treseta has.
+- **Gost i poziv** (`3b85bfa`, DECISIONS #75, and its follow-ups `8e91edf`, `578330e`, `78caddb`), not copied for now
+  (decided 7 Nov 2026): Treseta's league stays public without an account (Liga, Raspored, Dnevni and Ukupni poredak,
+  Rejting and their APIs), Početna has no guest version, and there is no `GuestHome.tsx`, `GuestSheet.tsx`,
+  `_store/guestSheetStore.ts` or "Sjedni za stol." sheet. A later Bela change to them is dropped; a change to a shared
+  file that only follows from them (a locked page, `requireUser` on a league API, the guest's sign-up return path) is
+  left out too.
 - Unused images: `public/TitleBackground.png`, `public/TitleBackgroundSponsors.png`, `public/background.png`,
   `public/title.png`.
 
