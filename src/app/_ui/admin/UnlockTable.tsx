@@ -75,7 +75,7 @@ function UnlockSheet({pad, open, onClose, onDone}: {pad: TablePad; open: boolean
   };
 
   return (
-    <BottomSheet open={open} onClose={onClose} title="Otključaj partiju" eyebrow={`Stol ${pad.table ?? "–"}${pad.roundNumber ? ` · Kolo ${pad.roundNumber}` : ""}`} busy={busy} closable tall>
+    <BottomSheet open={open} onClose={onClose} title="Otključaj partiju" eyebrow={`Stol ${pad.table ?? "–"}${pad.roundNumber ? ` · Kolo ${pad.roundNumber}` : ""}`} busy={busy} closable>
       <Box sx={{display: "flex", flexDirection: "column", gap: "14px"}}>
         <Box sx={{fontSize: 14.5, lineHeight: 1.45, color: color.ink2}}>Koliko traje partija od sada?</Box>
         <Box sx={{display: "flex", flexWrap: "wrap", gap: "8px"}}>

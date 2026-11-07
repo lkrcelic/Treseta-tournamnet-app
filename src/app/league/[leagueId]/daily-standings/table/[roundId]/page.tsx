@@ -5,6 +5,7 @@ import {PadHand, PadMatch, TablePad} from "@/app/_interfaces/adminHand";
 import useManagePhone from "@/app/_hooks/useManagePhone";
 import useCan from "@/app/_hooks/useCan";
 import TablePhone from "@/app/_ui/admin/TablePhone";
+import {UnlockBox} from "@/app/_ui/admin/UnlockTable";
 import {NoWinnerAsk, NoWinnerConfirm} from "@/app/_ui/admin/NoWinnerConfirm";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useShortWindow from "@/app/_hooks/useShortWindow";
@@ -258,6 +259,8 @@ function TableScorepadDesktop() {
                 )}
               </Box>
             )}
+            {/* a locked table of a tournament: why it is locked, and Otključaj partiju (DECISIONS #89) */}
+            <UnlockBox pad={pad} onDone={load} />
             <Box sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "14px"}}>
               {([0, 1] as const).map((i) => (
                 <ScorePanel
