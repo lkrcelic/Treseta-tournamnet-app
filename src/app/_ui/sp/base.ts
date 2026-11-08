@@ -1,4 +1,4 @@
-import {color, font, radius, shadow} from "@/app/_styles/tokens";
+import {color, DESKTOP_MIN_WIDTH, font, radius, shadow} from "@/app/_styles/tokens";
 import type {SxProps, Theme} from "@mui/material";
 
 // Plain <button> reset shared by every Scorepad button: no UA chrome, visible keyboard focus, press feedback.
@@ -57,6 +57,17 @@ export function scrollIntoMiddle(row: HTMLElement, box: HTMLElement, pinned = 0)
 }
 
 export const tabular = {fontVariantNumeric: "tabular-nums"} as const;
+
+// From the desktop layout up (everything below it is the phone layout), for sx keys
+export const DESKTOP_UP = `@media (min-width: ${DESKTOP_MIN_WIDTH}px)`;
+
+// The font size of an input, textarea or select: never under 16 px on the phone, the design's own size from the
+// desktop up. iOS Safari zooms the whole page in when a field under 16 px takes the focus, and pinch zoom stays
+// available (DECISIONS 16), so the page stays zoomed after the keyboard is closed and the admin has to pinch back
+// out in the middle of a league night. Spread this into a field's sx instead of writing fontSize there.
+export function fieldFont(desktop: number) {
+  return {fontSize: Math.max(16, desktop), [DESKTOP_UP]: {fontSize: desktop}} as const;
+}
 
 // Desktop window sizes below the designed 1440×900, for sx keys (and useShortWindow): a window under 800 px high gets
 // the compact headers, header cards and scorepad panels; one under 1280 px wide narrows the fixed side columns (both

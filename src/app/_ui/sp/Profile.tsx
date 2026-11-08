@@ -13,7 +13,7 @@ import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import MilitaryTechRoundedIcon from "@mui/icons-material/MilitaryTechRounded";
 import {Box, keyframes, SxProps, Theme} from "@mui/material";
 import React, {useContext, useEffect, useId, useRef, useState} from "react";
-import {buttonBase, ellipsis, mergeSx, tabular} from "./base";
+import {buttonBase, ellipsis, fieldFont, mergeSx, tabular} from "./base";
 import {IconCircleButton} from "./Buttons";
 
 // Pieces of the Team and Player pages (handoff §6, komponente/Profiles.dc.html, abbreviated P below), shared with Moj
@@ -594,7 +594,7 @@ export function SearchAddField({
             outline: "none",
             background: "transparent",
             font: "inherit",
-            fontSize: 15,
+            ...fieldFont(15),
             color: color.ink,
             "&::placeholder": {color: color.muted, opacity: 1},
             "&:disabled": {cursor: "default"},
