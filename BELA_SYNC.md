@@ -9,7 +9,7 @@ own; everything else is kept identical to Bela.
 | | |
 |---|---|
 | Bela branch | `development`, read through the remote `bela` (the local Bela repo). Only commits come over, never Bela's uncommitted work |
-| Last synced Bela commit | `a0686e1` (7 Nov 2026). The tournament files are ahead of it, see [Bela's work waiting to come over](#belas-work-waiting-to-come-over) |
+| Last synced Bela commit | `88425c3` (7 Nov 2026). The tournament files are ahead of it, see [Bela's work waiting to come over](#belas-work-waiting-to-come-over) |
 | Target branch | `master` |
 | Sync branch | `bela-sync` in the repo itself (no worktree): created from `master`, or rebased onto it, by every run |
 
@@ -77,21 +77,27 @@ Treseta directly only for what has to differ, and add it below.
 
 ## Bela's work waiting to come over
 
-Every Bela commit up to `a0686e1` (7 Nov 2026) came over or was skipped by 7 Nov 2026. Decisions for Bela work that
+Every Bela commit up to `88425c3` (7 Nov 2026) came over or was skipped by 8 Nov 2026. Decisions for Bela work that
 touches Treseta's differences before it comes over go here.
 
 **The tournaments were brought over by hand on 10 Nov 2026** (see [Turniri](#turniri)), copied from Bela's
 `development` as it stood at `d2a0b98`. So the tournament files are ahead of the last synced commit: everything Bela
-did to them between `a0686e1` and `d2a0b98` — Organizator, Otvorene prijave, Obriši kolo, the Kolo full-screen, the
-status chips — is already here, while the 14 tournament commits the earlier runs skipped (`79d735a..6c84c4b` and
-after) never came as commits at all.
+did to them up to `d2a0b98` — Organizator, Otvorene prijave, Obriši kolo, the Kolo full-screen, the status chips
+— is already here, while the 14 tournament commits the earlier runs skipped (`79d735a..6c84c4b` and after) never
+came as commits at all.
 
-What the next run does with `a0686e1..d2a0b98`: a commit that only touches tournament files is already here, so its
+What the next run does with `88425c3..d2a0b98`: a commit that only touches tournament files is already here, so its
 cherry-pick either applies cleanly to the same end state or comes up empty — either way nothing is lost, and an empty
 one is skipped with that reason. A conflict there means Bela changed the same lines after this copy: take Bela's
 side, keeping the Treseta rules in the table below. Commits that touch other files (Burza's phone numbers, the
-install sheet, Raspored on Android, the admin's no-winner warning, Vidljivost slike, the hands-changed question) come
-over as usual, and Otključaj partiju is listed under Turniri as still to come.
+install sheet, the hands-changed question) come over as usual, and Otključaj partiju is listed under Turniri as
+still to come.
+
+- **Organizator is decided**, which the run of 8 Nov 2026 left open (`28d19f2`, DECISIONS #86): the whole
+  role→capability foundation came over with the tournaments on 10 Nov 2026 — `_lib/auth/` (`permissions.ts`,
+  `roles.ts`, `ownership.ts`, `forbidden.ts`), `requireCan`, `ForbiddenError` → 403, `useCan` / `useManagePhone`, the
+  three privacy steps and the Rola picker — and `ORGANIZER` and `Tournament.created_by` with it. Nothing of it waits
+  any more, and the Bela commits that build on it come over as usual.
 
 ## Differences from Bela
 
@@ -123,7 +129,7 @@ winner (`Match.winner_side`); everything else is worked out by replaying the han
 | `_interfaces/result.ts`, `_interfaces/side.ts` (Treseta only) | `_interfaces/belaResult.ts`, `_interfaces/belaPlayerAnnouncement.ts` | A hand is `team1_game_points`, `team2_game_points`, `custom`; `TeamSide` |
 | `_interfaces/match.ts`, `_interfaces/adminHand.ts` | same paths | Bela's export names (`AdminHandValidation`, `PadHand`, …) on Treseta's hands, so shared code reads them unchanged |
 | `_lib/helpers/databaseHelpers.ts` | same path | Copies a finished match and its hands from `OngoingMatch`/`OngoingResult` to `Match`/`Result` |
-| `_lib/service/admin/hands.ts`' `lostWinnerError` | same path | Meč bi ostao bez pobjednika: compares the match's `winner_side` with the hands replayed (`matchState`), where Bela compares the stored points with the threshold or Vrijeme partije |
+| `_lib/service/admin/hands.ts`' `noWinnerWarning` | same path | Meč ostaje bez pobjednika? (a warning the admin confirms, `NoWinnerWarning`): compares the match's `winner_side` with the hands replayed (`matchState`), where Bela compares the stored points with the threshold or Vrijeme partije (`finishedMatchWinner`, not here) |
 | `_lib/service/ongoingResult/*` (Treseta only) | `_lib/service/ongoingBelaResult/*` | Saves and edits a hand with Bela's row locks; refuses a hand once the match is over, and a "s ovim dosta" call that can't stand (`matchState.ts`) |
 | `_lib/service/ongoingMatch/getOneWithResults.ts`, `_lib/service/ongoingMatch/getRoundId.ts`, `_lib/service/match/finishOngoingMatch.ts`, `_lib/service/admin/hands.ts` | same paths | Bela's logic on Treseta's hand tables |
 | `_store/game/resultStore.ts` (Treseta only) | `_store/bela/resultStore.ts`, `_store/bela/announcementStore.ts` | The keypad: the 11-split and Custom |
@@ -132,7 +138,7 @@ winner (`Match.winner_side`); everything else is worked out by replaying the han
 | `ongoing-match/ui/handFlow.ts`, `ongoing-match/ui/HandEntryPanel.tsx`, `ongoing-match/[matchId]/page.tsx` | same paths | The desktop entry panel and the hand rows, without "Tko je zvao" and zvanja; after a custom hand the scoreboard asks "Je li netko zvao „s ovim dosta”?", and a raised target shows as the "Do 51" flag |
 | `ongoing-match/ui/MatchEnd.tsx` (Treseta only) | none | The "s ovim dosta" question (a bottom sheet) and the "Do 51" flag, used by the scoreboard and the admin scorepad |
 | `_lib/ui/adminEntry.ts`, `league/[leagueId]/daily-standings/table/AdminEntryPanel.tsx` | same paths | The admin scorepad: Normal and Custom, where Bela has "Ručni unos"; Custom's hint names "s ovim dosta". `manualFields` (the phone's Custom sheet) takes 0 to `CUSTOM_HAND_MAX` (Bela: 0 to 9999). `adminEntry.ts` also holds `roundBackBy` (Natrag na kolo after a reload), which Bela keeps in the not copied `_lib/ui/tableScope.ts` |
-| `_ui/admin/TablePhone.tsx` | same path | The admin's phone scorepad on Bela's board and sheets: one keypad step (the 11-split) where Bela has the trump caller, zvanja and points (so Bela's redirect from a Korak 2 or 3 without a hand isn't here); Natrag na kolo reads `roundBackBy` from `adminEntry.ts`; Custom (0 to 99, a custom hand) where Bela has Ručno and Ručni unos; after a custom hand the "s ovim dosta" question (`DostaPrompt`), and the "Do 51" flag on the board |
+| `_ui/admin/TablePhone.tsx` | same path | The admin's phone scorepad on Bela's board and sheets: one keypad step (the 11-split) where Bela has the trump caller, zvanja and points (so Bela's redirect from a Korak 2 or 3 without a hand isn't here); Natrag na kolo reads `roundBackBy` from `adminEntry.ts`; Custom (0 to 99, a custom hand) where Bela has Ručno and Ručni unos; after a custom hand the "s ovim dosta" question (`DostaPrompt`, through `runSheet`'s `after`, before Bela's `anyway` and `allow`), and the "Do 51" flag on the board |
 | `_bootstrap/refreshUser.ts`, `_utils/resetStores.ts` | same paths | No announcement store |
 | `_lib/__tests__/`: `scoring`, `serverHand`, `handEntryStores`, `scoreboardMatch`, `adminEntry`, `tableOverview`, `roundClose`, `finishedMatchEdit` tests, `db/roundClose`, `db/finishedMatchEdit`, `helpers/handEntry.ts` | same names | Tests of Treseta's rules (`tableOverview`: Treseta's hands, 41 and Custom's 0–99; the `db/` tests play custom hands to 41 and a bye worth `2 × BYE_MATCH_POINTS`; `roundClose` has no tournament table of one match) |
 
@@ -141,7 +147,7 @@ winner (`Match.winner_side`); everything else is worked out by replaying the han
 | File | Treseta's edit |
 |---|---|
 | `_hooks/useStartGame.ts`, `round/lineup/[roundId]/page.tsx`, `league/[leagueId]/daily-standings/table/TablePreview.tsx` | `1001` → `MATCH_THRESHOLD` |
-| `league/[leagueId]/daily-standings/table/[roundId]/page.tsx` | `1001` → `MATCH_THRESHOLD` (the comment says "Custom" for "Ručni unos"); after a custom hand `save` passes `run` an `after` that opens the "s ovim dosta" question (`DostaPrompt`, `askDosta` and `pickDosta`); the "Do 51" flag (`TargetFlag`) next to the admin pill; a match tab adds "· do 51" |
+| `league/[leagueId]/daily-standings/table/[roundId]/page.tsx` | `1001` → `MATCH_THRESHOLD` (the comment says "Custom" for "Ručni unos"); after a custom hand `save` passes `run` an `after` (before Bela's `anyway` and `allow`) that opens the "s ovim dosta" question (`DostaPrompt`, `askDosta` and `pickDosta`); the "Do 51" flag (`TargetFlag`) next to the admin pill; a match tab adds "· do 51" |
 | `_lib/service/admin/recalc.ts`, `_lib/service/ratings/ratings.ts` | The ratings read each match's `winner_side` through `ratedMatch`, so a "s ovim dosta" win with fewer points is a win (Bela compares the points). `recalc.ts` also has `RATINGS_FROM`, below |
 | `_lib/service/round/insertPairRounds.ts` | Bye matches `BYE_MATCH_POINTS : 0` (Bela: `301 : 0`), threshold `MATCH_THRESHOLD` |
 | `ongoing-match/ui/useMatchSides.ts` | Imports `TeamSide` from `_interfaces/side` |
@@ -356,3 +362,4 @@ The nightly sync adds a row when it brings something over or stops.
 | 1 Nov 2026 | `bed3e29..92df912` (2 of 25) | Stopped at `3b85bfa` (Gost i poziv: a guest's Početna is built on the tournaments, Turniri · Liga, PlayerFrame and TournamentsOverview, and the league's season table needs a login; not decided). 2 came over: league Tu smo without the bans (1 migration, `20261031180000_league_arrival`, Bela's SQL), and the standings' head-to-head with `rankTeams` carried into `_lib/leagueOrder.ts` |
 | 10 Nov 2026 | tournament files from `d2a0b98` | **Turniri brought over by hand** (not a nightly run): the schema and 3 migrations, the organizer role, Vrijeme partije (45 min, +5 a raised target), the tournament logic, 21 routes and 31 screens. Treseta's rules kept: 41 with "s ovim dosta", a no-show scored as a bye (5 : 0), no zvanja, no `TeamScore.tournament_id`. Otključaj partiju and Gost i poziv still out |
 | 7 Nov 2026 | `92df912..a0686e1` (42) | Run by hand after the nightly stop at `3b85bfa`: Gost i poziv decided not copied for now. 19 came over (6 adapted by hand): Registracija s Googleom (without `?next=`), Datumi (Uredi večer moves a night, Obriši večer i kola, Dodaj večer, the phone sheet), Okupljanje (1 migration, `20261101120000_league_gathering_time`, Bela's SQL), Nađi zamjenu until Tu smo opens, Dnevni poredak lists arrived teams, Odlazimo and Ipak otkazujemo as buttons and under Započni igru (`LeaveParts.tsx`), the round-close tests and the finished-match guard on Treseta's hands, Natrag na kolo after a reload, Igrači A–Ž / Najnoviji, the sign-up checks and limit, no Tu smo after the last round, the phone's Back closing sheets, the bold Tu smo note. 23 skipped: Gost i poziv (4), tournaments (14; the Burza test part of `726b292` came separately), Vrijeme partije, `CHANGELOG.md` (2), `CLAUDE.md`, and `699984e` (its look came with `LeaveRow`) |
+| 8 Nov 2026 | `a0686e1..88425c3` (9 of 22) | Stopped at `28d19f2` (Organizator: a tournament role on a new role→capability foundation across about 80 shared files, with a migration; not decided). 4 came over: the admin's no-winner warning (Meč ostaje bez pobjednika?, Spremi / Obriši svejedno) on Treseta's `winner_side` and hands, Raspored scrolling on Android (twice; Bela's mistaken revert of the warning left out), Vidljivost slike behind the photo. 5 skipped: `CHANGELOG.md` (4) and Bela's restore `ba7fb02` (already here); no migration |
