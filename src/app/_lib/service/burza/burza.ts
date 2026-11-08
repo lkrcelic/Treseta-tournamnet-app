@@ -3,6 +3,8 @@ import {
   endsOn,
   nightGone,
   partnerError,
+  phoneForViewer,
+  phoneNeedsLogin,
   postStatus,
   repostError,
   StatusContext,
@@ -134,6 +136,8 @@ function toView(p: PostRow, ctx: ViewContext): BurzaPost {
   const night = p.night ? isoDate(p.night) : null;
   // an availability ad without its own number shows the profile's
   const phone = p.phone ?? (p.kind === "AVAILABLE" ? p.player.phone : null);
+  // the ads are public, the numbers aren't (phoneForViewer)
+  const who = {signedIn: ctx.viewer != null, mine, closed};
   const ownTeam = p.team_id != null && ctx.myTeams.has(p.team_id);
   return {
     id: p.id,
@@ -150,7 +154,8 @@ function toView(p: PostRow, ctx: ViewContext): BurzaPost {
     as_substitute: p.as_substitute,
     as_partner: p.as_partner,
     note: p.note,
-    phone: closed && !mine ? null : phone,
+    phone: phoneForViewer(phone, who),
+    phone_hidden: phoneNeedsLogin(phone, who),
     mine,
     can_close: !closed && (mine || (ctx.viewer != null && isAdmin(ctx.viewer))),
     busy_team: p.kind === "SUBSTITUTE" && night && !closed && !ownTeam ? ctx.busy.get(night) ?? null : null,
@@ -176,7 +181,7 @@ export async function listOpenPosts(viewer: Player | null): Promise<BurzaPost[]>
   const ctx = await viewContext(viewer, rows);
   return rows
     .map((p) => toView(p, ctx))
-    .filter((p) => !p.closed && p.phone != null)
+    .filter((p) => !p.closed && (p.phone != null || p.phone_hidden))
     .sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind]);
 }
 

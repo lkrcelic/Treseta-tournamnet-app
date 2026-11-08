@@ -72,8 +72,10 @@ export type BurzaPost = {
   as_substitute: boolean;
   as_partner: boolean;
   note: string;
-  // hidden once the ad is closed (except to its author)
+  // hidden once the ad is closed, and from anyone who isn't logged in (except to its author)
   phone: string | null;
+  // there is a number, but it takes a login to see it (nobody logged in): the ad's page offers Prijavi se
+  phone_hidden: boolean;
   mine: boolean;
   // the author or an admin
   can_close: boolean;
