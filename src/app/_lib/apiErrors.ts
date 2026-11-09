@@ -1,7 +1,7 @@
 import {NextResponse} from "next/server";
 import {z} from "zod";
 import {STATUS} from "@/app/_lib/statusCodes";
-import {InvalidResultError, NO_WINNER_CODE, NoWinnerWarning} from "@/app/_lib/validation/validateResult";
+import {HANDS_CHANGED_CODE, HandsChangedWarning, InvalidResultError, NO_WINNER_CODE, NoWinnerWarning} from "@/app/_lib/validation/validateResult";
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {zodMessage} from "@/app/_lib/validation/zodMessage";
 import {ImageError} from "@/app/_lib/images";
@@ -23,6 +23,10 @@ export function errorResponse(error: unknown, fallbackMessage: string): NextResp
   // a warning the admin confirms (the scorepad asks and sends the change again), not a refusal
   if (error instanceof NoWinnerWarning) {
     return NextResponse.json({error: error.message, code: NO_WINNER_CODE}, {status: STATUS.Conflict});
+  }
+  // another phone saved a hand while this one was entering its own: the wizard asks the player, then sends it again
+  if (error instanceof HandsChangedWarning) {
+    return NextResponse.json({error: error.message, code: HANDS_CHANGED_CODE, hands: error.hands}, {status: STATUS.Conflict});
   }
   if (error instanceof InvalidResultError || error instanceof ImageError) {
     return NextResponse.json({error: error.message}, {status: STATUS.BadRequest});

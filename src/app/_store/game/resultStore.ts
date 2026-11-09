@@ -18,6 +18,9 @@ type ResultTypeExtended = Partial<ResultResponse> & {
   activeTeam: TeamKey;
   // each team's zvanja on the hand, by value
   zvanja: Record<TeamKey, ZvanjaCounts>;
+  // how many hands the match held when this entry was opened (see expected_hands in _interfaces/result); it is
+  // persisted with the entry, so a reload mid-entry keeps the check
+  expected_hands?: number | null;
 };
 
 export type ResultState = {
@@ -31,6 +34,7 @@ export type ResultState = {
   setKaput: () => void;
   resetScore: () => void;
   setMatchId: (id: number) => void;
+  setExpectedHands: (hands: number | null) => void;
   resetResult: () => void;
   setResultData: (data: ResultResponse) => void;
   // one more zvanje of the value for the active team
@@ -66,11 +70,13 @@ const useResultStore = create<ResultState>()(
       ...initialState,
       startNewNumber: false,
 
+      // a saved hand opened for editing: it is sent to its own route, so no hand count rides along
       setResultData: (data: ResultResponse) =>
         set((state) => ({
           resultData: {
             ...state.resultData,
             ...data,
+            expected_hands: null,
             custom: data.custom ?? false,
             zvanja: {
               team1: {3: data.team1_zvanja3 ?? 0, 4: data.team1_zvanja4 ?? 0},
@@ -106,6 +112,11 @@ const useResultStore = create<ResultState>()(
       setMatchId: (id) =>
         set((state) => ({
           resultData: {...state.resultData, match_id: id},
+        })),
+
+      setExpectedHands: (hands) =>
+        set((state) => ({
+          resultData: {...state.resultData, expected_hands: hands},
         })),
 
       setGamePoints: (digit: number) =>

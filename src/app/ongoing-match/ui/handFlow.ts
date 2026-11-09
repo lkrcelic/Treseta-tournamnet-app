@@ -10,9 +10,18 @@ import {NO_HAND_ZVANJA, zvanjaColumns} from "@/app/_lib/game/scoring";
 // Hand entry shared by the phone screen and the desktop entry panel. The entered hand lives in the result store
 // (persisted, so a reload mid-entry keeps it).
 
-export function startNewHand(matchId: number) {
+// `hands`: how many hands the board showed when the entry was opened. It rides along to the server, which holds the
+// save back (HandsChangedError) when another phone at the table saved a hand meanwhile, so the same hand can't be
+// counted twice without the player's word. Left out: no check (the desktop panel, which has the board next to it).
+export function startNewHand(matchId: number, hands?: number) {
   useResultStore.getState().resetResult();
   useResultStore.getState().setMatchId(matchId);
+  useResultStore.getState().setExpectedHands(hands ?? null);
+}
+
+// the hand count this entry started from (null: no check), e.g. to name the hand another phone added
+export function handsAtOpen(): number | null {
+  return useResultStore.getState().resultData.expected_hands ?? null;
 }
 
 // Loads a saved hand into the store for editing
@@ -44,8 +53,10 @@ export function discardHand() {
 
 // Saves the entered hand (new, or an update of `resultId`). Throws with the server's message when it is refused.
 // Saving a hand clears its "s ovim dosta" call: the scoreboard asks again after a custom hand.
-export async function saveHand(matchId: number, resultId?: number | string | null) {
-  const {team1_game_points, team2_game_points, custom, zvanja} = useResultStore.getState().resultData;
+// `force`: the player answered "Upiši i ovu" to a hand saved from another phone, so the hand count is left out and
+// the hand is saved as it is.
+export async function saveHand(matchId: number, resultId?: number | string | null, {force = false}: {force?: boolean} = {}) {
+  const {team1_game_points, team2_game_points, custom, zvanja, expected_hands} = useResultStore.getState().resultData;
   // a custom hand has no zvanja (the store drops them when Custom is pressed)
   const counts = custom ? NO_HAND_ZVANJA : zvanjaColumns(zvanja.team1, zvanja.team2);
   const data = {match_id: matchId, team1_game_points, team2_game_points, ...counts, custom};
@@ -54,7 +65,7 @@ export async function saveHand(matchId: number, resultId?: number | string | nul
     await updateOngoingResultAPI({resultId: String(resultId), result: data});
     markHand(matchId, {flash: Number(resultId), askDosta: custom ? Number(resultId) : undefined});
   } else {
-    const saved = await createOngoingResultAPI({result: data});
+    const saved = await createOngoingResultAPI({result: {...data, expected_hands: force ? null : expected_hands ?? null}});
     const added = saved?.result_id ?? null;
     markHand(matchId, {added, askDosta: custom && added != null ? added : undefined});
   }
