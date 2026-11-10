@@ -8,6 +8,8 @@ export const RoundResponseValidation = z.object({
   tournament_id: z.number().int().optional(),
   // the matches the table plays (2 in a league; a tournament's Partija po kolu, 1 or 2)
   matches_per_round: z.number().int().optional(),
+  // zvanja are entered at the table; false: a tournament's table "bez zvanja"
+  declarations: z.boolean().optional(),
   league_id: z.number().int().optional(),
   round_number: z.number().int(),
   round_date: z.date(),

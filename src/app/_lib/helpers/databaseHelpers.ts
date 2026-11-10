@@ -1,7 +1,9 @@
 import {ResultCreateRequest} from "@/app/_interfaces/result";
+import {HandZvanja} from "@/app/_lib/game/scoring";
+import {newHandZvanja} from "@/app/_lib/validation/validateResult";
 
-// HAND
-interface ResultTransformed {
+// HAND (a new one: zvanja it doesn't send are none)
+interface ResultTransformed extends HandZvanja {
   match_id: number,
   team1_game_points: number,
   team2_game_points: number,
@@ -14,6 +16,7 @@ export function transformResult(result: ResultCreateRequest): ResultTransformed 
     match_id: result.match_id,
     team1_game_points: result.team1_game_points,
     team2_game_points: result.team2_game_points,
+    ...newHandZvanja(result),
     custom: result.custom ?? false,
     dosta_side: result.dosta_side ?? null,
   };
@@ -30,14 +33,14 @@ export interface MatchAllIncluded {
   start_time: Date | null,
   end_time: Date | null,
   match_date: Date | null,
-  results: {
+  results: (HandZvanja & {
     result_id: number,
     match_id: number,
     team1_game_points: number,
     team2_game_points: number,
     custom: boolean,
     dosta_side: number | null,
-  }[]
+  })[]
 }
 
 interface MatchTransformed {
@@ -66,6 +69,10 @@ export function transformMatch(match: MatchAllIncluded, winnerSide: number): Mat
       create: match.results.map((res) => ({
         team1_game_points: res.team1_game_points,
         team2_game_points: res.team2_game_points,
+        team1_zvanja3: res.team1_zvanja3,
+        team1_zvanja4: res.team1_zvanja4,
+        team2_zvanja3: res.team2_zvanja3,
+        team2_zvanja4: res.team2_zvanja4,
         custom: res.custom,
         dosta_side: res.dosta_side,
       })),

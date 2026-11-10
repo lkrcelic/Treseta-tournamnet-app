@@ -1,7 +1,8 @@
 import {ResultCreateRequest} from "@/app/_interfaces/result";
 import {prisma} from "@/app/_lib/prisma";
 import {transformResult} from "@/app/_lib/helpers/databaseHelpers";
-import {InvalidResultError, normalizeResult} from "@/app/_lib/validation/validateResult";
+import {assertZvanja, InvalidResultError, newHandZvanja, normalizeResult} from "@/app/_lib/validation/validateResult";
+import {handTotals} from "@/app/_lib/game/scoring";
 import {assertCallStands, ongoingMatchState} from "./matchState";
 import {closesAfterHand, handTiming} from "@/app/_lib/gameTime";
 import {closeByTime, syncDeadline} from "@/app/_lib/service/match/timeLimit";
@@ -23,11 +24,16 @@ export async function createResult(
 
     const {resultId, closeNow} = await prisma.$transaction(async (tx) => {
         // Lock the match row so two phones saving at the same time are applied one after the other
-        const [match] = await tx.$queryRaw<{score_threshold: number | null, ends_at: Date | null}[]>`
-            SELECT score_threshold, ends_at FROM "OngoingMatch" WHERE id = ${result.match_id} FOR UPDATE`;
+        // (and read whether its table plays with zvanja: a tournament's table "bez zvanja" takes none)
+        const [match] = await tx.$queryRaw<{score_threshold: number | null, ends_at: Date | null, declarations: boolean | null}[]>`
+            SELECT om.score_threshold, om.ends_at, r.declarations
+            FROM "OngoingMatch" om LEFT JOIN "Round" r ON r.id = om.round_id
+            WHERE om.id = ${result.match_id} FOR UPDATE OF om`;
         if (!match) {
             throw new InvalidResultError("Ovaj meč je već završen.");
         }
+        const zvanja = newHandZvanja(result);
+        assertZvanja(zvanja, {custom: result.custom ?? false, declarations: match.declarations ?? true});
         const before = await ongoingMatchState(tx, result.match_id, match.score_threshold);
         if (before.winner !== null) {
             throw new InvalidResultError("Meč je gotov – završi ga umjesto da dodaješ igru.");
@@ -38,11 +44,13 @@ export async function createResult(
         }
 
         const created = await tx.ongoingResult.create({data: transformResult(result), select: {result_id: true}});
+        // the hand's total: its points and its zvanja
+        const [total1, total2] = handTotals({team1_game_points: result.team1_game_points, team2_game_points: result.team2_game_points, ...zvanja});
         await tx.ongoingMatch.update({
             where: {id: result.match_id},
             data: {
-                player_pair1_score: {increment: result.team1_game_points},
-                player_pair2_score: {increment: result.team2_game_points},
+                player_pair1_score: {increment: total1},
+                player_pair2_score: {increment: total2},
             },
         });
         const after = await ongoingMatchState(tx, result.match_id, match.score_threshold);

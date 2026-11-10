@@ -3,11 +3,17 @@ import {TeamSideValidation} from "@/app/_interfaces/side";
 
 // One hand: each team's points. Normally they add up to 11; a custom hand (one cut short by "s ovim dosta", or a
 // correction) is typed freely. `dosta_side` is the team that called "s ovim dosta" on it (a custom hand only);
-// saving a hand without it clears the call.
+// saving a hand without it clears the call. The zvanja are each team's count of zvanja worth 3 and worth 4 (none on a
+// custom hand). Left out, a new hand has none and a corrected hand keeps the ones it has (a phone still on the page
+// from before zvanja doesn't wipe them).
 export const ResultCreateRequestValidation = z.object({
   match_id: z.number().int(),
   team1_game_points: z.number().int(),
   team2_game_points: z.number().int(),
+  team1_zvanja3: z.number().int().min(0).optional(),
+  team1_zvanja4: z.number().int().min(0).optional(),
+  team2_zvanja3: z.number().int().min(0).optional(),
+  team2_zvanja4: z.number().int().min(0).optional(),
   custom: z.boolean().optional().default(false),
   dosta_side: TeamSideValidation.nullable().optional(),
 });

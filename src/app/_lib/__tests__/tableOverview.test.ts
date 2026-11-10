@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import {test} from "node:test";
 import {PadMatch, TablePad} from "@/app/_interfaces/adminHand";
 import {currentMatchNumber, matchSlots, matchTabSub, roundWins, tableState, toTableOverview} from "@/app/_lib/tableOverview";
-import {MATCH_THRESHOLD} from "@/app/_lib/game/scoring";
+import {MATCH_THRESHOLD, NO_ZVANJA} from "@/app/_lib/game/scoring";
 import {manualFields} from "@/app/_lib/ui/adminEntry";
 
 // Pregled stola and the admin's phone scorepad: what a table and its two matches show
 
-const hand = (id: number, total1: number, total2: number) => ({id, total1, total2, custom: false, dosta: null});
+const hand = (id: number, total1: number, total2: number) =>
+  ({id, total1, total2, points1: total1, points2: total2, zvanja1: NO_ZVANJA, zvanja2: NO_ZVANJA, custom: false, dosta: null});
 
 const finished = (number: number, score1: number, score2: number, winner: 1 | 2 | null): PadMatch => ({
   kind: "finished",
@@ -25,6 +26,7 @@ const pad = (matches: PadMatch[], done = false): TablePad => ({
   leagueId: 1,
   tournamentId: null,
   matchesPerRound: 2,
+  declarations: true,
   roundNumber: 3,
   date: "2026-02-17",
   table: 4,

@@ -3,8 +3,8 @@ import {prisma} from "@/app/_lib/prisma";
 import {AdminHand, HandKind, PadHand, PadMatch, TablePad} from "@/app/_interfaces/adminHand";
 import {ResultCreateRequest} from "@/app/_interfaces/result";
 import {isByeTeam, teamLabel} from "@/app/_lib/bye";
-import {MATCH_THRESHOLD, MatchState, matchState, Side} from "@/app/_lib/game/scoring";
-import {InvalidResultError, NoWinnerWarning, normalizeResult} from "@/app/_lib/validation/validateResult";
+import {HandZvanja, handTotals, handZvanja, MATCH_THRESHOLD, MatchState, matchState, Side, zvanjaColumns, ZvanjaCounts} from "@/app/_lib/game/scoring";
+import {assertZvanja, InvalidResultError, newHandZvanja, NoWinnerWarning, normalizeResult} from "@/app/_lib/validation/validateResult";
 import {transformResult} from "@/app/_lib/helpers/databaseHelpers";
 import {createResult} from "@/app/_lib/service/ongoingResult/create";
 import {updateOngoingResult} from "@/app/_lib/service/ongoingResult/update";
@@ -25,18 +25,23 @@ import type {Viewer} from "@/app/_lib/players/privacy";
 
 type Tx = Prisma.TransactionClient;
 
-// A hand as the server stores it, checked like a player's hand (a normal one adds up to 11)
+// A hand as the server stores it, checked like a player's hand (a normal one adds up to 11, its zvanja are ones the
+// cards allow, a custom one has none)
 export function adminHandToResult(hand: AdminHand, matchId: number): ResultCreateRequest {
   return normalizeResult({
     match_id: matchId,
     team1_game_points: hand.points1,
     team2_game_points: hand.points2,
+    ...zvanjaColumns(counts(hand.zvanja1), counts(hand.zvanja2)),
     custom: hand.custom,
     dosta_side: hand.dosta ?? null,
   });
 }
 
-type StoredHand = {
+// a team's zvanja as the admin's phone sent them (none when it sent nothing)
+const counts = (z?: {3?: number; 4?: number}): ZvanjaCounts => ({3: z?.[3] ?? 0, 4: z?.[4] ?? 0});
+
+type StoredHand = HandZvanja & {
   result_id: number;
   team1_game_points: number;
   team2_game_points: number;
@@ -46,7 +51,9 @@ type StoredHand = {
 
 function toPadHand(h: StoredHand): PadHand {
   const dosta = h.dosta_side === 1 || h.dosta_side === 2 ? h.dosta_side : null;
-  return {id: h.result_id, total1: h.team1_game_points, total2: h.team2_game_points, custom: h.custom, dosta};
+  const [total1, total2] = handTotals(h);
+  const [zvanja1, zvanja2] = handZvanja(h);
+  return {id: h.result_id, total1, total2, points1: h.team1_game_points, points2: h.team2_game_points, zvanja1, zvanja2, custom: h.custom, dosta};
 }
 
 export async function getTablePad(roundId: number): Promise<TablePad> {
@@ -99,6 +106,7 @@ export async function getTablePad(roundId: number): Promise<TablePad> {
     leagueId: round.leagueRounds[0]?.league_id ?? 0,
     tournamentId: round.tournamentRounds[0]?.tournament_id ?? null,
     matchesPerRound: round.matches_per_round,
+    declarations: round.declarations,
     roundNumber: round.round_number,
     date: round.round_date ? round.round_date.toISOString().slice(0, 10) : null,
     table: round.table_number,
@@ -112,12 +120,19 @@ export async function getTablePad(roundId: number): Promise<TablePad> {
   };
 }
 
-async function assertEditableTable(roundId: number) {
-  const round = await prisma.round.findUnique({where: {id: roundId}, select: {team1_id: true, team2_id: true, status: true}});
+// Returns whether the table plays with zvanja (a tournament's table "bez zvanja" takes none)
+async function assertEditableTable(roundId: number): Promise<{declarations: boolean}> {
+  const round = await prisma.round.findUnique({where: {id: roundId}, select: {team1_id: true, team2_id: true, status: true, declarations: true}});
   if (!round) throw new NotFoundError("Stol ne postoji.");
   if (isByeTeam(round.team1_id) || isByeTeam(round.team2_id)) throw new InvalidResultError("Za stolom sa slobodnom rundom nema igara za uređivanje.");
   // nothing is played in a round before it is published
   if (round.status !== "PUBLISHED") throw new InvalidResultError(ROUND_NOT_PUBLISHED);
+  return {declarations: round.declarations};
+}
+
+// A finished match's hand at a table "bez zvanja" takes none (a match being played is checked when it is saved)
+function assertTableZvanja(result: ResultCreateRequest, declarations: boolean) {
+  assertZvanja(newHandZvanja(result), {custom: result.custom ?? false, declarations});
 }
 
 // A change of a finished match's hands that leaves a match that had a winner without one: the warning the admin
@@ -195,7 +210,7 @@ async function changeFinishedMatch(matchId: number, change: (tx: Tx) => Promise<
 export type HandTarget = {kind: "ongoing"} | {kind: "finished"; matchId: number};
 
 export async function addHand(roundId: number, target: HandTarget, hand: AdminHand, options: HandEditOptions = {}): Promise<void> {
-  await assertEditableTable(roundId);
+  const {declarations} = await assertEditableTable(roundId);
   if (target.kind === "ongoing") {
     // a table that hasn't started gets its first match here (refused when the round is over)
     const ongoing =
@@ -210,6 +225,7 @@ export async function addHand(roundId: number, target: HandTarget, hand: AdminHa
   const match = await prisma.match.findUnique({where: {id: target.matchId}, select: {round_id: true}});
   if (!match || match.round_id !== roundId) throw new NotFoundError("Taj meč nije za ovim stolom.");
   const result = adminHandToResult(hand, target.matchId);
+  assertTableZvanja(result, declarations);
   await changeFinishedMatch(target.matchId, async (tx) => {
     await tx.result.create({data: transformResult(result)});
   }, options);
@@ -238,15 +254,20 @@ export async function updateHand(kind: HandKind, resultId: number, hand: AdminHa
     return;
   }
 
-  const stored = await prisma.result.findUnique({where: {result_id: resultId}, select: {match_id: true}});
+  const stored = await prisma.result.findUnique({
+    where: {result_id: resultId},
+    select: {match_id: true, match: {select: {round: {select: {declarations: true}}}}},
+  });
   if (!stored) throw new NotFoundError("Igra ne postoji.");
   const result = adminHandToResult(hand, stored.match_id);
+  assertTableZvanja(result, stored.match.round?.declarations ?? true);
   await changeFinishedMatch(stored.match_id, async (tx) => {
     await tx.result.update({
       where: {result_id: resultId},
       data: {
         team1_game_points: result.team1_game_points,
         team2_game_points: result.team2_game_points,
+        ...newHandZvanja(result),
         custom: result.custom,
         dosta_side: result.dosta_side ?? null,
       },
@@ -257,16 +278,18 @@ export async function updateHand(kind: HandKind, resultId: number, hand: AdminHa
 export async function deleteHand(kind: HandKind, resultId: number, options: HandEditOptions = {}): Promise<void> {
   if (kind === "ongoing") {
     await prisma.$transaction(async (tx) => {
-      const [hand] = await tx.$queryRaw<{match_id: number; team1_game_points: number; team2_game_points: number}[]>`
-          SELECT match_id, team1_game_points, team2_game_points
+      const [hand] = await tx.$queryRaw<(HandZvanja & {match_id: number; team1_game_points: number; team2_game_points: number})[]>`
+          SELECT match_id, team1_game_points, team2_game_points, team1_zvanja3, team1_zvanja4, team2_zvanja3, team2_zvanja4
           FROM "OngoingResult" WHERE result_id = ${resultId} FOR UPDATE`;
       if (!hand) throw new NotFoundError("Igra ne postoji.");
+      // the hand's total: its points and its zvanja
+      const [total1, total2] = handTotals(hand);
       // the match row is locked by the update, so a hand saved at the same moment is applied before or after this
       const match = await tx.ongoingMatch.update({
         where: {id: hand.match_id},
         data: {
-          player_pair1_score: {decrement: hand.team1_game_points},
-          player_pair2_score: {decrement: hand.team2_game_points},
+          player_pair1_score: {decrement: total1},
+          player_pair2_score: {decrement: total2},
         },
         select: {score_threshold: true},
       });
