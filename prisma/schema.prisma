@@ -11,8 +11,11 @@ generator client {
   previewFeatures = ["views"]
 }
 
+// What a player may do. ADMIN runs the whole league; ORGANIZER makes tournaments and runs their own (DECISIONS #86);
+// PLAYER plays. Which role may do what is in the code, not here: _lib/auth/permissions.ts.
 enum RoleEnum {
   ADMIN
+  ORGANIZER
   PLAYER
 }
 
@@ -87,6 +90,14 @@ model Player {
   createRoundDrafts              CreateRoundDraft[]
   photo                          PlayerPhoto?
   teamPhotosUpdated              Team[]                          @relation("TeamPhotoUpdater")
+  tournamentEntries              TournamentTeam[]                @relation("TournamentRegistrar")
+  tournamentsCancelled           Tournament[]                    @relation("TournamentCanceller")
+  tournamentsCreated             Tournament[]                    @relation("TournamentCreator")
+  tournamentArrivals             TournamentTeam[]                @relation("TournamentArrival")
+  roundAttendances               Round[]                         @relation("RoundAttendance")
+  signupBans                     SignupBan[]                     @relation("SignupBanPlayer")
+  signupBansCreated              SignupBan[]                     @relation("SignupBanCreator")
+  signupBansLifted               SignupBan[]                     @relation("SignupBanLifter")
   leagueArrivals                 LeagueArrival[]                 @relation("LeagueArrival")
 }
 
@@ -142,6 +153,81 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// A one-day event teams sign up for (Turniri). It is played in Kolos: Kolo N is the tables (Round rows, linked by
+// TournamentRound) with round_number N, all on the tournament's date, so the whole tournament is one rating period.
+// Kolo 1 is paired at random, the later ones by the standings (Swiss). It starts when Kolo 1 is published; a
+// started one takes no sign-ups and can't be cancelled (CHECKs in the migration script).
+model Tournament {
+  tournament_id      Int       @id @default(autoincrement())
+  tournament_name    String    @db.VarChar(100)
+  // the day it is played; every Kolo's tables carry it as their round_date
+  date               DateTime  @db.Date
+  // "HH:MM" (CHECK constraints in the migration script); Okupljanje and Početak, both optional
+  gathering_time     String?   @db.VarChar(5)
+  start_time         String?   @db.VarChar(5)
+  location_name      String?   @db.VarChar(100)
+  location_address   String?   @db.VarChar(200)
+  location_url       String?   @db.VarChar(500) // a Google Maps share link
+  // Broj kola (1-20)
+  rounds             Int       @default(9)
+  // Partija po kolu: the matches a table plays (1 or 2)
+  matches_per_round  Int       @default(2)
+  // Najveći broj ekipa; null = no limit. Teams over it wait on the waiting list
+  max_teams          Int?
+  // Kotizacija po igraču in whole euros; 0 = "Bez stresa, bez obveza"
+  entry_fee          Int       @default(0)
+  rules_url          String?   @db.VarChar(500)
+  // the admin's Prijave otvorene; closed by itself when the tournament starts
+  registrations_open Boolean   @default(true)
+  // Vrijeme partije: a match's time limit in minutes (5-180), counted from the start of the match
+  game_minutes       Int       @default(45)
+  // Automatska kola: once every table of a Kolo is over, the next one is made and published at once, without the
+  // admin's Skica (Kolo 1 still waits for Objavi). Read each time a Kolo is made by itself, so it can be switched on
+  // or off during the tournament
+  auto_publish       Boolean   @default(false)
+  // Otvorene prijave: ekipe se mogu prijaviti i dok turnir traje, do zadnjeg kola (DECISIONS #88). A team that signs
+  // up then counts as arrived and plays from the next Kolo. False = the start time closes sign-ups, as before.
+  open_signups       Boolean   @default(false)
+  // Telefon organizatora: required for a new tournament (the old ones have none); the players call it or write on
+  // WhatsApp from the tournament's page
+  organizer_phone    String?   @db.VarChar(30)
+  // when Kolo 1 was published
+  started_at         DateTime?
+  cancelled_at       DateTime?
+  // the admin who pressed Otkaži
+  cancelled_by       Int?
+  // when the start time's switch ran: sign-ups closed, the teams that didn't confirm arrival became inactive and the
+  // confirmed teams on the waiting list came in (up to the limit). Null until then (and for a tournament without a
+  // start time, which has no arrival window)
+  arrival_closed_at  DateTime?
+  created_at         DateTime  @default(now())
+  // Whose tournament it is: the organizer who made it, or the admin. Null for the tournaments made before the role
+  // came in — nobody owns them, so only an admin touches them (_lib/auth/ownership.ts). Never changed afterwards.
+  created_by         Int?
+
+  // Relationships
+  tournamentTeams  TournamentTeam[]
+  tournamentRounds TournamentRound[]
+  prizes           TournamentPrize[]
+  canceller        Player?          @relation("TournamentCanceller", fields: [cancelled_by], references: [id], onDelete: SetNull)
+  creator          Player?          @relation("TournamentCreator", fields: [created_by], references: [id], onDelete: SetNull)
+  signupBans       SignupBan[]
+
+  @@index([created_by])
+}
+
+// Nagrade: what each place gets, in order (place 1 = first)
+model TournamentPrize {
+  tournament_id Int
+  place         Int
+  prize         String @db.VarChar(100)
+  description   String @default("") @db.VarChar(200)
+
+  tournament Tournament @relation(fields: [tournament_id], references: [tournament_id], onDelete: Cascade)
+
+  @@id([tournament_id, place])
+}
+
 model League {
   league_id        Int       @id @default(autoincrement())
   league_name      String    @db.VarChar(100)
@@ -163,6 +249,8 @@ model League {
   location_url     String?   @db.VarChar(500) // a Google Maps share link
   // default "Rounds" in Create Round
   rounds_per_night Int       @default(3)
+  // Vrijeme partije: a match's time limit in minutes (5-180), counted from the start of the match
+  game_minutes     Int       @default(45)
   // the admins' notes, shown next to Create Round (never in the public league list)
   notes            String    @default("")
   // the smoking tables of the league's last Create Round, offered again the next time (empty: no smoking tables)
@@ -381,12 +469,14 @@ model Team {
   founder2        Player?          @relation("PlayerFounder2", fields: [founder_id2], references: [id], onDelete: SetNull)
   creator         Player?          @relation("PlayerCreator", fields: [creator_id], references: [id], onDelete: SetNull)
   teamPlayers     TeamPlayer[]
+  tournamentTeams TournamentTeam[]
   leagueTeams     LeagueTeam[]
   roundsAsTeam1   Round[]          @relation("RoundTeam1")
   roundsAsTeam2   Round[]          @relation("RoundTeam2")
   teamScore       TeamScore[]
   roundPlayers    RoundPlayer[]
   marketPosts     MarketPost[]
+  signupBans      SignupBan[]
   leagueArrivals  LeagueArrival[]
 }
 
@@ -424,6 +514,86 @@ model TeamPlayer {
   player Player @relation(fields: [player_id], references: [id], onDelete: Cascade)
 
   @@id([team_id, player_id])
+}
+
+// A team's entry in a tournament: in it, or on its waiting list. The waiting list goes in the order the teams signed up
+// (registered_at); when a team leaves, the first one waiting comes in. registered_by: the player who signed it up
+// (null: an admin added it).
+model TournamentTeam {
+  tournament_id Int
+  team_id       Int
+  status        TournamentEntryStatus @default(REGISTERED)
+  registered_at DateTime              @default(now())
+  registered_by Int?
+  // Potvrda dolaska: Tu smo, by one of its players (arrived_by), or the admin's Označi dolazak (arrived_by_admin)
+  arrived_at       DateTime?
+  arrived_by       Int?
+  arrived_by_admin Boolean   @default(false)
+  // Aktivna: it is paired in the next Kolo. Off for a team that didn't confirm by the start time or left (Odlazimo)
+  active           Boolean   @default(true)
+  // out of the rest of the tournament after Kolo excluded_kolo (a no-show, a skipped match, or the admin's Isključi
+  // ekipu); its Kolos played stay in the standings. Vrati clears it. CHECK: excluded_at and excluded_reason together
+  excluded_at      DateTime?
+  excluded_kolo    Int?
+  excluded_reason  TournamentExclusion?
+
+  tournament Tournament @relation(fields: [tournament_id], references: [tournament_id], onDelete: Cascade)
+  team       Team       @relation(fields: [team_id], references: [team_id], onDelete: Cascade)
+  registrar  Player?    @relation("TournamentRegistrar", fields: [registered_by], references: [id], onDelete: SetNull)
+  arriver    Player?    @relation("TournamentArrival", fields: [arrived_by], references: [id], onDelete: SetNull)
+
+  @@id([tournament_id, team_id])
+  @@index([team_id])
+}
+
+enum TournamentEntryStatus {
+  REGISTERED
+  WAITING
+}
+
+enum TournamentExclusion {
+  NO_SHOW
+  SKIPPED
+  ADMIN
+}
+
+// Nedolazak za stol: PRESENT (Da, tu su), NO_SHOW (Ne, nisu došli: the answering team wins 1001:700 per match), SKIPPED
+// (no game and no answer 10 minutes after the Kolo went out: not scored)
+enum RoundAttendance {
+  PRESENT
+  NO_SHOW
+  SKIPPED
+}
+
+// Zabrana prijava: a team or a player (exactly one, CHECK) may not sign up for any tournament before the day "until"
+// (null: Trajno), unless lifted. A player's ban through a team's ban has via_ban_id ("preko ekipe"); a ban the app set
+// itself (a no-show in Kolo 1) has no created_by and names its tournament.
+model SignupBan {
+  id            Int       @id @default(autoincrement())
+  team_id       Int?
+  player_id     Int?
+  via_ban_id    Int?
+  // the first day the team or player may sign up again; null = Trajno
+  until         DateTime? @db.Date
+  // only admins see it
+  reason        String    @default("") @db.VarChar(200)
+  tournament_id Int?
+  created_by    Int?
+  created_at    DateTime  @default(now())
+  lifted_at     DateTime?
+  lifted_by     Int?
+
+  team       Team?       @relation(fields: [team_id], references: [team_id], onDelete: Cascade)
+  player     Player?     @relation("SignupBanPlayer", fields: [player_id], references: [id], onDelete: Cascade)
+  via        SignupBan?  @relation("SignupBanVia", fields: [via_ban_id], references: [id], onDelete: Cascade)
+  playerBans SignupBan[] @relation("SignupBanVia")
+  tournament Tournament? @relation(fields: [tournament_id], references: [tournament_id], onDelete: SetNull)
+  creator    Player?     @relation("SignupBanCreator", fields: [created_by], references: [id], onDelete: SetNull)
+  lifter     Player?     @relation("SignupBanLifter", fields: [lifted_by], references: [id], onDelete: SetNull)
+
+  @@index([team_id])
+  @@index([player_id])
+  @@index([via_ban_id])
 }
 
 model LeagueTeam {
@@ -469,13 +639,28 @@ model Round {
   // round_number only keeps its tables together until publishing numbers it after the league's last published round
   // (CHECK constraint in the migration script: only an unpublished round has it)
   draft_order   Int?
+  // the matches the table plays: 2 in a league, 1 or 2 in a tournament (its Partija po kolu; CHECK in the migration)
+  matches_per_round Int @default(2)
+  // Vrijeme partije for this table alone: the minutes an admin chose when they unlocked it (Otključaj partiju,
+  // DECISIONS #89); null (every other table): its tournament's or its league's. CHECK in the migration script keeps it
+  // between GAME_MINUTES_MIN and GAME_MINUTES_MAX.
+  game_minutes  Int?
+  // a tournament table's answer to "Jesu li … za stolom?" (Nedolazak za stol): who answered (attendance_team_id, one
+  // of the two teams; the other one didn't come when it is NO_SHOW), which player and when; SKIPPED has no team. A
+  // NO_SHOW or SKIPPED table isn't rated (CHECKs in the migration script)
+  attendance         RoundAttendance?
+  attendance_team_id Int?
+  attendance_by      Int?
+  attendance_at      DateTime?
 
-  team1          Team           @relation("RoundTeam1", fields: [team1_id], references: [team_id], onDelete: Cascade)
-  team2          Team           @relation("RoundTeam2", fields: [team2_id], references: [team_id], onDelete: Cascade)
-  matches        Match[]
-  ongoingMatches OngoingMatch[]
-  leagueRounds   LeagueRound[]
-  roundPlayers   RoundPlayer[]
+  team1            Team             @relation("RoundTeam1", fields: [team1_id], references: [team_id], onDelete: Cascade)
+  team2            Team              @relation("RoundTeam2", fields: [team2_id], references: [team_id], onDelete: Cascade)
+  matches          Match[]
+  ongoingMatches   OngoingMatch[]
+  tournamentRounds TournamentRound[]
+  leagueRounds     LeagueRound[]
+  roundPlayers     RoundPlayer[]
+  attendanceBy     Player?           @relation("RoundAttendance", fields: [attendance_by], references: [id], onDelete: SetNull)
 }
 
 // A player's rating after each league night they played (Glicko-2, one rating period per night). Rewritten by
@@ -511,6 +696,17 @@ model RoundPlayer {
   @@index([team_id])
 }
 
+model TournamentRound {
+  tournament_id Int
+  round_id      Int
+
+  tournament Tournament @relation(fields: [tournament_id], references: [tournament_id], onDelete: Cascade)
+  round      Round      @relation(fields: [round_id], references: [id], onDelete: Cascade)
+
+  @@id([tournament_id, round_id])
+  @@index([round_id])
+}
+
 model LeagueRound {
   league_id Int
   round_id  Int
@@ -534,6 +730,8 @@ model Match {
   start_time         DateTime?
   end_time           DateTime?
   match_date         DateTime? @default(now()) @db.Date
+  // closed by Vrijeme partije with the score entered then (the team with more points won it)
+  time_expired       Boolean   @default(false)
 
   round   Round?   @relation(fields: [round_id], references: [id], onDelete: SetNull)
   results Result[]
@@ -548,6 +746,10 @@ model OngoingMatch {
   start_time         DateTime? @default(dbgenerated("CURRENT_TIME")) @db.Time()
   end_time           DateTime? @db.Time()
   match_date         DateTime? @default(now()) @db.Date
+  // Vrijeme partije: when the match started and when its time is up (null: no limit, a match that was running when
+  // the limit came in)
+  started_at         DateTime?
+  ends_at            DateTime?
 
   round   Round?          @relation(fields: [round_id], references: [id], onDelete: SetNull)
   results OngoingResult[]
