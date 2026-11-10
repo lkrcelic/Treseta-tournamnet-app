@@ -46,6 +46,8 @@ export async function getRoundById(id: number, admin = false): Promise<RoundExte
                     },
                 },
             },
+            leagueRounds: {select: {league_id: true}},
+            tournamentRounds: {select: {tournament_id: true}},
         },
     });
 
@@ -53,5 +55,10 @@ export async function getRoundById(id: number, admin = false): Promise<RoundExte
         throw new NotFoundError("Runda ne postoji.");
     }
 
-    return RoundExtendedResponseValidation.parse(dbRound);
+    // the league or the tournament the table is in, for the links back from it
+    return RoundExtendedResponseValidation.parse({
+        ...dbRound,
+        league_id: dbRound.leagueRounds[0]?.league_id,
+        tournament_id: dbRound.tournamentRounds[0]?.tournament_id,
+    });
 }

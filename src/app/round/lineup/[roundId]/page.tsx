@@ -22,6 +22,7 @@ import {Box} from "@mui/material";
 import {useParams, useSearchParams} from "next/navigation";
 import React, {useCallback, useEffect, useState} from "react";
 import useManagePhone from "@/app/_hooks/useManagePhone";
+import {roundHref, scopeHomeLabel, TableScope, tableHref} from "@/app/_lib/ui/tableScope";
 
 // Započni igru · who plays this round (Claude Design 7c "Lineup card", desktop "tko igra"). Shown before the
 // scoreboard of the round's first match: two players per team, suggested from the team's last round in the league
@@ -47,9 +48,15 @@ export default function LineupPage() {
   const id = Number(roundId);
   const router = useTransitionRouter();
   const isDesktop = useIsDesktop();
-  const adminPhone = useManagePhone("league.manage");
+  // the phone's scorepad: a league night is the admin's, a tournament's Kolo whoever runs tournaments (the server
+  // then says whose tournament it is)
+  const leaguePhone = useManagePhone("league.manage");
+  const tournamentPhone = useManagePhone("tournament.manage.own");
   const search = useSearchParams();
+  // ?league= (a league night's table) or ?turnir= (a tournament's): the admin's scorepad of that table asked for it
   const padLeague = Number(search.get("league")) || null;
+  const padTournament = Number(search.get("turnir")) || null;
+  const padScope: TableScope | null = padLeague ? {kind: "league", id: padLeague} : padTournament ? {kind: "tournament", id: padTournament} : null;
   // the admin's phone opened it with Tko igra on the table's board (rather than on the way into a table not started)
   const fromPad = search.get("from") === "pad";
   const [lineup, setLineup] = useState<Lineup | null>(null);
@@ -97,11 +104,11 @@ export default function LineupPage() {
       if (!teams.every((t, i) => sameLineup(selected[i], t.saved))) {
         await saveLineupAPI(id, {teams: teams.map((t, i) => ({team_id: t.id, player_ids: selected[i]}))});
       }
-      if (padLeague) {
+      if (padScope) {
         passLineup(id);
         // back to the board it was opened from (which loads the table again), or on to the table's board
         if (fromPad && !isDesktop && window.history.length > 1) router.back();
-        else router.replace(`/league/${padLeague}/daily-standings/table/${id}`);
+        else router.replace(tableHref(padScope, id));
         return;
       }
       const match = await createOngoingMatchAPI({round_id: id, score_threshold: MATCH_THRESHOLD});
@@ -116,19 +123,19 @@ export default function LineupPage() {
   const label = lineup ? [lineup.table != null && `Stol ${lineup.table}`, lineup.roundNumber != null && `Runda ${lineup.roundNumber}`].filter(Boolean).join(" · ") : "";
   const back = () => {
     // the admin's phone came from the table: back to it
-    if (padLeague && !isDesktop) {
+    if (padScope && !isDesktop) {
       if (window.history.length > 1) router.back();
-      else router.push(`/league/${padLeague}/daily-standings/table/${id}`, "back");
+      else router.push(tableHref(padScope, id), "back");
       return;
     }
-    router.push(padLeague ? `/league/${padLeague}/daily-standings` : "/", "back");
+    router.push(padScope ? roundHref(padScope, {date: null, roundNumber: null, admin: true}) : "/", "back");
   };
 
   const slots = (t: LineupTeam, ti: number, big: boolean) => (
     <TeamSlots team={t} side={ti} selected={selected[ti]} openSlot={openSlot} onToggle={setOpenSlot} onPick={(s, p) => pick(ti, s, p)} big={big} />
   );
   // the admin's scorepad of a table already being played goes on with it; a finished one is only confirmed
-  const starts = !finished && !(padLeague && lineup?.saved);
+  const starts = !finished && !(padScope && lineup?.saved);
   const startLabel = finished ? "Potvrdi" : starts ? "Potvrdi i počni" : "Potvrdi i nastavi";
   const title = finished ? TITLE_FINISHED : TITLE;
   const status = loadError ? <ErrorNote onRetry={load}>{loadError}</ErrorNote> : !lineup ? <CenteredSpinner /> : null;
@@ -153,12 +160,13 @@ export default function LineupPage() {
     </Box>
   );
 
-  if (padLeague && !isDesktop && !adminPhone) return <DesktopOnlyNote />;
+  const adminPhone = padScope?.kind === "tournament" ? tournamentPhone : leaguePhone;
+  if (padScope && !isDesktop && !adminPhone) return <DesktopOnlyNote />;
   if (isDesktop) {
     return (
       <DesktopShell
-        active={padLeague ? "daily" : "game"}
-        back={padLeague ? {label: "Dnevni poredak", href: `/league/${padLeague}/daily-standings`} : undefined}
+        active={padScope ? (padScope.kind === "league" ? "daily" : "manageTournaments") : "game"}
+        back={padScope ? {label: scopeHomeLabel(padScope), href: roundHref(padScope, {date: null, roundNumber: null, admin: true})} : undefined}
         eyebrow={label || "Započni igru"}
         title={title}
       >
@@ -201,7 +209,7 @@ export default function LineupPage() {
         <Box sx={{textAlign: "center", fontSize: 12, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: color.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"}}>
           {label}
         </Box>
-        {padLeague && <AdminBadge />}
+        {padScope && <AdminBadge />}
       </Box>
       <ScrollArea sx={{px: "20px", pt: "2px", pb: "12px"}}>
         <Box component="h1" sx={{m: 0, px: "4px", fontFamily: font.display, fontSize: 32, fontWeight: 800, lineHeight: 1.02, letterSpacing: "-.02em", textWrap: "pretty"}}>

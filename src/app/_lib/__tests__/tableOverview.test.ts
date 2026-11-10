@@ -23,6 +23,8 @@ const finished = (number: number, score1: number, score2: number, winner: 1 | 2 
 const pad = (matches: PadMatch[], done = false): TablePad => ({
   roundId: 7,
   leagueId: 1,
+  tournamentId: null,
+  matchesPerRound: 2,
   roundNumber: 3,
   date: "2026-02-17",
   table: 4,

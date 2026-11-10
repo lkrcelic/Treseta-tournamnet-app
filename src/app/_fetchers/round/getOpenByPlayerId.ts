@@ -3,16 +3,23 @@ import {LeagueConferences} from "@/app/_interfaces/league";
 
 type ConferenceRow = LeagueConferences["conferences"][number];
 
+// Which open table: a league's (Početna · Liga), a tournament's (Početna · Turniri, the tournament page) or any
+export type OpenScope = "league" | "tournament" | "any";
+
 // ongoingScore: the running match's points, team1 first (null before a match is started); hasLineup: who plays the
-// round is already confirmed; conferences: the two teams' conferences, team1 first (null when the league has none)
-export async function getOpenRoundByPlayerIdAPI(): Promise<{
+// round is already confirmed; conferences: the two teams' conferences, team1 first (null when the league has none);
+// tournamentId: the tournament a tournament's table is in
+export async function getOpenRoundByPlayerIdAPI(
+  scope: OpenScope = "any"
+): Promise<{
   roundId: number;
   ongoingMatchId: number | null;
   hasLineup: boolean;
   ongoingScore: [number, number] | null;
   conferences: [ConferenceRow | null, ConferenceRow | null] | null;
+  tournamentId: number | null;
 }> {
-  const response = await apiFetch(`/api/rounds/open`);
+  const response = await apiFetch(scope === "any" ? `/api/rounds/open` : `/api/rounds/open?scope=${scope}`);
 
   if (!response.ok) {
     throw new Error(await responseErrorMessage(response, "Otvorena runda se nije učitala."));

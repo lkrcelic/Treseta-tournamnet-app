@@ -22,6 +22,7 @@ import {Box} from "@mui/material";
 import {useParams} from "next/navigation";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import React, {useCallback, useEffect, useState} from "react";
+import {adminLineupHref, roundHref, scopeHomeLabel, tableScopeOf} from "@/app/_lib/ui/tableScope";
 
 const THRESHOLD = MATCH_THRESHOLD;
 
@@ -34,17 +35,20 @@ const playedHands = (m: PadMatch): PlayedHand[] =>
 // played, goes into the game.
 export default function TableScorepad() {
   const isDesktop = useIsDesktop();
-  const isAdmin = useCan("league.manage");
-  const adminPhone = useManagePhone("league.manage");
+  // a league night's table is the admin's, a tournament's Kolo is whoever runs that tournament (DECISIONS #86)
+  const scope = tableScopeOf(useParams<{leagueId?: string; id?: string}>());
+  const cap = scope.kind === "league" ? "league.manage" : "tournament.manage.own";
+  const isAdmin = useCan(cap);
+  const adminPhone = useManagePhone(cap);
   if (isDesktop && isAdmin) return <TableScorepadDesktop />;
   return adminPhone ? <TablePhone /> : <TablePreview />;
 }
 
 function TableScorepadDesktop() {
-  const params = useParams<{leagueId: string; roundId: string}>();
-  const leagueId = Number(params.leagueId);
+  const params = useParams<{leagueId?: string; id?: string; roundId: string}>();
+  const scope = tableScopeOf(params);
   const roundId = Number(params.roundId);
-  const isAdmin = useCan("league.manage");
+  const isAdmin = useCan(scope.kind === "league" ? "league.manage" : "tournament.manage.own");
   const router = useTransitionRouter();
   // a short window (1024×640): a smaller header, so the entry panel needs less scrolling
   const short = useShortWindow();
@@ -74,9 +78,10 @@ function TableScorepadDesktop() {
 
   // every time the table is opened, who plays (or played) it first, as players do on Započni igru (the ratings need it)
   const needsLineup = pad != null && !pad.bye && !lineupPassed(roundId);
+  const lineupHref = adminLineupHref(scope, roundId);
   useEffect(() => {
-    if (needsLineup) router.replace(`/round/lineup/${roundId}?league=${leagueId}`);
-  }, [needsLineup, router, roundId, leagueId]);
+    if (needsLineup) router.replace(lineupHref);
+  }, [needsLineup, router, lineupHref]);
   useEffect(() => () => leaveRoundPages(roundId), [roundId]);
 
   // the matches to choose from; a table still in play without a match running gets the next one to start
@@ -164,12 +169,15 @@ function TableScorepadDesktop() {
     setDostaError(null);
   };
 
-  const back = pad?.date && pad.roundNumber ? {label: `Kolo ${pad.roundNumber}`, href: `/league/${leagueId}/daily-standings?date=${pad.date}&round=${pad.roundNumber}`} : {label: "Dnevni poredak", href: `/league/${leagueId}/daily-standings`};
+  const back =
+    pad?.roundNumber && (pad.date || scope.kind === "tournament")
+      ? {label: `Kolo ${pad.roundNumber}`, href: roundHref(scope, {date: pad.date, roundNumber: pad.roundNumber, admin: true})}
+      : {label: scopeHomeLabel(scope), href: roundHref(scope, {date: null, roundNumber: null, admin: true})};
   const state = !pad ? "" : pad.done ? `Meč ${match?.number ?? 1} · završeno` : match?.kind === "ongoing" && match.id === 0 && match.number === 1 ? "nije počelo" : "uživo";
 
   return (
     <DesktopShell
-      active="daily"
+      active={scope.kind === "league" ? "daily" : "manageTournaments"}
       compact={short}
       back={back}
       eyebrow={pad ? `Stol ${pad.table ?? "–"} · Kolo ${pad.roundNumber ?? "–"} · ${state}` : "Admin"}

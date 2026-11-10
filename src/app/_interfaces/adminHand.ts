@@ -47,7 +47,12 @@ export type PadMatch = {
 
 export type TablePad = {
   roundId: number;
+  // the league the table is in (0: none, a tournament's table)
   leagueId: number;
+  // the tournament a Kolo's table is in; null for a league's table
+  tournamentId: number | null;
+  // the matches the table plays: 2 in a league, 1 or 2 in a tournament
+  matchesPerRound: number;
   roundNumber: number | null;
   date: string | null;
   table: number | null;

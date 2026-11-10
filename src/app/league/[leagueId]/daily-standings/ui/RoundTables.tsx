@@ -254,7 +254,8 @@ export const TABLE_ROW_HEIGHT = 44;
 
 // href: the whole row opens the table (admin scorepad). actions: edit-mode buttons instead of the status, and onOpen:
 // a click anywhere on the row in edit mode (opens its pair). fresh: a table just added (cream row, navy number).
-// confirm: replaces the row with a confirmation strip.
+// confirm: replaces the row with a confirmation strip. draft: a round not published yet (a tournament's Skica), where
+// nothing is played: "vs" instead of the wins (a bye's table keeps its 2 : 0).
 export function DesktopTableRow({
   t,
   dense,
@@ -263,6 +264,7 @@ export function DesktopTableRow({
   onOpen,
   fresh,
   confirm,
+  draft = false,
 }: {
   t: TableRow;
   dense: boolean;
@@ -271,6 +273,7 @@ export function DesktopTableRow({
   onOpen?: () => void;
   fresh?: boolean;
   confirm?: React.ReactNode;
+  draft?: boolean;
 }) {
   const font1 = dense ? 15 : 17;
   const label = `Stol ${t.table}${t.smoking ? ", pušački" : ""}: ${t.teamA} ${t.winsA} : ${t.winsB} ${t.teamB}${t.live ? `, uživo ${t.pointsA ?? 0} – ${t.pointsB ?? 0}` : t.done && t.diffA != null ? `, razlika ${formatChange(t.diffA)} : ${formatChange(t.diffB)}` : ""}`;
@@ -318,9 +321,15 @@ export function DesktopTableRow({
         <TableAvatar name={t.teamA} photo={t.photoA} bye={isByeTeam(t.teamAId)} size={dense ? 24 : 28} />
       </Box>
       <Box component="span" aria-hidden sx={{display: "flex", flexDirection: "column", alignItems: "center", lineHeight: 1.05}}>
-        <Box component="span" sx={{fontFamily: font.display, fontSize: 22, fontWeight: 800}}>
-          {t.winsA} : {t.winsB}
-        </Box>
+        {draft && !t.bye ? (
+          <Box component="span" sx={{fontSize: 13, fontWeight: 600, color: color.faint}}>
+            vs
+          </Box>
+        ) : (
+          <Box component="span" sx={{fontFamily: font.display, fontSize: 22, fontWeight: 800}}>
+            {t.winsA} : {t.winsB}
+          </Box>
+        )}
         {t.live && (
           <Box component="span" sx={{fontSize: 12, fontWeight: 600, color: color.muted, whiteSpace: "nowrap"}}>
             {t.pointsA ?? 0} · {t.pointsB ?? 0}

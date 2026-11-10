@@ -41,6 +41,8 @@ export default function ScoreBoardPage() {
   const setOngoingMatch = useOngoingMatchStore((s) => s.setOngoingMatch);
   const match = useOngoingMatchStore((s) => s.ongoingMatch);
   const setRoundData = useRoundStore((s) => s.setRoundData);
+  // the matches the table plays (a tournament's can play one)
+  const matchesPerRound = useRoundStore((s) => s.roundData?.matches_per_round) ?? 2;
   const sides = useMatchSides();
 
   const [loading, setLoading] = useState(true);
@@ -276,6 +278,7 @@ export default function ScoreBoardPage() {
         index={i}
         name={sides.names[i]}
         wins={sides.wins[i]}
+        of={matchesPerRound}
         total={i === 0 ? shownL : shownR}
         finalTotal={totals[i]}
         threshold={threshold}
@@ -285,7 +288,8 @@ export default function ScoreBoardPage() {
       />
     ));
 
-  const matchLabel = `Meč ${Math.min(sides.matchNumber, 2)} od 2`;
+  // a tournament's table of one match has no "od 2"
+  const matchLabel = matchesPerRound === 1 ? "Meč" : `Meč ${Math.min(sides.matchNumber, matchesPerRound)} od ${matchesPerRound}`;
   const finishButton = winner != null && (
     <PrimaryButton icon={<DoneRoundedIcon />} bg={teamColor[winner]} onClick={finish} loading={finishing}>
       Završi meč

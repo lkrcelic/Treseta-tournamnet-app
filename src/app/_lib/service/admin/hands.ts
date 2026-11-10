@@ -56,6 +56,7 @@ export async function getTablePad(roundId: number): Promise<TablePad> {
       team1: {select: {team_id: true, team_name: true}},
       team2: {select: {team_id: true, team_name: true}},
       leagueRounds: {select: {league_id: true}},
+      tournamentRounds: {select: {tournament_id: true}},
       matches: {orderBy: {id: "asc"}, include: {results: {orderBy: {result_id: "asc"}}}},
       ongoingMatches: {orderBy: {id: "desc"}, take: 1, include: {results: {orderBy: {result_id: "asc"}}}},
       _count: {select: {roundPlayers: true}},
@@ -96,6 +97,8 @@ export async function getTablePad(roundId: number): Promise<TablePad> {
   return {
     roundId: round.id,
     leagueId: round.leagueRounds[0]?.league_id ?? 0,
+    tournamentId: round.tournamentRounds[0]?.tournament_id ?? null,
+    matchesPerRound: round.matches_per_round,
     roundNumber: round.round_number,
     date: round.round_date ? round.round_date.toISOString().slice(0, 10) : null,
     table: round.table_number,

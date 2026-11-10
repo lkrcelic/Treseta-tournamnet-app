@@ -4,7 +4,9 @@ import {getAllMatchesByRoundIdAPI} from "@/app/_fetchers/match/getAllByRoundId";
 import {getRoundDataAPI} from "@/app/_fetchers/round/getOne";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useRoundStore from "@/app/_store/RoundStore";
-import {CenteredSpinner, DesktopShell, ErrorNote, PrimaryButton, Screen, ScreenTitle} from "@/app/_ui/sp";
+import {color, tint} from "@/app/_styles/tokens";
+import {CenteredSpinner, DesktopShell, ErrorNote, OutlineButton, PrimaryButton, Screen, ScreenTitle} from "@/app/_ui/sp";
+import EmojiEventsRoundedIcon from "@mui/icons-material/EmojiEventsRounded";
 import RoundResultCards from "@/app/ongoing-match/ui/RoundResultCards";
 import useMatchSides from "@/app/ongoing-match/ui/useMatchSides";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
@@ -15,7 +17,8 @@ import React, {useCallback, useEffect, useState} from "react";
 
 type FinishedMatch = {id?: number; player_pair1_score: number; player_pair2_score: number};
 
-// "Kraj kola": round wins per team and the score of each match
+// "Kraj kola": round wins per team and the score of each match. A tournament's table also leads to its Poredak i
+// rezultati, where the player sees the Kolo's other tables and the standings until the next Kolo is out.
 export default function RoundResultPage() {
   const router = useTransitionRouter();
   const {roundId} = useParams<{roundId: string}>();
@@ -23,6 +26,7 @@ export default function RoundResultPage() {
   const setRoundData = useRoundStore((s) => s.setRoundData);
   const sides = useMatchSides();
   const [matches, setMatches] = useState<FinishedMatch[] | null>(null);
+  const [tournamentId, setTournamentId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -30,6 +34,7 @@ export default function RoundResultPage() {
     try {
       const [round, list] = await Promise.all([getRoundDataAPI(Number(roundId)), getAllMatchesByRoundIdAPI(Number(roundId))]);
       setRoundData(round);
+      setTournamentId(round.tournament_id ?? null);
       setMatches(Array.isArray(list) ? (list as FinishedMatch[]) : []);
     } catch {
       setError("Rezultat kola nije moguće učitati.");
@@ -41,9 +46,17 @@ export default function RoundResultPage() {
   }, [load]);
 
   const home = (
-    <PrimaryButton icon={<HomeRoundedIcon />} onClick={() => router.push("/", "back")} sx={{mt: "auto"}}>
-      Početni zaslon
-    </PrimaryButton>
+    <Box sx={{mt: "auto", display: "flex", flexDirection: "column", gap: "10px"}}>
+      {tournamentId != null && (
+        <OutlineButton onClick={() => router.push(`/turniri/${tournamentId}/poredak`)} sx={{borderWidth: "1.5px", borderColor: tint.navy[25], background: color.white}}>
+          <EmojiEventsRoundedIcon sx={{fontSize: 22}} />
+          Poredak i rezultati
+        </OutlineButton>
+      )}
+      <PrimaryButton icon={<HomeRoundedIcon />} onClick={() => router.push("/", "back")}>
+        Početni zaslon
+      </PrimaryButton>
+    </Box>
   );
 
   let body: React.ReactNode;

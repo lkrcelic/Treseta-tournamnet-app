@@ -18,12 +18,15 @@ import {Box} from "@mui/material";
 import React from "react";
 import type {Capability} from "@/app/_lib/auth/permissions";
 import useAuthStore, {userCan} from "@/app/_store/authStore";
+import MilitaryTechOutlinedIcon from "@mui/icons-material/MilitaryTechOutlined";
+import MilitaryTechRoundedIcon from "@mui/icons-material/MilitaryTechRounded";
 
-export type AdminTab = "vecer" | "rejting" | "ekipe" | "igraci" | "sponzori";
+export type AdminTab = "vecer" | "turniri" | "rejting" | "ekipe" | "igraci" | "sponzori";
 
 // cap: the tab is there only for whoever may use that screen, as the computer's menu does (DECISIONS #86)
 const TABS: {key: AdminTab; label: string; href: string; cap: Capability; icon: React.ReactNode; iconOn: React.ReactNode}[] = [
   {key: "vecer", label: "Večer", href: "/", cap: "league.manage", icon: <EventOutlinedIcon />, iconOn: <EventRoundedIcon />},
+  {key: "turniri", label: "Turniri", href: "/turniri/upravljanje", cap: "tournament.manage.own", icon: <MilitaryTechOutlinedIcon />, iconOn: <MilitaryTechRoundedIcon />},
   {key: "rejting", label: "Rejting", href: "/ratings", cap: "rating.manage", icon: <LeaderboardOutlinedIcon />, iconOn: <LeaderboardRoundedIcon />},
   {key: "ekipe", label: "Ekipe", href: "/teams", cap: "team.edit", icon: <GroupsOutlinedIcon />, iconOn: <GroupsRoundedIcon />},
   {key: "igraci", label: "Igrači", href: "/players", cap: "player.directory", icon: <PersonOutlineRoundedIcon />, iconOn: <PersonRoundedIcon />},
@@ -33,8 +36,8 @@ const TABS: {key: AdminTab; label: string; href: string; cap: Capability; icon: 
 // The bar's height above the safe area (the home indicator)
 const BAR = 58;
 
-// The management bottom bar on the phone (admin-mobile design): Večer, Rejting, Ekipe, Igrači and Sponzori, each shown
-// only to whoever may use it. It is on the five screens it opens; the screens under them have Back instead. Each tab starts the page stack afresh, like the desktop
+// The management bottom bar on the phone (admin-mobile design; Turniri from "Turniri admin" M1): Večer, Turniri,
+// Rejting, Ekipe, Igrači and Sponzori, each shown only to whoever may use it. It is on the six screens it opens; the screens under them have Back instead. Each tab starts the page stack afresh, like the desktop
 // menu. A spacer of the bar's height keeps the end of the page clear of it (put it last in the screen).
 export function AdminTabBar({active}: {active: AdminTab}) {
   const user = useAuthStore((s) => s.user);
@@ -92,7 +95,8 @@ export function AdminTabBar({active}: {active: AdminTab}) {
                     component="span"
                     aria-hidden
                     sx={{
-                      width: 56,
+                      // six tabs on a 360 px phone leave each about 57 px: the pill fits inside its tab
+                      width: "min(56px, 100%)",
                       height: 30,
                       borderRadius: "15px",
                       background: on ? color.cream : "transparent",

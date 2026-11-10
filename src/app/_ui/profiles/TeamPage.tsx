@@ -62,6 +62,7 @@ import {
   TEAM_STACKED_GRID,
 } from "./PageParts";
 import {AddError, DeleteTeam, NameButton, NameEditing, RemoveButton, TeamAdmin, TeamNameInput, useNameFocus, useTeamAdmin} from "./TeamAdmin";
+import BanSection from "./BanSection";
 
 // The Team page (/teams/[teamId], handoff §6, frames 13a, 13b, 13f, 13k–13o): the cream header with the team's best
 // place, players and leagues, then its players (to their pages), its leagues (to that league's standings with the team
@@ -186,11 +187,12 @@ export function TeamPagePhone({teamId}: {teamId: number}) {
   const overview = useTeamOverview(teamId);
   const team = overview.data;
   const nav = useNavStack(team?.team.name ?? null);
-  // the name and the players are team editing (admin or organizer); Zabrani sliku, the leagues and Obriši ekipu are
-  // the admin's, each behind its own capability (DECISIONS #86)
+  // the name and the players are team editing (admin or organizer); Zabrani sliku, the leagues, the ban and Obriši
+  // ekipu are the admin's, each behind its own capability (DECISIONS #86)
   const editPhone = useManagePhone("team.edit");
   const canModerate = useCan("team.moderate");
   const canLeagues = useCan("league.manage");
+  const canBan = useCan("ban.manage.all");
   const canDelete = useCan("team.delete");
   const actions = useTeamAdmin(overview);
   const admin = editPhone && team ? actions : null;
@@ -217,6 +219,9 @@ export function TeamPagePhone({teamId}: {teamId: number}) {
           )}
           <PhonePlayers team={team} admin={admin} />
           <PhoneLeagues team={team} admin={canLeagues ? admin : null} />
+          {admin && canBan && (
+            <BanSection target={{kind: "team", id: team.team.id, name: team.team.name, players: team.players.map((p) => ({id: p.id, name: p.name, username: p.username}))}} />
+          )}
           <PhoneNights nights={team.nights} teamId={team.team.id} />
           {admin && canDelete && <DeleteTeam team={team} phone />}
         </>
@@ -528,6 +533,9 @@ export function TeamPageDesktop({teamId, embedded = false}: {teamId: number; emb
             }
           />
           <TeamColumns team={team} admin={admin} />
+          {admin && (
+            <BanSection desktop target={{kind: "team", id: team.team.id, name: team.team.name, players: team.players.map((p) => ({id: p.id, name: p.name, username: p.username}))}} />
+          )}
           {photoOpen && <PhotoDialog kind="team" photo={photo} onClose={() => setPhotoOpen(false)} />}
         </>
       ) : (

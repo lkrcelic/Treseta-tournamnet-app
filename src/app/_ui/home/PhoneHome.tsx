@@ -17,7 +17,7 @@ import {leagueArrivalAPI} from "@/app/_fetchers/league/arrival";
 import {leagueArrivalPhase} from "@/app/_lib/leagueArrival";
 import HomeSponsors from "@/app/_ui/home/HomeSponsors";
 import InstallSheet from "@/app/_ui/install/InstallSheet";
-import {buttonBase, ErrorNote, IconCircleButton, InitialsAvatar, Screen, visuallyHidden} from "@/app/_ui/sp";
+import {buttonBase, ErrorNote, IconCircleButton, InitialsAvatar, Screen, Segmented, tabPanelProps, visuallyHidden} from "@/app/_ui/sp";
 import useAuthStore from "@/app/_store/authStore";
 import AccountCircleRoundedIcon from "@mui/icons-material/AccountCircleRounded";
 import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
@@ -30,31 +30,39 @@ import {Box} from "@mui/material";
 import {TransitionLink, useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {useMyRating} from "@/app/_hooks/useRatings";
 import {useManages} from "@/app/_hooks/useCan";
+import {useTournaments} from "@/app/_hooks/useTournaments";
+import TournamentsOverview, {playingToday} from "@/app/_ui/tournaments/TournamentsOverview";
+import EventRepeatRoundedIcon from "@mui/icons-material/EventRepeatRounded";
+import MilitaryTechRoundedIcon from "@mui/icons-material/MilitaryTechRounded";
+import {useState} from "react";
 
 // under 400 px the header holds the brand (with its logo) next to an admin's Admin button only as an icon
 const narrowPhone = "@media (max-width: 399.98px)";
 // the wordmark inside Brand (its logo, then the name's column)
 const BRAND_NAME = "& > div > div > div:last-of-type";
 
-// Početna on the phone, the only Home (handoff §2; Claude Design "Burza v2" screen "home"): the top card, the Burza
-// igrača card, the 2×2 tiles and the league's sponsors. Nothing is edited here. An admin sees it after "Prikaz igrača" on Večer lige
-// (admin-mobile 04), with an Admin button next to Moj profil that switches back.
+// Početna on the phone, the only Home (handoff §2; Claude Design "Burza v2" screen "home", and "Natjecanja" S1–S4):
+// the header with the rating chip, the switch Turniri · Liga (remembered on the phone), and under it the league's Home
+// (the top card, the Burza igrača card, the 2×2 tiles and the league's sponsors) or the tournaments'
+// (TournamentsOverview). Nothing is edited here. An admin sees it after "Prikaz igrača" on Večer lige (admin-mobile
+// 04), with an Admin button next to Moj profil that switches back.
 export default function PhoneHome() {
   const router = useTransitionRouter();
   // the profile button shows the player's photo, when there is one
   const me = useAuthStore((s) => s.user);
-  const leagueId = useSelectedLeagueId();
-  const {table: openTable, loading: openTableLoading} = useOpenTable();
-  const {start, starting, error} = useStartGame();
-  const {schedule, error: scheduleError, reload: reloadSchedule} = useMySchedule();
-  const next = nextNight(schedule);
-  const {posts} = useBurza();
-  const now = useNow();
-  // the team at the table tonight that is here (Tu smo): Odlazimo under Započni igru
-  const here = schedule?.leagues.find((l) => l.arrival?.night === schedule.today && l.arrival.arrival?.here && leagueArrivalPhase(l.arrival, now) !== "over");
   const isAdmin = useManages();
   const setAdminView = useAdminViewStore((st) => st.setView);
   const {me: myRating} = useMyRating();
+  const {schedule} = useMySchedule();
+  const {tournaments} = useTournaments();
+  const [tab, setTab] = useState<HomeTab | null>(readHomeTab);
+  const playing = playingToday(tournaments);
+  // the first time: Liga, or Turniri for a player in no league or whose tournament is being played today
+  const shown: HomeTab = tab ?? (playing || (schedule != null && schedule.leagues.length === 0) ? "turniri" : "liga");
+  const pick = (t: HomeTab) => {
+    setTab(t);
+    saveHomeTab(t);
+  };
 
   return (
     <Screen gap={12}>
@@ -113,6 +121,80 @@ export default function PhoneHome() {
         </Box>
       </Box>
 
+      <Segmented<HomeTab>
+        items={[
+          {
+            key: "turniri",
+            label: (
+              <>
+                <MilitaryTechRoundedIcon aria-hidden sx={{fontSize: 20}} />
+                Turniri
+              </>
+            ),
+            live: shown === "liga" && playing,
+          },
+          {
+            key: "liga",
+            label: (
+              <>
+                <EventRepeatRoundedIcon aria-hidden sx={{fontSize: 20}} />
+                Liga
+              </>
+            ),
+          },
+        ]}
+        value={shown}
+        onChange={pick}
+        label="Početna"
+        variant="track"
+        size={48}
+        idPrefix="home"
+      />
+
+      <Box {...tabPanelProps("home", shown)} sx={{display: "flex", flexDirection: "column", gap: "12px"}}>
+        {shown === "liga" ? <LeagueHome /> : <TournamentsOverview withBurza />}
+      </Box>
+
+      <InstallSheet />
+    </Screen>
+  );
+}
+
+export type HomeTab = "turniri" | "liga";
+const HOME_TAB_KEY = "treseta.homeTab";
+
+// the tab picked last on this phone (none the first time, or where storage isn't available)
+export function readHomeTab(): HomeTab | null {
+  try {
+    const v = window.localStorage.getItem(HOME_TAB_KEY);
+    return v === "turniri" || v === "liga" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveHomeTab(t: HomeTab) {
+  try {
+    window.localStorage.setItem(HOME_TAB_KEY, t);
+  } catch {
+    // not remembered: the next visit picks the tab again
+  }
+}
+
+// Početna · Liga: the league's Home as it was before the tournaments (only a league's table on the top card)
+function LeagueHome() {
+  const leagueId = useSelectedLeagueId();
+  const {table: openTable, loading: openTableLoading} = useOpenTable("league");
+  const {start, starting, error} = useStartGame({scope: "league"});
+  const {schedule, error: scheduleError, reload: reloadSchedule} = useMySchedule();
+  const next = nextNight(schedule);
+  const {posts} = useBurza();
+  const now = useNow();
+  // the team at the table tonight that is here (Tu smo): Odlazimo under Započni igru
+  const here = schedule?.leagues.find((l) => l.arrival?.night === schedule.today && l.arrival.arrival?.here && leagueArrivalPhase(l.arrival, now) !== "over");
+
+  return (
+    <>
       {/* the table to play tonight; the rest of the week, the team's next night. While the open round loads, the
           neutral frame (named like the Start card, so the scoreboard still shrinks into it on the way back) */}
       {openTable ? (
@@ -156,9 +238,7 @@ export default function PhoneHome() {
       </Box>
 
       <HomeSponsors leagueId={leagueId} />
-
-      <InstallSheet />
-    </Screen>
+    </>
   );
 }
 

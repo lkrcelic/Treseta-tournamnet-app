@@ -39,6 +39,7 @@ export const TEAM_RENAME_ADMIN_ONLY = "Ime ekipe mijenja admin.";
 export const TEAM_NOT_FOUND = "Ekipa ne postoji.";
 // Obriši ekipu: what keeps a team
 export const TEAM_DELETE_PLAYED = "Ekipa je već igrala, pa se ne može obrisati: s njom bi nestali i rezultati njezinih protivnika.";
+export const TEAM_DELETE_TOURNAMENT = "Ekipa je prijavljena na turnir. Prvo je ukloni s turnira.";
 export const TEAM_PHOTO_VISIBILITY_MEMBERS_ONLY = "Tko vidi sliku ekipe biraju njezini igrači.";
 
 export const TeamPlayerAddValidation = z.object({

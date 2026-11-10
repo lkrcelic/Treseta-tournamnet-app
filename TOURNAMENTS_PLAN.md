@@ -205,14 +205,19 @@ reviewable order inside one branch, not separate merges: a half-transferred tour
    every handler under `admin/tournaments/[id]`, `admin/tables` and `admin/hands` says whose it is. A tournament's
    Vrijeme partije defaults to 45 minutes, as a league's does. The open table's scope (`api/rounds/open`) waits for
    Početna in step 6.
-6. **Screens.** `_ui/tournaments/**` (with `PlayerFrame.tsx`, without the guest's Početna), `turniri/**`,
-   `_ui/profiles/BanSection.tsx` and its place on a player's and a team's page. Then the shared files, from
-   BELA_SYNC.md's tables: Turniri in the menu, the admin's tab bar and the phone's bottom bar, Početna's Turniri ·
-   Liga switch and the computer's tournament strip, `tableScope` links on the scorepad and Pregled stola, the next
-   Kolo's draft when a Kolo's last table closes, `?scope=` and `tournamentId` on the open table, Obriši ekipu's
-   tournament check, `/turniri` in `_lib/publicPaths.ts` and `middleware.ts`, `dateTile`, `matchSlots` /
-   `currentMatchNumber` for a table of one match. Everywhere the chips are drawn, Treseta's `TeamLabel` keeps its
-   conference dot and a tournament passes no conference.
+6. ~~**Screens.**~~ Done 10 Nov 2026: `_ui/tournaments/**` (22 files, `PlayerFrame.tsx` among them), the nine
+   `turniri/**` pages, and `_ui/profiles/BanSection.tsx` on a player's and a team's page. The shared screens came with
+   them: Turniri in the computer's menu (for everyone) and under Admin (`tournament.manage.own`), the sixth tab of the
+   phone's management bar, Početna's Turniri · Liga switch (the league's Home moved into `LeagueHome`, the tab
+   remembered in `treseta.homeTab`) and the computer's tournament strip, `tableScope` links on the scorepad, Pregled
+   stola, the phone's table and Tko igra (`?turnir=`), a table of one match through `TablePad.matchesPerRound` and
+   `ScorePanel`'s `of`, `?scope=` and `tournamentId` on the open table, Novi stol in a Kolo (`RoundAdmin.addTable`,
+   `byeWins`, the draft row's "vs"), Obriši ekipu's tournament check, Kraj kola's Poredak i rezultati, and `/turniri`
+   in `_lib/publicPaths.ts`, `middleware.ts` and `session.test.ts`. Zvanja are gone from the form, the cards and the
+   admin's notes; Pravila igre reads `41 · s ovim dosta`. A tournament's team chips draw no conference dot, and a
+   logged-out visitor's Prijavi se goes to `/login` instead of Bela's "Sjedni za stol." sheet. Bela's Otključaj
+   partiju (`_ui/admin/UnlockTable.tsx`, `api/admin/tables/[roundId]/unlock`) is not here: it is Bela's own work from
+   after the sync point, for the nightly sync to bring.
 7. **Branding.** Every tournament screen that imports Bela's `_ui/sp/brand.ts` reads `BRAND` from `_lib/brand.ts`
    instead; "Belatronika", the install sheet's name and `manifest.webmanifest` stay Treseta's.
 8. **Ratings.** `_lib/service/admin/recalc.ts` filters on `attendance`, so a no-show or skipped table is not rated —

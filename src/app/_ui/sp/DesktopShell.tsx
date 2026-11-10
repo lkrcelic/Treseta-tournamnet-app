@@ -41,6 +41,7 @@ import {InitialsAvatar} from "./Surface";
 import {Eyebrow} from "./Text";
 import type {Capability} from "@/app/_lib/auth/permissions";
 import {ROLE_NAME} from "@/app/_lib/auth/roles";
+import MilitaryTechRoundedIcon from "@mui/icons-material/MilitaryTechRounded";
 
 export type NavKey =
   | "home"
@@ -50,6 +51,8 @@ export type NavKey =
   | "ratings"
   | "raspored"
   | "burza"
+  | "tournaments"
+  | "manageTournaments"
   | "manageLeague"
   | "createLeague"
   | "teams"
@@ -184,7 +187,9 @@ const NAV: NavItem[] = [
   {key: "ratings", label: "Rejting", icon: <LeaderboardRoundedIcon />, href: "/ratings"},
   {key: "raspored", label: "Raspored", icon: <EventRoundedIcon />, href: "/raspored"},
   {key: "burza", label: "Burza igrača", icon: <PersonSearchRoundedIcon />, href: "/burza"},
-  {key: "manageLeague", label: "Upravljanje ligom", icon: <TuneRoundedIcon />, leaguePage: "manage", head: "Admin", cap: "league.manage"},
+  {key: "tournaments", label: "Turniri", icon: <MilitaryTechRoundedIcon />, href: "/turniri"},
+  {key: "manageTournaments", label: "Turniri", icon: <MilitaryTechRoundedIcon />, href: "/turniri/upravljanje", head: "Admin", cap: "tournament.manage.own"},
+  {key: "manageLeague", label: "Upravljanje ligom", icon: <TuneRoundedIcon />, leaguePage: "manage", cap: "league.manage"},
   {key: "createLeague", label: "Nova liga", icon: <LibraryAddRoundedIcon />, href: "/league/new", cap: "league.manage"},
   {key: "teams", label: "Ekipe", icon: <GroupsRoundedIcon />, href: "/teams", cap: "team.edit"},
   {key: "players", label: "Igrači", icon: <PersonRoundedIcon />, href: "/players", cap: "player.directory"},
@@ -217,7 +222,7 @@ export function NavDrawer({open, onClose, active}: {open: boolean; onClose: () =
   }, [open, signedIn, leagueId]);
 
   // signed out, only the public season table and Burza igrača are available
-  const items = NAV.filter((n) => (signedIn ? !n.cap || userCan(user, n.cap) : n.key === "league" || n.key === "burza")).map((n) =>
+  const items = NAV.filter((n) => (signedIn ? !n.cap || userCan(user, n.cap) : n.key === "league" || n.key === "burza" || n.key === "tournaments")).map((n) =>
     n.leaguePage ? {...n, href: currentLeagueHref(n.leaguePage, leagueId)} : n
   );
   const itemSx = (on: boolean) => ({

@@ -42,6 +42,7 @@ import {PhotoAdminBadge, PhotoAdminCard} from "@/app/_ui/photo/PhotoAdmin";
 import type {PhotoInfo} from "@/app/_ui/photo/PhotoParts";
 import {TeamCards} from "./TeamCards";
 import useManagePhone from "@/app/_hooks/useManagePhone";
+import BanSection from "./BanSection";
 
 // The Player page (/players/[playerId], handoff §6, frames 13c, 13g, 13j, 13l): the player's name and rating (to the
 // rating's detail), Osobni podaci (first and last name for everyone, everything for the player and admins: the server
@@ -100,6 +101,7 @@ export function PlayerPagePhone({playerId}: {playerId: number}) {
             tag={!data.player.active ? <Tag variant="inactive" size="sm" /> : <RoleTag role={data.player.role} size="sm" />}
           />
           <PersonalDataCard player={data.player} full={data.full} action={admin && <EditDataButton expanded={editing} onClick={() => setEditing(true)} />} />
+          {admin && <BanSection target={{kind: "player", id: data.player.id, name: data.player.name}} />}
           {admin && <AdminPhoto data={data} overview={overview} />}
           {admin ? <PlayerTeamsPhone data={data} admin={admin} /> : <TeamCards title="Ekipe" empty={NO_TEAMS} emptyIcon teams={data.teams} />}
           {admin && <PlayerAccountPhone data={data} overview={overview} />}
@@ -166,6 +168,7 @@ export function PlayerPageDesktop({playerId, embedded = false}: {playerId: numbe
             />
             <DesktopNights nights={data.nights} />
           </PageColumns>
+          {admin && <BanSection desktop target={{kind: "player", id: data.player.id, name: data.player.name}} />}
           {admin && editing && <EditPlayerPanel key={data.player.id} data={data} overview={overview} onClose={() => setEditing(false)} />}
         </>
       ) : (

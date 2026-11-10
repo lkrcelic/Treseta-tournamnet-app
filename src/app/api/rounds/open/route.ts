@@ -1,6 +1,8 @@
 import {NextRequest, NextResponse} from "next/server";
 import {STATUS} from "@/app/_lib/statusCodes";
-import {getLastOpenRoundByPlayerId} from "@/app/_lib/service/round/getLastOpenByPlayerId";
+import {getLastOpenRoundByPlayerId, OpenRoundScope} from "@/app/_lib/service/round/getLastOpenByPlayerId";
+
+const SCOPES: OpenRoundScope[] = ["league", "tournament", "any"];
 import {getNewestOngoingMatchByRoundId} from "@/app/_lib/service/match/getNewstByRoundId";
 import {requireUser} from "@/app/_lib/service/auth/requireUser";
 import {hasLineup} from "@/app/_lib/service/round/lineup";
@@ -14,7 +16,9 @@ export async function GET(request: NextRequest) {
   if (auth.response) return auth.response;
 
   try {
-    const round = await getLastOpenRoundByPlayerId(auth.user.id);
+    const asked = request.nextUrl.searchParams.get("scope") as OpenRoundScope | null;
+    const scope = asked && SCOPES.includes(asked) ? asked : "any";
+    const round = await getLastOpenRoundByPlayerId(auth.user.id, scope);
     if (!round) {
       return NextResponse.json({error: "Trenutno nemaš otvorenu rundu."}, {status: STATUS.NotFound});
     }

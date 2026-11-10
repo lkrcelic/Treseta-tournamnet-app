@@ -107,8 +107,8 @@ export async function PATCH(request: NextRequest, {params}: { params: { id: stri
   }
 }
 
-// "Obriši ekipu" (admin): deletes a team that has never played (deleteTeam). 204; a team that has played is a 400 with
-// the reason; a missing team (or the bye) a 404.
+// "Obriši ekipu" (admin): deletes a team that has never played and isn't in a tournament (deleteTeam). 204; a team that
+// has played or is in a tournament is a 400 with the reason; a missing team (or the bye) a 404.
 export async function DELETE(request: NextRequest, {params}: { params: { id: string } }) {
   const auth = await requireAdmin(request);
   if (auth.response) return auth.response;

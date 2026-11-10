@@ -15,6 +15,7 @@ export function ScorePanel({
   index,
   name,
   wins,
+  of = 2,
   total,
   finalTotal,
   threshold,
@@ -27,6 +28,8 @@ export function ScorePanel({
   index: 0 | 1;
   name: string;
   wins: number;
+  // the matches the table plays: a win pip each (2 in a league, a tournament's table can play 1)
+  of?: number;
   total: number;
   // the real total (total is the animated value); announced to screen readers when it changes
   finalTotal?: number;
@@ -91,8 +94,8 @@ export function ScorePanel({
             </Box>
           )}
         </Box>
-        <Box role="img" aria-label={`${wins} od 2 pobjede u kolu`} sx={{display: "flex", gap: desk ? "6px" : "5px", flex: "none"}}>
-          {[0, 1].map((k) => (
+        <Box role="img" aria-label={`${wins} od ${of} u kolu`} sx={{display: "flex", gap: desk ? "6px" : "5px", flex: "none"}}>
+          {Array.from({length: of}, (_, k) => k).map((k) => (
             <Box
               key={k}
               sx={{

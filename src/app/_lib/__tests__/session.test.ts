@@ -26,10 +26,14 @@ test("only the app's own code means a deactivated account", () => {
 });
 
 test("public pages aren't sent to Prijava", () => {
-  for (const path of ["/login", "/signup", "/league/2/standings", "/league/current/standings", "/burza", "/burza/12"]) {
+  const publicPaths = ["/login", "/signup", "/league/2/standings", "/league/current/standings", "/burza", "/burza/12"];
+  // the tournaments are public as far as the league's season table is: the list, a tournament, its standings and teams
+  publicPaths.push("/turniri", "/turniri/zavrseni", "/turniri/7", "/turniri/7/poredak", "/turniri/7/ekipe");
+  for (const path of publicPaths) {
     assert.equal(isPublicPagePath(path), true, path);
   }
-  for (const path of ["/", "/ratings", "/profile", "/burza/moji", "/burza/novi/zamjena", "/league/2/daily-standings"]) {
+  // signing up, a tournament's table and the admin's pages need a login
+  for (const path of ["/", "/ratings", "/profile", "/burza/moji", "/burza/novi/zamjena", "/league/2/daily-standings", "/turniri/novi", "/turniri/upravljanje", "/turniri/7/upravljanje", "/turniri/7/stol/12"]) {
     assert.equal(isPublicPagePath(path), false, path);
   }
 });

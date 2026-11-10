@@ -1,4 +1,4 @@
-import {isPublicBurzaPath} from "@/app/_lib/publicPaths";
+import {isPublicBurzaPath, isPublicTournamentPath} from "@/app/_lib/publicPaths";
 import {isApiLimited} from "@/app/_lib/rateLimiting/requestLimiting";
 import {verifyCookie} from "@/app/_lib/service/auth/signCookie";
 import {STATUS} from "@/app/_lib/statusCodes";
@@ -14,8 +14,10 @@ export async function middleware(req: NextRequest) {
       req.nextUrl.pathname.startsWith("/api") ||
       req.nextUrl.pathname.startsWith("/login") ||
       req.nextUrl.pathname.startsWith("/signup") ||
-      // the season table of any league and the ads of Burza igrača are public; everything else needs a login
+      // the season table of any league, the ads of Burza igrača and the tournaments are public; everything else
+      // needs a login
       /^\/league\/(\d+|current)\/standings\/?$/.test(req.nextUrl.pathname) ||
+      isPublicTournamentPath(req.nextUrl.pathname) ||
       isPublicBurzaPath(req.nextUrl.pathname) ||
       req.nextUrl.pathname.startsWith("/_next/") ||
       // the app manifest and icons, read by the browser before anyone logs in

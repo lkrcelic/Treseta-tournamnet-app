@@ -12,12 +12,18 @@ import {currentLeagueHref} from "@/app/_lib/league";
 import {splitPodium, standingsTeamHref, toStandingsRows} from "@/app/_lib/ui/standings";
 import {displayDate, weekdayDate} from "@/app/_lib/ui/text";
 import useAuthStore from "@/app/_store/authStore";
-import {color, font, tint} from "@/app/_styles/tokens";
+import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {Card, ChipButton, DesktopShell, EmptyState, ErrorNote, LeagueMenuButton, LivePill, LoadingRows, Podium, StandingsGrid} from "@/app/_ui/sp";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import {Box} from "@mui/material";
-import {useTransitionRouter} from "@/app/_lib/viewTransitions";
+import {TransitionLink, useTransitionRouter} from "@/app/_lib/viewTransitions";
 import React, {useEffect, useMemo, useState} from "react";
+import {useTournaments} from "@/app/_hooks/useTournaments";
+import {mainTournament} from "@/app/_ui/tournaments/TournamentsOverview";
+import {DateTile} from "@/app/_ui/tournaments/TournamentParts";
+import {whenWhere} from "@/app/_ui/tournaments/PlayerParts";
+import {count, NOUN} from "@/app/_lib/ui/text";
+import {formatLabel} from "@/app/_lib/tournaments";
 
 export default function DesktopHome() {
   const router = useTransitionRouter();
@@ -74,6 +80,7 @@ export default function DesktopHome() {
       title={firstName ? `Dobrodošao, ${firstName}` : "Dobrodošao"}
       right={picker}
     >
+      <TournamentStrip />
       <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "20px"}}>
         <Panel
           title="Dnevni poredak"
@@ -116,6 +123,48 @@ export default function DesktopHome() {
         </Panel>
       </Box>
     </DesktopShell>
+  );
+}
+
+// The next tournament (or the one being played) above the league's tables: its date, name, where and when, and the
+// viewer's entry or how many have signed up; it opens the tournament's page. Nothing without one.
+function TournamentStrip() {
+  const {tournaments} = useTournaments();
+  const t = mainTournament(tournaments ?? []);
+  if (!t) return null;
+  const status =
+    t.phase === "active"
+      ? t.live_kolo
+        ? `Kolo ${t.live_kolo} uživo`
+        : "Danas"
+      : t.me
+        ? t.me.status === "WAITING"
+          ? `Na listi čekanja · ${t.me.team_name}`
+          : `Prijavljeni · ${t.me.team_name}`
+        : `${count(t.teams, NOUN.ekipa)} · ${t.registrations_open ? "prijave otvorene" : "prijave zatvorene"}`;
+  return (
+    <Box
+      component={TransitionLink}
+      href={`/turniri/${t.id}`}
+      sx={{flex: "none", display: "flex", alignItems: "center", gap: "16px", p: "12px 16px", borderRadius: "20px", background: color.white, color: color.ink, textDecoration: "none", boxShadow: shadow.card, "&:hover": {background: color.paper2}}}
+    >
+      <DateTile date={t.date} size={46} />
+      <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
+        <Box component="span" sx={{fontSize: 12, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.muted}}>
+          {t.phase === "active" ? "Turnir danas" : "Sljedeći turnir"}
+        </Box>
+        <Box component="span" sx={{fontFamily: font.display, fontSize: 20, fontWeight: 800}}>
+          {t.name}
+        </Box>
+        <Box component="span" sx={{fontSize: 14, color: color.ink2}}>
+          {[whenWhere(t), formatLabel(t.rounds, t.matches_per_round)].filter(Boolean).join(" · ")}
+        </Box>
+      </Box>
+      <Box component="span" sx={{flex: "none", fontSize: 15, fontWeight: 700, color: t.phase === "active" ? color.red : color.navy}}>
+        {status}
+      </Box>
+      <ChevronRightRoundedIcon aria-hidden sx={{flex: "none", fontSize: 26, color: color.navy}} />
+    </Box>
   );
 }
 
