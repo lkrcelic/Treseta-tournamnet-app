@@ -1,0 +1,705 @@
+<!doctype html>
+<html lang="hr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Kalkulator trajanja i zarade za turnirske formate.">
+<title>Repasaž kalkulator</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@600&display=swap">
+<style>
+/* Layout: upisnik lijevo, ishod desno — kao bilježnica za upisivanje partija. */
+:root{
+  --paper:#f1f3ef; --card:#ffffff; --ink:#19211c; --muted:#5c6a62;
+  --felt:#1d6b48; --felt-soft:#e4efe8; --on-felt:#ffffff;
+  --warn:#8d5a06; --warn-soft:#fbf0dc;
+  --bad:#9f2a1d; --bad-soft:#fae7e4;
+  --line:#d8ded7; --line-soft:#e8ece6;
+  --f-disp:"IBM Plex Serif",Georgia,serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0e1411; --card:#161e19; --ink:#e7eee9; --muted:#8fa096;
+  --felt:#4fb783; --felt-soft:#16291f; --on-felt:#06130d;
+  --warn:#d7a33c; --warn-soft:#2a2113;
+  --bad:#e27664; --bad-soft:#2c1917;
+  --line:#26312b; --line-soft:#1d2621;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --paper:#0e1411; --card:#161e19; --ink:#e7eee9; --muted:#8fa096;
+  --felt:#4fb783; --felt-soft:#16291f; --on-felt:#06130d;
+  --warn:#d7a33c; --warn-soft:#2a2113;
+  --bad:#e27664; --bad-soft:#2c1917;
+  --line:#26312b; --line-soft:#1d2621;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:var(--f-body); font-size:15px; line-height:1.5;
+  margin:0;
+}
+.wrap{
+  max-width:1120px; margin:0 auto;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:28px 48px;
+}
+header{border-bottom:2px solid var(--ink); padding-bottom:14px; margin-bottom:24px}
+h1{
+  font-family:var(--f-disp); font-weight:600; font-size:clamp(26px,5vw,36px);
+  margin:0 0 6px; letter-spacing:-.015em; text-wrap:balance;
+}
+header p{margin:0; color:var(--muted); max-width:62ch}
+.cols{display:grid; grid-template-columns:302px minmax(0,1fr); gap:28px; align-items:start}
+@media (max-width:820px){.cols{grid-template-columns:1fr; gap:22px}}
+
+/* ---- upisnik ---- */
+.panel{
+  background:var(--card); border:1px solid var(--line); border-radius:4px;
+  padding:18px 18px 20px; position:sticky; top:env(safe-area-inset-top,0px);
+}
+@media (max-width:820px){.panel{position:static}}
+.panel h2,.block h2{
+  font-family:var(--f-body); font-size:11px; font-weight:600; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--muted); margin:0 0 14px;
+}
+.field{display:flex; flex-direction:column; gap:5px; margin-bottom:15px}
+.field > label{font-size:13px; font-weight:500}
+.field .hint{font-size:12px; color:var(--muted); line-height:1.35}
+input[type=number]{
+  font-family:var(--f-num); font-size:16px; font-weight:500;
+  width:100%; padding:8px 10px; color:var(--ink);
+  background:var(--paper); border:1px solid var(--line); border-radius:3px;
+}
+input[type=number]:focus-visible,.seg button:focus-visible{outline:2px solid var(--felt); outline-offset:1px}
+.seg{display:flex; border:1px solid var(--line); border-radius:3px; overflow:hidden}
+.seg button{
+  flex:1 1 0; min-width:0; font:inherit; font-size:13px; padding:8px 4px; cursor:pointer;
+  background:var(--paper); color:var(--muted); border:0; border-right:1px solid var(--line);
+}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed=true]{background:var(--felt); color:var(--on-felt); font-weight:600}
+.kola-row{display:flex; gap:8px; align-items:stretch}
+.kola-row input{flex:1 1 auto}
+.kola-row button{
+  font:inherit; font-size:12px; font-weight:500; white-space:nowrap; padding:0 11px; cursor:pointer;
+  background:var(--felt-soft); color:var(--felt); border:1px solid var(--line); border-radius:3px;
+}
+.kola-row button:focus-visible{outline:2px solid var(--felt); outline-offset:1px}
+
+/* ---- ishod ---- */
+.res{display:flex; flex-direction:column; gap:20px; transition:opacity .12s}
+.res.busy{opacity:.45}
+.tiles{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px}
+@media (max-width:620px){.tiles{grid-template-columns:1fr}}
+.tile{background:var(--card); border:1px solid var(--line); border-radius:4px; padding:15px 16px 16px}
+.tile .k{font-size:12px; color:var(--muted); line-height:1.35; min-height:2.7em}
+.tile .v{
+  font-family:var(--f-num); font-variant-numeric:tabular-nums;
+  font-size:clamp(30px,6vw,38px); font-weight:600; color:var(--felt);
+  line-height:1.05; margin-top:9px; letter-spacing:-.02em;
+}
+.tile .v small{font-size:.44em; font-weight:500; color:var(--muted); letter-spacing:0}
+.tile .sub{font-size:12px; color:var(--muted); margin-top:4px; font-variant-numeric:tabular-nums}
+
+.note{border-radius:4px; padding:11px 14px; font-size:13px; border:1px solid; margin-bottom:10px}
+.note:last-child{margin-bottom:0}
+.note.bad{background:var(--bad-soft); border-color:var(--bad); color:var(--bad)}
+.note.warn{background:var(--warn-soft); border-color:var(--warn); color:var(--warn)}
+.note strong{font-weight:600}
+
+.block{background:var(--card); border:1px solid var(--line); border-radius:4px; overflow:hidden}
+.block > h2{padding:14px 16px 0; margin:0 0 10px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse; width:100%; font-size:13.5px; min-width:430px}
+th,td{text-align:right; padding:7px 16px; border-bottom:1px solid var(--line-soft)}
+th:first-child,td:first-child{text-align:left}
+thead th{
+  font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:var(--muted);
+  font-weight:600; border-bottom:1px solid var(--line); white-space:nowrap;
+}
+tbody td{font-family:var(--f-num); font-variant-numeric:tabular-nums}
+tbody td:first-child{font-family:var(--f-body)}
+tr.grp td{
+  background:var(--felt-soft); color:var(--felt); font-family:var(--f-body);
+  font-weight:600; font-size:12px; letter-spacing:.02em;
+}
+tbody tr:last-child td{border-bottom:0}
+td.dim{color:var(--muted)}
+.bar{display:inline-block; height:6px; border-radius:3px; background:var(--felt); vertical-align:1px; margin-right:7px; min-width:2px}
+
+.foot{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1px; background:var(--line)}
+.foot div{background:var(--card); padding:12px 16px}
+.foot .k{font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--muted)}
+.foot .v{font-family:var(--f-num); font-variant-numeric:tabular-nums; font-size:19px; font-weight:600; margin-top:3px}
+
+.timehint{margin:0; padding:11px 16px 14px; font-size:12.5px; color:var(--muted); line-height:1.45; border-top:1px solid var(--line-soft)}
+footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--line); font-size:12.5px; color:var(--muted); max-width:72ch}
+footer p{margin:0 0 7px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<style>
+/* minimalni reset — izvan artefakta nema okvira koji ga inace daje */
+:root{color-scheme:light; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px)}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Repasaž kalkulator</h1>
+    <p>Koliko se povrataka realno proda i koliki dio playoffa je kupljen. Turnir se odigra nekoliko tisuća puta, uz pretpostavku da su sve ekipe jednako jake i da je svaka partija 50/50.</p>
+  </header>
+
+  <div class="cols">
+    <form class="panel" id="form" autocomplete="off">
+      <h2>Postavke turnira</h2>
+
+      <div class="field">
+        <label for="M">Broj ekipa</label>
+        <input type="number" id="M" value="16" min="4" max="128" step="1">
+        <span class="hint">Bilo koji broj — paran, neparan, nije važno.</span>
+      </div>
+
+      <div class="field">
+        <label for="T">Prolazi u playoff</label>
+        <input type="number" id="T" value="8" min="2" max="64" step="1">
+      </div>
+
+      <div class="field">
+        <label>Playoff se igra</label>
+        <div class="seg" id="segPo" role="group">
+          <button type="button" data-v="bo1">bo1</button>
+          <button type="button" data-v="fin">finale bo3</button>
+          <button type="button" data-v="bo3">bo3</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="L">Poraza za ispadanje</label>
+        <input type="number" id="L" value="2" min="1" max="8" step="1">
+      </div>
+
+      <div class="field">
+        <label for="K">Kola kvalifikacija</label>
+        <div class="kola-row">
+          <input type="number" id="K" value="4" min="2" max="14" step="1">
+          <button type="button" id="auto">Preporuka</button>
+        </div>
+        <span class="hint" id="autoHint"></span>
+      </div>
+
+      <div class="field">
+        <label>Najviše repasaža po ekipi</label>
+        <div class="seg" id="segMax" role="group">
+          <button type="button" data-v="1">1</button>
+          <button type="button" data-v="2">2</button>
+          <button type="button" data-v="99">neograničeno</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Spremnost ekipa na plaćanje</label>
+        <div class="seg" id="segWill" role="group">
+          <button type="button" data-v="0.65">velika</button>
+          <button type="button" data-v="0.45">srednja</button>
+          <button type="button" data-v="0.25">mala</button>
+        </div>
+        <span class="hint">Koliko ekipa plati samo zato da nastavi igrati, bez obzira na šanse. Na to se dodaje sama šansa.</span>
+      </div>
+
+      <div class="field">
+        <label for="G">Trajanje partije (min)</label>
+        <input type="number" id="G" value="30" min="10" max="90" step="5">
+        <span class="hint">Partija do 41 s rotacijom i upisom rezultata.</span>
+      </div>
+
+      <div class="field" style="margin-bottom:0">
+        <label for="P">Cijena repasaža (€)</label>
+        <input type="number" id="P" value="20" min="0" max="500" step="5">
+      </div>
+    </form>
+
+    <div class="res" id="res">
+      <div class="tiles">
+        <div class="tile">
+          <div class="k">Ekipa koje kupe barem jedan repasaž</div>
+          <div class="v" id="o1">—</div>
+          <div class="sub" id="o1s">&nbsp;</div>
+        </div>
+        <div class="tile">
+          <div class="k">Mjesta u playoffu koja je zauzela ekipa koja je platila</div>
+          <div class="v" id="o2">—</div>
+          <div class="sub" id="o2s">&nbsp;</div>
+        </div>
+        <div class="tile">
+          <div class="k">Prodanih repasaža po turniru</div>
+          <div class="v" id="o3">—</div>
+          <div class="sub" id="o3s">&nbsp;</div>
+        </div>
+      </div>
+
+      <div id="notes"></div>
+
+      <div class="block">
+        <h2>Prozori za repasaž</h2>
+        <div class="scroll">
+          <table>
+            <thead><tr>
+              <th>Prozor</th><th>Može platiti</th><th>Šansa za playoff</th><th>Realno plati</th>
+            </tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="block">
+        <h2>Trajanje</h2>
+        <div class="foot" id="time"></div>
+        <p class="timehint" id="timeHint"></p>
+      </div>
+
+      <div class="block">
+        <h2>Usporedba s losers bracketom</h2>
+        <div class="scroll">
+          <table>
+            <thead><tr><th></th><th>Švicarac + repasaž</th><th>Losers bracket — svi plate</th></tr></thead>
+            <tbody id="cmp"></tbody>
+          </table>
+        </div>
+        <p class="timehint" id="lbHint"></p>
+      </div>
+
+      <div class="block">
+        <div class="foot" id="foot"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p><strong>Šansa za playoff</strong> je vjerojatnost da ekipa koja u tom prozoru plati stvarno uđe u playoff. Pada što je prozor ranije, jer joj ostaje više kola u kojima može ponovo ispasti.</p>
+    <p>Kad kolona <strong>Šansa</strong> pokaže 0%, ekipe koje nisu ispale već napune playoff i plaćena ekipa nema kamo — taj repasaž se ne smije prodavati.</p>
+    <p><strong>Preživi kvalifikacije</strong> je koliko je ekipa na kraju kvalifikacija još u turniru: one koje nisu skupile dovoljno poraza da ispadnu, plus one koje su platile povratak i poslije toga više nisu izgubile. Taj broj treba biti barem onoliki koliki je playoff. Ako je manji, playoff se mora popuniti ekipama koje su ispale — tada prođu i one koje nisu platile i repasaž gubi smisao, pa kalkulator na to upozori.</p>
+    <p><strong>Poraza po ekipi u playoffu</strong> pokazuje koliko je letvica visoka. Manji broj znači da su prošle ekipe koje su stvarno igrale dobro; ako naraste, playoff se napunio ekipama koje su se uglavnom plaćale natrag.</p>
+    <p>Kolo je jedna partija do 41, a koliko traje s rotacijom i upisom postavljaš sam. Trajanje računa kvalifikacije plus krugove playoffa, a krug je gotov tek kad i najsporiji stol završi.</p>
+    <p><strong>Koliko ih plati</strong> nije izračun nego pretpostavka: ekipa koja je ispala bira hoće li doma ili dalje igrati, pa je osnovica visoka i na nju se dodaje sama šansa. Postavka <em>Spremnost</em> pomiče tu osnovicu. Jedino kad je prolaz matematički nemoguć ne plati nitko. To vrijedi samo za švicarac — kod losers bracketa se računa da plate <em>sve</em> ekipe koje ispadnu, dakle njegov najbolji mogući slučaj.</p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  function comb(n,k){if(k<0||k>n)return 0;k=Math.min(k,n-k);var r=1;for(var i=0;i<k;i++)r=r*(n-i)/(i+1);return r;}
+
+  // Svi spremnici se alociraju jednom po veličini turnira, nikad unutar petlje.
+  var ctx=null;
+  function getCtx(M,k){
+    var span=(k+2)*100;
+    if(!ctx||ctx.M<M||ctx.k<k){
+      ctx={M:M,k:k,span:span,
+        loss:new Int16Array(M),buys:new Int16Array(M),st:new Uint8Array(M),
+        fw:new Uint8Array(M),pass:new Uint8Array(M),
+        a:new Int16Array(M),b:new Int16Array(M),newly:new Int16Array(M),
+        cnt:new Int32Array(k+4),hist:new Int32Array(2*M*(k+2)),
+        offers:new Float64Array(span),sold:new Float64Array(span),adv:new Float64Array(span)};
+    }
+    ctx.span=span;
+    return ctx;
+  }
+
+  function sim(M,T,k,L,maxBuys,pBuy,trials,seed){
+    var c=getCtx(M,k);
+    var loss=c.loss,buys=c.buys,st=c.st,fw=c.fw,pass=c.pass,
+        A=c.a,B=c.b,newly=c.newly,cnt=c.cnt,hist=c.hist,
+        offers=c.offers,sold=c.sold,adv=c.adv;
+    offers.fill(0);sold.fill(0);adv.fill(0);
+    var rng=mulberry32(seed),maxL=k+1;
+    var boughtAny=0,boughtInT=0,totalSold=0,aliveSum=0,shortfall=0,lossInT=0,cntT=0;
+    var t,i,j,n,q,tmp;
+
+    // stabilno slaganje po broju poraza; redoslijed unutar iste grupe je slucajan
+    function arrange(len){
+      for(i=len-1;i>0;i--){q=(rng()*(i+1))|0;tmp=A[i];A[i]=A[q];A[q]=tmp;}
+      for(i=0;i<=maxL+1;i++)cnt[i]=0;
+      for(i=0;i<len;i++)cnt[loss[A[i]]+1]++;
+      for(i=1;i<=maxL+1;i++)cnt[i]+=cnt[i-1];
+      for(i=0;i<len;i++){var id=A[i];B[cnt[loss[id]]++]=id;}
+    }
+
+    for(t=0;t<trials;t++){
+      for(i=0;i<M;i++){loss[i]=0;buys[i]=0;st[i]=0;fw[i]=0;pass[i]=0;}
+      var hn=0;
+
+      for(var kolo=1;kolo<=k;kolo++){
+        n=0;
+        for(i=0;i<M;i++)if(st[i]!==2)A[n++]=i;
+        if(n<2)break;
+
+        if(n&1){  // neparno -> slobodna pobjeda, prvo ekipama na zadnjem zivotu
+          var mode=1,cc=0;
+          for(j=0;j<n;j++)if(st[A[j]]===1&&!fw[A[j]])cc++;
+          if(cc===0){mode=2;for(j=0;j<n;j++)if(!fw[A[j]])cc++;}
+          if(cc===0){mode=3;cc=n;}
+          var r=(rng()*cc)|0,pick=A[0];
+          for(j=0;j<n;j++){
+            var id0=A[j];
+            var ok=mode===1?(st[id0]===1&&!fw[id0]):mode===2?(!fw[id0]):true;
+            if(ok){if(r===0){pick=id0;break;}r--;}
+          }
+          fw[pick]=1;
+          for(j=0;j<n;j++)if(A[j]===pick){A[j]=A[n-1];break;}
+          n--;
+        }
+
+        arrange(n);
+
+        var nn=0;
+        for(i=0;i+1<n;i+=2){
+          var x=B[i],y=B[i+1];
+          var lo=rng()<0.5?x:y;
+          loss[lo]++;
+          if(st[lo]===1||loss[lo]>=L){st[lo]=2;if(buys[lo]<maxBuys)newly[nn++]=lo;}
+        }
+
+        if(kolo<=k-1){
+          for(i=0;i<nn;i++){
+            var id1=newly[i],nb=buys[id1]+1,key=nb*100+kolo;
+            offers[key]++;
+            if(rng()<pBuy(nb,kolo)){
+              st[id1]=1;buys[id1]=nb;
+              hist[hn++]=id1;hist[hn++]=key;
+              sold[key]++;totalSold++;
+            }
+          }
+        }
+      }
+
+      // tko prolazi: preživjeli po broju poraza, pa dopuna ispalima ako ih je premalo
+      n=0;
+      for(i=0;i<M;i++)if(st[i]!==2)A[n++]=i;
+      arrange(n);
+      var take=n<T?n:T;
+      for(i=0;i<take;i++)pass[B[i]]=1;
+      if(n<T){
+        shortfall++;
+        var m=0;
+        for(i=0;i<M;i++)if(!pass[i])A[m++]=i;
+        arrange(m);
+        var need=T-n; if(need>m)need=m;
+        for(i=0;i<need;i++)pass[B[i]]=1;
+      }
+
+      aliveSum+=n;
+      for(i=0;i<M;i++){
+        if(buys[i]>0)boughtAny++;
+        if(pass[i]){cntT++;lossInT+=loss[i];if(buys[i]>0)boughtInT++;}
+      }
+      // prolaz se pripise SVAKOJ kupovini te ekipe — ekipa koja odlucuje
+      // zna da kasnije smije kupiti opet, pa to ulazi u njenu sansu
+      for(i=0;i<hn;i+=2)if(pass[hist[i]])adv[hist[i+1]]++;
+    }
+
+    return {offers:offers,sold:sold,adv:adv,span:c.span,trials:trials,
+      pctBuy:boughtAny/trials/M*100,pctInT:boughtInT/trials/T*100,
+      avgSold:totalSold/trials,avgAlive:aliveSum/trials,
+      shortfall:shortfall/trials,avgLossT:cntT?lossInT/cntT:0,
+      teamsBought:boughtAny/trials};
+  }
+
+  function suggestK(M,T,L){
+    var best=null;
+    for(var k=L+1;k<=14;k++){
+      var below=0,j;
+      for(j=0;j<L;j++)below+=comb(k,j);
+      var C=M*below/Math.pow(2,k),P=0;
+      for(var i=L;i<=k-1;i++)P+=M*comb(i-1,L-1)/Math.pow(2,i)*Math.pow(0.5,k-i);
+      var d=Math.abs(C+P-T);
+      if(!best||d<best.d-1e-9)best={k:k,d:d};
+    }
+    return best?best.k:L+1;
+  }
+
+  // Krugovi playoffa i broj meceva u svakom. Radi i kad T nije potencija dvojke:
+  // najbolje posijane ekipe tada imaju slobodan prolaz u prvom krugu.
+  function playoffPlan(T,mode,g){
+    var rounds=Math.ceil(Math.log(T)/Math.log(2)); if(rounds<1)rounds=1;
+    var size=Math.pow(2,rounds);
+    var list=[],first=(2*T-size)/2;
+    if(first>0)list.push(first);
+    for(var n=size/4;n>=1;n/=2)list.push(n);
+    var mins=0,det=[];
+    for(var i=0;i<list.length;i++){
+      var m=list[i],last=(i===list.length-1);
+      var bo3=(mode==="bo3")||(mode==="fin"&&last);
+      // Krug traje dok i najsporiji mec ne zavrsi: 2 partije samo ako SVI
+      // mecevi zavrse u dvije, inace 3. Otud (3 - 0.5^broj meceva).
+      var d=bo3?g*(3-Math.pow(0.5,m)):g;
+      mins+=d;
+      det.push({m:m,bo3:bo3,d:d,last:last});
+    }
+    return {mins:mins,rounds:list.length,det:det};
+  }
+  function hm(mins){
+    var t=Math.round(mins/5)*5,h=Math.floor(t/60),m=t%60;
+    return h?(h+" h"+(m?" "+(m<10?"0":"")+m:"")):(m+" min");
+  }
+
+  // --- Losers bracket (double elimination), za usporedbu ---
+  // Placeni zivot = ulazak u losers bracket. Fiksno jedan po ekipi.
+  // Krugovi WB-a i LB-a se preklapaju; u nizu ih je 2 x broj WB krugova,
+  // a broj meceva po krugu ide M/2, M/2, M/4, M/4, ... 1, 1.
+  function lbPlan(M,mode,g){
+    var w=Math.ceil(Math.log(M)/Math.log(2)); if(w<1)w=1;
+    var slots=2*w,mins=0,det=[];
+    for(var i=1;i<=slots;i++){
+      var n=Math.round(M/Math.pow(2,Math.ceil(i/2))); if(n<1)n=1;
+      var last=(i===slots);
+      var bo3=(mode==="bo3")||(mode==="fin"&&last);
+      mins+=bo3?g*(3-Math.pow(0.5,n)):g;
+      det.push({n:n,bo3:bo3});
+    }
+    return {mins:mins,slots:slots,det:det,w:w};
+  }
+  // Tko ispadne u r-tom kolu WB-a ulazi u LB i mora dobiti toliko meceva
+  // zaredom da dodje do velikog finala.
+  // Ovdje se ne modelira spremnost: u losers bracketu je placeni zivot sam
+  // format, pa se racuna da plati svaka ekipa koja ispadne iz pobjednickog
+  // dijela. To je najbolji moguci slucaj za losers bracket.
+  function lbEcon(M){
+    var w=Math.ceil(Math.log(M)/Math.log(2)); if(w<1)w=1;
+    var rows=[],offers=0;
+    for(var r=1;r<=w;r++){
+      var teams=M/Math.pow(2,r);
+      var wins=(r===1)?(2*w-2):(2*w-2*r+1); if(wins<1)wins=1;
+      offers+=teams;
+      rows.push({r:r,teams:teams,wins:wins,ch:Math.pow(0.5,wins)});
+    }
+    return {offers:offers,sold:offers,rows:rows,w:w};
+  }
+
+  var el=function(id){return document.getElementById(id);};
+  var state={maxBuys:1,will:0.45,po:"bo1"};
+
+  function readInt(id,def,lo,hi){
+    var v=parseInt(el(id).value,10);
+    if(!isFinite(v))v=def;
+    return v<lo?lo:(v>hi?hi:v);
+  }
+  function fmt(n,d){return n.toFixed(d===undefined?1:d).replace(".",",");}
+  function noteHtml(list){
+    return list.map(function(n){return '<div class="note '+n[0]+'">'+n[1]+"</div>";}).join("");
+  }
+
+  function compute(){
+    var M=readInt("M",16,4,128),T=readInt("T",8,2,127),L=readInt("L",2,1,8),
+        k=readInt("K",4,2,14),price=readInt("P",20,0,500),g=readInt("G",30,10,90);
+    if(T>=M)T=M-1<2?2:M-1;
+
+    el("autoHint").textContent="Preporuka za ove postavke: "+suggestK(M,T,L)+" kola.";
+
+    // --- trajanje: kvalifikacije, playoff, ukupno ---
+    var qMin=k*g, po=playoffPlan(T,state.po,g), uk=qMin+po.mins;
+    el("time").innerHTML=
+       '<div><div class="k">Kvalifikacije</div><div class="v">'+hm(qMin)+"</div></div>"
+      +'<div><div class="k">Playoff</div><div class="v">'+hm(po.mins)+"</div></div>"
+      +'<div><div class="k">Ukupno</div><div class="v">'+hm(uk)+"</div></div>";
+    var seq=po.det.map(function(r){
+      return (r.last?"finale":r.m+" meč"+(r.m===1?"":r.m<5?"a":"eva"))+" "+(r.bo3?"bo3":"bo1")+" "+hm(r.d);
+    }).join(" · ");
+    var tip="Partija traje "+g+" min. Kvalifikacije su "+k+" kola, pa "+po.rounds+" krug"+(po.rounds===1?"":po.rounds<5?"a":"ova")+" playoffa: "+seq+".";
+    if(state.po!=="bo1"){
+      tip+=" Bo3 krug traje dok i najsporiji meč ne završi, pa je skoro uvijek 3 partije — ekipa koja pobijedi 2:0 čeka "+g+" min.";
+    }
+    el("timeHint").textContent=tip;
+
+    if(L>=k){
+      el("o1").textContent="—";el("o2").textContent="—";el("o3").textContent="—";
+      el("o1s").innerHTML="&nbsp;";el("o2s").innerHTML="&nbsp;";el("o3s").innerHTML="&nbsp;";
+      el("rows").innerHTML='<tr><td colspan="4" class="dim">Nema prozora.</td></tr>';
+      el("foot").innerHTML="";
+      el("cmp").innerHTML='<tr><td colspan="3" class="dim">Popravi postavke pa će se usporedba izračunati.</td></tr>';
+      el("lbHint").textContent="";
+      el("notes").innerHTML=noteHtml([["bad","<strong>Nema nijednog prozora.</strong> Granica za ispadanje ("+L+" poraza) nije manja od broja kola, pa nitko ne stigne ispasti dovoljno rano da plati povratak. Povećaj broj kola ili smanji broj poraza."]]);
+      return;
+    }
+
+    // broj pokušaja prema veličini turnira — tocnost gdje je jeftina, brzina gdje nije
+    var unit=M*k;
+    var tA=Math.round(260000/unit); tA=tA<700?700:(tA>5000?5000:tA);
+    var tB=Math.round(650000/unit); tB=tB<1800?1800:(tB>14000?14000:tB);
+
+    var A=sim(M,T,k,L,state.maxBuys,function(){return 1;},tA,12345);
+    var chance=new Float64Array(A.span);
+    for(var key=0;key<A.span;key++){
+      var sd=A.sold[key];
+      chance[key]=sd>25?A.adv[key]/sd:0;
+    }
+    var W=state.will;
+    // Ekipa koja je ispala ne racuna koeficijent — ona bira hoce li ici doma
+    // ili nastaviti igrati. Zato je osnovica visoka, a sansa se na nju dodaje.
+    // Jedino kad je prolaz matematicki nemoguc ne placa nitko.
+    function pBuy(n,kolo){
+      var ch=chance[n*100+kolo]||0;
+      if(ch<=0)return 0;
+      var p=W+ch;
+      return p>0.95?0.95:p;
+    }
+    var B=sim(M,T,k,L,state.maxBuys,pBuy,tB,67890);
+
+    el("o1").innerHTML=Math.round(B.pctBuy)+"<small>%</small>";
+    el("o1s").textContent=fmt(B.teamsBought)+" od "+M+" ekipa";
+    el("o2").innerHTML=Math.round(B.pctInT)+"<small>%</small>";
+    el("o2s").textContent=fmt(B.pctInT/100*T)+" od "+T+" mjesta";
+    var totOffers=0;
+    for(var kq=0;kq<B.span;kq++)totOffers+=B.offers[kq];
+    totOffers/=B.trials;
+    el("o3").innerHTML=fmt(B.avgSold)+"<small> kom</small>";
+    el("o3s").textContent=state.maxBuys>1
+      ? (B.teamsBought>0?fmt(B.avgSold/B.teamsBought,2):"0,00")+" po ekipi koja je platila"
+      : "od "+fmt(totOffers)+" ponuda";
+
+    var html="",lastN=-1,allZero=true,firstCh=-1,maxN=1;
+    for(var nb=1;nb<=k;nb++){
+      for(var kolo=1;kolo<=k-1;kolo++){
+        var kk=nb*100+kolo;
+        if(kk>=B.span)continue;
+        var off=B.offers[kk]/B.trials;
+        if(off<0.05)continue;
+        if(nb>maxN)maxN=nb;
+        var pct=(chance[kk]||0)*100;
+        var real=B.sold[kk]/B.trials;
+        if(pct>=1)allZero=false;
+        if(firstCh<0)firstCh=pct;
+        if(nb!==lastN){
+          lastN=nb;
+          html+='<tr class="grp"><td colspan="4">'+nb+". repasaž"+(nb===1?" — prvi povratak":"")+"</td></tr>";
+        }
+        var w=Math.round(pct*0.52);
+        html+="<tr><td>nakon "+kolo+". kola</td><td>"+fmt(off)+"</td>"
+          +'<td'+(pct<1?' class="dim"':"")+'><span class="bar" style="width:'+w+'px"></span>'
+          +(pct<1?"0":fmt(pct,0))+"%</td>"
+          +'<td'+(real<0.05?' class="dim"':"")+">"+fmt(real)+"</td></tr>";
+      }
+    }
+    el("rows").innerHTML=html||'<tr><td colspan="4" class="dim">Nema prozora.</td></tr>';
+
+    var notes=[];
+    if(allZero){
+      notes.push(["bad","<strong>Repasaž vrijedi 0%.</strong> Ekipe koje nisu ispale već napune playoff, pa plaćena ekipa — koja ima više poraza od njih — ne može ući. Igraj više kola ili smanji broj koji prolazi."]);
+    }else if(firstCh>=0&&firstCh<8){
+      notes.push(["warn","<strong>Prvi prozor je skoro mrtav</strong> ("+fmt(firstCh,0)+"%). Ekipe tu uglavnom neće platiti. Smanji broj kola ili naplati rani repasaž jeftinije."]);
+    }
+    var gap=T-B.avgAlive;
+    if(gap>0.5&&gap/T>0.06){
+      notes.push(["warn","<strong>Playoff se puni ispalim ekipama.</strong> Do kraja kvalifikacija preživi u prosjeku "+fmt(B.avgAlive)+" ekipa, a prolazi ih "+T+" — oko "+fmt(gap)+" mjesta zauzmu ekipe koje su ispale, pa prođu i one koje nisu platile. Igraj manje kola ili povećaj granicu poraza."]);
+    }
+    if(state.maxBuys>1&&maxN>1){
+      for(var lev=2;lev<=maxN;lev++){
+        var tot=0,live=0;
+        for(var ko=1;ko<=k-1;ko++){
+          var k2=lev*100+ko;
+          if(k2>=B.span)continue;
+          var o2=B.offers[k2]/B.trials;
+          tot+=o2;
+          if((chance[k2]||0)>=0.05)live+=o2;
+        }
+        if(tot>0.3&&live<0.1){
+          notes.push(["warn","<strong>"+lev+". repasaž ne vodi nikamo.</strong> Ekipe ga mogu kupiti, ali s toliko poraza u playoff više ne mogu. Ograniči repasaž na "+(lev-1)+" po ekipi."]);
+          break;
+        }
+      }
+    }
+    el("notes").innerHTML=noteHtml(notes);
+
+    var total=B.avgSold*price;
+    el("foot").innerHTML=
+       '<div><div class="k">Zarada organizatora (20%)</div><div class="v">'+Math.round(total*0.2)+" €</div></div>"
+      +'<div><div class="k">U fond nagrada</div><div class="v">'+Math.round(total*0.8)+" €</div></div>"
+      +'<div><div class="k">Preživi kvalifikacije</div><div class="v"'
+        +(gap>0.5?' style="color:var(--bad)"':"")+">"+fmt(B.avgAlive)
+        +'<span style="color:var(--muted);font-weight:500"> / '+T+"</span></div></div>"
+      +'<div><div class="k">Poraza po ekipi u playoffu</div><div class="v">'+fmt(B.avgLossT)+"</div></div>";
+
+    // --- usporedba s losers bracketom ---
+    var lp=lbPlan(M,state.po,g),le=lbEcon(M);
+    var swTot=B.avgSold*price,lbTot=le.sold*price;
+    function crow(label,a,b,aWins){
+      var hi=' style="color:var(--felt);font-weight:600"';
+      return "<tr><td>"+label+"</td><td"+(aWins?hi:"")+">"+a+"</td><td"+(aWins?"":hi)+">"+b+"</td></tr>";
+    }
+    el("cmp").innerHTML=
+       crow("Trajanje turnira",hm(uk),hm(lp.mins),uk<=lp.mins)
+      +crow("Ponuda za plaćeni život",fmt(totOffers),String(le.offers),totOffers>=le.offers)
+      +crow("Prodano plaćenih života",fmt(B.avgSold),String(le.sold),B.avgSold>=le.sold)
+      +crow("Zarada organizatora (20%)",Math.round(swTot*0.2)+" €",Math.round(lbTot*0.2)+" €",swTot>=lbTot)
+      +crow("U fond nagrada",Math.round(swTot*0.8)+" €",Math.round(lbTot*0.8)+" €",swTot>=lbTot);
+
+    var r1=le.rows[0];
+    el("lbHint").textContent=
+      "Losers bracket je ovdje računat u svom najboljem slučaju: plaćeni život je sam format, fiksno jedan po ekipi, "
+      +"ponudu dobije svaka ekipa koja izgubi u pobjedničkom dijelu ("+le.offers+" od "+M+") i računa se da plate sve. "
+      +"Postavka Spremnost vrijedi samo za švicarac. "
+      +"Šanse su u losers bracketu ipak puno gore — tko ispadne u 1. kolu mora dobiti "+r1.wins
+      +" mečeva zaredom da dođe do velikog finala, "+fmt(r1.ch*100,1)+"% — ali se ne kupuje koeficijent nego večer. "
+      +"Prava razlika je vrijeme: "+hm(lp.mins)+" naspram "+hm(uk)+".";
+  }
+
+  // Racunanje ide tek nakon sto se stranica iscrta, da se nikad ne cini zamrznutom.
+  var timer=null,pending=false;
+  function run(){
+    pending=false;
+    try{compute();}
+    catch(err){
+      el("notes").innerHTML=noteHtml([["bad","<strong>Greška u računu:</strong> "+String(err&&err.message||err)+". Vrati postavke na manje brojeve."]]);
+    }
+    el("res").classList.remove("busy");
+  }
+  function queue(){
+    if(timer)clearTimeout(timer);
+    el("res").classList.add("busy");
+    timer=setTimeout(function(){
+      if(pending)return;
+      pending=true;
+      requestAnimationFrame(function(){setTimeout(run,0);});
+    },180);
+  }
+
+  ["M","T","L","K","P","G"].forEach(function(id){
+    el(id).addEventListener("input",queue);
+    el(id).addEventListener("change",queue);
+  });
+  function wireSeg(segId,key,cast){
+    var seg=el(segId);
+    seg.addEventListener("click",function(e){
+      var b=e.target&&e.target.closest?e.target.closest("button"):null;
+      if(!b||!seg.contains(b))return;
+      state[key]=cast(b.getAttribute("data-v"));
+      var list=seg.querySelectorAll("button");
+      for(var i=0;i<list.length;i++)list[i].setAttribute("aria-pressed",String(list[i]===b));
+      queue();
+    });
+    var list2=seg.querySelectorAll("button");
+    for(var i=0;i<list2.length;i++){
+      list2[i].setAttribute("aria-pressed",String(cast(list2[i].getAttribute("data-v"))===state[key]));
+    }
+  }
+  wireSeg("segMax","maxBuys",function(v){return parseInt(v,10);});
+  wireSeg("segWill","will",function(v){return parseFloat(v);});
+  wireSeg("segPo","po",function(v){return v;});
+  el("auto").addEventListener("click",function(){
+    el("K").value=suggestK(readInt("M",16,4,128),readInt("T",8,2,127),readInt("L",2,1,8));
+    queue();
+  });
+  el("form").addEventListener("submit",function(e){e.preventDefault();});
+
+  run();
+})();
+</script>
+</body>
+</html>
