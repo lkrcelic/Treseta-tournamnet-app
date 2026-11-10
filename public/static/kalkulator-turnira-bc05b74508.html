@@ -54,12 +54,15 @@ h1{
 }
 header p{margin:0; color:var(--muted); max-width:62ch}
 .cols{display:grid; grid-template-columns:302px minmax(0,1fr); gap:28px; align-items:start}
-@media (max-width:820px){.cols{grid-template-columns:1fr; gap:22px}}
+/* minmax(0,1fr), a ne 1fr: 1fr se siri na min-content, pa bi tablice
+   sa svojim min-width razvukle cijeli stupac i gurnule stranicu vodoravno */
+@media (max-width:820px){.cols{grid-template-columns:minmax(0,1fr); gap:22px}}
 
 /* ---- upisnik ---- */
 .panel{
   background:var(--card); border:1px solid var(--line); border-radius:4px;
   padding:18px 18px 20px; position:sticky; top:env(safe-area-inset-top,0px);
+  min-width:0;
 }
 @media (max-width:820px){.panel{position:static}}
 .panel h2,.block h2{
@@ -91,7 +94,8 @@ input[type=number]:focus-visible,.seg button:focus-visible{outline:2px solid var
 .kola-row button:focus-visible{outline:2px solid var(--felt); outline-offset:1px}
 
 /* ---- ishod ---- */
-.res{display:flex; flex-direction:column; gap:20px; transition:opacity .12s}
+.res{display:flex; flex-direction:column; gap:20px; transition:opacity .12s; min-width:0}
+.block,.scroll{min-width:0}
 .res.busy{opacity:.45}
 .tiles{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px}
 @media (max-width:620px){.tiles{grid-template-columns:1fr}}
