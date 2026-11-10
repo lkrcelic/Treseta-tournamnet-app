@@ -172,6 +172,8 @@ model Tournament {
   rounds             Int       @default(9)
   // Partija po kolu: the matches a table plays (1 or 2)
   matches_per_round  Int       @default(2)
+  // Zvanja: false = "bez zvanja", no zvanja are entered at its tables (every Kolo's tables take it when the Kolo is made)
+  declarations       Boolean   @default(true)
   // Najveći broj ekipa; null = no limit. Teams over it wait on the waiting list
   max_teams          Int?
   // Kotizacija po igraču in whole euros; 0 = "Bez stresa, bez obveza"
@@ -641,6 +643,8 @@ model Round {
   draft_order   Int?
   // the matches the table plays: 2 in a league, 1 or 2 in a tournament (its Partija po kolu; CHECK in the migration)
   matches_per_round Int @default(2)
+  // zvanja are entered at the table; false (a tournament "bez zvanja"): none are
+  declarations      Boolean @default(true)
   // Vrijeme partije for this table alone: the minutes an admin chose when they unlocked it (Otključaj partiju,
   // DECISIONS #89); null (every other table): its tournament's or its league's. CHECK in the migration script keeps it
   // between GAME_MINUTES_MIN and GAME_MINUTES_MAX.
@@ -756,12 +760,19 @@ model OngoingMatch {
 }
 
 // One hand of a finished match. Normally the two teams' points add up to 11; a custom hand (one cut short by
-// "s ovim dosta", or a correction) is typed freely.
+// "s ovim dosta", or a correction) is typed freely. On top of the points each team has its zvanja, counted by value:
+// the hand's total is its points plus 3 × zvanja3 plus 4 × zvanja4 (a custom hand has none: its typed points are the
+// total). CHECK constraints in the migration script keep the counts to what the cards allow a team.
 model Result {
   result_id         Int     @id @default(autoincrement())
   match_id          Int
   team1_game_points Int     @default(0)
   team2_game_points Int     @default(0)
+  // zvanja worth 3 (tri trice, tri dvice, tri asa, napola) and worth 4 (četiri trice, dvice, asa)
+  team1_zvanja3     Int     @default(0)
+  team1_zvanja4     Int     @default(0)
+  team2_zvanja3     Int     @default(0)
+  team2_zvanja4     Int     @default(0)
   custom            Boolean @default(false)
   // 1 or 2: the team that called "s ovim dosta" on this hand; CHECK constraint added in the migration script
   dosta_side        Int?
@@ -775,6 +786,10 @@ model OngoingResult {
   match_id          Int
   team1_game_points Int     @default(0)
   team2_game_points Int     @default(0)
+  team1_zvanja3     Int     @default(0)
+  team1_zvanja4     Int     @default(0)
+  team2_zvanja3     Int     @default(0)
+  team2_zvanja4     Int     @default(0)
   custom            Boolean @default(false)
   dosta_side        Int?
 
