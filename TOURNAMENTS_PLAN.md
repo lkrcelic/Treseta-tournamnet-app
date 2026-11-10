@@ -173,11 +173,16 @@ reviewable order inside one branch, not separate merges: a half-transferred tour
    `refuseUnlessMine` / `refuseUnlessMyTable` / `refuseUnlessMyHand` wait for the tournament routes (steps 5–6), as
    does moving `api/admin/tables/**` and `api/admin/hands/**` to `requireCan`: they are league-only until a table can
    belong to a tournament. The one capability without a screen yet is `ban.manage.all` (step 5).
-3. **Vrijeme partije.** `_lib/gameTime.ts` with the two changes above, `_lib/service/match/timeLimit.ts`,
-   `MatchClock.tsx`, the league's `game_minutes` in the four screens and `_interfaces/league.ts` /
-   `_lib/service/league/leagues.ts` / `_hooks/useLeagues.ts`, the match's `started_at` / `ends_at` / `server_now`,
-   closing by time in `finishOngoingMatch.ts` and `_lib/service/admin/hands.ts`, the hand's timing in
-   `ongoing-match/ui/handFlow.ts`, and the scorepad's timer. `_lib/cron.ts` and `api/cron/tick/` last.
+3. ~~**Vrijeme partije.**~~ Done 10 Nov 2026: `_lib/gameTime.ts` (45 minutes, `TARGET_RAISE_MINUTES`, `targetRaises`),
+   `_lib/service/match/timeLimit.ts` (`gameMinutesOf`, `matchClock`, `syncDeadline`, `closeByTime`,
+   `expireDueMatches`), the clock on both match services, `byTime` and `time_expired` in `finishOngoingMatch.ts`, the
+   hand's timing and the deadline in `ongoingResult/create.ts` / `update.ts` and the admin's `hands.ts`, the league's
+   `game_minutes` through `_interfaces/league.ts`, `service/league/leagues.ts`, `_hooks/useLeagues.ts` and the four
+   screens, `MatchClock.tsx` on the scorepad, and `_lib/cron.ts` with `api/cron/tick/`, which for now closes the
+   matches whose time is up and takes the tournament day in step 5. The admin's scorepad also had to read a finished
+   match's stored `winner_side` instead of replaying its hands, or a match the time decided showed no winner.
+   `gameMinutesOf` reads the table's minutes and its league's; the tournament's line joins it in step 5, and Otključaj
+   partiju (the table's own minutes) comes with the tournament screens.
 4. **Tournament logic and data access.** `_lib/tournaments.ts`, `tournamentEntries.ts`, `tournamentDay.ts`
    (`NO_SHOW_SCORE` → `[BYE_MATCH_POINTS, 0]` at threshold 41), `tableState.ts`, `matching/tournamentPairing.ts`,
    `ui/tableScope.ts` (and `roundBackBy` moved back out of `_lib/ui/adminEntry.ts`), `_interfaces/tournament.ts`,

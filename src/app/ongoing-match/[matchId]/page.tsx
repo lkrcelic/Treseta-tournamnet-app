@@ -25,6 +25,7 @@ import {Box} from "@mui/material";
 import {useParams, usePathname} from "next/navigation";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
+import {TimerChip, TimeUpNote, TimeWarning, useMatchClock} from "@/app/ongoing-match/ui/MatchClock";
 
 // pips that should pop on the next match after "Završi meč"
 const pipPops = new Map<number, number>();
@@ -97,23 +98,34 @@ export default function ScoreBoardPage() {
     router.router.prefetch(`/ongoing-match/${matchId}/ongoing-result/new/score`);
   }, [router, matchId]);
 
+  // Vrijeme partije: the time left. The server closes the match as soon as it is up (unless the score is level), so
+  // the board asks then and every 5 s after it, and follows the match to the next one or the table's result.
+  const clock = useMatchClock(match);
+  const levelNow = (match.player_pair1_score ?? 0) === (match.player_pair2_score ?? 0);
+
   // Several phones can follow the same match, so pick up hands entered elsewhere
+  const refresh = useCallback(async () => {
+    if (document.visibilityState !== "visible") return;
+    try {
+      setOngoingMatch(await getOngoingMatchAPI(matchId));
+    } catch (error) {
+      if (error instanceof OngoingMatchGoneError) await followFinishedMatch();
+    }
+  }, [matchId, setOngoingMatch, followFinishedMatch]);
   useEffect(() => {
-    const refresh = async () => {
-      if (document.visibilityState !== "visible") return;
-      try {
-        setOngoingMatch(await getOngoingMatchAPI(matchId));
-      } catch (error) {
-        if (error instanceof OngoingMatchGoneError) await followFinishedMatch();
-      }
-    };
-    const intervalId = setInterval(refresh, 15000);
+    const intervalId = setInterval(refresh, clock.expired ? 5000 : 15000);
     document.addEventListener("visibilitychange", refresh);
     return () => {
       clearInterval(intervalId);
       document.removeEventListener("visibilitychange", refresh);
     };
-  }, [matchId, setOngoingMatch, followFinishedMatch]);
+  }, [refresh, clock.expired]);
+  // the moment the time is up (a second later, so the server's clock is surely past it too)
+  useEffect(() => {
+    if (!clock.expired || levelNow) return;
+    const t = setTimeout(refresh, 1000);
+    return () => clearTimeout(t);
+  }, [clock.expired, levelNow, refresh]);
 
   const p = (side: 1 | 2) => (side === 1 ? match.player_pair1_score : match.player_pair2_score) ?? 0;
   const totals: [number, number] = [p(sides.left), p(sides.right)];
@@ -309,6 +321,7 @@ export default function ScoreBoardPage() {
         title={`${sides.names[0]} vs ${sides.names[1]}`}
         right={
           <Box sx={{display: "flex", alignItems: "center", gap: "10px"}}>
+            <TimerChip clock={clock} />
             {targetFlag}
             {sides.tableNumber != null && (
               <Box
@@ -338,6 +351,10 @@ export default function ScoreBoardPage() {
               </Box>
               {finishError && <ErrorNote>{finishError}</ErrorNote>}
               {finishButton}
+            </Box>
+          ) : clock.expired && !levelNow && editingId == null ? (
+            <Box sx={{display: "flex", flexDirection: "column", justifyContent: "flex-end", gap: "12px"}}>
+              <TimeUpNote tied={false} />
             </Box>
           ) : (
             <HandEntryPanel
@@ -389,19 +406,25 @@ export default function ScoreBoardPage() {
             <HomeRoundedIcon />
           </Box>
           <Eyebrow>{matchLabel}</Eyebrow>
-          <Box sx={{position: "absolute", right: "-6px", top: "6px"}}>{targetFlag}</Box>
+          <Box sx={{position: "absolute", right: "-6px", top: "6px", display: "flex", alignItems: "center", gap: "8px"}}>
+            <TimerChip clock={clock} />
+            {targetFlag}
+          </Box>
         </Box>
         <Box sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "12px"}}>{panels("phone")}</Box>
       </Box>
       <HandList rows={rows} onOpen={openPhone} listRef={listRef} sx={{mt: "14px"}} />
       <Box sx={{pt: "14px", display: "flex", flexDirection: "column", gap: "10px"}}>
         {finishError && <ErrorNote>{finishError}</ErrorNote>}
-        {finishButton || (
-          <PrimaryButton icon={<AddCircleRoundedIcon />} onClick={newHand} loading={opening != null}>
-            Upiši igru
-          </PrimaryButton>
-        )}
+        {clock.expired && !finishButton && <TimeUpNote tied={levelNow} />}
+        {finishButton ||
+          ((!clock.expired || levelNow) && (
+            <PrimaryButton icon={<AddCircleRoundedIcon />} onClick={newHand} loading={opening != null}>
+              Upiši igru
+            </PrimaryButton>
+          ))}
       </Box>
+      <TimeWarning matchId={matchId} clock={clock} />
       {dostaPrompt}
     </Screen>
   );

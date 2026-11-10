@@ -4,6 +4,7 @@ import {CreateOngoingMatchRequest} from "@/app/_interfaces/match";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {lockRound, MATCHES_PER_ROUND} from "@/app/_lib/service/round/finish";
 import {ROUND_NOT_PUBLISHED} from "@/app/_lib/roundStatus";
+import {matchClock} from "@/app/_lib/service/match/timeLimit";
 
 export async function createOngoingMatch(createRequest: CreateOngoingMatchRequest): Promise<OngoingMatch> {
     return prisma.$transaction(async (tx) => {
@@ -36,7 +37,10 @@ export async function createOngoingMatch(createRequest: CreateOngoingMatchReques
         // set here rather than by the columns' CURRENT_DATE / CURRENT_TIME defaults, which use the database's time
         // zone while both are read back as UTC (after local midnight the date would be a day off)
         const now = new Date();
-        const ongoingMatch = await tx.ongoingMatch.create({data: {...createRequest, match_date: now, start_time: now}});
+        const ongoingMatch = await tx.ongoingMatch.create({
+            // Vrijeme partije: the match's own clock, from the table's minutes (its league's, unless the table has its own)
+            data: {...createRequest, match_date: now, start_time: now, ...(await matchClock(tx, createRequest.round_id, now))},
+        });
 
         await tx.round.update({
             where: {id: createRequest.round_id},

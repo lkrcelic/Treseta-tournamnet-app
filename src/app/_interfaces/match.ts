@@ -29,6 +29,9 @@ export const OngoingMatchResponseValidation = z.object({
     start_time: parseDate.nullable(),
     end_time: parseDate.nullable().optional(),
     match_date: parseDate.optional(),
+    // Vrijeme partije: when the match started and when its time is up (null: no limit)
+    started_at: parseDate.nullable().optional(),
+    ends_at: parseDate.nullable().optional(),
 });
 
 export const MatchResponseValidation = OngoingMatchRequestValidation.extend({
@@ -37,6 +40,8 @@ export const MatchResponseValidation = OngoingMatchRequestValidation.extend({
 
 export const OngoingMatchExtendedResponseValidation = OngoingMatchResponseValidation.extend({
     results: z.array(PartialResultResponseValidation).optional(),
+    // the server's clock when it answered (ISO), so the scorepad's timer doesn't depend on the phone's clock
+    server_now: z.string().optional(),
 });
 
 export const CreateOngoingMatchRequestValidation = z.object({

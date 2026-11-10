@@ -2,10 +2,13 @@ import {prisma} from "@/app/_lib/prisma";
 import {OngoingMatchExtendedResponseValidation, OngoingMatchExtendedResponse} from "@/app/_interfaces/match";
 import {Prisma} from "@prisma/client";
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
+import {expireDueMatches} from "@/app/_lib/service/match/timeLimit";
 
 export async function getOngoingMatchWithResults(id: number): Promise<OngoingMatchExtendedResponse> {
   // an id that isn't a whole number (/ongoing-match/abc) can't be a match
   if (!Number.isInteger(id)) throw new NotFoundError("Meč ne postoji.");
+  // a match whose time is up is closed now (then it is gone, as after Završi meč)
+  await expireDueMatches({matchId: id});
 
   const dbOngoingMatch = await prisma.ongoingMatch.findUnique({
     where: {
@@ -32,5 +35,5 @@ export async function getOngoingMatchWithResults(id: number): Promise<OngoingMat
     throw new NotFoundError("Meč ne postoji.");
   }
 
-  return OngoingMatchExtendedResponseValidation.parse(dbOngoingMatch);
+  return {...OngoingMatchExtendedResponseValidation.parse(dbOngoingMatch), server_now: new Date().toISOString()};
 }

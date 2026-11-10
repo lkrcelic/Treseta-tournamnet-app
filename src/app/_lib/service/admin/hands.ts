@@ -15,6 +15,7 @@ import {lockRound} from "@/app/_lib/service/round/finish";
 import {ROUND_NOT_PUBLISHED} from "@/app/_lib/roundStatus";
 import {isRatedRound, recalcTeamScores, replayRatings} from "./recalc";
 import {NotFoundError} from "./tables";
+import {syncDeadline} from "@/app/_lib/service/match/timeLimit";
 
 // The admin scorepad of a Daily table: every hand of the match being played and of the finished matches can be
 // added, changed or deleted. Changing a finished match recounts its score, the round's wins, the standings and,
@@ -61,7 +62,7 @@ export async function getTablePad(roundId: number): Promise<TablePad> {
   if (!round) throw new NotFoundError("Stol ne postoji.");
 
   const matches: PadMatch[] = round.matches.map((m, i) => {
-    const {target, winner} = matchState(m.results, m.score_threshold ?? MATCH_THRESHOLD);
+    const {target} = matchState(m.results, m.score_threshold ?? MATCH_THRESHOLD);
     return {
       kind: "finished",
       id: m.id,
@@ -69,7 +70,9 @@ export async function getTablePad(roundId: number): Promise<TablePad> {
       score1: m.player_pair1_score,
       score2: m.player_pair2_score,
       threshold: target,
-      winner,
+      // the stored winner, which every edit keeps with the hands (changeFinishedMatch) and which a match closed by
+      // Vrijeme partije has although no team reached the target
+      winner: (m.winner_side as Side | null) ?? null,
       hands: m.results.map(toPadHand),
     };
   });
@@ -189,7 +192,8 @@ export async function addHand(roundId: number, target: HandTarget, hand: AdminHa
       (await prisma.ongoingMatch.findFirst({where: {round_id: roundId}, orderBy: {id: "desc"}, select: {id: true}})) ??
       (await createOngoingMatch({round_id: roundId, score_threshold: MATCH_THRESHOLD}));
     const result = adminHandToResult(hand, ongoing.id);
-    await createResult(result, (r) => r);
+    // an admin's hand is never refused for being late: they enter what was played, Vrijeme partije or not
+    await createResult(result, (r) => r, {admin: true});
     return;
   }
 
@@ -243,7 +247,10 @@ export async function deleteHand(kind: HandKind, resultId: number): Promise<void
         select: {score_threshold: true},
       });
       await tx.ongoingResult.delete({where: {result_id: resultId}});
-      assertCallStands(await ongoingMatchState(tx, hand.match_id, match.score_threshold));
+      const state = await ongoingMatchState(tx, hand.match_id, match.score_threshold);
+      assertCallStands(state);
+      // the target may have fallen back with the deleted hand, and the deadline with it
+      await syncDeadline(tx, hand.match_id, state, match.score_threshold);
     });
     return;
   }

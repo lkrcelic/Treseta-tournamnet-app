@@ -2,6 +2,7 @@ import {ResultCreateRequest} from "@/app/_interfaces/result";
 import {InvalidResultError, normalizeResult} from "@/app/_lib/validation/validateResult";
 import {prisma} from "@/app/_lib/prisma";
 import {assertCallStands, ongoingMatchState} from "./matchState";
+import {syncDeadline} from "@/app/_lib/service/match/timeLimit";
 
 type UpdateOngoingResultType = {
     result_id: number,
@@ -42,6 +43,9 @@ export async function updateOngoingResult({result_id, resultData, normalize = no
             },
             select: {score_threshold: true},
         });
-        assertCallStands(await ongoingMatchState(tx, existingResult.match_id, match.score_threshold));
+        const state = await ongoingMatchState(tx, existingResult.match_id, match.score_threshold);
+        assertCallStands(state);
+        // the target may have risen or fallen with the correction, and the deadline with it
+        await syncDeadline(tx, existingResult.match_id, state, match.score_threshold);
     });
 }

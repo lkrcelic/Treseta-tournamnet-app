@@ -39,6 +39,7 @@ import {Box} from "@mui/material";
 import Link from "next/link";
 import React, {useEffect, useMemo, useState} from "react";
 import useManagePhone from "@/app/_hooks/useManagePhone";
+import {GAME_MINUTES_DEFAULT, GAME_MINUTES_MAX, GAME_MINUTES_MIN} from "@/app/_lib/gameTime";
 
 const DAYS = ["Pon", "Uto", "Sri", "Čet", "Pet", "Sub", "Ned"];
 const DAY_NAMES = ["ponedjeljak", "utorak", "srijeda", "četvrtak", "petak", "subota", "nedjelja"];
@@ -68,6 +69,7 @@ function CreateLeagueDesktop() {
   // where they are played, optional too
   const [place, setPlace] = useState<PlaceDraft>(EMPTY_PLACE);
   const [roundsPerNight, setRoundsPerNight] = useState(3);
+  const [gameMinutes, setGameMinutes] = useState(GAME_MINUTES_DEFAULT);
   // the nights filled in from the dates and the play day, minus the removed ones, plus the added ones
   const [removedNights, setRemovedNights] = useState<string[]>([]);
   const [extraNights, setExtraNights] = useState<string[]>([]);
@@ -151,6 +153,7 @@ function CreateLeagueDesktop() {
         gathering_time: gatheringTime || null,
         ...placePayload(place),
         rounds_per_night: roundsPerNight,
+        game_minutes: gameMinutes,
         team_ids: Array.from(selected),
         conferences,
         nights,
@@ -322,6 +325,27 @@ function CreateLeagueDesktop() {
             <AddRoundedIcon />
             Dodaj večer
           </Box>
+        </Box>
+      </Box>
+      <Box role="group" aria-labelledby="gm" sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", p: "12px 14px", borderRadius: "16px", background: color.paper2}}>
+        <Box sx={{display: "flex", flexDirection: "column"}}>
+          <Box id="gm" component="span" sx={{fontSize: 15, fontWeight: 600}}>
+            Vrijeme partije · min
+          </Box>
+          <Box component="span" sx={{fontSize: 13, color: color.muted}}>
+            Od početka partije; kad istekne, vrijedi upisani rezultat
+          </Box>
+        </Box>
+        <Box sx={{display: "flex", alignItems: "center", gap: "10px"}}>
+          <IconCircleButton label="Kraće vrijeme partije" size={44} onClick={() => setGameMinutes((m) => Math.max(GAME_MINUTES_MIN, m - 5))} disabled={gameMinutes <= GAME_MINUTES_MIN} sx={{borderRadius: "12px", "& svg": {fontSize: 22}}}>
+            <RemoveRoundedIcon />
+          </IconCircleButton>
+          <Box component="output" aria-live="polite" sx={{minWidth: 40, textAlign: "center", fontFamily: font.display, fontSize: 28, fontWeight: 800}}>
+            {gameMinutes}
+          </Box>
+          <IconCircleButton label="Dulje vrijeme partije" size={44} onClick={() => setGameMinutes((m) => Math.min(GAME_MINUTES_MAX, m + 5))} disabled={gameMinutes >= GAME_MINUTES_MAX} sx={{borderRadius: "12px", "& svg": {fontSize: 22}}}>
+            <AddRoundedIcon />
+          </IconCircleButton>
         </Box>
       </Box>
       <Box role="group" aria-labelledby="rpn" sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", p: "12px 14px", borderRadius: "16px", background: color.paper2}}>

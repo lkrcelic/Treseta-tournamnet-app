@@ -12,6 +12,8 @@ export type LeagueOption = {
   name: string;
   meta?: string;
   roundsPerNight: number;
+  // Vrijeme partije in minutes
+  gameMinutes?: number;
   // the smoking tables of its last Create Round (empty: none)
   smokingTables?: number[];
   active: boolean;
@@ -48,6 +50,7 @@ function toOption(l: LeagueSummary): LeagueOption {
     id: l.league_id,
     name: l.league_name,
     roundsPerNight: l.rounds_per_night,
+    gameMinutes: l.game_minutes,
     smokingTables: l.smoking_tables ?? [],
     active: l.active,
     season: l.season,

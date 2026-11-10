@@ -16,6 +16,7 @@ import {Box} from "@mui/material";
 import React, {useMemo, useState} from "react";
 import {adminCardSx, DayPicker, PhoneStepper} from "./AdminParts";
 import {EMPTY_PLACE, PlaceDraft, PlaceFields, placePayload, timesError, TimesFields} from "./GatheringForm";
+import {GAME_MINUTES_DEFAULT, GAME_MINUTES_MAX, GAME_MINUTES_MIN} from "@/app/_lib/gameTime";
 
 // Nova liga on the admin's phone (admin-mobile 13, 13b): the name, season, dates, play day and the rounds per night,
 // then the league's nights, filled in from the dates and the play day (a night can be taken out or added), and last
@@ -35,6 +36,7 @@ export default function NewLeaguePhone() {
   const timeError = timesError(gatheringTime, startTime);
   const [place, setPlace] = useState<PlaceDraft>(EMPTY_PLACE);
   const [rounds, setRounds] = useState(3);
+  const [minutes, setMinutes] = useState(GAME_MINUTES_DEFAULT);
   const [removed, setRemoved] = useState<string[]>([]);
   const [extra, setExtra] = useState<string[]>([]);
   const [newNight, setNewNight] = useState("");
@@ -66,6 +68,7 @@ export default function NewLeaguePhone() {
         gathering_time: gatheringTime || null,
         ...placePayload(place),
         rounds_per_night: rounds,
+        game_minutes: minutes,
         team_ids: [],
         nights,
       });
@@ -102,6 +105,21 @@ export default function NewLeaguePhone() {
               Kola po večeri
             </Box>
             <PhoneStepper label="Kola po večeri" value={rounds} onChange={setRounds} min={1} max={6} less="Manje kola po večeri" more="Više kola po večeri" />
+          </Box>
+          <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
+            <Box component="span" sx={{fontSize: 14, fontWeight: 600, color: color.ink2, pl: "4px"}}>
+              Vrijeme partije · min
+            </Box>
+            <PhoneStepper
+              label="Vrijeme partije"
+              value={minutes}
+              onChange={setMinutes}
+              min={GAME_MINUTES_MIN}
+              max={GAME_MINUTES_MAX}
+              step={5}
+              less="Kraće vrijeme partije"
+              more="Dulje vrijeme partije"
+            />
           </Box>
         </Box>
 
