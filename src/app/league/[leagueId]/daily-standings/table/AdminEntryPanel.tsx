@@ -1,7 +1,18 @@
 "use client";
 
-import {canSave, clearPoints, EntryState, setActive, switchMode, typeDigit} from "@/app/_lib/ui/adminEntry";
-import {Side} from "@/app/_lib/game/scoring";
+import {
+  addZvanje,
+  canAddZvanjeTo,
+  canSave,
+  clearPoints,
+  clearZvanja,
+  EntryState,
+  entryZvanjaPoints,
+  setActive,
+  switchMode,
+  typeDigit,
+} from "@/app/_lib/ui/adminEntry";
+import {Side, ZVANJA_VALUES} from "@/app/_lib/game/scoring";
 import {count, NOUN} from "@/app/_lib/ui/text";
 import {color, font, shadow, teamColor, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, ErrorNote, PrimaryButton, SHORT_WINDOW, tabular} from "@/app/_ui/sp";
@@ -17,8 +28,10 @@ import React, {useEffect, useRef} from "react";
 
 const SIDES: Side[] = [1, 2];
 
-// The right-hand panel of the admin scorepad: enter a new hand or change the selected one
+// The right-hand panel of the admin scorepad: enter a new hand or change the selected one. A standard hand has the
+// active team's zvanja (3, 4, Obriši zvanja) above the keypad, unless the table is a tournament's "bez zvanja".
 export default function AdminEntryPanel({
+  declarations = true,
   entry,
   onChange,
   names,
@@ -43,9 +56,14 @@ export default function AdminEntryPanel({
   onDelete: () => void;
   // the selected match has a winner and can be finished (instead of saving hands)
   finish: {winner: string; color: string; onFinish: () => void; busy: boolean} | null;
+  // false: the table is a tournament's "bez zvanja"
+  declarations?: boolean;
 }) {
   const custom = entry.mode === "man";
-  const savable = canSave(entry);
+  const savable = canSave(entry, declarations);
+  const showZvanja = declarations && !custom;
+  const zv = entryZvanjaPoints(entry);
+  const activeIndex = entry.active === 2 ? 1 : 0;
 
   // number keys type points, Enter saves (when the focus is not in a text field)
   const latest = useRef({entry, onChange, onSave, savable});
@@ -159,8 +177,10 @@ export default function AdminEntryPanel({
       <Box sx={{display: "flex", alignItems: "flex-start", gap: "10px", p: "10px 12px", borderRadius: "12px", background: tint.navy[7], fontSize: 13, lineHeight: 1.4, "& svg": {fontSize: 18, color: color.navy, flex: "none"}}}>
         <InfoRoundedIcon />
         {custom
-          ? "Upiši bodove za obje ekipe, npr. kad se zove „s ovim dosta”. Bez ograničenja na 11."
-          : "Upiši bodove jedne ekipe, druga dobiva ostatak do 11."}
+          ? "Upiši bodove za obje ekipe, npr. kad se zove „s ovim dosta”, sa zvanjima u njima. Bez ograničenja na 11."
+          : showZvanja
+            ? "Klikni zvanja odabrane ekipe i upiši bodove jedne ekipe, druga dobiva ostatak do 11."
+            : "Upiši bodove jedne ekipe, druga dobiva ostatak do 11."}
       </Box>
 
       <Box role="radiogroup" aria-label="Upis za ekipu" sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "10px"}}>
@@ -174,7 +194,7 @@ export default function AdminEntryPanel({
               type="button"
               role="radio"
               aria-checked={on}
-              aria-label={`${names[i]}: ${count(points, NOUN.bod)}`}
+              aria-label={`${names[i]}: ${count(points, NOUN.bod)}${zv[i] ? `, zvanja ${zv[i]}` : ""}`}
               onClick={() => onChange(setActive(entry, side))}
               sx={{
                 ...buttonBase,
@@ -193,11 +213,74 @@ export default function AdminEntryPanel({
                 transition: "background 200ms ease, color 200ms ease",
               }}
             >
-              <Stat label={names[i]} value={points} size={34} />
+              <Box component="span" sx={{display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "8px", minWidth: 0}}>
+                <Stat label={names[i]} value={points} size={34} />
+                {showZvanja && zv[i] > 0 && <Stat label="Zvanja" value={zv[i]} size={26} />}
+              </Box>
             </Box>
           );
         })}
       </Box>
+
+      {showZvanja && (
+        <Box role="group" aria-label={`Zvanja: ${names[activeIndex]}`} sx={{display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: "8px", [SHORT_WINDOW]: {gap: "6px"}}}>
+          {ZVANJA_VALUES.map((v) => {
+            const cnt = entry.zvanja[entry.active][v];
+            const off = !canAddZvanjeTo(entry, v);
+            return (
+              <Box
+                key={v}
+                component="button"
+                type="button"
+                disabled={off}
+                onClick={() => onChange(addZvanje(entry, v))}
+                aria-label={`Zvanje ${v}${cnt ? `, upisano ${cnt}` : ""}`}
+                sx={{...key, position: "relative", height: 48, minHeight: 0, [SHORT_WINDOW]: {height: 38}, background: color.cream, color: color.navy, fontSize: 22, "&:disabled": {}}}
+              >
+                {/* off: the value fades, the count stays readable */}
+                <Box component="span" sx={{opacity: off ? 0.35 : 1}}>
+                  {v}
+                </Box>
+                <Box
+                  component="span"
+                  aria-hidden
+                  sx={{
+                    position: "absolute",
+                    top: "-6px",
+                    right: "-6px",
+                    minWidth: 24,
+                    height: 24,
+                    px: "6px",
+                    boxSizing: "border-box",
+                    borderRadius: "12px",
+                    background: teamColor[activeIndex],
+                    color: color.white,
+                    fontFamily: font.body,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: `0 0 0 3px ${color.white}`,
+                    opacity: cnt ? 1 : 0,
+                    transition: "opacity 160ms ease",
+                  }}
+                >
+                  {cnt || ""}
+                </Box>
+              </Box>
+            );
+          })}
+          <Box
+            component="button"
+            type="button"
+            onClick={() => onChange(clearZvanja(entry))}
+            sx={{...key, height: 48, minHeight: 0, [SHORT_WINDOW]: {height: 38}, background: "transparent", border: `2px solid ${tint.navy[25]}`, color: color.navy, fontFamily: font.body, fontSize: 14, fontWeight: 600}}
+          >
+            Obriši zvanja
+          </Box>
+        </Box>
+      )}
 
       <Box role="group" aria-label="Bodovi" sx={{flex: "1 0 auto", display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gridAutoRows: "minmax(40px,1fr)", gap: "8px", [SHORT_WINDOW]: {gap: "6px"}}}>
         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => (

@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
 import {
+  EntryState,
+  addZvanje,
   blankEntry,
+  canAddZvanjeTo,
   canSave,
   clearPoints,
-  EntryState,
+  clearZvanja,
+  entryZvanjaPoints,
   fromPadHand,
   setActive,
   switchMode,
@@ -93,4 +97,42 @@ test("the scorepad goes Back to its round, or by its address after a reload at t
   assert.equal(roundBackBy(null, table, 1), "address");
   assert.equal(roundBackBy("/league/2/daily-standings", table, 1), "address");
   assert.equal(roundBackBy("/league/2/daily-standings/table/41", table, 4), "back");
+});
+
+// ---------- zvanja ----------
+
+test("zvanja: a click a zvanje for the active team, Obriši zvanja for that team only, nothing the cards can't make", () => {
+  let s = blankEntry();
+  s = addZvanje(s, 3);
+  s = addZvanje(s, 4);
+  s = setActive(s, 2);
+  s = addZvanje(s, 3);
+  assert.deepEqual(s.zvanja, {1: {3: 1, 4: 1}, 2: {3: 1, 4: 0}});
+  assert.deepEqual(entryZvanjaPoints(s), [7, 3]);
+  // 1 × 3 + 1 × 4 against 1 × 4 can't happen: the click is ignored and the button is off
+  assert.equal(canAddZvanjeTo(s, 4), false);
+  assert.deepEqual(addZvanje(s, 4), s);
+  s = clearZvanja(s);
+  assert.deepEqual(s.zvanja, {1: {3: 1, 4: 1}, 2: {3: 0, 4: 0}});
+});
+
+test("a hand with zvanja goes to the server with them, and opens again with its points and zvanja", () => {
+  let s = addZvanje(addZvanje(blankEntry(), 3), 3);
+  s = typeDigit(s, 6);
+  assert.equal(canSave(s), true);
+  const hand = toAdminHand(s);
+  assert.deepEqual(hand, {custom: false, points1: 6, points2: 5, zvanja1: {3: 2, 4: 0}, zvanja2: {3: 0, 4: 0}});
+  // what the server makes of it, and the hand it lists: totals 12 : 5
+  assert.deepEqual(normalizeResult({match_id: 1, team1_game_points: 6, team2_game_points: 5, team1_zvanja3: 2, custom: false}).team1_zvanja3, 2);
+  const opened = fromPadHand({id: 3, total1: 12, total2: 5, points1: 6, points2: 5, zvanja1: {3: 2, 4: 0}, zvanja2: NO_ZVANJA, custom: false, dosta: null});
+  assert.deepEqual([opened.points, opened.zvanja], [[6, 5], {1: {3: 2, 4: 0}, 2: {3: 0, 4: 0}}]);
+});
+
+test("Ručni unos drops the zvanja, and a table bez zvanja takes none", () => {
+  const s = typeDigit(addZvanje(blankEntry(), 4), 6);
+  const manual = switchMode(s, "man");
+  assert.deepEqual(manual.zvanja, {1: {3: 0, 4: 0}, 2: {3: 0, 4: 0}});
+  assert.equal(toAdminHand({...s, mode: "man"}).zvanja1, undefined);
+  assert.equal(canSave(s, false), false);
+  assert.equal(canSave(clearZvanja(s), false), true);
 });

@@ -4,7 +4,21 @@ import {addHandAPI, deleteHandAPI, finishTableMatchAPI, getTablePadAPI, HandTarg
 import {NoWinnerAsk, NoWinnerConfirm} from "./NoWinnerConfirm";
 import {PadHand, PadMatch, TablePad} from "@/app/_interfaces/adminHand";
 import {currentMatchNumber, matchSlots, matchTabSub, roundWins} from "@/app/_lib/tableOverview";
-import {blankEntry, canSave, clearPoints, EntryState, fromPadHand, manualFields, setActive, toAdminHand, typeDigit} from "@/app/_lib/ui/adminEntry";
+import {
+  addZvanje,
+  blankEntry,
+  canAddZvanjeTo,
+  canSave,
+  clearPoints,
+  clearZvanja,
+  EntryState,
+  entryZvanjaPoints,
+  fromPadHand,
+  manualFields,
+  setActive,
+  toAdminHand,
+  typeDigit,
+} from "@/app/_lib/ui/adminEntry";
 import {adminLineupHref, roundBackBy, roundHref, tableHref, tableScopeOf} from "@/app/_lib/ui/tableScope";
 import {dostaCallers, MATCH_THRESHOLD, NO_HAND_ZVANJA, PlayedHand, Side} from "@/app/_lib/game/scoring";
 import {navigateWithTransition, useTransitionRouter} from "@/app/_lib/viewTransitions";
@@ -30,7 +44,7 @@ import {
 import {HandList, MatchTabs, ScorePanel} from "@/app/ongoing-match/ui/BoardParts";
 import RoundResultCards from "@/app/ongoing-match/ui/RoundResultCards";
 import {DostaPrompt, DostaTeam, TargetFlag} from "@/app/ongoing-match/ui/MatchEnd";
-import {PointsKeypad, TeamValueBoxes} from "@/app/ongoing-match/ui/WizardParts";
+import {PointsKeypad, TeamValueBoxes, ZvanjaButtons} from "@/app/ongoing-match/ui/WizardParts";
 import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
 import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
@@ -47,7 +61,8 @@ import {useParams, useSearchParams} from "next/navigation";
 import React, {useCallback, useEffect, useState} from "react";
 
 const THRESHOLD = MATCH_THRESHOLD;
-// Treseta: one step, the players' keypad (the typed team's points and the rest of 11); Bela's steps 2 and 3 open it too
+// Bela's numbers: 2 the zvanja, 3 the players' keypad (the typed team's points and the rest of 11). 1 (Bela's trump
+// caller, and Treseta's keypad before zvanja) opens the zvanja. A table "bez zvanja" has only 3.
 type Step = "1" | "2" | "3";
 
 // a hand's totals already hold its zvanja, so the rules replay them as points without zvanja
@@ -84,7 +99,7 @@ function matchSlot(pad: TablePad, n: number): PadMatch | null {
 // for a new hand typed freely (then "s ovim dosta" is asked), and Tko igra. A table nobody has started yet asks Tko
 // igra first.
 //   (none) | ?mec=N   the board of the current match, or of match N
-//   &igra=new|ID&korak=1  entering or correcting a hand on the players' keypad
+//   &igra=new|ID&korak=2  entering or correcting a hand: its zvanja (2), then the players' keypad (3)
 //   ?kraj=1           Kraj kola, after the second match is finished
 // Every change goes through the admin's calls (the server recounts the standings and the ratings), so finished
 // matches can be corrected too.
@@ -262,6 +277,8 @@ function MatchPhone({
   }, [igra, entryFor, editing]);
 
   const board = `${base}?mec=${number}`;
+  // a hand starts on its zvanja, unless the table plays without them
+  const firstStep: Step = pad.declarations ? "2" : "3";
   const step = (k: Step, hand = igra ?? "new") => {
     stepsFromBoard += 1;
     router.push(`${board}&igra=${hand}&korak=${k}`);
@@ -313,7 +330,7 @@ function MatchPhone({
   // ---------- the steps ----------
   if (korak && igra && entryFor === igra) {
     const save = async (allow = false) => {
-      if (!canSave(entry) || (saving && !allow)) return;
+      if (!canSave(entry, pad.declarations) || (saving && !allow)) return;
       setSaving(true);
       setError(null);
       try {
@@ -338,14 +355,45 @@ function MatchPhone({
       </Screen>
     );
     const active: 0 | 1 = entry.active === 2 ? 1 : 0;
+    const pickTeam = (i: 0 | 1) => setEntry((s) => setActive(s, i === 1 ? 2 : 1));
+    const title = <Eyebrow sx={{px: "4px"}}>{editing ? `Igra ${handNumber} · ispravak` : `Igra ${handNumber}`}</Eyebrow>;
+    const zv = entryZvanjaPoints(entry);
+    if (korak !== "3" && pad.declarations) {
+      const none = zv[0] === 0 && zv[1] === 0;
+      return wizard(
+        <>
+          <Box component="header" sx={{display: "flex", flexDirection: "column", gap: "12px", pb: "12px", flex: "none"}}>
+            {title}
+            <TeamValueBoxes names={names} label="Zvanja" values={zv} active={active} onPick={pickTeam} />
+          </Box>
+          <ZvanjaButtons
+            label={`Zvanja: ${names[active]}`}
+            counts={entry.zvanja[entry.active]}
+            team={active}
+            onAdd={(v) => setEntry((s) => addZvanje(s, v))}
+            onClear={() => setEntry((s) => clearZvanja(s))}
+            canAdd={(v) => canAddZvanjeTo(entry, v)}
+          />
+          <ActionPair onBack={stepBack} nextLabel={none ? "Nema zvanja" : "Dalje"} onNext={() => step("3")} />
+        </>,
+      );
+    }
+    // with zvanja the line under each box is the team's total
+    const sums: [number, number] | null = zv[0] || zv[1] ? [entry.points[0] + zv[0], entry.points[1] + zv[1]] : null;
     return wizard(
       <>
         <Box component="header" sx={{display: "flex", flexDirection: "column", gap: "12px", pb: "12px", flex: "none"}}>
-          <Eyebrow sx={{px: "4px"}}>{editing ? `Igra ${handNumber} · ispravak` : `Igra ${handNumber}`}</Eyebrow>
-          <TeamValueBoxes names={names} label="Igra" values={entry.points} active={active} onPick={(i) => setEntry((s) => setActive(s, i === 1 ? 2 : 1))} />
+          {title}
+          <TeamValueBoxes names={names} label="Igra" values={entry.points} sums={sums} active={active} onPick={pickTeam} />
         </Box>
         <PointsKeypad onDigit={(d) => setEntry((s) => typeDigit(s, d))} onClear={() => setEntry((s) => clearPoints(s))} />
-        <ActionPair onBack={stepBack} nextLabel="Spremi" onNext={() => save()} nextDisabled={!canSave(entry)} nextLoading={saving} />
+        <ActionPair
+          onBack={stepBack}
+          nextLabel="Spremi"
+          onNext={() => save()}
+          nextDisabled={!canSave(entry, pad.declarations)}
+          nextLoading={saving}
+        />
       </>
     );
   }
@@ -444,7 +492,7 @@ function MatchPhone({
                 Završi meč
               </PrimaryButton>
             ) : (
-              <PrimaryButton icon={<AddCircleRoundedIcon />} onClick={() => step("1", "new")} sx={{flex: 1, minWidth: 0}}>
+              <PrimaryButton icon={<AddCircleRoundedIcon />} onClick={() => step(firstStep, "new")} sx={{flex: 1, minWidth: 0}}>
                 Upiši igru
               </PrimaryButton>
             )}
@@ -489,7 +537,7 @@ function MatchPhone({
                 onClick={() => {
                   const id = handSheet.id;
                   setHandSheet(null);
-                  step("1", String(id));
+                  step(firstStep, String(id));
                 }}
               />
               <SheetChoice

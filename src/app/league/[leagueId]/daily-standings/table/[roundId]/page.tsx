@@ -282,6 +282,7 @@ function TableScorepadDesktop() {
             />
           </Box>
           <AdminEntryPanel
+            declarations={pad.declarations}
             entry={entry}
             onChange={setEntry}
             names={names}
