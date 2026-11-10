@@ -54,6 +54,8 @@ export default function ScoreBoardPage() {
   const setRoundData = useRoundStore((s) => s.setRoundData);
   // the matches the table plays (a tournament's can play one)
   const matchesPerRound = useRoundStore((s) => s.roundData?.matches_per_round) ?? 2;
+  // a tournament's table "bez zvanja": the hand entry has no Zvanja step
+  const declarations = useRoundStore((s) => s.roundData?.declarations) ?? true;
   const sides = useMatchSides();
 
   const [loading, setLoading] = useState(true);
@@ -106,10 +108,12 @@ export default function ScoreBoardPage() {
     load();
   }, [load]);
 
-  // the hand entry opens with a view transition, which waits for the route; have it ready
+  // the hand entry opens with a view transition, which waits for the route; have it ready. It starts on Zvanja, unless
+  // the table plays without them
+  const firstStep = declarations ? "zvanja" : "score";
   useEffect(() => {
-    router.router.prefetch(`/ongoing-match/${matchId}/ongoing-result/new/score`);
-  }, [router, matchId]);
+    router.router.prefetch(`/ongoing-match/${matchId}/ongoing-result/new/${firstStep}`);
+  }, [router, matchId, firstStep]);
 
   // Vrijeme partije: the time left. The server closes the match as soon as it is up (unless the score is level), so
   // the board asks then and every 5 s after it, and follows the match to the next one or the table's result.
@@ -257,9 +261,10 @@ export default function ScoreBoardPage() {
     if (opening != null) return;
     setOpening(resultId);
     try {
-      await openHandForEdit(resultId);
+      const hand = await openHandForEdit(resultId);
       markEntryOpened(matchId);
-      router.push(`${pathname}/ongoing-result/${resultId}/score`);
+      // a custom hand has no zvanja: it opens on its points
+      router.push(`${pathname}/ongoing-result/${resultId}/${hand.custom ? "score" : firstStep}`);
     } catch {
       setOpening(null);
     }
@@ -277,7 +282,7 @@ export default function ScoreBoardPage() {
   const newHand = () => {
     startNewHand(matchId);
     markEntryOpened(matchId);
-    router.push(`${pathname}/ongoing-result/new/score`);
+    router.push(`${pathname}/ongoing-result/new/${firstStep}`);
   };
 
   const panels = (size: "phone" | "desktop") =>

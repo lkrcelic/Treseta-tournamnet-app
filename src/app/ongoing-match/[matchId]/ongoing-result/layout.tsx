@@ -6,8 +6,8 @@ import {activeNavDirection} from "@/app/_lib/viewTransitions";
 import {Box} from "@mui/material";
 import React, {useState} from "react";
 
-// Hand entry frame: the two team boxes on top, the keypad below. One step (the Bela app has three: trump caller,
-// zvanja, game points).
+// Hand entry frame: the two team boxes on top, the step below. Two steps, Zvanja (not at a table "bez zvanja") and Igra
+// (the Bela app has three: trump caller, zvanja, game points).
 export default function Layout({children}: {children: React.ReactNode}) {
   // a view transition already slides the page in; the CSS slide is the fallback (older browsers, browser back button)
   const [viaViewTransition] = useState(() => activeNavDirection() != null);

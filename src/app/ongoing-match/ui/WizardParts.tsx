@@ -198,15 +198,19 @@ export function ZvanjaButtons({
               alignItems: "center",
               justifyContent: "center",
               gap: "2px",
-              transition: "transform 120ms ease, opacity 200ms ease",
+              transition: "transform 120ms ease",
               "&:active:not(:disabled)": {transform: "scale(.95)"},
-              "&:disabled": {opacity: 0.4},
             }}
           >
-            <Box component="span" sx={{lineHeight: 1}}>
+            {/* off: the value and its line fade, the count stays readable */}
+            <Box component="span" sx={{lineHeight: 1, opacity: off ? 0.35 : 1, transition: "opacity 200ms ease"}}>
               {v}
             </Box>
-            <Box component="span" aria-hidden sx={{fontFamily: font.body, fontSize: 11.5, fontWeight: 600, color: color.muted, lineHeight: 1.1}}>
+            <Box
+              component="span"
+              aria-hidden
+              sx={{fontFamily: font.body, fontSize: 11.5, fontWeight: 600, color: color.muted, lineHeight: 1.1, opacity: off ? 0.35 : 1, transition: "opacity 200ms ease"}}
+            >
               {ZVANJE_HINT[v]}
             </Box>
             <Box

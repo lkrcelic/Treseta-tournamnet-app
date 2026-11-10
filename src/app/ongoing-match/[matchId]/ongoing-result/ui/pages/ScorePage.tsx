@@ -1,7 +1,8 @@
 "use client";
 
-import {handError} from "@/app/_lib/game/scoring";
+import {handError, zvanjaError} from "@/app/_lib/game/scoring";
 import useResultStore from "@/app/_store/game/resultStore";
+import useRoundStore from "@/app/_store/RoundStore";
 import {color, font, shadow} from "@/app/_styles/tokens";
 import {ActionPair, buttonBase, ErrorNote} from "@/app/_ui/sp";
 import {discardHand, saveHand, takeEntryOrigin} from "@/app/ongoing-match/ui/handFlow";
@@ -14,7 +15,8 @@ export type ActionProps = {
   actionType: "CREATE" | "UPDATE";
 };
 
-// The hand's points for the selected team; the other team gets the rest of 11. "Custom" types each team on its own.
+// The hand's points for the selected team; the other team gets the rest of 11. "Custom" types each team on its own
+// (and drops the zvanja: a custom hand's typed points are its total).
 export default function ScorePage({actionType}: ActionProps) {
   const router = useTransitionRouter();
   const params = useParams<{matchId: string; resultId?: string}>();
@@ -23,8 +25,12 @@ export default function ScorePage({actionType}: ActionProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const invalid = handError(result.team1_game_points, result.team2_game_points, result.custom) !== null;
+  const declarations = useRoundStore((s) => s.roundData?.declarations) ?? true;
+  const invalid =
+    handError(result.team1_game_points, result.team2_game_points, result.custom) !== null ||
+    zvanjaError(result.zvanja.team1, result.zvanja.team2, {custom: result.custom, declarations}) !== null;
   const scoreboard = `/ongoing-match/${params.matchId}`;
+  const base = `/ongoing-match/${params.matchId}/ongoing-result/${actionType === "CREATE" ? "new" : params.resultId}`;
 
   const save = async () => {
     if (saving || invalid) return;
@@ -41,6 +47,11 @@ export default function ScorePage({actionType}: ActionProps) {
   };
 
   const back = () => {
+    // a normal hand goes back to its zvanja, keeping the points typed (a custom hand and a table "bez zvanja" have none)
+    if (declarations && !result.custom) {
+      router.replace(`${base}/zvanja`, "back");
+      return;
+    }
     discardHand();
     // the entry is opened from the scoreboard, so going back keeps the history tidy
     if (takeEntryOrigin(Number(params.matchId))) router.back();
