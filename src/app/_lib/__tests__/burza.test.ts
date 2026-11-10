@@ -33,6 +33,7 @@ import {
   rasporedPill,
   sortNights,
 } from "../nights";
+import {leagueDateString, leagueNightString} from "../dates";
 import {isValidPhone, normalizePhone, phoneInput, savesToProfile, telHref, whatsappHref} from "../phone";
 import {
   adCount,
@@ -514,4 +515,33 @@ test("an ad's number needs a login: a guest gets none, its author always sees it
   // an availability ad without any number: nothing to hide, nothing to offer
   assert.equal(phoneForViewer(null, open), null);
   assert.equal(phoneNeedsLogin(null, guest), false);
+});
+
+// #19: at 02:00 the Tuesday night is still being played, so the player's screens count "today" as that night
+// (leagueNightString), not the calendar day — Raspored, Početna and Burza all take their "today" from it.
+test("after midnight tonight's league night is still today for Raspored and Burza", () => {
+  // 02:00 Wednesday in Zagreb (CET, so 01:00 UTC), with the Tuesday night's rounds still open
+  const at = new Date("2026-10-28T01:00:00Z");
+  const night = leagueNightString(at);
+  assert.equal(night, "2026-10-27");
+  // the calendar day has already moved on, which is what made the night look played
+  assert.equal(leagueDateString(at), "2026-10-28");
+
+  const nights = ["2026-10-20", "2026-10-27", "2026-11-03"];
+  // Raspored's card and pill: the Tuesday is the next night and says Večeras, not Odigrano with next week's date
+  assert.equal(nextNightIndex(nights, night), 1);
+  assert.equal(rasporedPill("2026-10-27", true, false, night, true), "tonight");
+  assert.equal(RASPORED_PILL[rasporedPill("2026-10-27", true, false, night, true)!], "Večeras");
+  assert.equal(nightStatus("2026-10-27", true, night, true), "next");
+  // by the calendar day it was the week after, and the night counted as played
+  assert.equal(nextNightIndex(nights, leagueDateString(at)), 2);
+  assert.equal(rasporedPill("2026-10-27", false, false, leagueDateString(at), true), "played");
+
+  // Burza: an ad for tonight is still up while the night is played
+  const ad: StatusPost = {kind: "SUBSTITUTE", closed: false, league_id: 3, night: "2026-10-27", league_end: null};
+  const ctx = {today: night, nights: new Set(["3|2026-10-27", "3|2026-11-03"])};
+  assert.equal(nightGone(ad, ctx), false);
+  assert.equal(postStatus(ad, ctx), "ACTIVE");
+  // a night that has really passed still expires
+  assert.equal(nightGone({...ad, night: "2026-10-20"}, ctx), true);
 });

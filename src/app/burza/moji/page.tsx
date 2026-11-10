@@ -5,7 +5,7 @@ import {invalidateBurza} from "@/app/_hooks/useBurza";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useMyBurza from "@/app/_hooks/useMyBurza";
 import {MyBurzaPost} from "@/app/_interfaces/burza";
-import {leagueDateString} from "@/app/_lib/dates";
+import {leagueNightString} from "@/app/_lib/dates";
 import {MyPostChange, myTabLabel, repostFormHref, repostOpensForm} from "@/app/_lib/ui/burza";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {DesktopShell, ErrorNote, PrimaryButton, Screen, Segmented, tabPanelProps, TopBar, visuallyHidden} from "@/app/_ui/sp";
@@ -40,7 +40,8 @@ export default function MyBurzaPage() {
   const [picking, setPicking] = useState(false);
   const newRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const today = leagueDateString();
+  // the night being played, as the server counts an ad's expiry (#19)
+  const today = leagueNightString();
 
   const go = (t: Tab) => router.router.replace(href(t), {scroll: false});
   // an ad's page and a new ad's form come back here, to this tab

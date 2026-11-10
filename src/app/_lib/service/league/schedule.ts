@@ -3,7 +3,7 @@ import {BYE_TEAM_ID} from "@/app/_lib/bye";
 import {isSlot, Slot} from "@/app/_lib/locations";
 import {nightKolo} from "@/app/_lib/roundStatus";
 import {MyLeagueTonight} from "@/app/_interfaces/burza";
-import {leagueDateString, leagueNightString} from "@/app/_lib/dates";
+import {leagueNightString} from "@/app/_lib/dates";
 import {myTonight} from "@/app/_lib/service/league/arrival";
 import {effectiveLocation, effectiveTime, LOCATION_SELECT, nextNightIndex, NightLocation, secondLocationOf} from "@/app/_lib/nights";
 import {prisma} from "@/app/_lib/prisma";
@@ -21,7 +21,9 @@ const LOCATION = {location: LOCATION_SELECT} as const;
 // leagues whose season is over come last.
 export async function mySchedule(viewer: Viewer): Promise<MySchedule> {
   const playerId = viewer.id;
-  const today = leagueDateString();
+  // the night being played, not the calendar day: until 06:00 tonight's night is still the next one, so Raspored and
+  // Početna say "Večeras" while its rounds are played instead of "Odigrano" and next week's date (#19)
+  const today = leagueNightString();
   const teams = await prisma.team.findMany({
     where: {team_id: {not: BYE_TEAM_ID}, teamPlayers: {some: {player_id: playerId}}},
     select: {
@@ -106,8 +108,8 @@ export async function mySchedule(viewer: Viewer): Promise<MySchedule> {
     })
   );
 
-  // Potvrda dolaska for the leagues that play tonight (until 06:00 still last evening's night)
-  const tonight = leagueNightString();
+  // Potvrda dolaska for the leagues that play tonight (`today` is that night)
+  const tonight = today;
   const arrivals = await myTonight(
     leagues
       .filter((l) => l.nights.includes(tonight))

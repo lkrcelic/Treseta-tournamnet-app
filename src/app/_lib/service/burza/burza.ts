@@ -17,7 +17,7 @@ import {
 } from "@/app/_lib/burzaStatus";
 import {ACCOUNT_DEACTIVATED} from "@/app/_interfaces/login";
 import {BYE_TEAM_ID} from "@/app/_lib/bye";
-import {leagueDateString} from "@/app/_lib/dates";
+import {leagueNightString} from "@/app/_lib/dates";
 import {normalizePhone, PHONE_ERROR} from "@/app/_lib/phone";
 import {prisma} from "@/app/_lib/prisma";
 import {PhotoContext, photoContext, PLAYER_PHOTO, TEAM_PHOTO} from "@/app/_lib/service/players/photos";
@@ -73,9 +73,11 @@ type ViewContext = StatusContext & {
   photos: PhotoContext | null;
 };
 
-// today and the nights from today on of the substitute ads' leagues: what postStatus needs
+// today and the nights from today on of the substitute ads' leagues: what postStatus needs.
+// "today" is the league night being played (until 06:00 still last evening's), so an ad for tonight stays up while the
+// night's rounds are played instead of expiring at midnight (#19).
 async function statusContext(db: Tx, posts: {kind: BurzaKind; league_id: number | null}[]): Promise<StatusContext> {
-  const today = leagueDateString();
+  const today = leagueNightString();
   const leagueIds = Array.from(new Set(posts.filter((p) => p.kind === "SUBSTITUTE" && p.league_id != null).map((p) => p.league_id!)));
   const nightRows = leagueIds.length
     ? await db.leagueNight.findMany({where: {league_id: {in: leagueIds}, night: {gte: nightValue(today)}}, select: {league_id: true, night: true}})
@@ -84,7 +86,7 @@ async function statusContext(db: Tx, posts: {kind: BurzaKind; league_id: number 
 }
 
 async function viewContext(viewer: Player | null, posts: PostRow[]): Promise<ViewContext> {
-  const from = nightValue(leagueDateString());
+  const from = nightValue(leagueNightString());
   const [status, teams, photos] = await Promise.all([
     statusContext(prisma, posts),
     viewer
@@ -165,7 +167,7 @@ function toView(p: PostRow, ctx: ViewContext): BurzaPost {
 // The open ads: substitutes first, then partners, then available players, newest first in each. An availability
 // ad without any phone number (switched on in the profile before a number was added) isn't listed.
 export async function listOpenPosts(viewer: Player | null): Promise<BurzaPost[]> {
-  const from = nightValue(leagueDateString());
+  const from = nightValue(leagueNightString());
   const rows = await prisma.marketPost.findMany({
     where: {
       closed_at: null,
@@ -239,7 +241,7 @@ export async function repostPost(user: Player, id: number, night?: string): Prom
     const error = repostError({
       post: {...statusOf(p), player_id: p.player_id},
       userId: user.id,
-      today: leagueDateString(),
+      today: leagueNightString(),
       substitute: p.kind === "SUBSTITUTE" ? await substituteFacts(tx, user, {team_id: p.team_id, league_id: p.league_id, with_player_id: p.with_player_id, night: target}) : null,
       phone: (p.phone ?? user.phone) != null,
     });
@@ -307,7 +309,7 @@ async function substituteFacts(
     withOnTeam: team.teamPlayers.some((tp) => tp.player_id === ad.with_player_id && tp.player.active),
     night: ad.night,
     leagueNight,
-    today: leagueDateString(),
+    today: leagueNightString(),
   };
 }
 
@@ -348,7 +350,7 @@ async function createSubstitute(tx: Tx, user: Player, req: Req<"SUBSTITUTE">, ph
 async function createPartner(tx: Tx, user: Player, req: Req<"PARTNER">, phone: string): Promise<number> {
   const league = await tx.league.findUnique({where: {league_id: req.league_id}, select: {end_date: true}});
   if (!league) throw new NotFoundError("Liga ne postoji.");
-  const error = partnerError(league.end_date ? isoDate(league.end_date) : null, leagueDateString());
+  const error = partnerError(league.end_date ? isoDate(league.end_date) : null, leagueNightString());
   if (error) throw new InvalidResultError(error);
 
   const same = await findTwin(tx, user.id, {kind: "PARTNER", team_id: null, league_id: req.league_id, night: null, with_player_id: null});

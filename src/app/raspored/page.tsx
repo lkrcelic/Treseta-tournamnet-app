@@ -5,7 +5,7 @@ import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useLeagueNights from "@/app/_hooks/useLeagueNights";
 import useLeagues, {useSelectedLeagueId} from "@/app/_hooks/useLeagues";
 import useMySchedule from "@/app/_hooks/useMySchedule";
-import {leagueDateString} from "@/app/_lib/dates";
+import {leagueNightString} from "@/app/_lib/dates";
 import {
   gatheringLabel,
   isSafeUrl,
@@ -80,7 +80,8 @@ export default function RasporedPage() {
   const router = useTransitionRouter();
   const isDesktop = useIsDesktop();
   const params = useSearchParams();
-  const today = leagueDateString();
+  // the night being played (until 06:00 still last evening's), so tonight's pill is Večeras and not Odigrano (#19)
+  const today = leagueNightString();
   const {schedule, error, reload} = useMySchedule();
   const leagues = useLeagues();
   const selected = useSelectedLeagueId();
