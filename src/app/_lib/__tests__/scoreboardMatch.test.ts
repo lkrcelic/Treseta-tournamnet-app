@@ -4,8 +4,8 @@ import {test} from "node:test";
 import {TeamSide} from "@/app/_interfaces/side";
 import {RoundExtendedResponse} from "@/app/_interfaces/round";
 import {myTeamIsTeam1} from "@/app/_hooks/useOpenTable";
-import {dostaCallers, HAND_POINTS, matchState, NO_HAND_ZVANJA, PlayedHand} from "@/app/_lib/game/scoring";
-import {InvalidResultError, normalizeResult} from "@/app/_lib/validation/validateResult";
+import {dostaCallers, HAND_POINTS, matchState, PlayedHand} from "@/app/_lib/game/scoring";
+import {InvalidResultError, newHandZvanja, normalizeResult} from "@/app/_lib/validation/validateResult";
 import {enterHand, HandPlan} from "./helpers/handEntry";
 
 // The scoreboard end to end without a database: hands are entered through the same store steps as the screens,
@@ -35,7 +35,7 @@ class Match {
     const saved = normalizeResult(sent);
     // what the phone showed is what the server stores
     assert.deepEqual(saved, sent, `client and server disagree on ${JSON.stringify(plan)}`);
-    this.hands.push({team1_game_points: saved.team1_game_points, team2_game_points: saved.team2_game_points, ...NO_HAND_ZVANJA});
+    this.hands.push({team1_game_points: saved.team1_game_points, team2_game_points: saved.team2_game_points, ...newHandZvanja(saved)});
     return saved;
   }
 
@@ -83,6 +83,20 @@ test("a whole match: the first team over 41 wins and no more hands are taken", (
   assert.equal(m.winner, 1);
   assert.throws(() => m.play({typedFor: 2, typed: "9"}), /Meč je gotov/);
   assert.equal(m.hands.length, 6);
+});
+
+test("zvanja clicked on the phone go to the server as clicked, and win the match", () => {
+  const m = new Match();
+  m.play({custom: ["30", "33"]}); // 30 : 33
+  // 6 : 5, napola and tri trice for team 1, četiri asa for team 2: 42 : 42 — level, the target goes to 51
+  const sent = m.play({typedFor: 1, typed: "6", zvanja: [[3, 3], [4]]});
+  assert.deepEqual([sent.team1_zvanja3, sent.team1_zvanja4, sent.team2_zvanja3, sent.team2_zvanja4], [2, 0, 0, 1]);
+  assert.deepEqual(m.scores, [42, 42]);
+  assert.equal(m.state.target, 51);
+  // 5 : 6 with četiri trice for team 1: 51 : 48
+  m.play({typedFor: 2, typed: "6", zvanja: [[4], []]});
+  assert.deepEqual(m.scores, [51, 48]);
+  assert.equal(m.winner, 1);
 });
 
 test("both teams over 41 in the same hand: the higher score wins; a tie plays on to 51", () => {

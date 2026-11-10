@@ -4,6 +4,7 @@ import {createOngoingResultAPI} from "@/app/_fetchers/ongoingResult/create";
 import {getOngoingResultAPI} from "@/app/_fetchers/ongoingResult/getOne";
 import {updateOngoingResultAPI} from "@/app/_fetchers/ongoingResult/updateOne";
 import useResultStore from "@/app/_store/game/resultStore";
+import {NO_HAND_ZVANJA, zvanjaColumns} from "@/app/_lib/game/scoring";
 
 // Hand entry shared by the phone screen and the desktop entry panel. The entered hand lives in the result store
 // (persisted, so a reload mid-entry keeps it).
@@ -43,8 +44,10 @@ export function discardHand() {
 // Saves the entered hand (new, or an update of `resultId`). Throws with the server's message when it is refused.
 // Saving a hand clears its "s ovim dosta" call: the scoreboard asks again after a custom hand.
 export async function saveHand(matchId: number, resultId?: number | string | null) {
-  const {team1_game_points, team2_game_points, custom} = useResultStore.getState().resultData;
-  const data = {match_id: matchId, team1_game_points, team2_game_points, custom};
+  const {team1_game_points, team2_game_points, custom, zvanja} = useResultStore.getState().resultData;
+  // a custom hand has no zvanja (the store drops them when Custom is pressed)
+  const counts = custom ? NO_HAND_ZVANJA : zvanjaColumns(zvanja.team1, zvanja.team2);
+  const data = {match_id: matchId, team1_game_points, team2_game_points, ...counts, custom};
 
   if (resultId) {
     await updateOngoingResultAPI({resultId: String(resultId), result: data});
@@ -60,7 +63,7 @@ export async function saveHand(matchId: number, resultId?: number | string | nul
 // Marks a saved custom hand (its points unchanged) as the one where `side` called "s ovim dosta"
 export async function callDosta(matchId: number, resultId: number, points: [number, number], side: 1 | 2) {
   const [team1_game_points, team2_game_points] = points;
-  const data = {match_id: matchId, team1_game_points, team2_game_points, custom: true, dosta_side: side};
+  const data = {match_id: matchId, team1_game_points, team2_game_points, ...NO_HAND_ZVANJA, custom: true, dosta_side: side};
   await updateOngoingResultAPI({resultId: String(resultId), result: data});
 }
 

@@ -5,12 +5,14 @@ import {buttonBase, tabular} from "@/app/_ui/sp";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import {Box} from "@mui/material";
 import React from "react";
+import {ZVANJA_VALUES, Zvanje} from "@/app/_lib/game/scoring";
 
 // The parts of the hand entry steps (Claude Design ScorepadPhone: trump, zvanja, score), shared by the players' wizard
 // and the admin's phone scorepad (admin-mobile 26–28). They only draw; the caller keeps the hand. Index 0 is the left
 // team (green), 1 the right one (red).
 
-export const ZVANJA_VALUES = [20, 50, 100, 150, 200] as const;
+// what each zvanje's button says under its value
+const ZVANJE_HINT: Record<Zvanje, string> = {3: "tri iste · napola", 4: "četiri iste"};
 
 // Step 1: the two big team cards, one picked as the caller
 export function CallerCards({names, caller, onPick, disabled}: {names: readonly [string, string] | string[]; caller: 0 | 1 | null; onPick: (i: 0 | 1) => void; disabled?: boolean}) {
@@ -150,17 +152,35 @@ export function TeamValueBoxes({
   );
 }
 
-// Step 2: the zvanja of the team picked above, with how many of each (in the team's colour) and Obriši zvanja
-export function ZvanjaButtons({label, counts, team, onAdd, onClear}: {label: string; counts: Partial<Record<number, number>>; team: 0 | 1; onAdd: (v: (typeof ZVANJA_VALUES)[number]) => void; onClear: () => void}) {
+// The zvanja step: 3 and 4 for the team picked above, each click one zvanje, with how many of each (in the team's
+// colour), and Obriši zvanja. canAdd: whether one more of a value is still possible (the button is off otherwise, so a
+// hand the cards can't make isn't clicked together).
+export function ZvanjaButtons({
+  label,
+  counts,
+  team,
+  onAdd,
+  onClear,
+  canAdd,
+}: {
+  label: string;
+  counts: Partial<Record<number, number>>;
+  team: 0 | 1;
+  onAdd: (v: Zvanje) => void;
+  onClear: () => void;
+  canAdd?: (v: Zvanje) => boolean;
+}) {
   return (
     <Box role="group" aria-label={label} sx={{flex: 1, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", alignContent: "center", py: "16px"}}>
       {ZVANJA_VALUES.map((v) => {
         const cnt = counts[v] ?? 0;
+        const off = canAdd ? !canAdd(v) : false;
         return (
           <Box
             key={v}
             component="button"
             type="button"
+            disabled={off}
             onClick={() => onAdd(v)}
             aria-label={`Zvanje ${v}${cnt ? `, upisano ${cnt}` : ""}`}
             sx={{
@@ -173,11 +193,22 @@ export function ZvanjaButtons({label, counts, team, onAdd, onClear}: {label: str
               fontFamily: font.display,
               fontSize: 30,
               fontWeight: 800,
-              transition: "transform 120ms ease",
-              "&:active": {transform: "scale(.95)"},
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "2px",
+              transition: "transform 120ms ease, opacity 200ms ease",
+              "&:active:not(:disabled)": {transform: "scale(.95)"},
+              "&:disabled": {opacity: 0.4},
             }}
           >
-            {v}
+            <Box component="span" sx={{lineHeight: 1}}>
+              {v}
+            </Box>
+            <Box component="span" aria-hidden sx={{fontFamily: font.body, fontSize: 11.5, fontWeight: 600, color: color.muted, lineHeight: 1.1}}>
+              {ZVANJE_HINT[v]}
+            </Box>
             <Box
               key={`${team}-${cnt}`}
               component="span"

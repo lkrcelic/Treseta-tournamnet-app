@@ -2,7 +2,7 @@ import "./helpers/memoryStorage";
 import assert from "node:assert/strict";
 import {beforeEach, test} from "node:test";
 import {ResultResponse} from "@/app/_interfaces/result";
-import useResultStore from "@/app/_store/game/resultStore";
+import useResultStore, {migrateResultStore, RESULT_STORE_VERSION} from "@/app/_store/game/resultStore";
 import {resetHand} from "./helpers/handEntry";
 
 // The keypad logic behind the scoreboard's hand entry (phone screen and desktop panel)
@@ -107,4 +107,47 @@ test("X clears the points and keeps Custom; a new hand starts from scratch", () 
   assert.deepEqual(points(), [0, 0]);
   assert.equal(result().resultData.custom, false);
   assert.equal(result().resultData.activeTeam, "team1");
+});
+
+// ---------- zvanja ----------
+
+const zvanja = () => result().resultData.zvanja;
+
+test("each click adds one zvanje for the active team, and Obriši zvanja clears only that team's", () => {
+  result().setActiveTeam("team1");
+  result().addZvanje(3);
+  result().addZvanje(3);
+  result().addZvanje(4);
+  result().setActiveTeam("team2");
+  result().addZvanje(3);
+  assert.deepEqual(zvanja(), {team1: {3: 2, 4: 1}, team2: {3: 1, 4: 0}});
+
+  result().clearZvanja();
+  assert.deepEqual(zvanja(), {team1: {3: 2, 4: 1}, team2: {3: 0, 4: 0}});
+  // the points are untouched by the zvanja, and the zvanja by the points
+  type("6");
+  assert.deepEqual(points(), [5, 6]);
+  assert.equal(zvanja().team1[3], 2);
+});
+
+test("Custom drops the zvanja: a custom hand's typed points are its total", () => {
+  result().setActiveTeam("team1");
+  result().addZvanje(4);
+  result().toggleCustom();
+  assert.deepEqual(zvanja(), {team1: {3: 0, 4: 0}, team2: {3: 0, 4: 0}});
+});
+
+test("a saved hand opens with its zvanja, and a new hand starts without any", () => {
+  result().setResultData(saved({team1_game_points: 6, team2_game_points: 5, team1_zvanja3: 1, team2_zvanja4: 1}));
+  assert.deepEqual(zvanja(), {team1: {3: 1, 4: 0}, team2: {3: 0, 4: 1}});
+  result().resetResult();
+  assert.deepEqual(zvanja(), {team1: {3: 0, 4: 0}, team2: {3: 0, 4: 0}});
+});
+
+test("an entry kept on a phone from before zvanja gets none when it is loaded", () => {
+  const old = {resultData: {team1_game_points: 7, team2_game_points: 4, custom: false, activeTeam: "team1"}, startNewNumber: false};
+  const migrated = migrateResultStore(old, 0);
+  assert.deepEqual(migrated.resultData.zvanja, {team1: {3: 0, 4: 0}, team2: {3: 0, 4: 0}});
+  assert.equal(migrated.resultData.team1_game_points, 7);
+  assert.equal(RESULT_STORE_VERSION, 1);
 });

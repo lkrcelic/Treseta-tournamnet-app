@@ -1,17 +1,22 @@
 import {create} from "zustand";
 import {createJSONStorage, persist} from "zustand/middleware";
 import {ResultResponse} from "@/app/_interfaces/result";
-import {CUSTOM_HAND_MAX, HAND_POINTS} from "@/app/_lib/game/scoring";
+import {CUSTOM_HAND_MAX, HAND_POINTS, NO_ZVANJA, Zvanje, ZvanjaCounts} from "@/app/_lib/game/scoring";
 
 // The hand being entered on the scoreboard (phone screen or desktop panel). Persisted, so a reload mid-entry keeps it.
-//   normal: the active team's points are typed, the other team gets the rest of 11
-//   custom: the "Custom" key, each team's points are typed on their own (a hand cut short by "s ovim dosta")
+//   normal: the active team's points are typed, the other team gets the rest of 11, and each team's zvanja are clicked
+//   custom: the "Custom" key, each team's points are typed on their own (a hand cut short by "s ovim dosta"), with no
+//           zvanja: the typed points are the hand's total
+
+type TeamKey = "team1" | "team2";
 
 type ResultTypeExtended = Partial<ResultResponse> & {
   team1_game_points: number;
   team2_game_points: number;
   custom: boolean;
-  activeTeam: "team1" | "team2";
+  activeTeam: TeamKey;
+  // each team's zvanja on the hand, by value
+  zvanja: Record<TeamKey, ZvanjaCounts>;
 };
 
 export type ResultState = {
@@ -25,16 +30,32 @@ export type ResultState = {
   setMatchId: (id: number) => void;
   resetResult: () => void;
   setResultData: (data: ResultResponse) => void;
+  // one more zvanje of the value for the active team
+  addZvanje: (value: Zvanje) => void;
+  // the active team's zvanja cleared (Obriši zvanja)
+  clearZvanja: () => void;
 };
+
+const noZvanja = (): Record<TeamKey, ZvanjaCounts> => ({team1: {...NO_ZVANJA}, team2: {...NO_ZVANJA}});
 
 const initialState = {
   resultData: {
     team1_game_points: 0,
     team2_game_points: 0,
     custom: false,
-    activeTeam: "team1" as "team1" | "team2",
+    activeTeam: "team1" as TeamKey,
+    zvanja: noZvanja(),
   },
 };
+
+// The store's version: 1 added the zvanja (an entry kept from before has none)
+export const RESULT_STORE_VERSION = 1;
+
+export function migrateResultStore(persisted: unknown, version: number): ResultState {
+  const state = (persisted ?? {}) as ResultState;
+  if (version < 1 && state.resultData) state.resultData = {...state.resultData, zvanja: noZvanja()};
+  return state;
+}
 
 const useResultStore = create<ResultState>()(
   persist<ResultState>(
@@ -44,11 +65,32 @@ const useResultStore = create<ResultState>()(
 
       setResultData: (data: ResultResponse) =>
         set((state) => ({
-          resultData: {...state.resultData, ...data, custom: data.custom ?? false},
+          resultData: {
+            ...state.resultData,
+            ...data,
+            custom: data.custom ?? false,
+            zvanja: {
+              team1: {3: data.team1_zvanja3 ?? 0, 4: data.team1_zvanja4 ?? 0},
+              team2: {3: data.team2_zvanja3 ?? 0, 4: data.team2_zvanja4 ?? 0},
+            },
+          },
           startNewNumber: true,
         })),
 
-      resetResult: () => set({resultData: {...initialState.resultData}, startNewNumber: false}),
+      resetResult: () => set({resultData: {...initialState.resultData, zvanja: noZvanja()}, startNewNumber: false}),
+
+      addZvanje: (value) =>
+        set((state) => {
+          const {activeTeam, zvanja} = state.resultData;
+          const team = zvanja[activeTeam];
+          return {resultData: {...state.resultData, zvanja: {...zvanja, [activeTeam]: {...team, [value]: team[value] + 1}}}};
+        }),
+
+      clearZvanja: () =>
+        set((state) => {
+          const {activeTeam, zvanja} = state.resultData;
+          return {resultData: {...state.resultData, zvanja: {...zvanja, [activeTeam]: {...NO_ZVANJA}}}};
+        }),
 
       setActiveTeam: (team) =>
         set((state) => ({
@@ -95,10 +137,11 @@ const useResultStore = create<ResultState>()(
           };
         }),
 
-      // Switching between normal and custom entry keeps the points typed so far
+      // Switching between normal and custom entry keeps the points typed so far; a custom hand has no zvanja, so they
+      // go
       toggleCustom: () =>
         set((state) => ({
-          resultData: {...state.resultData, custom: !state.resultData.custom},
+          resultData: {...state.resultData, custom: !state.resultData.custom, zvanja: noZvanja()},
           startNewNumber: true,
         })),
 
@@ -111,6 +154,8 @@ const useResultStore = create<ResultState>()(
     {
       name: "result-store",
       storage: createJSONStorage(() => localStorage),
+      version: RESULT_STORE_VERSION,
+      migrate: migrateResultStore,
     }
   )
 );
