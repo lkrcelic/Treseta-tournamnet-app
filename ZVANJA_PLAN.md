@@ -61,7 +61,10 @@ which of the four players holds each of the 12 cards):
 
 - **Both teams together make at most 21.** The 12 cards are shared, so the more one team has, the less the other can
   have. Of the 18 × 18 pairs, only **66** can happen at one deal.
-- **No simple rule describes the 66.** "Each team possible, and their sum possible as one team" is wrong in 34 cases.
+- **A zvanje may go unannounced**, so anything below a possible deal is allowed too. That adds two pairs (1 × 3 against
+  5 × 3, either way round) to make **68**, and all 68 are what lies below **22 largest deals**. The code keeps those 22
+  (`ZVANJA_DEALS`).
+- **No simple rule describes them.** "Each team possible, and their sum possible as one team" is wrong in 34 cases.
   For example, 1 × 4 for one team and 4 × 3 for the other can't happen. So the check is a table, with a test that
   derives it again.
 
@@ -105,8 +108,8 @@ The app is unchanged after this step: every hand has 0 zvanja, and every table h
 | `ZVANJA_VALUES = [3, 4] as const`, `type Zvanje` | One place for the values. `WizardParts.ZVANJA_VALUES` imports it (step 6). |
 | `type ZvanjaCounts = {3: number; 4: number}` and `NO_ZVANJA` | A team's zvanja on one hand. |
 | `zvanjaPoints(c)` | `3 * c[3] + 4 * c[4]`. |
-| `ZVANJA_DEALS` | The 66 possible pairs `[[t1threes, t1fours], [t2threes, t2fours]]`, as a literal, with a comment on how it was derived. |
-| `zvanjaError(z1, z2, {custom, declarations})` | `null`, or: "Zvanja moraju biti cijeli brojevi od 0.", "Ručni unos nema zvanja." (custom with zvanja), "Ovaj turnir se igra bez zvanja." (`declarations` false and any zvanje), "Ekipa ne može imati ta zvanja." (a team's pair not among the 18), "Obje ekipe ne mogu imati ta zvanja u istoj igri." (the pair not among the 66). It is pure, and used by the phone, the desktop, the admin and the server alike. |
+| `ZVANJA_DEALS` | The 22 largest deals `[t1threes, t1fours, t2threes, t2fours]`, as a literal, with a comment on how they were derived. A hand is allowed when its four counts are at most one of them. |
+| `zvanjaError(z1, z2, {custom, declarations})` | `null`, or: "Zvanja moraju biti cijeli brojevi od 0.", "Ručni unos nema zvanja." (custom with zvanja), "Ovaj turnir se igra bez zvanja." (`declarations` false and any zvanje), "Ekipa ne može imati ta zvanja." (a team's pair not among the 18), "Obje ekipe ne mogu imati ta zvanja u istoj igri." (the pair not below any of the 22). `canAddZvanje` says whether one more click is still possible. It is pure, and used by the phone, the desktop, the admin and the server alike. |
 | `PlayedHand` | Gets `team1_zvanja3`, `team1_zvanja4`, `team2_zvanja3` and `team2_zvanja4`, **required**, so every caller that forgets to select them fails to compile instead of quietly dropping zvanja. |
 | `handTotals(h): [number, number]` | Points plus zvanja points. |
 | `matchState`, `dostaCallers` | Add `handTotals(hand)` in place of `team*_game_points`. |
@@ -201,7 +204,7 @@ Bela's code, file for file. Treseta has the same files without `declarations`.
 | Test | What it covers |
 |---|---|
 | `scoring.test.ts` | `zvanjaPoints`, `handTotals`. `matchState` reaching 41 with zvanja, a tie made by zvanja raising the target, "s ovim dosta" reached with a hand's zvanja. `zvanjaError`: 7 × 3 allowed, 4 × 4, 3 × 4 + 3 and 8 × 3 refused for one team, 1 × 4 against 4 × 3 refused, custom with zvanja refused, any zvanje refused with `declarations` false. |
-| `zvanjaDeals.test.ts` (new) | Derives the 18 team pairs and the 66 joint pairs again and compares them with `ZVANJA_DEALS`. The derivation gives each of the 12 cards one of 4 players (4¹² ≈ 16.8 M deals, at most 10 cards each), with bitmasks per player, so it takes seconds. |
+| `zvanjaDeals.test.ts` (new) | Derives the deals again, compares their largest with `ZVANJA_DEALS`, and checks `zvanjaError` for every count from 0 to 8 threes and 0 to 4 fours per team (68 allowed). The derivation gives each of the 12 cards one of 4 players (4¹² ≈ 16.8 M deals, at most 10 cards each), with bitmasks per player, so it takes seconds. |
 | `serverHand.test.ts` | `normalizeResult` with zvanja: allowed, refused, missing (0 on create). |
 | `adminEntry.test.ts` | `addZvanje`, `clearZvanja`, `switchMode` dropping zvanja, `canSave` at a table "bez zvanja", the `toAdminHand` / `fromPadHand` round trip. |
 | `handEntryStores.test.ts` | The store's zvanja, `toggleCustom`, `setResultData`, the version-0 → 1 migration. |

@@ -8,9 +8,16 @@ import {
   MATCH_THRESHOLD,
   matchState,
   matchWinner,
+  NO_HAND_ZVANJA,
+  NO_ZVANJA,
   PlayedHand,
   ratedMatch,
   TARGET_RAISE,
+  canAddZvanje,
+  handTotals,
+  zvanjaColumns,
+  zvanjaError,
+  zvanjaPoints,
 } from "@/app/_lib/game/scoring";
 import {roundGames} from "@/app/_lib/rating/season";
 
@@ -63,7 +70,7 @@ test("both teams over 41: the higher score wins; a tie plays on", () => {
 
 // Hands as [team1, team2] points; a third value is the team that called "s ovim dosta" on the hand
 const play = (...hands: [number, number, (1 | 2)?][]): PlayedHand[] =>
-  hands.map(([a, b, dosta]) => ({team1_game_points: a, team2_game_points: b, dosta_side: dosta ?? null}));
+  hands.map(([a, b, dosta]) => ({team1_game_points: a, team2_game_points: b, ...NO_HAND_ZVANJA, dosta_side: dosta ?? null}));
 
 test("a match without calls: the first team over 41 with more points wins", () => {
   const s = matchState(play([6, 5], [11, 0], [8, 3]));
@@ -127,12 +134,12 @@ test("the question after a custom hand lists only the teams that reached the tar
 test("editing or deleting a hand plays the match again: a raised target or a call can go away", () => {
   const tied = play([33, 33], [6, 5], [5, 6]);
   assert.equal(matchState(tied).target, 51);
-  assert.equal(matchState([tied[0], tied[1], {team1_game_points: 6, team2_game_points: 5}]).winner, 1); // 45 : 43
+  assert.equal(matchState([tied[0], tied[1], {team1_game_points: 6, team2_game_points: 5, ...NO_HAND_ZVANJA}]).winner, 1); // 45 : 43
   assert.equal(matchState(tied.slice(0, 2)).target, 41); // the tying hand deleted
 
   const called = play([30, 44], [11, 0, 1]);
   assert.equal(matchState(called).winner, 1);
-  assert.match(matchState([{team1_game_points: 20, team2_game_points: 44}, called[1]]).callError!, /doći do 41/);
+  assert.match(matchState([{team1_game_points: 20, team2_game_points: 44, ...NO_HAND_ZVANJA}, called[1]]).callError!, /doći do 41/);
 });
 
 test("the ratings count a s ovim dosta win as a win, whatever the points", () => {
@@ -145,4 +152,77 @@ test("the ratings count a s ovim dosta win as a win, whatever the points", () =>
   const round = {night: "2026-10-14", teamA: [1, 2], teamB: [3, 4], matches: [ratedMatch(dosta)], wins: [1, 0] as [number, number]};
   const games = roundGames(round);
   assert.equal(games[0].scoreA, 1);
+});
+
+// ---------- zvanja ----------
+
+// a normal hand with zvanja: [team1 points, team2 points], each team's [threes, fours]
+const withZvanja = ([a, b]: [number, number], [a3, a4]: [number, number], [b3, b4]: [number, number] = [0, 0]): PlayedHand => ({
+  team1_game_points: a,
+  team2_game_points: b,
+  ...zvanjaColumns({3: a3, 4: a4}, {3: b3, 4: b4}),
+  dosta_side: null,
+});
+
+test("zvanja are worth 3 and 4 a click, on top of the hand's 11 points", () => {
+  assert.equal(zvanjaPoints({3: 2, 4: 1}), 10);
+  assert.equal(zvanjaPoints(NO_ZVANJA), 0);
+  assert.deepEqual(handTotals(withZvanja([6, 5], [2, 1])), [16, 5]);
+  assert.deepEqual(handTotals(withZvanja([0, 11], [0, 0], [7, 0])), [0, 32]);
+});
+
+test("a match counts the hands' totals: zvanja take a team to 41", () => {
+  // 30 : 25, then a hand of 6 : 5 with tri trice and napola (6) for team 1: 42 : 30
+  const s = matchState([...play([30, 25]), withZvanja([6, 5], [2, 0])]);
+  assert.deepEqual([s.score1, s.score2, s.winner], [42, 30, 1]);
+  // without them it would be 36 : 30, nobody there yet
+  assert.equal(matchState(play([30, 25], [6, 5])).winner, null);
+});
+
+test("zvanja decide who is ahead, and a tie made by them raises the target", () => {
+  // 36 : 39, then 6 : 5 with napola for team 1 and četiri asa for team 2: 45 : 48, team 2 wins
+  const ahead = matchState([...play([36, 39]), withZvanja([6, 5], [1, 0], [0, 1])]);
+  assert.deepEqual([ahead.score1, ahead.score2, ahead.winner], [45, 48, 2]);
+  // 34 : 41, then 6 : 5 with tri trice and napola (6) for team 1: 46 : 46, the target goes to 51
+  const raised = matchState([...play([34, 41]), withZvanja([6, 5], [2, 0])]);
+  assert.deepEqual([raised.score1, raised.score2, raised.target, raised.winner], [46, 46, 51, null]);
+});
+
+test("s ovim dosta: the zvanja of the hands before count towards the target", () => {
+  // 33 : 20 after a hand of 29 : 20 with četiri trice for team 1, then a custom 8 : 0 with the call: 41 reached
+  const hands = [withZvanja([29, 20], [0, 1]), play([8, 0, 1])[0]];
+  const s = matchState(hands);
+  assert.equal(s.callError, null);
+  assert.equal(s.winner, 1);
+  // without the zvanja the call would come at 37
+  assert.match(matchState(play([29, 20], [8, 0, 1])).callError!, /doći do 41/);
+});
+
+test("zvanjaError: what the cards allow, a custom hand and a tournament bez zvanja", () => {
+  assert.equal(zvanjaError(NO_ZVANJA, NO_ZVANJA), null);
+  assert.equal(zvanjaError({3: 7, 4: 0}, NO_ZVANJA), null);
+  assert.equal(zvanjaError({3: 2, 4: 2}, NO_ZVANJA), null);
+  assert.equal(zvanjaError({3: 0, 4: 4}, NO_ZVANJA), "Ekipa ne može imati ta zvanja.");
+  assert.equal(zvanjaError({3: 1, 4: 3}, NO_ZVANJA), "Ekipa ne može imati ta zvanja.");
+  assert.equal(zvanjaError({3: 8, 4: 0}, NO_ZVANJA), "Ekipa ne može imati ta zvanja.");
+  // each possible on its own, not at one deal: the 12 cards are shared
+  assert.equal(zvanjaError({3: 0, 4: 1}, {3: 4, 4: 0}), "Obje ekipe ne mogu imati ta zvanja u istoj igri.");
+  assert.equal(zvanjaError({3: 7, 4: 0}, {3: 1, 4: 0}), "Obje ekipe ne mogu imati ta zvanja u istoj igri.");
+  // a zvanje left unannounced: below a possible deal is allowed
+  assert.equal(zvanjaError({3: 1, 4: 0}, {3: 5, 4: 0}), null);
+  assert.equal(zvanjaError({3: -1, 4: 0}, NO_ZVANJA), "Zvanja moraju biti cijeli brojevi od 0.");
+  assert.equal(zvanjaError({3: 1.5, 4: 0}, NO_ZVANJA), "Zvanja moraju biti cijeli brojevi od 0.");
+  assert.equal(zvanjaError({3: 1, 4: 0}, NO_ZVANJA, {custom: true}), "Ručni unos nema zvanja.");
+  assert.equal(zvanjaError(NO_ZVANJA, NO_ZVANJA, {custom: true}), null);
+  assert.equal(zvanjaError(NO_ZVANJA, {3: 0, 4: 1}, {declarations: false}), "Ovaj turnir se igra bez zvanja.");
+  assert.equal(zvanjaError(NO_ZVANJA, NO_ZVANJA, {declarations: false}), null);
+});
+
+test("canAddZvanje: a click that would make an impossible hand is not offered", () => {
+  assert.equal(canAddZvanje({3: 6, 4: 0}, NO_ZVANJA, 1, 3), true); // 7 × 3
+  assert.equal(canAddZvanje({3: 7, 4: 0}, NO_ZVANJA, 1, 3), false); // 8 × 3
+  assert.equal(canAddZvanje({3: 7, 4: 0}, NO_ZVANJA, 2, 3), false); // team 2 has nothing left
+  assert.equal(canAddZvanje({3: 0, 4: 3}, NO_ZVANJA, 1, 3), false);
+  assert.equal(canAddZvanje({3: 0, 4: 2}, NO_ZVANJA, 1, 4), true);
+  assert.equal(canAddZvanje({3: 0, 4: 1}, {3: 3, 4: 0}, 2, 3), false); // 1 × 4 against 4 × 3
 });

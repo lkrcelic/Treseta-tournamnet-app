@@ -6,7 +6,7 @@ import {getRoundDataAPI} from "@/app/_fetchers/round/getOne";
 import useCountUp from "@/app/_hooks/useCountUp";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useShortWindow from "@/app/_hooks/useShortWindow";
-import {dostaCallers, MATCH_THRESHOLD, matchState, PlayedHand, Side} from "@/app/_lib/game/scoring";
+import {dostaCallers, handTotals, MATCH_THRESHOLD, matchState, PlayedHand, Side} from "@/app/_lib/game/scoring";
 import useRoundStore from "@/app/_store/RoundStore";
 import useOngoingMatchStore from "@/app/_store/ongoingMatchStore";
 import {color, shadow, teamColor} from "@/app/_styles/tokens";
@@ -29,6 +29,17 @@ import {TimerChip, TimeUpNote, TimeWarning, useMatchClock} from "@/app/ongoing-m
 
 // pips that should pop on the next match after "Završi meč"
 const pipPops = new Map<number, number>();
+
+// A hand from the server as the rules play it (zvanja it leaves out are none)
+const toPlayedHand = (r: Partial<PlayedHand>): PlayedHand => ({
+  team1_game_points: r.team1_game_points ?? 0,
+  team2_game_points: r.team2_game_points ?? 0,
+  team1_zvanja3: r.team1_zvanja3 ?? 0,
+  team1_zvanja4: r.team1_zvanja4 ?? 0,
+  team2_zvanja3: r.team2_zvanja3 ?? 0,
+  team2_zvanja4: r.team2_zvanja4 ?? 0,
+  dosta_side: r.dosta_side,
+});
 
 export default function ScoreBoardPage() {
   const params = useParams<{matchId: string}>();
@@ -133,11 +144,7 @@ export default function ScoreBoardPage() {
   const totals: [number, number] = [p(sides.left), p(sides.right)];
   // the rules play the hands in order: the target goes up on a tie, and "s ovim dosta" decides the winner
   const results = match.results ?? [];
-  const hands: PlayedHand[] = results.map((r) => ({
-    team1_game_points: r.team1_game_points,
-    team2_game_points: r.team2_game_points,
-    dosta_side: r.dosta_side,
-  }));
+  const hands: PlayedHand[] = results.map(toPlayedHand);
   const firstTarget = match.score_threshold ?? MATCH_THRESHOLD;
   const state = matchState(hands, firstTarget);
   const threshold = state.target;
@@ -182,8 +189,10 @@ export default function ScoreBoardPage() {
   const rows: HandRow[] = useMemo(
     () =>
       (match.results ?? []).map((r) => {
-        const left = sides.left === 1 ? r.team1_game_points : r.team2_game_points;
-        const right = sides.left === 1 ? r.team2_game_points : r.team1_game_points;
+        // each hand's total: its points and its zvanja
+        const [total1, total2] = handTotals(toPlayedHand(r));
+        const left = sides.left === 1 ? total1 : total2;
+        const right = sides.left === 1 ? total2 : total1;
         const animate = mark?.added != null && mark.added === r.result_id ? "in" : mark?.flash === r.result_id ? "flash" : undefined;
         return {id: r.result_id, left, right, animate};
       }),

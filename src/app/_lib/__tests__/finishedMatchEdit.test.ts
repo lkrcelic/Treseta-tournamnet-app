@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {matchState, MATCH_THRESHOLD} from "../game/scoring";
+import {matchState, MATCH_THRESHOLD, NO_HAND_ZVANJA} from "../game/scoring";
 import {noWinnerWarning} from "../service/admin/hands";
 
 // The admin scorepad's change of a finished match's hands: the match may change hands freely, but leaving a match that
@@ -8,7 +8,7 @@ import {noWinnerWarning} from "../service/admin/hands";
 // database side is in db/finishedMatchEdit.test.ts (npm run test:db). Treseta's matches: to 41, raised by 10 while
 // level at or above it.
 
-const hand = (a: number, b: number) => ({team1_game_points: a, team2_game_points: b, custom: true, dosta_side: null});
+const hand = (a: number, b: number) => ({team1_game_points: a, team2_game_points: b, ...NO_HAND_ZVANJA, custom: true, dosta_side: null});
 const state = (...hands: [number, number][]) => matchState(hands.map(([a, b]) => hand(a, b)), MATCH_THRESHOLD);
 
 test("deleting a hand that takes the winner below 41 asks first", () => {

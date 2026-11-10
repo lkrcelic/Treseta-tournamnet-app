@@ -38,6 +38,94 @@ export function handError(points1: number, points2: number, custom: boolean): st
   return null;
 }
 
+// ---------- Zvanja ----------
+// On top of a hand's points each team may have zvanja, entered one click per zvanje:
+//   3: tri trice, tri dvice, tri asa, or napola (A, 2 and 3 of one suit: špade, kope, bate, dinari)
+//   4: četiri trice, četiri dvice, četiri asa
+// Zvanja are one player's (two partners' cards never add up to one), and a card may count in more than one zvanje
+// (the trica špada in tri trice and in napola špade). A custom hand has none: its typed points are the hand's total.
+export const ZVANJA_VALUES = [3, 4] as const;
+export type Zvanje = (typeof ZVANJA_VALUES)[number];
+// a team's zvanja on one hand, by value
+export type ZvanjaCounts = Record<Zvanje, number>;
+export const NO_ZVANJA: ZvanjaCounts = {3: 0, 4: 0};
+
+export const zvanjaPoints = (c: ZvanjaCounts): number => 3 * c[3] + 4 * c[4];
+export const hasZvanja = (c: ZvanjaCounts): boolean => c[3] > 0 || c[4] > 0;
+
+// A hand's zvanja as stored (Result, OngoingResult)
+export type HandZvanja = {
+  team1_zvanja3: number;
+  team1_zvanja4: number;
+  team2_zvanja3: number;
+  team2_zvanja4: number;
+};
+
+export const handZvanja = (h: HandZvanja): [ZvanjaCounts, ZvanjaCounts] => [
+  {3: h.team1_zvanja3, 4: h.team1_zvanja4},
+  {3: h.team2_zvanja3, 4: h.team2_zvanja4},
+];
+
+export const zvanjaColumns = (z1: ZvanjaCounts, z2: ZvanjaCounts): HandZvanja => ({
+  team1_zvanja3: z1[3],
+  team1_zvanja4: z1[4],
+  team2_zvanja3: z2[3],
+  team2_zvanja4: z2[4],
+});
+
+export const NO_HAND_ZVANJA: HandZvanja = zvanjaColumns(NO_ZVANJA, NO_ZVANJA);
+
+// What the cards allow. Only the 12 cards A, 2 and 3 of the four suits make zvanja, and a player holds 10 of the 40.
+// Counting every deal (each of the 12 cards with one of the four players, at most 10 each; zvanjaDeals.test.ts does it
+// again), a hand's zvanja [team 1's threes, fours, team 2's threes, fours] can be at most one of these. A team may
+// leave a zvanje unannounced, so anything below one of them is allowed too. A team alone has at most 21 (7 × 3), and
+// both teams together too: they share the 12 cards. No simpler rule says it: 1 × 4 against 4 × 3, for one, can't
+// happen, although each team could have its own on another deal.
+export const ZVANJA_DEALS: readonly (readonly [number, number, number, number])[] = [
+  [0, 0, 0, 3], [0, 0, 2, 2], [0, 0, 5, 1], [0, 0, 7, 0], [0, 1, 0, 2], [0, 1, 1, 1], [0, 2, 0, 1], [0, 3, 0, 0],
+  [1, 0, 1, 2], [1, 0, 2, 1], [1, 0, 6, 0], [1, 1, 0, 1], [1, 1, 2, 0], [1, 2, 1, 0], [2, 0, 1, 1], [2, 0, 3, 0],
+  [2, 1, 1, 0], [2, 2, 0, 0], [3, 0, 2, 0], [5, 1, 0, 0], [6, 0, 1, 0], [7, 0, 0, 0],
+];
+
+// one team on its own: 7 threes with no four, 5 with one, 2 with two, none with three (also the database's CHECK)
+const TEAM_MAX_THREES = [7, 5, 2, 0] as const;
+
+const teamPossible = (c: ZvanjaCounts) => c[4] <= 3 && c[3] <= TEAM_MAX_THREES[c[4]];
+
+const dealPossible = (z1: ZvanjaCounts, z2: ZvanjaCounts) =>
+  ZVANJA_DEALS.some(([a3, a4, b3, b4]) => z1[3] <= a3 && z1[4] <= a4 && z2[3] <= b3 && z2[4] <= b4);
+
+export type ZvanjaRules = {
+  // a custom hand: no zvanja
+  custom?: boolean;
+  // false: the table is a tournament's "bez zvanja" (Round.declarations)
+  declarations?: boolean;
+};
+
+// Returns a reason a hand's zvanja can't be right, or null when they are fine
+export function zvanjaError(z1: ZvanjaCounts, z2: ZvanjaCounts, {custom = false, declarations = true}: ZvanjaRules = {}): string | null {
+  const counts = [z1[3], z1[4], z2[3], z2[4]];
+  if (counts.some((n) => !Number.isInteger(n) || n < 0)) return "Zvanja moraju biti cijeli brojevi od 0.";
+  if (!hasZvanja(z1) && !hasZvanja(z2)) return null;
+  if (custom) return "Ručni unos nema zvanja.";
+  if (!declarations) return "Ovaj turnir se igra bez zvanja.";
+  if (!teamPossible(z1) || !teamPossible(z2)) return "Ekipa ne može imati ta zvanja.";
+  if (!dealPossible(z1, z2)) return "Obje ekipe ne mogu imati ta zvanja u istoj igri.";
+  return null;
+}
+
+// Whether one more zvanje of `value` for `team` would still be possible (the entry disables the button otherwise)
+export function canAddZvanje(z1: ZvanjaCounts, z2: ZvanjaCounts, team: Side, value: Zvanje): boolean {
+  const add = (c: ZvanjaCounts) => ({...c, [value]: c[value] + 1});
+  return team === 1 ? zvanjaError(add(z1), z2) === null : zvanjaError(z1, add(z2)) === null;
+}
+
+// A hand's total for each team: its points and its zvanja
+export function handTotals(h: PlayedHand): [number, number] {
+  const [z1, z2] = handZvanja(h);
+  return [h.team1_game_points + zvanjaPoints(z1), h.team2_game_points + zvanjaPoints(z2)];
+}
+
 // A match is over once a team reaches the threshold and the two scores differ.
 export function matchWinner(score1: number, score2: number, threshold: number): Side | null {
   if (score1 === score2) return null;
@@ -45,8 +133,9 @@ export function matchWinner(score1: number, score2: number, threshold: number): 
   return score1 > score2 ? 1 : 2;
 }
 
-// A hand as the match plays it. `dosta_side` is the team that called "s ovim dosta" on it, if any.
-export type PlayedHand = {
+// A hand as the match plays it: its points and zvanja (required, so a caller that forgets to read the zvanja doesn't
+// compile rather than counting the hand without them). `dosta_side` is the team that called "s ovim dosta" on it.
+export type PlayedHand = HandZvanja & {
   team1_game_points: number;
   team2_game_points: number;
   dosta_side?: number | null;
@@ -76,8 +165,9 @@ export function matchState(hands: PlayedHand[], threshold = MATCH_THRESHOLD): Ma
   let callError: string | null = null;
 
   for (const hand of hands) {
-    score1 += hand.team1_game_points;
-    score2 += hand.team2_game_points;
+    const [total1, total2] = handTotals(hand);
+    score1 += total1;
+    score2 += total2;
     const caller = hand.dosta_side;
     if (caller === 1 || caller === 2) {
       if (calledBy !== null) {
@@ -101,8 +191,9 @@ export function dostaCallers(hands: PlayedHand[], threshold = MATCH_THRESHOLD): 
   if (!last) return [];
   const before = matchState(hands.slice(0, -1), threshold);
   if (before.winner !== null) return [];
-  const score1 = before.score1 + last.team1_game_points;
-  const score2 = before.score2 + last.team2_game_points;
+  const [total1, total2] = handTotals(last);
+  const score1 = before.score1 + total1;
+  const score2 = before.score2 + total2;
   return ([1, 2] as const).filter((side) => (side === 1 ? score1 : score2) >= before.target);
 }
 

@@ -11,7 +11,7 @@ import {
   targetRaises,
   timeWinner,
 } from "@/app/_lib/gameTime";
-import {MATCH_THRESHOLD, matchState, TARGET_RAISE} from "@/app/_lib/game/scoring";
+import {MATCH_THRESHOLD, matchState, NO_HAND_ZVANJA, TARGET_RAISE} from "@/app/_lib/game/scoring";
 
 // Vrijeme partije: the deadline, the five minutes a raised target is worth, the hands after the time, and closing a
 // match by time
@@ -44,16 +44,16 @@ test("the raises are counted from the target the hands reached", () => {
 test("a match level at 41 plays to 51 and lasts 50 minutes, one level again to 61 lasts 55", () => {
   // four hands of 11: 41:41 is level at the target, so it goes up to 51
   const level = [
-    {team1_game_points: 11, team2_game_points: 0},
-    {team1_game_points: 0, team2_game_points: 11},
-    {team1_game_points: 30, team2_game_points: 30, dosta_side: null},
-    {team1_game_points: 0, team2_game_points: 0},
+    {team1_game_points: 11, team2_game_points: 0, ...NO_HAND_ZVANJA},
+    {team1_game_points: 0, team2_game_points: 11, ...NO_HAND_ZVANJA},
+    {team1_game_points: 30, team2_game_points: 30, ...NO_HAND_ZVANJA, dosta_side: null},
+    {team1_game_points: 0, team2_game_points: 0, ...NO_HAND_ZVANJA},
   ];
   const once = matchState(level, MATCH_THRESHOLD);
   assert.equal(once.target, 51);
   assert.equal(matchDeadline(start, GAME_MINUTES_DEFAULT, targetRaises(once.target, MATCH_THRESHOLD)).toISOString(), "2026-11-10T19:50:00.000Z");
 
-  const twice = matchState([...level, {team1_game_points: 10, team2_game_points: 10}], MATCH_THRESHOLD);
+  const twice = matchState([...level, {team1_game_points: 10, team2_game_points: 10, ...NO_HAND_ZVANJA}], MATCH_THRESHOLD);
   assert.equal(twice.target, 61);
   assert.equal(matchDeadline(start, GAME_MINUTES_DEFAULT, targetRaises(twice.target, MATCH_THRESHOLD)).toISOString(), "2026-11-10T19:55:00.000Z");
 });

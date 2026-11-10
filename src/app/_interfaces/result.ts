@@ -16,11 +16,15 @@ export const ResultResponseValidation = ResultCreateRequestValidation.extend({
   result_id: z.number().int().nullable(),
 });
 
-// A hand as the scoreboard lists it
+// A hand as the scoreboard lists it, with each team's zvanja by value (0 when the server leaves them out)
 export const PartialResultResponseValidation = z.object({
   result_id: z.number().int().nullable(),
   team1_game_points: z.number(),
   team2_game_points: z.number(),
+  team1_zvanja3: z.number().int().default(0),
+  team1_zvanja4: z.number().int().default(0),
+  team2_zvanja3: z.number().int().default(0),
+  team2_zvanja4: z.number().int().default(0),
   custom: z.boolean().optional(),
   dosta_side: TeamSideValidation.nullable().optional(),
 });

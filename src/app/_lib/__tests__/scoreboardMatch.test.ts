@@ -4,7 +4,7 @@ import {test} from "node:test";
 import {TeamSide} from "@/app/_interfaces/side";
 import {RoundExtendedResponse} from "@/app/_interfaces/round";
 import {myTeamIsTeam1} from "@/app/_hooks/useOpenTable";
-import {dostaCallers, HAND_POINTS, matchState, PlayedHand} from "@/app/_lib/game/scoring";
+import {dostaCallers, HAND_POINTS, matchState, NO_HAND_ZVANJA, PlayedHand} from "@/app/_lib/game/scoring";
 import {InvalidResultError, normalizeResult} from "@/app/_lib/validation/validateResult";
 import {enterHand, HandPlan} from "./helpers/handEntry";
 
@@ -35,7 +35,7 @@ class Match {
     const saved = normalizeResult(sent);
     // what the phone showed is what the server stores
     assert.deepEqual(saved, sent, `client and server disagree on ${JSON.stringify(plan)}`);
-    this.hands.push({team1_game_points: saved.team1_game_points, team2_game_points: saved.team2_game_points});
+    this.hands.push({team1_game_points: saved.team1_game_points, team2_game_points: saved.team2_game_points, ...NO_HAND_ZVANJA});
     return saved;
   }
 

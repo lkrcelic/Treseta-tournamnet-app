@@ -11,7 +11,15 @@ export async function ongoingMatchState(
   const hands = await tx.ongoingResult.findMany({
     where: {match_id: matchId},
     orderBy: {result_id: "asc"},
-    select: {team1_game_points: true, team2_game_points: true, dosta_side: true},
+    select: {
+      team1_game_points: true,
+      team2_game_points: true,
+      team1_zvanja3: true,
+      team1_zvanja4: true,
+      team2_zvanja3: true,
+      team2_zvanja4: true,
+      dosta_side: true,
+    },
   });
   return matchState(hands, threshold ?? MATCH_THRESHOLD);
 }
