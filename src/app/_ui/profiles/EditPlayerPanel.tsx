@@ -14,8 +14,7 @@ import {neighbourId, removeAdminPlayer, removeMemberEverywhere, setAdminPlayerAc
 import {draftChanges, draftErrors, firstErrorField, hasChanges, PlayerDraft, playerDraft} from "@/app/_lib/ui/playerAdmin";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, tint} from "@/app/_styles/tokens";
-import {buttonBase, ErrorNote, Field, SidePanel, SolidButton, SwitchRow, TextInput} from "@/app/_ui/sp";
-import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
+import {buttonBase, ErrorNote, Field, Segmented, SidePanel, SolidButton, SwitchRow, TextInput} from "@/app/_ui/sp";
 import BlockRoundedIcon from "@mui/icons-material/BlockRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import HowToRegRoundedIcon from "@mui/icons-material/HowToRegRounded";
@@ -26,19 +25,32 @@ import {usePathname} from "next/navigation";
 import React, {useEffect, useId, useRef, useState} from "react";
 import {useDirectoryFrame} from "./PageParts";
 import {errorText} from "./TeamAdmin";
+import {Role, ROLE_NAME} from "@/app/_lib/auth/roles";
 
 // "Uredi osobne podatke" (handoff §6 "Admin controls", design 13j, Profiles P:359-390): the panel an admin opens with
 // "Uredi podatke" on a desktop Player page. Spremi sends the fields that changed in one request (what is wrong shows
 // under its field); the Račun section deactivates, activates or deletes the player, each after its own confirmation,
 // at once and apart from Spremi. While Spremi or an account action is on its way the panel stays open, so its outcome
 // is seen. An admin editing themself can't take their own admin role and has no Račun section (the server refuses all
-// three too).
+// three too). Rola picks what the player is — Igrač, Organizator or Administrator (DECISIONS #86).
 
 type Errors = Partial<Record<AdminPlayerField, string>>;
 
-const ADMIN_NOTE = "Administrator upravlja ligama, ekipama, kolima i igračima.";
-// an admin editing themself (the switch can't be changed)
-const SELF_ADMIN_NOTE = `${ADMIN_NOTE} Svoja administratorska prava ne možeš ukloniti.`;
+// What each role is, under the picker (DECISIONS #86). A new role is one line here and one in ROLE_ITEMS.
+export const ROLE_NOTE: Record<Role, string> = {
+  ADMIN: "Administrator upravlja ligama, ekipama, kolima i igračima.",
+  ORGANIZER: "Organizator pravi turnire i vodi svoje: kola, stolove, prijave i dolaske. Liga nije njegova.",
+  PLAYER: "Igrač igra: svoj profil, svoje ekipe i svoje prijave.",
+};
+// an admin editing themself (the picker can't be changed)
+const SELF_ADMIN_NOTE = `${ROLE_NOTE.ADMIN} Svoja administratorska prava ne možeš ukloniti.`;
+
+// the picker's segments, in order from the least to the most it may do
+export const ROLE_ITEMS: {key: Role; label: string}[] = [
+  {key: "PLAYER", label: ROLE_NAME.PLAYER},
+  {key: "ORGANIZER", label: ROLE_NAME.ORGANIZER},
+  {key: "ADMIN", label: ROLE_NAME.ADMIN},
+];
 
 // The form of "Uredi osobne podatke" (the desktop panel, the phone's sheet): it starts from the player as the page shows
 // them (data, the page of overview). save sends the fields that changed in one request (what is wrong shows under its
@@ -191,11 +203,17 @@ export function EditPlayerPanel({data, overview, onClose}: {data: PlayerOverview
           Pušač
         </PanelSwitch>
         <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
+          <Box sx={{pl: "4px", fontSize: 12.5, fontWeight: 600, color: color.muted}}>Rola</Box>
           {/* an admin can't take their own role (the server refuses it too) */}
-          <PanelSwitch checked={draft.is_admin} disabled={saving || self} onChange={(v) => change("is_admin", v)} icon={<AdminPanelSettingsRoundedIcon aria-hidden />}>
-            Admin
-          </PanelSwitch>
-          <Box sx={note}>{self ? SELF_ADMIN_NOTE : ADMIN_NOTE}</Box>
+          <Segmented
+            asTabs={false}
+            variant="panel"
+            label="Rola"
+            items={self ? ROLE_ITEMS.filter((r) => r.key === "ADMIN") : ROLE_ITEMS}
+            value={draft.role}
+            onChange={(r) => !saving && !self && change("role", r)}
+          />
+          <Box sx={note}>{self ? SELF_ADMIN_NOTE : ROLE_NOTE[draft.role]}</Box>
         </Box>
       </Box>
       {!self && <AccountSection player={player} overview={overview} busy={accountBusy} setBusy={setAccountBusy} />}
@@ -280,7 +298,7 @@ export function forgetPlayer(playerId: number) {
 
 // The copy of the confirmations, for the phone's sheets (the panel has its own, CONFIRM)
 export const ACCOUNT_TEXT = {
-  admin: ADMIN_NOTE,
+  admin: ROLE_NOTE.ADMIN,
   selfAdmin: SELF_ADMIN_NOTE,
 } as const;
 

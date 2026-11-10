@@ -6,7 +6,6 @@ import useLeagues, {useLeagueList} from "@/app/_hooks/useLeagues";
 import useMyTeams from "@/app/_hooks/useMyTeams";
 import useConferences from "@/app/_hooks/useConferences";
 import useConferenceFilter from "@/app/_hooks/useConferenceFilter";
-import useAdminPhone from "@/app/_hooks/useAdminPhone";
 import useNavStack from "@/app/_hooks/useNavStack";
 import useShortWindow from "@/app/_hooks/useShortWindow";
 import {useLeagueStandings} from "@/app/_hooks/useStandings";
@@ -45,6 +44,7 @@ import {Box} from "@mui/material";
 import {useParams, useSearchParams} from "next/navigation";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {Suspense, useEffect, useMemo, useRef} from "react";
+import useManagePhone from "@/app/_hooks/useManagePhone";
 
 // Season table of a league: podium for the top three, then everyone else. Each row opens its team's page (for a
 // logged-in player; the table itself is public), and Back from it finds the list where it was left. Opened from a
@@ -65,7 +65,7 @@ function LeagueStandings() {
   const highlightTeamId = highlightParam(useSearchParams().get("team"));
   const router = useTransitionRouter();
   const isDesktop = useIsDesktop();
-  const adminPhone = useAdminPhone();
+  const adminPhone = useManagePhone("league.manage");
   const short = useShortWindow();
   const leagues = useLeagues(leagueId);
   const {teams} = useMyTeams();

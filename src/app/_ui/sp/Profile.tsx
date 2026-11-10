@@ -4,10 +4,13 @@ import {changeTone, nightResult} from "@/app/_lib/ui/ratings";
 import {matchesQuery} from "@/app/_lib/ui/text";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {color, ease, font, shadow, tint} from "@/app/_styles/tokens";
+import {Role, ROLE_NAME} from "@/app/_lib/auth/roles";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
 import BlockRoundedIcon from "@mui/icons-material/BlockRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import MilitaryTechRoundedIcon from "@mui/icons-material/MilitaryTechRounded";
 import {Box, keyframes, SxProps, Theme} from "@mui/material";
 import React, {useContext, useEffect, useId, useRef, useState} from "react";
 import {buttonBase, ellipsis, mergeSx, tabular} from "./base";
@@ -133,6 +136,52 @@ export function Tag({variant, size = "md", sx}: {variant: keyof typeof TAG; size
       )}
     >
       {variant === "inactive" && <BlockRoundedIcon aria-hidden />}
+      {t.label}
+    </Box>
+  );
+}
+
+// What a role looks like beside a name (DECISIONS #86). A new role is one entry here; a plain player has none, so
+// ROLE_TAG has no PLAYER and RoleTag draws nothing for it.
+const ROLE_TAG: Partial<Record<Role, {label: string; background: string; icon: React.ReactNode}>> = {
+  ADMIN: {label: ROLE_NAME.ADMIN, background: color.navy, icon: <AdminPanelSettingsRoundedIcon aria-hidden />},
+  ORGANIZER: {label: ROLE_NAME.ORGANIZER, background: color.green, icon: <MilitaryTechRoundedIcon aria-hidden />},
+};
+
+/**
+ * The label that says what someone is: "Admin" with a shield, "Organizator" with a tournament medal. It sits beside
+ * the name on a profile (ProfileHero's `tag`) — both the viewer's own Moj profil and a player's page, on the phone and
+ * on the computer. A plain player gets nothing, and so does a role this build doesn't know.
+ *
+ * sm is the phone size, as Tag's is.
+ */
+export function RoleTag({role, size = "md", sx}: {role: Role | undefined; size?: "sm" | "md"; sx?: SxProps<Theme>}) {
+  const t = role ? ROLE_TAG[role] : undefined;
+  if (!t) return null;
+  const sm = size === "sm";
+  return (
+    <Box
+      component="span"
+      sx={mergeSx(
+        {
+          height: sm ? 22 : 26,
+          flex: "none",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "3px",
+          px: sm ? "7px" : "9px",
+          borderRadius: sm ? "7px" : "9px",
+          background: t.background,
+          color: color.white,
+          fontSize: sm ? 11.5 : 12.5,
+          fontWeight: 700,
+          whiteSpace: "nowrap",
+          "& svg": {fontSize: sm ? 14 : 16, ml: "-1px"},
+        },
+        sx
+      )}
+    >
+      {t.icon}
       {t.label}
     </Box>
   );

@@ -1,7 +1,6 @@
 "use client";
 
 import useBurza from "@/app/_hooks/useBurza";
-import useIsAdmin from "@/app/_hooks/useIsAdmin";
 import useAdminViewStore from "@/app/_store/adminViewStore";
 import {useSelectedLeagueId} from "@/app/_hooks/useLeagues";
 import useMySchedule from "@/app/_hooks/useMySchedule";
@@ -30,6 +29,7 @@ import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import {Box} from "@mui/material";
 import {TransitionLink, useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {useMyRating} from "@/app/_hooks/useRatings";
+import {useManages} from "@/app/_hooks/useCan";
 
 // under 400 px the header holds the brand (with its logo) next to an admin's Admin button only as an icon
 const narrowPhone = "@media (max-width: 399.98px)";
@@ -52,7 +52,7 @@ export default function PhoneHome() {
   const now = useNow();
   // the team at the table tonight that is here (Tu smo): Odlazimo under Započni igru
   const here = schedule?.leagues.find((l) => l.arrival?.night === schedule.today && l.arrival.arrival?.here && leagueArrivalPhase(l.arrival, now) !== "over");
-  const isAdmin = useIsAdmin();
+  const isAdmin = useManages();
   const setAdminView = useAdminViewStore((st) => st.setView);
   const {me: myRating} = useMyRating();
 

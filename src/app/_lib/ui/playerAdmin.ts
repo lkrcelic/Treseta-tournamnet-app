@@ -3,9 +3,10 @@
 import {ADMIN_PLAYER_FIELDS, AdminPlayerField, AdminPlayerUpdateRequest, AdminPlayerUpdateValidation, BIRTH_DATE_ERROR, PlayerView} from "@/app/_interfaces/player";
 import {normalizePhone} from "@/app/_lib/phone";
 import {normalizeUsername} from "@/app/_lib/validation/username";
+import type {Role} from "@/app/_lib/auth/roles";
 
-// The fields as typed: text for the inputs ("" = empty; the birth date as the date input gives it, YYYY-MM-DD) and
-// the two switches
+// The fields as typed: text for the inputs ("" = empty; the birth date as the date input gives it, YYYY-MM-DD), the
+// Pušač switch and the role
 export type PlayerDraft = {
   first_name: string;
   last_name: string;
@@ -14,7 +15,7 @@ export type PlayerDraft = {
   phone: string;
   birth_date: string;
   smoker: boolean;
-  is_admin: boolean;
+  role: Role;
 };
 
 // The form as it opens: the player's details as an admin sees them (every key is there for an admin)
@@ -27,7 +28,8 @@ export function playerDraft(p: PlayerView): PlayerDraft {
     phone: p.phone ?? "",
     birth_date: p.birth_date ?? "",
     smoker: p.smoker === true,
-    is_admin: p.is_admin === true,
+    // the role comes in the public part of the view; a plain player has none to send
+    role: p.role ?? "PLAYER",
   };
 }
 
@@ -49,7 +51,7 @@ export function draftChanges(from: PlayerDraft, to: PlayerDraft): AdminPlayerUpd
   if (!samePhone(to.phone, from.phone)) changes.phone = to.phone.trim() ? to.phone : null;
   if (to.birth_date !== from.birth_date) changes.birth_date = to.birth_date || null;
   if (to.smoker !== from.smoker) changes.smoker = to.smoker;
-  if (to.is_admin !== from.is_admin) changes.is_admin = to.is_admin;
+  if (to.role !== from.role) changes.role = to.role;
   return changes;
 }
 

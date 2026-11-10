@@ -61,11 +61,15 @@ const API = join(__dirname, "..", "..", "api");
 const METHOD = "GET|POST|PUT|PATCH|DELETE";
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
+
+// What counts as a guard: requireAdmin means "only ADMIN", requireCan asks the capability map (DECISIONS #86), so a
+// route more than one role may reach is guarded by requireCan — never by nothing.
+const GUARD = /require(Admin|Can)\(/;
 // "path METHOD" → why it doesn't call requireAdmin: the handlers in the scanned folders that players use too
 const ALLOWED_WITHOUT_ADMIN: Record<string, string> = {
   "rounds/[id]/lineup/route.ts PUT": "Tko igra ovu rundu?: a player of either team confirms the lineup (canPlayRound)",
   "matches/route.ts POST": "the players of the round finish their match (canPlayRound)",
-  "teams/[id]/route.ts PATCH": "any player of the team chooses who sees its photo; renaming and blocking photos check the admin role in the handler",
+  "teams/[id]/route.ts PATCH": "any player of the team chooses who sees its photo; renaming asks team.edit and blocking photos team.moderate in the handler",
   "teams/[id]/photo/route.ts PUT": "any player of the team sets its photo (teamPhotoChangeError); an admin may not",
   "teams/[id]/photo/route.ts DELETE": "a player of the team or an admin removes its photo (teamPhotoChangeError)",
   "leagues/[id]/arrival/route.ts POST": "Tu smo, Ipak otkazujemo, Odlazimo on a league night: a player of a team in the league, for the team (teamArrivalAction checks it)",
@@ -114,7 +118,7 @@ function scan(paths: string[]): Handler[] {
 
 function missingAdmin(handlers: Handler[]): string[] {
   return handlers
-    .filter((h) => !h.body.includes("requireAdmin("))
+    .filter((h) => !GUARD.test(h.body))
     .map((h) => `${h.file} ${h.method}`)
     .filter((key) => !(key in ALLOWED_WITHOUT_ADMIN));
 }
@@ -151,6 +155,19 @@ test("a one-line handler doesn't borrow the next handler's check", () => {
     `}`,
   ].join("\n");
   assert.deepEqual(missingAdmin(handlersIn(source, "y/route.ts")), ["y/route.ts GET"]);
+});
+
+test("requireCan counts as a guard: a route more than one role may reach is guarded too", () => {
+  const source = [
+    `export async function GET(req) {`,
+    `  const auth = await requireCan(req, "player.directory");`,
+    `}`,
+    `export async function DELETE(req) {`,
+    `  const player = await getAuthorizedUser(req);`,
+    `}`,
+  ].join("\n");
+  // the capability map decides who gets in (permissions.ts); a handler with no check at all is still named
+  assert.deepEqual(missingAdmin(handlersIn(source, "z/route.ts")), ["z/route.ts DELETE"]);
 });
 
 test("every admin endpoint calls requireAdmin", () => {

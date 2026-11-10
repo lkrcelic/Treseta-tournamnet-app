@@ -5,6 +5,7 @@ import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {zodMessage} from "@/app/_lib/validation/zodMessage";
 import {ImageError} from "@/app/_lib/images";
+import {ForbiddenError} from "@/app/_lib/auth/forbidden";
 
 // Turns errors thrown by validation into a 400 with a readable message; anything else is logged and becomes a 500.
 // The message is always a string in `error` (Croatian); a zod error also lists its issues.
@@ -22,6 +23,10 @@ export function errorResponse(error: unknown, fallbackMessage: string): NextResp
   if (error instanceof InvalidResultError || error instanceof ImageError) {
     return NextResponse.json({error: error.message}, {status: STATUS.BadRequest});
   }
+  // the player is logged in but may not do this (a tournament that isn't theirs): a refusal, not a server fault
+  if (error instanceof ForbiddenError) {
+    return NextResponse.json({error: error.message}, {status: STATUS.Forbidden});
+  }
   console.error(error);
   return NextResponse.json({error: fallbackMessage}, {status: STATUS.ServerError});
 }
@@ -31,6 +36,9 @@ export function errorResponse(error: unknown, fallbackMessage: string): NextResp
 export function lookupErrorResponse(error: unknown, fallbackMessage: string): NextResponse {
   if (error instanceof NotFoundError) {
     return NextResponse.json({error: error.message}, {status: STATUS.NotFound});
+  }
+  if (error instanceof ForbiddenError) {
+    return NextResponse.json({error: error.message}, {status: STATUS.Forbidden});
   }
   console.error(error);
   return NextResponse.json({error: fallbackMessage}, {status: STATUS.ServerError});

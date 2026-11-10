@@ -11,8 +11,7 @@ import {teamAddOptions} from "@/app/_lib/ui/directory";
 import {teamInitial} from "@/app/_lib/ui/profiles";
 import {TransitionLink, useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, shadow, tint} from "@/app/_styles/tokens";
-import {BottomSheet, buttonBase, ConfirmSheet, ellipsis, EmptyState, ErrorNote, Field, InitialsAvatar, OutlineButton, SearchAddField, SectionLabel, SolidButton, SwitchRow, SwitchTrack, TextInput} from "@/app/_ui/sp";
-import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
+import {BottomSheet, buttonBase, ConfirmSheet, ellipsis, EmptyState, ErrorNote, Field, InitialsAvatar, OutlineButton, SearchAddField, SectionLabel, Segmented, SolidButton, SwitchRow, TextInput} from "@/app/_ui/sp";
 import BlockRoundedIcon from "@mui/icons-material/BlockRounded";
 import GroupAddRoundedIcon from "@mui/icons-material/GroupAddRounded";
 import GroupRemoveRoundedIcon from "@mui/icons-material/GroupRemoveRounded";
@@ -21,7 +20,8 @@ import PersonOffRoundedIcon from "@mui/icons-material/PersonOffRounded";
 import SmokingRoomsRoundedIcon from "@mui/icons-material/SmokingRoomsRounded";
 import {Box} from "@mui/material";
 import React, {useId, useMemo, useState} from "react";
-import {ACCOUNT_TEXT, changePlayerActive, forgetPlayer, usePlayerForm} from "./EditPlayerPanel";
+import {ACCOUNT_TEXT, changePlayerActive, forgetPlayer, ROLE_ITEMS, ROLE_NOTE, usePlayerForm} from "./EditPlayerPanel";
+import type {Role} from "@/app/_lib/auth/roles";
 import {PlayerTeamsAdmin} from "./PlayerAdmin";
 import {AddError, errorText, RemoveButton} from "./TeamAdmin";
 import {stretchedLink, stretchedRow} from "./PageParts";
@@ -80,32 +80,31 @@ export function PlayerTeamsPhone({data, admin}: {data: PlayerOverview; admin: Pl
 
 type Ask = "active" | "delete";
 
-// The Admin switch (saved at once) and Račun. An admin can't take their own role or close their own account (the
-// server refuses it too).
+// Rola (saved at once) and Račun. An admin can't take their own role or close their own account (the server refuses
+// it too). The same choice as the computer's panel (EditPlayerPanel), only it saves on the spot (DECISIONS #86).
 export function PlayerAccountPhone({data, overview}: {data: PlayerOverview; overview: Overview<PlayerOverview>}) {
   const router = useTransitionRouter();
   const player = data.player;
   const self = data.viewer.self;
-  const [admin, setAdmin] = useState<boolean | null>(null);
-  const isAdmin = admin ?? player.is_admin === true;
+  const [picked, setPicked] = useState<Role | null>(null);
+  const role: Role = picked ?? player.role ?? "PLAYER";
   const [adminBusy, setAdminBusy] = useState(false);
   const [adminError, setAdminError] = useState<string | null>(null);
   const [ask, setAsk] = useState<Ask | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const toggleAdmin = async () => {
-    if (self || adminBusy) return;
-    const next = !isAdmin;
-    setAdmin(next);
+  const pickRole = async (next: Role) => {
+    if (self || adminBusy || next === role) return;
+    setPicked(next);
     setAdminBusy(true);
     setAdminError(null);
     try {
-      await updateAdminPlayerAPI(player.id, {is_admin: next});
-      adminPlayersList.update((list) => list.map((p) => (p.id === player.id ? {...p, admin: next} : p)));
+      await updateAdminPlayerAPI(player.id, {role: next});
+      adminPlayersList.update((list) => list.map((p) => (p.id === player.id ? {...p, admin: next === "ADMIN", role: next === "PLAYER" ? undefined : next} : p)));
       overview.reload();
     } catch (e) {
-      setAdmin(!next);
+      setPicked(role);
       setAdminError(errorText(e, "Promjena nije spremljena."));
     }
     setAdminBusy(false);
@@ -150,27 +149,18 @@ export function PlayerAccountPhone({data, overview}: {data: PlayerOverview; over
   return (
     <>
       <Box sx={{flex: "none", display: "flex", flexDirection: "column", gap: "8px"}}>
-        <SectionLabel>Admin</SectionLabel>
-        <Box sx={{background: color.white, borderRadius: "22px", overflow: "hidden", boxShadow: shadow.card}}>
-          <Box
-            component="button"
-            type="button"
-            role="switch"
-            aria-checked={isAdmin}
-            aria-label="Administrator"
-            disabled={self || adminBusy}
-            onClick={toggleAdmin}
-            sx={{...buttonBase, width: "100%", minHeight: 72, display: "flex", alignItems: "center", gap: "12px", px: "16px", textAlign: "left"}}
-          >
-            <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
-              <Box component="span" sx={{fontSize: 16, fontWeight: 600, color: color.ink}}>
-                Administrator
-              </Box>
-              <Box component="span" sx={{fontSize: 13, lineHeight: 1.35, color: color.muted}}>
-                {self ? ACCOUNT_TEXT.selfAdmin : ACCOUNT_TEXT.admin}
-              </Box>
-            </Box>
-            <SwitchTrack on={isAdmin} dim={self} />
+        <SectionLabel>Rola</SectionLabel>
+        <Box sx={{background: color.white, borderRadius: "22px", p: "14px", display: "flex", flexDirection: "column", gap: "10px", boxShadow: shadow.card}}>
+          <Segmented
+            asTabs={false}
+            variant="panel"
+            label="Rola"
+            items={self ? ROLE_ITEMS.filter((r) => r.key === "ADMIN") : ROLE_ITEMS}
+            value={role}
+            onChange={pickRole}
+          />
+          <Box component="span" sx={{fontSize: 13, lineHeight: 1.35, color: color.muted}}>
+            {self ? ACCOUNT_TEXT.selfAdmin : ROLE_NOTE[role]}
           </Box>
         </Box>
         {adminError && <ErrorNote>{adminError}</ErrorNote>}
@@ -293,15 +283,5 @@ export function PlayerDetailsSheet({data, overview, onClose}: {data: PlayerOverv
         </SolidButton>
       </Box>
     </BottomSheet>
-  );
-}
-
-// the shield next to an admin's name on the phone hero
-export function AdminNameTag() {
-  return (
-    <Box component="span" sx={{height: 22, display: "inline-flex", alignItems: "center", gap: "3px", px: "7px", borderRadius: "7px", background: color.navy, color: color.white, fontSize: 11.5, fontWeight: 700, "& svg": {fontSize: 14}}}>
-      <AdminPanelSettingsRoundedIcon aria-hidden />
-      Admin
-    </Box>
   );
 }

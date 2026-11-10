@@ -1,11 +1,17 @@
 import {PlayerView} from "@/app/_interfaces/player";
 import {PHOTO_BLOCKED_ERROR, PhotoVisibility} from "@/app/_interfaces/photo";
+import {can} from "@/app/_lib/auth/permissions";
+import {Role, rolesOf} from "@/app/_lib/auth/roles";
 import {isAdminRole} from "./admin";
 import {fullName} from "./names";
 
-// Who sees which personal data of a player (handoff §6 "Privacy", enforced on the server). The player themselves and
-// admins get everything. Everyone else gets the name and whether the account is active ("Neaktivan" is shown to all);
-// the username, email, phone, birth date, smoker flag and admin role are left out of the response altogether.
+// Who sees which personal data of a player (handoff §6 "Privacy", enforced on the server), in three steps
+// (DECISIONS #86):
+//   public          id, name, whether the account is active ("Neaktivan" is shown to all), and the role
+//   player.contact  + the phone number                              (admin, organizer)
+//   player.private  + the username, email, birth date, smoker flag  (the player themselves, admin)
+// The role is on purpose in the public part: a label says who runs the league and who runs tournaments, so a player
+// knows whom they are talking to. Everything further up is left out of the response altogether.
 // Rating, teams and results are public and come from their own queries. Framework free so it can be unit tested.
 
 // The logged-in player looking at the page
@@ -25,14 +31,32 @@ export type PrivatePlayer = {
   player_role: string;
 };
 
-// The player themselves or an admin
+// The player themselves or whoever may see private data (an admin)
 export function fullAccess(viewer: Viewer | null, playerId: number): boolean {
-  return viewer != null && (viewer.id === playerId || isAdminRole(viewer));
+  return viewer != null && (viewer.id === playerId || can(viewer, "player.private"));
+}
+
+// The phone number: the player themselves, an admin, and an organizer (they call the teams of their tournament)
+export function contactAccess(viewer: Viewer | null, playerId: number): boolean {
+  return fullAccess(viewer, playerId) || can(viewer, "player.contact");
+}
+
+// A player's role as everyone sees it; PLAYER has none to show, so it is left out
+export function publicRole(p: {player_role: string}): Role | undefined {
+  const role = rolesOf(p)[0];
+  return role && role !== "PLAYER" ? role : undefined;
 }
 
 export function playerView(p: PrivatePlayer, viewer: Viewer | null): PlayerView {
-  const view: PlayerView = {id: p.id, first_name: p.first_name, last_name: p.last_name, name: fullName(p), active: p.active};
-  if (!fullAccess(viewer, p.id)) return view;
+  const view: PlayerView = {
+    id: p.id,
+    first_name: p.first_name,
+    last_name: p.last_name,
+    name: fullName(p),
+    active: p.active,
+    ...(publicRole(p) && {role: publicRole(p)}),
+  };
+  if (!fullAccess(viewer, p.id)) return contactAccess(viewer, p.id) ? {...view, phone: p.phone} : view;
   return {
     ...view,
     username: p.username,

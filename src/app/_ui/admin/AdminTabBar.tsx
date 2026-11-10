@@ -16,24 +16,29 @@ import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import {Box} from "@mui/material";
 import React from "react";
+import type {Capability} from "@/app/_lib/auth/permissions";
+import useAuthStore, {userCan} from "@/app/_store/authStore";
 
 export type AdminTab = "vecer" | "rejting" | "ekipe" | "igraci" | "sponzori";
 
-const TABS: {key: AdminTab; label: string; href: string; icon: React.ReactNode; iconOn: React.ReactNode}[] = [
-  {key: "vecer", label: "Večer", href: "/", icon: <EventOutlinedIcon />, iconOn: <EventRoundedIcon />},
-  {key: "rejting", label: "Rejting", href: "/ratings", icon: <LeaderboardOutlinedIcon />, iconOn: <LeaderboardRoundedIcon />},
-  {key: "ekipe", label: "Ekipe", href: "/teams", icon: <GroupsOutlinedIcon />, iconOn: <GroupsRoundedIcon />},
-  {key: "igraci", label: "Igrači", href: "/players", icon: <PersonOutlineRoundedIcon />, iconOn: <PersonRoundedIcon />},
-  {key: "sponzori", label: "Sponzori", href: "/sponzori", icon: <HandshakeOutlinedIcon />, iconOn: <HandshakeRoundedIcon />},
+// cap: the tab is there only for whoever may use that screen, as the computer's menu does (DECISIONS #86)
+const TABS: {key: AdminTab; label: string; href: string; cap: Capability; icon: React.ReactNode; iconOn: React.ReactNode}[] = [
+  {key: "vecer", label: "Večer", href: "/", cap: "league.manage", icon: <EventOutlinedIcon />, iconOn: <EventRoundedIcon />},
+  {key: "rejting", label: "Rejting", href: "/ratings", cap: "rating.manage", icon: <LeaderboardOutlinedIcon />, iconOn: <LeaderboardRoundedIcon />},
+  {key: "ekipe", label: "Ekipe", href: "/teams", cap: "team.edit", icon: <GroupsOutlinedIcon />, iconOn: <GroupsRoundedIcon />},
+  {key: "igraci", label: "Igrači", href: "/players", cap: "player.directory", icon: <PersonOutlineRoundedIcon />, iconOn: <PersonRoundedIcon />},
+  {key: "sponzori", label: "Sponzori", href: "/sponzori", cap: "sponsor.manage", icon: <HandshakeOutlinedIcon />, iconOn: <HandshakeRoundedIcon />},
 ];
 
 // The bar's height above the safe area (the home indicator)
 const BAR = 58;
 
-// The admin's bottom bar on the phone (admin-mobile design): Večer, Rejting, Ekipe, Igrači and Sponzori. It is on the
-// five screens it opens; the screens under them have Back instead. Each tab starts the page stack afresh, like the desktop
+// The management bottom bar on the phone (admin-mobile design): Večer, Rejting, Ekipe, Igrači and Sponzori, each shown
+// only to whoever may use it. It is on the five screens it opens; the screens under them have Back instead. Each tab starts the page stack afresh, like the desktop
 // menu. A spacer of the bar's height keeps the end of the page clear of it (put it last in the screen).
 export function AdminTabBar({active}: {active: AdminTab}) {
+  const user = useAuthStore((s) => s.user);
+  const tabs = TABS.filter((t) => userCan(user, t.cap));
   return (
     <>
       <Box aria-hidden sx={{flex: "none", height: `calc(${BAR}px + max(10px, env(safe-area-inset-bottom)))`}} />
@@ -53,7 +58,7 @@ export function AdminTabBar({active}: {active: AdminTab}) {
         }}
       >
         <Box component="ul" sx={{listStyle: "none", m: "0 auto", p: "0 8px", maxWidth: 560, display: "flex", boxSizing: "border-box"}}>
-          {TABS.map((t) => {
+          {tabs.map((t) => {
             const on = t.key === active;
             return (
               <Box component="li" key={t.key} sx={{flex: 1, minWidth: 0, display: "flex"}}>

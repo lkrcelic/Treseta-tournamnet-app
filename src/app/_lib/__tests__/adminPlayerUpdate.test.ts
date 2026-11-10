@@ -14,7 +14,10 @@ test("only the fields that changed are sent, and at least one", () => {
   assert.equal(message({}), "Nema promjena za spremanje.");
   assert.deepEqual(parse({first_name: "  Ana "}).data, {first_name: "Ana"});
   assert.deepEqual(parse({smoker: false}).data, {smoker: false});
-  assert.deepEqual(parse({is_admin: true}).data, {is_admin: true});
+  assert.deepEqual(parse({role: "ORGANIZER"}).data, {role: "ORGANIZER"});
+  assert.deepEqual(parse({role: "ADMIN"}).data, {role: "ADMIN"});
+  // a role the code doesn't know is refused, so nobody writes a value the capability map has no line for
+  assert.equal(message({role: "SUDAC"}), "Odaberi rolu.");
 });
 
 test("names, username and email are cleaned and checked, in Croatian", () => {

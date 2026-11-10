@@ -1,6 +1,5 @@
 "use client";
 
-import useAdminPhone from "@/app/_hooks/useAdminPhone";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import ManagePhone from "@/app/_ui/admin/ManagePhone";
 import useLeagues from "@/app/_hooks/useLeagues";
@@ -65,6 +64,7 @@ import {useLeagueSponsors} from "@/app/_hooks/useSponsors";
 import {LeagueSponsorsDesktop} from "@/app/_ui/sponsors/LeagueSponsors";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {ReactNode, useCallback, useEffect, useMemo, useRef, useState} from "react";
+import useManagePhone from "@/app/_hooks/useManagePhone";
 
 type Filter = "all" | "active" | "inactive";
 type View = "draft" | "create" | "teams" | "rounds" | "dates" | "details" | "sponsors";
@@ -95,7 +95,7 @@ function removalNote(played: number | null): string {
 // is edited on the computer
 export default function ManageLeague() {
   const isDesktop = useIsDesktop();
-  const adminPhone = useAdminPhone();
+  const adminPhone = useManagePhone("league.manage");
   if (isDesktop) return <ManageLeagueDesktop />;
   return adminPhone ? <ManagePhone /> : <DesktopOnlyNote />;
 }

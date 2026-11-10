@@ -2,7 +2,6 @@
 
 import {createOngoingMatchAPI} from "@/app/_fetchers/ongoingMatch/create";
 import {getLineupAPI, saveLineupAPI} from "@/app/_fetchers/round/lineup";
-import useAdminPhone from "@/app/_hooks/useAdminPhone";
 import {MATCH_THRESHOLD} from "@/app/_lib/game/scoring";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import AdminBadge from "@/app/_ui/admin/AdminBadge";
@@ -22,6 +21,7 @@ import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import {Box} from "@mui/material";
 import {useParams, useSearchParams} from "next/navigation";
 import React, {useCallback, useEffect, useState} from "react";
+import useManagePhone from "@/app/_hooks/useManagePhone";
 
 // Započni igru · who plays this round (Claude Design 7c "Lineup card", desktop "tko igra"). Shown before the
 // scoreboard of the round's first match: two players per team, suggested from the team's last round in the league
@@ -47,7 +47,7 @@ export default function LineupPage() {
   const id = Number(roundId);
   const router = useTransitionRouter();
   const isDesktop = useIsDesktop();
-  const adminPhone = useAdminPhone();
+  const adminPhone = useManagePhone("league.manage");
   const search = useSearchParams();
   const padLeague = Number(search.get("league")) || null;
   // the admin's phone opened it with Tko igra on the table's board (rather than on the way into a table not started)

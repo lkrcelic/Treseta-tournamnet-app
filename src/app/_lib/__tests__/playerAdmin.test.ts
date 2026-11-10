@@ -17,7 +17,7 @@ const marko: PlayerView = {
   phone: "+385 93 958 3406",
   birth_date: "1964-07-23",
   smoker: true,
-  is_admin: false,
+  role: "PLAYER" as const,
 };
 
 const form = playerDraft(marko);
@@ -32,17 +32,17 @@ test("the form opens with the player's details; missing ones are empty", () => {
     phone: "+385 93 958 3406",
     birth_date: "1964-07-23",
     smoker: true,
-    is_admin: false,
+    role: "PLAYER" as const,
   });
   const bare = playerDraft({id: 8, first_name: "Ana", last_name: "", name: "Ana", active: false, phone: null, birth_date: null});
-  assert.deepEqual(bare, {first_name: "Ana", last_name: "", username: "", email: "", phone: "", birth_date: "", smoker: false, is_admin: false});
+  assert.deepEqual(bare, {first_name: "Ana", last_name: "", username: "", email: "", phone: "", birth_date: "", smoker: false, role: "PLAYER" as const});
 });
 
 test("Spremi sends only what changed", () => {
   assert.deepEqual(draftChanges(form, form), {});
   assert.equal(hasChanges(draftChanges(form, form)), false);
   assert.deepEqual(draftChanges(form, edit({first_name: "Ante"})), {first_name: "Ante"});
-  assert.deepEqual(draftChanges(form, edit({smoker: false, is_admin: true})), {smoker: false, is_admin: true});
+  assert.deepEqual(draftChanges(form, edit({smoker: false, role: "ADMIN" as const})), {smoker: false, role: "ADMIN" as const});
   assert.deepEqual(draftChanges(form, edit({email: "marko@example.com", username: "marko.m"})), {username: "marko.m", email: "marko@example.com"});
 });
 

@@ -1,6 +1,5 @@
 "use client";
 
-import useAdminPhone from "@/app/_hooks/useAdminPhone";
 import useNavStack from "@/app/_hooks/useNavStack";
 import usePlayerOverview from "@/app/_hooks/usePlayerOverview";
 import useShortWindow from "@/app/_hooks/useShortWindow";
@@ -13,7 +12,7 @@ import {formatChange, ratingPath, shortDate} from "@/app/_lib/ui/ratings";
 import {nightHref} from "@/app/_lib/ui/standings";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {color} from "@/app/_styles/tokens";
-import {buttonBase, changeInk, ColumnCard, ColumnHead, ellipsis, EmptyState, InitialsAvatar, ResultPill, rowFocus, SearchAddField, tabular, Tag} from "@/app/_ui/sp";
+import {buttonBase, changeInk, ColumnCard, ColumnHead, ellipsis, EmptyState, InitialsAvatar, ResultPill, rowFocus, RoleTag, SearchAddField, tabular, Tag} from "@/app/_ui/sp";
 import GroupAddRoundedIcon from "@mui/icons-material/GroupAddRounded";
 import GroupRemoveRoundedIcon from "@mui/icons-material/GroupRemoveRounded";
 import {Box} from "@mui/material";
@@ -33,7 +32,7 @@ import {
   stretchedRow,
 } from "./PageParts";
 import {PersonalDataCard} from "./PersonalDataCard";
-import {AdminNameTag, PlayerAccountPhone, PlayerDetailsSheet, PlayerTeamsPhone} from "./PlayerAdminPhone";
+import {PlayerAccountPhone, PlayerDetailsSheet, PlayerTeamsPhone} from "./PlayerAdminPhone";
 import {EditDataButton, PlayerTeamsAdmin, usePlayerTeamsAdmin} from "./PlayerAdmin";
 import {ProfileHero} from "./ProfileHero";
 import {AddError, RemoveButton} from "./TeamAdmin";
@@ -42,6 +41,7 @@ import {adminPlayersList} from "@/app/_hooks/useAdminPlayers";
 import {PhotoAdminBadge, PhotoAdminCard} from "@/app/_ui/photo/PhotoAdmin";
 import type {PhotoInfo} from "@/app/_ui/photo/PhotoParts";
 import {TeamCards} from "./TeamCards";
+import useManagePhone from "@/app/_hooks/useManagePhone";
 
 // The Player page (/players/[playerId], handoff §6, frames 13c, 13g, 13j, 13l): the player's name and rating (to the
 // rating's detail), Osobni podaci (first and last name for everyone, everything for the player and admins: the server
@@ -79,7 +79,8 @@ export function PlayerPagePhone({playerId}: {playerId: number}) {
   const overview = usePlayerOverview(playerId);
   const data = overview.data;
   const nav = useNavStack(data?.player.name ?? null);
-  const adminPhone = useAdminPhone();
+  // editing a player, their photo and their account is player management: the admin's (DECISIONS #86)
+  const adminPhone = useManagePhone("player.manage");
   const actions = usePlayerTeamsAdmin(overview);
   const admin = adminPhone && data?.viewer.admin ? actions : null;
   const [editing, setEditing] = useState(false);
@@ -96,7 +97,7 @@ export function PlayerPagePhone({playerId}: {playerId: number}) {
             avatarSrc={data.photo.photo_url}
             rating={data.rating}
             ratingHref={ratingHref(data)}
-            tag={!data.player.active ? <Tag variant="inactive" size="sm" /> : admin && data.player.is_admin ? <AdminNameTag /> : undefined}
+            tag={!data.player.active ? <Tag variant="inactive" size="sm" /> : <RoleTag role={data.player.role} size="sm" />}
           />
           <PersonalDataCard player={data.player} full={data.full} action={admin && <EditDataButton expanded={editing} onClick={() => setEditing(true)} />} />
           {admin && <AdminPhoto data={data} overview={overview} />}
@@ -151,7 +152,7 @@ export function PlayerPageDesktop({playerId, embedded = false}: {playerId: numbe
             avatarSrc={data.photo.photo_url}
             avatarOverlay={admin && <AdminPhoto data={data} overview={overview} badge={short ? 24 : 30} />}
             title={data.player.name}
-            nameTag={data.player.active ? undefined : <Tag variant="inactive" />}
+            nameTag={data.player.active ? <RoleTag role={data.player.role} /> : <Tag variant="inactive" />}
             aside={<HeaderRating rating={data.rating.rating} provisional={data.rating.provisional} href={ratingHref(data)} short={short} />}
             tiles={playerTiles(data.rating, data.teams)}
           />

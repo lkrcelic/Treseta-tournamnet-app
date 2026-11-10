@@ -1,5 +1,6 @@
 import {AdminPlayerRow, PLAYER_NOT_FOUND} from "@/app/_interfaces/player";
 import {displayName} from "./names";
+import type {Role} from "@/app/_lib/auth/roles";
 
 // The admin rules the server enforces (handoff §6 "Admin checks"). requireAdmin answers with adminCheck, and the
 // admin player endpoints refuse with adminActionError. Framework free so it can be unit tested.
@@ -102,6 +103,8 @@ type DirectoryPlayer = {
   teams: {team_id: number; team_name: string}[];
   // the admin's phone Igrači list shows them (admin-mobile 34)
   admin?: boolean;
+  // the role the row's tag shows (ADMIN, ORGANIZER; a plain player has none)
+  role?: Role;
   rating?: number;
   // the avatar (an admin sees every photo)
   photo_url?: string | null;

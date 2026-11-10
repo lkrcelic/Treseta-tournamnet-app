@@ -3,6 +3,8 @@ import {NextRequest, NextResponse} from "next/server";
 import {prisma} from "@/app/_lib/prisma";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {adminCheck, isAdminRole} from "@/app/_lib/players/admin";
+import {can, Capability} from "@/app/_lib/auth/permissions";
+import {FORBIDDEN} from "@/app/_lib/auth/forbidden";
 import {PUBLISHED_ROUND} from "@/app/_lib/roundStatus";
 import {getAuthorizedUser} from "./getAuthorizedUser";
 
@@ -23,14 +25,32 @@ export async function requireAdmin(req: NextRequest): Promise<AuthResult> {
   const user = await getAuthorizedUser(req);
   const check = adminCheck(user);
   if (check === "unauthorized") return {response: unauthorizedResponse()};
-  if (check === "forbidden") {
-    return {response: NextResponse.json({error: "Nemaš ovlasti za ovu radnju."}, {status: STATUS.Forbidden})};
-  }
+  if (check === "forbidden") return {response: forbiddenResponse()};
+  return {user};
+}
+
+/**
+ * A route that more than one role may reach: `requireCan(request, "tournament.create")`. The map in
+ * _lib/auth/permissions.ts answers, so a new role costs nothing here (DECISIONS #86).
+ *
+ * This says WHAT the player may do, never on which row. Whose tournament it is is the next check, inside the handler
+ * (refuseUnlessMine / canManageTournament), because only there is the row read.
+ *
+ * `requireAdmin` stays and means "only ADMIN": the routes an organizer may not reach anyway are left as they are.
+ */
+export async function requireCan(req: NextRequest, cap: Capability): Promise<AuthResult> {
+  const user = await getAuthorizedUser(req);
+  if (!user) return {response: unauthorizedResponse()};
+  if (!can(user, cap)) return {response: forbiddenResponse()};
   return {user};
 }
 
 // the same rule under the name the routes use
 export {isAdminRole as isAdmin};
+
+export function forbiddenResponse(): NextResponse {
+  return NextResponse.json({error: FORBIDDEN}, {status: STATUS.Forbidden});
+}
 
 function unauthorizedResponse(): NextResponse {
   return NextResponse.json({error: "Prijava je istekla. Prijavi se ponovno."}, {status: STATUS.Unauthorized});

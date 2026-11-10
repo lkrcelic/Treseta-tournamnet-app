@@ -35,6 +35,7 @@ import {
   ellipsis,
   ErrorNote,
   PrimaryButton,
+  RoleTag,
   Screen,
   ScrollArea,
   SectionLabel,
@@ -47,6 +48,7 @@ import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import {Box, Skeleton} from "@mui/material";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {useCallback, useEffect, useId, useMemo, useState} from "react";
+import {useRole} from "@/app/_hooks/useCan";
 
 export default function ProfilePage() {
   const router = useTransitionRouter();
@@ -103,6 +105,8 @@ export default function ProfilePage() {
       ? {rating: player?.rating ?? null, change: null, rounds: 0, rank: null, total: ratedPlayers, provisional: ratingsLoaded}
       : null;
   const blocked = photo.info.photo_blocked;
+  // what I am: the same label a player's page shows beside their name (DECISIONS #86)
+  const role = useRole();
   const hero = (desktop: boolean) => (
     <ProfileHero
       desktop={desktop}
@@ -126,6 +130,7 @@ export default function ProfilePage() {
       belowName={!desktop && player && !blocked && !photo.info.photo_url ? <AddPhotoPill onClick={() => setPhotoOpen(true)} /> : undefined}
       rating={rating}
       ratingHref={myRating ? ratingPath(myRating.id) : "/ratings"}
+      tag={<RoleTag role={role} size={desktop ? "md" : "sm"} />}
     />
   );
 

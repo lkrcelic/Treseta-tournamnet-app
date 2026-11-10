@@ -1,6 +1,5 @@
 "use client";
 
-import useAdminPhone from "@/app/_hooks/useAdminPhone";
 import {AdminTabBar} from "@/app/_ui/admin/AdminTabBar";
 import {getPlayerRatingAPI} from "@/app/_fetchers/ratings";
 import {type ScrollMemory, useRestoredState, useScrollMemory} from "@/app/_hooks/useBackRestore";
@@ -49,6 +48,7 @@ import PersonSearchRoundedIcon from "@mui/icons-material/PersonSearchRounded";
 import {Box, Drawer, Popover, Tooltip} from "@mui/material";
 import {usePathname} from "next/navigation";
 import React, {useCallback, useEffect, useId, useMemo, useRef, useState} from "react";
+import useManagePhone from "@/app/_hooks/useManagePhone";
 
 // Rejting igrača (Claude Design 8a–8m): one list across all leagues, highest rating first, 50 players at a time
 // ("Učitaj još"). On the phone a row opens the player's detail (its own page); on the desktop the detail sits next to
@@ -157,7 +157,7 @@ function useSearch(setQuery: (q: string) => void, scroller: ScrollMemory) {
 
 function PhoneList({all, visible, me, error, reload, query, setQuery, onMore}: ListProps) {
   const router = useTransitionRouter();
-  const adminPhone = useAdminPhone();
+  const adminPhone = useManagePhone("rating.manage");
   const [info, setInfo] = useState<InfoView | null>(null);
   // Back from a player's detail finds the list where it was left
   const scroller = useScrollMemory("ratings");

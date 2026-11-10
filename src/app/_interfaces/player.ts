@@ -1,5 +1,6 @@
 import {RoleEnum} from "@prisma/client";
 import {z} from "zod";
+import type {Role} from "@/app/_lib/auth/roles";
 import {isValidPhone, normalizePhone, PHONE_ERROR} from "@/app/_lib/phone";
 import {normalizeUsername, usernameError} from "@/app/_lib/validation/username";
 import {isIsoDate} from "@/app/_lib/nights";
@@ -9,6 +10,10 @@ const DATE_FORMAT = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/;
 const NO_CHANGES = "Nema promjena za spremanje.";
 
 export const BIRTH_DATE_ERROR = "Neispravan datum rođenja.";
+
+// zod needs a tuple; the one list of roles is in _lib/auth/roles.ts and the test keeps the two the same
+const ROLES_TUPLE = ["ADMIN", "ORGANIZER", "PLAYER"] as const;
+export const ROLE_ERROR = "Odaberi rolu.";
 
 // A birth date as YYYY-MM-DD that exists (no 31 February), from 1900 and not in the future
 export const isBirthDate = (d: string) => isIsoDate(d) && d >= "1900-01-01" && d <= new Date().toISOString().slice(0, 10);
@@ -67,7 +72,7 @@ export const EMAIL_TAKEN = "Taj email se već koristi.";
 const NameField = (label: string) => z.string().trim().min(1, `${label} je obavezno.`).max(100, `${label} je predugo.`);
 
 // "Uredi osobne podatke" (admin, PATCH /api/admin/players/[id]): any of a player's details, in one request with the
-// fields that changed. birth_date null removes it; is_admin gives or takes away the admin role; smoker also counts as
+// fields that changed. birth_date null removes it; role gives or takes away the admin and organizer roles; smoker also counts as
 // the answer to "Pušiš li?". Usernames and emails are unique ignoring case (checked by the service, 409).
 export const AdminPlayerUpdateValidation = z
   .object({
@@ -78,7 +83,9 @@ export const AdminPlayerUpdateValidation = z
     phone: PhoneField,
     birth_date: BirthDateField.nullable(),
     smoker: z.boolean(),
-    is_admin: z.boolean(),
+    // Rola: Igrač / Organizator / Administrator. One column, so one field — two switches for one column would
+    // contradict each other, and a third role would need a third switch (DECISIONS #86).
+    role: z.enum(ROLES_TUPLE, {errorMap: () => ({message: ROLE_ERROR})}),
   })
   .partial()
   .refine((o) => Object.values(o).some((v) => v !== undefined), NO_CHANGES);
@@ -110,6 +117,8 @@ export type AdminPlayerRow = {
   active: boolean;
   // an admin; the rating rounded (the admin's phone Igrači list)
   admin?: boolean;
+  // ADMIN or ORGANIZER, for the row's tag; left out for a plain player
+  role?: Role;
   rating?: number;
   // the avatar (an admin sees every photo); null = the initials
   photo_url?: string | null;
@@ -158,6 +167,8 @@ export const PLAYER_DEACTIVATED = "Igrač je deaktiviran.";
 // A player on a page (privacy filter in _lib/players/privacy.ts): everyone gets the first five fields; the personal
 // keys are ABSENT (not null) unless the viewer is the player or an admin
 export type PlayerView = {id: number; first_name: string; last_name: string; name: string; active: boolean} & Partial<{
+  // ADMIN or ORGANIZER, for the label on the profile; left out for a plain player (privacy.ts, publicRole)
+  role: Role;
   username: string;
   email: string;
   phone: string | null;

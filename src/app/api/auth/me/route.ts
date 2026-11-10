@@ -4,6 +4,8 @@ import {isAdminRole} from "@/app/_lib/players/admin";
 import {ACCOUNT_DEACTIVATED} from "@/app/_interfaces/login";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {playerPhotoUrl} from "@/app/_lib/players/privacy";
+import {capabilitiesOf} from "@/app/_lib/auth/permissions";
+import {rolesOf} from "@/app/_lib/auth/roles";
 
 // Called by the app on every load, and whenever another request answers 401: who is logged in. It also keeps the login
 // alive (sliding expiry) and removes cookies of sessions that no longer exist, so the middleware's cookie check sends
@@ -25,8 +27,12 @@ export async function GET(req: NextRequest) {
       user: {
         id: session.user.id,
         username: session.user.username,
-        // admin menus and controls show from the stored user right away (useIsAdmin); the server checks every call
+        // is_admin is kept for the screens that still read it; the server checks every call
         is_admin: isAdminRole(session.user),
+        // the role and what it may do, so the screens ask useCan("…") instead of the role by name (DECISIONS #86).
+        // A new role changes nothing here: the list comes from the capability map.
+        role: rolesOf(session.user)[0],
+        can: capabilitiesOf(session.user),
         // Google sign-ups don't give a birth date; the app asks for it
         needs_birth_date: session.user.birth_date == null,
         // "Pušiš li?" wasn't answered (a Google sign-up, or a player from before the question); asked after the birth date

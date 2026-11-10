@@ -1,6 +1,5 @@
 "use client";
 
-import useAdminPhone from "@/app/_hooks/useAdminPhone";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import NewLeaguePhone from "@/app/_ui/admin/NewLeaguePhone";
 import {EMPTY_PLACE, PlaceDraft, PlaceFields, placePayload, timesError, TimesFields} from "@/app/_ui/admin/GatheringForm";
@@ -39,6 +38,7 @@ import RemoveRoundedIcon from "@mui/icons-material/RemoveRounded";
 import {Box} from "@mui/material";
 import Link from "next/link";
 import React, {useEffect, useMemo, useState} from "react";
+import useManagePhone from "@/app/_hooks/useManagePhone";
 
 const DAYS = ["Pon", "Uto", "Sri", "Čet", "Pet", "Sub", "Ned"];
 const DAY_NAMES = ["ponedjeljak", "utorak", "srijeda", "četvrtak", "petak", "subota", "nedjelja"];
@@ -49,7 +49,7 @@ type TeamItem = {id: number; name: string; players: string};
 // the computer
 export default function CreateLeague() {
   const isDesktop = useIsDesktop();
-  const adminPhone = useAdminPhone();
+  const adminPhone = useManagePhone("league.manage");
   if (isDesktop) return <CreateLeagueDesktop />;
   return adminPhone ? <NewLeaguePhone /> : <DesktopOnlyNote />;
 }

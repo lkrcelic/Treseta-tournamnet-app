@@ -165,13 +165,14 @@ reviewable order inside one branch, not separate merges: a half-transferred tour
 1. ~~**Schema and migrations.**~~ Done 10 Nov 2026 on the branch `turniri`: the three migrations above and
    `schema.prisma`'s five new models, applied to a fresh local database with no drift, every new CHECK probed, and
    the unit tests, the db tests, ESLint, `tsc` and `next build` green. Nothing else changed yet.
-2. **Roles.** `_lib/auth/**`, `RoleEnum.ORGANIZER`, `requireCan` / `refuseUnlessMine` / `refuseUnlessMyTable` /
-   `refuseUnlessMyHand` beside `requireAdmin`, `ForbiddenError` → 403 in `errorResponse`, `useManagePhone(cap)` +
-   `useCan` in place of `useAdminPhone`, the Rola picker on both profile screens and the role beside the name. Wide
-   but mechanical: 38 Treseta files use `requireAdmin` and 14 `useAdminPhone`; Bela's capability map
-   (`league.manage`, `sponsor.manage`, `burza.moderate`, `rating.manage`, `team.*`, `player.*`) fits Treseta as it is.
-   The league and the rest of the app must behave exactly as before for an admin — this step is a refactor, and its
-   tests (`adminGuards.test.ts`, `session.test.ts`) are the proof.
+2. ~~**Roles.**~~ Done 10 Nov 2026: `_lib/auth/**` (`roles`, `permissions`, `ownership`, `forbidden`),
+   `RoleEnum.ORGANIZER`, `requireCan` beside `requireAdmin`, `ForbiddenError` → 403 in `errorResponse` and
+   `lookupErrorResponse`, `useCan` / `useManages` / `useRole` / `useManagePhone(cap)` in place of `useIsAdmin` and
+   `useAdminPhone` (both files gone), `can` on `/api/auth/me` and in the auth store, the capability on every menu item
+   and every tab of the phone's bar, the Rola picker on both profile screens, and `RoleTag` beside the name.
+   `refuseUnlessMine` / `refuseUnlessMyTable` / `refuseUnlessMyHand` wait for the tournament routes (steps 5–6), as
+   does moving `api/admin/tables/**` and `api/admin/hands/**` to `requireCan`: they are league-only until a table can
+   belong to a tournament. The one capability without a screen yet is `ban.manage.all` (step 5).
 3. **Vrijeme partije.** `_lib/gameTime.ts` with the two changes above, `_lib/service/match/timeLimit.ts`,
    `MatchClock.tsx`, the league's `game_minutes` in the four screens and `_interfaces/league.ts` /
    `_lib/service/league/leagues.ts` / `_hooks/useLeagues.ts`, the match's `started_at` / `ends_at` / `server_now`,

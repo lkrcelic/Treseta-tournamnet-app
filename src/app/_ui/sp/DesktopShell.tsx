@@ -1,6 +1,5 @@
 "use client";
 
-import useIsAdmin from "@/app/_hooks/useIsAdmin";
 import useLogout from "@/app/_hooks/useLogout";
 import useStartGame from "@/app/_hooks/useStartGame";
 import {getRoundsAPI} from "@/app/_fetchers/round/getRounds";
@@ -8,7 +7,7 @@ import {BRAND} from "@/app/_lib/brand";
 import {leagueNightString} from "@/app/_lib/dates";
 import {currentLeagueHref, LeaguePage} from "@/app/_lib/league";
 import {useSelectedLeagueId} from "@/app/_hooks/useLeagues";
-import useAuthStore from "@/app/_store/authStore";
+import useAuthStore, {userCan} from "@/app/_store/authStore";
 import {color, ease, font, shadow, tint} from "@/app/_styles/tokens";
 import AccountCircleRoundedIcon from "@mui/icons-material/AccountCircleRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
@@ -40,6 +39,8 @@ import {useScrollArrows} from "./ScrollArrows";
 import {Spinner} from "./States";
 import {InitialsAvatar} from "./Surface";
 import {Eyebrow} from "./Text";
+import type {Capability} from "@/app/_lib/auth/permissions";
+import {ROLE_NAME} from "@/app/_lib/auth/roles";
 
 export type NavKey =
   | "home"
@@ -171,7 +172,9 @@ export function DesktopShell({
 }
 
 // leaguePage: a page of the picked league, or of the one being played now (its href is filled in when it is known)
-type NavItem = {key: NavKey; label: string; icon: React.ReactNode; href?: string; leaguePage?: LeaguePage; head?: string; adminOnly?: boolean};
+// cap: the item shows only for whoever may do that (permissions.ts). A new role needs no change here: it shows the
+// items its capabilities allow (DECISIONS #86).
+type NavItem = {key: NavKey; label: string; icon: React.ReactNode; href?: string; leaguePage?: LeaguePage; head?: string; cap?: Capability};
 
 const NAV: NavItem[] = [
   {key: "home", label: "Početna", icon: <HomeRoundedIcon />, href: "/"},
@@ -181,16 +184,15 @@ const NAV: NavItem[] = [
   {key: "ratings", label: "Rejting", icon: <LeaderboardRoundedIcon />, href: "/ratings"},
   {key: "raspored", label: "Raspored", icon: <EventRoundedIcon />, href: "/raspored"},
   {key: "burza", label: "Burza igrača", icon: <PersonSearchRoundedIcon />, href: "/burza"},
-  {key: "manageLeague", label: "Upravljanje ligom", icon: <TuneRoundedIcon />, leaguePage: "manage", head: "Admin", adminOnly: true},
-  {key: "createLeague", label: "Nova liga", icon: <LibraryAddRoundedIcon />, href: "/league/new", adminOnly: true},
-  {key: "teams", label: "Ekipe", icon: <GroupsRoundedIcon />, href: "/teams", adminOnly: true},
-  {key: "players", label: "Igrači", icon: <PersonRoundedIcon />, href: "/players", adminOnly: true},
-  {key: "sponsors", label: "Sponzori", icon: <HandshakeRoundedIcon />, href: "/sponzori", adminOnly: true},
+  {key: "manageLeague", label: "Upravljanje ligom", icon: <TuneRoundedIcon />, leaguePage: "manage", head: "Admin", cap: "league.manage"},
+  {key: "createLeague", label: "Nova liga", icon: <LibraryAddRoundedIcon />, href: "/league/new", cap: "league.manage"},
+  {key: "teams", label: "Ekipe", icon: <GroupsRoundedIcon />, href: "/teams", cap: "team.edit"},
+  {key: "players", label: "Igrači", icon: <PersonRoundedIcon />, href: "/players", cap: "player.directory"},
+  {key: "sponsors", label: "Sponzori", icon: <HandshakeRoundedIcon />, href: "/sponzori", cap: "sponsor.manage"},
   {key: "profile", label: "Moj profil", icon: <AccountCircleRoundedIcon />, href: "/profile", head: "Račun"},
 ];
 
 export function NavDrawer({open, onClose, active}: {open: boolean; onClose: () => void; active?: NavKey}) {
-  const isAdmin = useIsAdmin();
   const user = useAuthStore((s) => s.user);
   const {logout, loggingOut} = useLogout();
   const {start, starting, error} = useStartGame();
@@ -215,7 +217,7 @@ export function NavDrawer({open, onClose, active}: {open: boolean; onClose: () =
   }, [open, signedIn, leagueId]);
 
   // signed out, only the public season table and Burza igrača are available
-  const items = NAV.filter((n) => (signedIn ? isAdmin || !n.adminOnly : n.key === "league" || n.key === "burza")).map((n) =>
+  const items = NAV.filter((n) => (signedIn ? !n.cap || userCan(user, n.cap) : n.key === "league" || n.key === "burza")).map((n) =>
     n.leaguePage ? {...n, href: currentLeagueHref(n.leaguePage, leagueId)} : n
   );
   const itemSx = (on: boolean) => ({
@@ -331,7 +333,7 @@ export function NavDrawer({open, onClose, active}: {open: boolean; onClose: () =
               {user?.username ?? "—"}
             </Box>
             <Box component="span" sx={{fontSize: 13, color: color.muted}}>
-              {isAdmin ? "Admin" : "Igrač"}
+              {ROLE_NAME[user?.role ?? "PLAYER"]}
             </Box>
           </Box>
           <GhostIconButton label="Odjava" size={40} onClick={() => logout()} disabled={loggingOut} sx={{borderRadius: "10px"}}>

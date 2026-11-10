@@ -2,8 +2,8 @@
 
 import {addHandAPI, deleteHandAPI, finishTableMatchAPI, getTablePadAPI, HandTarget, updateHandAPI} from "@/app/_fetchers/admin/daily";
 import {PadHand, PadMatch, TablePad} from "@/app/_interfaces/adminHand";
-import useAdminPhone from "@/app/_hooks/useAdminPhone";
-import useIsAdmin from "@/app/_hooks/useIsAdmin";
+import useManagePhone from "@/app/_hooks/useManagePhone";
+import useCan from "@/app/_hooks/useCan";
 import TablePhone from "@/app/_ui/admin/TablePhone";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useShortWindow from "@/app/_hooks/useShortWindow";
@@ -34,8 +34,8 @@ const playedHands = (m: PadMatch): PlayedHand[] =>
 // played, goes into the game.
 export default function TableScorepad() {
   const isDesktop = useIsDesktop();
-  const isAdmin = useIsAdmin();
-  const adminPhone = useAdminPhone();
+  const isAdmin = useCan("league.manage");
+  const adminPhone = useManagePhone("league.manage");
   if (isDesktop && isAdmin) return <TableScorepadDesktop />;
   return adminPhone ? <TablePhone /> : <TablePreview />;
 }
@@ -44,7 +44,7 @@ function TableScorepadDesktop() {
   const params = useParams<{leagueId: string; roundId: string}>();
   const leagueId = Number(params.leagueId);
   const roundId = Number(params.roundId);
-  const isAdmin = useIsAdmin();
+  const isAdmin = useCan("league.manage");
   const router = useTransitionRouter();
   // a short window (1024×640): a smaller header, so the entry panel needs less scrolling
   const short = useShortWindow();

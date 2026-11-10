@@ -2,7 +2,7 @@ import {Prisma, RoleEnum} from "@prisma/client";
 import {prisma} from "@/app/_lib/prisma";
 import {AdminPlayerRow, AdminPlayerUpdate, PLAYER_NOT_FOUND, PlayerActiveResponse, PlayerView} from "@/app/_interfaces/player";
 import {AdminAction, AdminTarget, adminActionError, adminPlayerRows, anonymisedPlayerData, isAdminRole} from "@/app/_lib/players/admin";
-import {playerView, Viewer} from "@/app/_lib/players/privacy";
+import {playerView, publicRole, Viewer} from "@/app/_lib/players/privacy";
 import {anyCase} from "@/app/_lib/helpers/query/anyCase";
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {lockRatings} from "@/app/_lib/service/admin/recalc";
@@ -42,6 +42,7 @@ export async function listAdminPlayers(viewer: Viewer): Promise<AdminPlayerRow[]
       ...p,
       created_at: created_at.toISOString(),
       admin: isAdminRole({player_role}),
+      role: publicRole({player_role}),
       rating,
       teams: teamPlayers.map((tp) => tp.team),
       photo_url: playerPhotoUrl({id: p.id, photo_updated_at, photo_visibility}, viewer, new Set()),
@@ -66,18 +67,19 @@ const viewSelect = {
 // Spremi found the new username or email on another player (409); the panel shows it under that field
 export type PlayerFieldConflict = {conflicts: ("username" | "email")[]};
 
-// "Uredi osobne podatke" → Spremi: the changed fields in one update. Giving the admin role is an update; taking it away
-// is refused for yourself and for the last admin.
+// "Uredi osobne podatke" → Spremi: the changed fields in one update. Raising a role is an update; taking the admin
+// role away is refused for yourself and for the last admin.
 export async function adminUpdatePlayer(viewer: Viewer, id: number, body: AdminPlayerUpdate): Promise<PlayerView | PlayerFieldConflict> {
   return prisma.$transaction(async (tx) => {
-    const target = await allowed(tx, viewer, id, (t) => (body.is_admin === false && isAdminRole(t) ? "demote" : "update"));
+    // every role change away from ADMIN counts as a demotion, so the rules catch it (yourself, the last admin)
+    const target = await allowed(tx, viewer, id, (t) => (body.role != null && body.role !== RoleEnum.ADMIN && isAdminRole(t) ? "demote" : "update"));
 
     const conflicts: PlayerFieldConflict["conflicts"] = [];
     if (body.username !== undefined && (await takenBy(tx, {username: anyCase(body.username)}, id))) conflicts.push("username");
     if (body.email !== undefined && (await takenBy(tx, {email: anyCase(body.email)}, id))) conflicts.push("email");
     if (conflicts.length) return {conflicts};
 
-    const {first_name, last_name, username, email, phone, birth_date, smoker, is_admin} = body;
+    const {first_name, last_name, username, email, phone, birth_date, smoker, role} = body;
     const player = await tx.player.update({
       where: {id: target.id},
       data: {
@@ -89,7 +91,7 @@ export async function adminUpdatePlayer(viewer: Viewer, id: number, body: AdminP
         ...(birth_date !== undefined && {birth_date: birth_date ? new Date(birth_date) : null}),
         // answered, so the app doesn't ask "Pušiš li?" again
         ...(smoker !== undefined && {smoker, smoker_answered: true}),
-        ...(is_admin !== undefined && {player_role: is_admin ? RoleEnum.ADMIN : RoleEnum.PLAYER}),
+        ...(role !== undefined && {player_role: role}),
       },
       select: viewSelect,
     });

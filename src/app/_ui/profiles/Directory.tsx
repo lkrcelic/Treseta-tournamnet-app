@@ -2,7 +2,7 @@
 
 import useAdminPlayers from "@/app/_hooks/useAdminPlayers";
 import {useRestoredState, useScrollMemory} from "@/app/_hooks/useBackRestore";
-import useIsAdmin from "@/app/_hooks/useIsAdmin";
+import useCan from "@/app/_hooks/useCan";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useMoreFocus from "@/app/_hooks/useMoreFocus";
 import useShortWindow from "@/app/_hooks/useShortWindow";
@@ -73,8 +73,8 @@ const STACKED = "(max-width: 1359.98px)";
 
 export function DirectoryLayout({kind, children}: {kind: Kind; children: React.ReactNode}) {
   const isDesktop = useIsDesktop();
-  const isAdmin = useIsAdmin();
-  if (!isDesktop || !isAdmin) return <>{children}</>;
+  const allowed = useCan(kind === "players" ? "player.directory" : "team.edit");
+  if (!isDesktop || !allowed) return <>{children}</>;
   return <DirectoryShell kind={kind}>{children}</DirectoryShell>;
 }
 
@@ -114,15 +114,16 @@ function DirectoryShell({kind, children}: {kind: Kind; children: React.ReactNode
 // ---------- /teams and /players ----------
 
 // The directory's own address (/teams, /players): the first team or player of the list (Croatian name order) opens
-// beside it, or `children` shows there (Nova ekipa). Someone who isn't an admin goes to Početna; an admin on the phone
-// gets the "on the computer" note (handoff §2).
+// beside it, or `children` shows there (Nova ekipa). Whoever may not open it goes to Početna; on the phone it gives
+// the "on the computer" note (handoff §2).
 export function AdminIndex({kind, children}: {kind: Kind; children?: React.ReactNode}) {
   const isDesktop = useIsDesktop();
   const user = useAuthStore((s) => s.user);
+  const allowed = useCan(kind === "players" ? "player.directory" : "team.edit");
   const router = useTransitionRouter();
   const frame = useDirectoryFrame();
-  // an old stored user may not say yet (is_admin undefined): /api/auth/me fills it in
-  const notAdmin = user != null && user.is_admin === false;
+  // an old stored user may not say yet (can undefined): /api/auth/me fills it in
+  const notAdmin = user != null && (user.can != null || user.is_admin != null) && !allowed;
   // once (a second navigation would cut the first one's transition short)
   const left = useRef(false);
   useEffect(() => {
@@ -130,7 +131,7 @@ export function AdminIndex({kind, children}: {kind: Kind; children?: React.React
     left.current = true;
     router.replace("/", "back");
   }, [notAdmin, router]);
-  if (notAdmin || user?.is_admin !== true) return null;
+  if (!allowed) return null;
   if (!isDesktop) return <DesktopOnlyNote />;
   if (!frame) return null;
   if (children) return <>{children}</>;
