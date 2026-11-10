@@ -2,7 +2,7 @@
 
 Written 10 Nov 2026, against `master` at `fe9fc19` (Turniri merged), and reviewed against the code the same day.
 Reverses decision 3 of [TOURNAMENTS_PLAN.md](TOURNAMENTS_PLAN.md#decisions) ("Zvanja are dropped") and the Zvanja row
-of [BELA_SYNC.md · Turniri](BELA_SYNC.md#turniri). Nothing here is built yet.
+of [BELA_SYNC.md · Turniri](BELA_SYNC.md#turniri). Built on branch `zvanja` on 11 Nov 2026, a commit a step (4 and 5 together; the seed has no tables or hands, so step 9 left it as it is). Delete this file once the branch is merged.
 
 ## What it is
 

@@ -17,7 +17,8 @@
     - Odabire se koji igrač ke zvao sprema samo se id, sve se sprema u storage na forntednu
     - gumbovi dalje i nazad
   #### 2.1.2. Upis zvanja
-    - Odabiru se zvanja za svakog igrača pojedino, sve se sprema u storage na forntednu
+    - Za svaku ekipu se klikaju zvanja 3 (tri iste, napola) i 4 (četiri iste), jedan klik po zvanju; sprema se u storage na frontendu
+    - Na stolu turnira "bez zvanja" i kod ručnog unosa ovaj korak se preskače
   #### 2.1.3. Upis bodova igre
     - Upisuju se rezultati jednoj ekipi dok se za drugu računa automatski
     - klikom na upiši odvijaju se sljedeće stvari:

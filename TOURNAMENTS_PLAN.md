@@ -27,7 +27,8 @@ Settled 10 Nov 2026:
    Bela's `NO_SHOW_SCORE = [1001, 700]` does not come.
 3. **Zvanja are dropped.** No `Round.declarations`, no `Tournament.declarations`, no Zvanja switch in Podaci, no
    `declarationsError` in `validateResult`, no "bez zvanja" anywhere. Pravila igre reads Treseta's rules, not
-   "1001 · zvanja".
+   "1001 · zvanja". *Reversed on 11 Nov 2026: zvanja 3 and 4 came in, with Bela's Zvanja switch for a tournament; see
+   ZVANJA_PLAN.md.*
 4. **Partija po kolu comes over**: a table plays 1 or 2 matches (`Round.matches_per_round`,
    `Tournament.matches_per_round`), where Treseta now always plays 2.
 5. **Zabrana prijava comes over** — the model, the services, the admin's routes and `BanSection` on a player's and a
