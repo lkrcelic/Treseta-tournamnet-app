@@ -975,7 +975,7 @@ function DetailsTab({t, onChanged}: {t: AdminTournament; onChanged: (t: AdminTou
         {t.phase === "finished"
           ? "Sve se može mijenjati osim datuma. Ispravak rezultata (u tabu Kola, dodirom na stol) odmah mijenja poredak i rejting. Novo kolo dodaješ u tabu Kola, pa se turnir nastavlja."
           : started
-            ? "Turnir je počeo: sve se može mijenjati osim datuma. Partija po kolu i vrijeme partije vrijede za kola koja se tek slažu. Broj kola može ići do objavljenih kola, pa se turnir može završiti ranije."
+            ? "Turnir je počeo: sve se može mijenjati osim datuma. Partija po kolu, zvanja i vrijeme partije vrijede za kola koja se tek slažu. Broj kola može ići do objavljenih kola, pa se turnir može završiti ranije."
             : "Sve se može mijenjati do početka turnira. Smanjiš li najveći broj ekipa, zadnje prijavljene idu na listu čekanja."}
       </InfoNote>
       {form.dirty && firstError && (

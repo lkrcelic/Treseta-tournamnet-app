@@ -291,9 +291,9 @@ export function daysUntilLabel(date: string, today: string): string {
   return `Za ${days} ${plural(days, "dan", "dana", "dana")}`;
 }
 
-// Pravila igre's line: Trešeta's own match, to MATCH_THRESHOLD with "s ovim dosta"
-export function rulesLabel(): string {
-  return `${MATCH_THRESHOLD} · s ovim dosta`;
+// Pravila igre's line: Trešeta's own match, to MATCH_THRESHOLD with "s ovim dosta", with zvanja or without
+export function rulesLabel(declarations: boolean): string {
+  return `${MATCH_THRESHOLD} · s ovim dosta · ${declarations ? "zvanja" : "bez zvanja"}`;
 }
 
 // How the standings are ordered, as Poredak tells the admin: a win is worth 1 with one match a table (no draws then)

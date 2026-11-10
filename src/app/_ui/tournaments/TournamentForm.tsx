@@ -27,6 +27,7 @@ export type TournamentDraft = {
   place: PlaceDraft;
   rounds: string;
   matches: 1 | 2;
+  declarations: boolean;
   // "" = no limit
   maxTeams: string;
   fee: string;
@@ -52,6 +53,7 @@ export const EMPTY_TOURNAMENT: TournamentDraft = {
   place: {name: "", address: "", url: ""},
   rounds: "9",
   matches: 2,
+  declarations: true,
   maxTeams: "",
   fee: "0",
   rulesUrl: DEFAULT_RULES_URL,
@@ -71,6 +73,7 @@ type Source = Pick<
   | "location"
   | "rounds"
   | "matches_per_round"
+  | "declarations"
   | "max_teams"
   | "entry_fee"
   | "rules_url"
@@ -90,6 +93,7 @@ export function draftOf(t: Source): TournamentDraft {
     place: {name: t.location.name ?? "", address: t.location.address ?? "", url: t.location.url ?? ""},
     rounds: String(t.rounds),
     matches: t.matches_per_round === 1 ? 1 : 2,
+    declarations: t.declarations,
     maxTeams: t.max_teams == null ? "" : String(t.max_teams),
     fee: String(t.entry_fee),
     rulesUrl: t.rules_url ?? "",
@@ -147,6 +151,7 @@ export function draftPayload(d: TournamentDraft): TournamentRequest {
     location_url: text(d.place.url),
     rounds: Number(d.rounds),
     matches_per_round: d.matches,
+    declarations: d.declarations,
     max_teams: d.maxTeams.trim() ? Number(d.maxTeams) : null,
     entry_fee: Number(d.fee || "0"),
     rules_url: text(d.rulesUrl),
@@ -332,6 +337,7 @@ export function TournamentFields({form, locks, compact = false, sx}: {form: Tour
       <Box sx={columns(3)}>
         <TextField label="Broj kola" type="number" inputMode="numeric" min={1} max={20} value={d.rounds} onChange={(e) => set("rounds", e.target.value)} soft inputSx={input} error={errors.rounds} />
         <Choice<1 | 2> label="Partija po kolu" value={d.matches} items={[{key: 1, label: "1"}, {key: 2, label: "2"}]} onChange={(v) => set("matches", v)} />
+        <Choice<"da" | "ne"> label="Zvanja" value={d.declarations ? "da" : "ne"} items={[{key: "da", label: "Da"}, {key: "ne", label: "Ne"}]} onChange={(v) => set("declarations", v === "da")} />
       </Box>
       <Box sx={columns(3)}>
         <Field label="Vrijeme partije · min" error={errors.gameMinutes}>

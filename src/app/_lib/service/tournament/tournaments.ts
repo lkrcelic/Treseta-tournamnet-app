@@ -42,6 +42,7 @@ function fields(r: TournamentRequest) {
     location_url: blankToNull(r.location_url),
     rounds: r.rounds,
     matches_per_round: r.matches_per_round,
+    declarations: r.declarations,
     max_teams: r.max_teams,
     entry_fee: r.entry_fee,
     rules_url: blankToNull(r.rules_url),
@@ -102,8 +103,8 @@ export async function updateTournament(id: number, request: TournamentRequest): 
 
     if (t.started_at) {
       if (next.date.getTime() !== t.date.getTime()) throw new InvalidResultError(STARTED_LOCKED);
-      // the next Kolo's draft is made again with the new format
-      if (next.matches_per_round !== t.matches_per_round) await dropDrafts(tx, id);
+      // the next Kolo's draft is made again with the new format (Partija po kolu, Zvanja)
+      if (next.matches_per_round !== t.matches_per_round || next.declarations !== t.declarations) await dropDrafts(tx, id);
       const published = await tx.round.aggregate({
         _max: {round_number: true},
         where: {tournamentRounds: {some: {tournament_id: id}}, status: "PUBLISHED"},
@@ -116,6 +117,7 @@ export async function updateTournament(id: number, request: TournamentRequest): 
       if (next.matches_per_round !== t.matches_per_round) await dropDrafts(tx, id);
       const drafts = {tournamentRounds: {some: {tournament_id: id}}, status: {not: "PUBLISHED" as const}};
       if (next.date.getTime() !== t.date.getTime()) await tx.round.updateMany({where: drafts, data: {round_date: next.date}});
+      if (next.declarations !== t.declarations) await tx.round.updateMany({where: drafts, data: {declarations: next.declarations}});
     }
 
     // Otvorene prijave switched off while the tournament is played: the sign-ups close with it, because a started

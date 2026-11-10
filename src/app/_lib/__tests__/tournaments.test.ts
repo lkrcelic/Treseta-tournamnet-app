@@ -336,7 +336,8 @@ test("the words of the tournament screens", () => {
   assert.equal(daysUntilLabel("2026-10-25", "2026-10-25"), "Danas");
   assert.equal(daysUntilLabel("2026-11-15", "2026-10-25"), "Za 21 dan");
   assert.equal(daysUntilLabel("2026-10-20", "2026-10-25"), "");
-  assert.equal(rulesLabel(), "41 · s ovim dosta");
+  assert.equal(rulesLabel(true), "41 · s ovim dosta · zvanja");
+  assert.equal(rulesLabel(false), "41 · s ovim dosta · bez zvanja");
   assert.equal(formatLabel(9, 2), "9 kola");
   assert.equal(formatLabel(7, 1), "7 kola · 1 partija po kolu");
   assert.deepEqual(feeLabel(20), {title: "Kotizacija 20 € po igraču", sub: "Plaća se na dan turnira", free: false});

@@ -153,7 +153,7 @@ export function DetailsDesktop({t, onChanged}: {t: AdminTournament; onChanged: (
           {t.phase === "finished"
             ? "Sve se može mijenjati osim datuma. Ispravak rezultata (u tabu Kola, dodirom na stol) odmah mijenja poredak i rejting. Dodaj kolo nastavlja turnir."
             : started
-              ? "Turnir je počeo: sve se može mijenjati osim datuma. Partija po kolu i vrijeme partije vrijede za kola koja se tek slažu. Broj kola može ići do objavljenih kola, pa se turnir može završiti ranije."
+              ? "Turnir je počeo: sve se može mijenjati osim datuma. Partija po kolu, zvanja i vrijeme partije vrijede za kola koja se tek slažu. Broj kola može ići do objavljenih kola, pa se turnir može završiti ranije."
               : "Sve se može mijenjati do početka turnira. Smanjiš li najveći broj ekipa, zadnje prijavljene idu na listu čekanja."}
         </InfoNote>
         {error && <ErrorNote>{error}</ErrorNote>}

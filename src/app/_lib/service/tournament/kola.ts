@@ -131,6 +131,8 @@ export async function makeKoloDraft(tournamentId: number, {redo = false}: {redo?
           table_number: i + 1,
           status: "DRAFT",
           matches_per_round: t.matches_per_round,
+          // with zvanja or "bez zvanja", as the tournament says when the Kolo is made
+          declarations: t.declarations,
           // the bye's table is won by the real team at once (2:0, 1:0 at a table of one match), as in a league
           ...(bye && {
             team1_wins: isByeTeam(team1) ? 0 : t.matches_per_round,

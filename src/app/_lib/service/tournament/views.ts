@@ -155,6 +155,7 @@ export function cardView(s: Snapshot, viewer: Viewer | null): TournamentCard {
     location: {name: t.location_name, address: t.location_address, url: t.location_url},
     rounds: t.rounds,
     matches_per_round: t.matches_per_round,
+    declarations: t.declarations,
     entry_fee: t.entry_fee,
     max_teams: t.max_teams,
     registrations_open: t.registrations_open,

@@ -43,6 +43,8 @@ export const TournamentRequestValidation = z.object({
   location_url: url,
   rounds: z.number().int().min(1, ROUNDS_ERROR).max(20, ROUNDS_ERROR),
   matches_per_round: z.union([z.literal(1), z.literal(2)]),
+  // Zvanja: false = "bez zvanja", no zvanja at its tables
+  declarations: z.boolean(),
   max_teams: z.number().int().min(2, MAX_TEAMS_ERROR).max(500, "Najviše 500 ekipa.").nullable(),
   entry_fee: z.number().int().min(0, FEE_ERROR).max(999, FEE_ERROR),
   rules_url: url,
@@ -68,6 +70,7 @@ export type TournamentRequest = {
   location_url: string | null;
   rounds: number;
   matches_per_round: 1 | 2;
+  declarations: boolean;
   max_teams: number | null;
   entry_fee: number;
   rules_url: string | null;
@@ -161,6 +164,7 @@ export type TournamentCard = {
   location: TournamentPlace;
   rounds: number;
   matches_per_round: number;
+  declarations: boolean;
   entry_fee: number;
   max_teams: number | null;
   registrations_open: boolean;
