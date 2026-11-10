@@ -44,6 +44,8 @@ export async function replayRatings(tx: Prisma.TransactionClient) {
       team1_id: {not: BYE_TEAM_ID},
       team2_id: {not: BYE_TEAM_ID},
       round_date: {gte: RATINGS_FROM},
+      // a tournament's table decided without play (a no-show scored as a bye, a skipped match) isn't rated
+      OR: [{attendance: null}, {attendance: "PRESENT"}],
     },
     orderBy: [{round_date: "asc"}, {round_number: "asc"}, {table_number: "asc"}, {id: "asc"}],
     select: {
@@ -92,7 +94,7 @@ export async function replayRatings(tx: Prisma.TransactionClient) {
   }
 }
 
-// A round whose result counts for ratings: closed and without a bye
-export function isRatedRound(r: {open: boolean; team1_id: number; team2_id: number}) {
-  return !r.open && !isByeTeam(r.team1_id) && !isByeTeam(r.team2_id);
+// A round whose result counts for ratings: closed, without a bye, and played (not a no-show or a skipped match)
+export function isRatedRound(r: {open: boolean; team1_id: number; team2_id: number; attendance?: string | null}) {
+  return !r.open && !isByeTeam(r.team1_id) && !isByeTeam(r.team2_id) && (r.attendance == null || r.attendance === "PRESENT");
 }

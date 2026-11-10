@@ -12,9 +12,9 @@ export function lineupPassed(roundId: number): boolean {
   return passed === roundId;
 }
 
-// The round's scorepad or Tko igra
+// The round's scorepad (a league night's table or a tournament's) or Tko igra
 export function onRoundPages(roundId: number, pathname: string): boolean {
-  return pathname.endsWith(`/daily-standings/table/${roundId}`) || pathname === `/round/lineup/${roundId}`;
+  return pathname.endsWith(`/daily-standings/table/${roundId}`) || new RegExp(`^/turniri/\\d+/stol/${roundId}$`).test(pathname) || pathname === `/round/lineup/${roundId}`;
 }
 
 // Called as either page unmounts: once the next page is in, the pass ends unless it is the other one of the round

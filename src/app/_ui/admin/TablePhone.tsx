@@ -3,7 +3,8 @@
 import {addHandAPI, deleteHandAPI, finishTableMatchAPI, getTablePadAPI, HandTarget, updateHandAPI} from "@/app/_fetchers/admin/daily";
 import {PadHand, PadMatch, TablePad} from "@/app/_interfaces/adminHand";
 import {currentMatchNumber, matchSlots, matchTabSub, roundWins, TABLE_MATCHES} from "@/app/_lib/tableOverview";
-import {blankEntry, canSave, clearPoints, EntryState, fromPadHand, manualFields, roundBackBy, setActive, toAdminHand, typeDigit} from "@/app/_lib/ui/adminEntry";
+import {blankEntry, canSave, clearPoints, EntryState, fromPadHand, manualFields, setActive, toAdminHand, typeDigit} from "@/app/_lib/ui/adminEntry";
+import {roundBackBy} from "@/app/_lib/ui/tableScope";
 import {dostaCallers, MATCH_THRESHOLD, PlayedHand, Side} from "@/app/_lib/game/scoring";
 import {navigateWithTransition, useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {leaveRoundPages, lineupPassed} from "@/app/_lib/ui/lineupPass";

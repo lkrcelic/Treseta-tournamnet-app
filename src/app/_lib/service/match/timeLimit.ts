@@ -4,6 +4,7 @@ import {closesByTime, GAME_MINUTES_DEFAULT, matchDeadline, targetRaises} from "@
 import {MATCH_THRESHOLD, MatchState} from "@/app/_lib/game/scoring";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {finishOngoingMatch, MatchAlreadyFinishedError} from "@/app/_lib/service/match/finishOngoingMatch";
+import {afterTableClosed} from "@/app/_lib/service/tournament/kola";
 
 // Vrijeme partije on the server: a match gets its deadline when it starts, and a match whose time is up is closed with
 // the score entered then, by whichever request comes first (the scorepads ask at the deadline and every few seconds
@@ -50,7 +51,9 @@ export async function syncDeadline(db: Db, matchId: number, state: MatchState, t
 // another request closed it first or the score is level.
 export async function closeByTime(ongoingMatchId: number): Promise<boolean> {
   try {
-    await finishOngoingMatch(ongoingMatchId, {byTime: true});
+    const outcome = await finishOngoingMatch(ongoingMatchId, {byTime: true});
+    // a tournament's table that closed may let the next Kolo's draft be made
+    if (outcome.roundFinished) await afterTableClosed(outcome.roundId);
     return true;
   } catch (error) {
     if (error instanceof MatchAlreadyFinishedError || error instanceof InvalidResultError) return false;

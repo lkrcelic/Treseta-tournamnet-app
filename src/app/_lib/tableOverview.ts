@@ -1,6 +1,7 @@
 import type {OverviewMatch, TableOverview, TablePad} from "@/app/_interfaces/adminHand";
 
-// A table's two matches as Pregled stola and the admin's phone scorepad show them (Meč 1 · Meč 2)
+// A table's matches as Pregled stola and the admin's phone scorepad show them (Meč 1 · Meč 2; a tournament's table
+// of one match has only Meč 1)
 
 export const TABLE_MATCHES = 2;
 
@@ -27,8 +28,9 @@ export type MatchSlotState = "done" | "live" | "new";
 export type MatchSlot<M> = {number: number; state: MatchSlotState; match: M | null};
 
 // Meč 1 and Meč 2, played, being played or not started yet. A match running without a hand yet is "new".
-export function matchSlots<M extends Pick<OverviewMatch, "number" | "kind" | "hands">>(matches: M[]): MatchSlot<M>[] {
-  return Array.from({length: TABLE_MATCHES}, (_, i) => {
+// count: the matches the table plays (TablePad.matchesPerRound)
+export function matchSlots<M extends Pick<OverviewMatch, "number" | "kind" | "hands">>(matches: M[], count = TABLE_MATCHES): MatchSlot<M>[] {
+  return Array.from({length: count}, (_, i) => {
     const m = matches.find((x) => x.number === i + 1) ?? null;
     const state: MatchSlotState = !m ? "new" : m.kind === "finished" ? "done" : m.hands.length ? "live" : "new";
     return {number: i + 1, state, match: m};
@@ -36,10 +38,10 @@ export function matchSlots<M extends Pick<OverviewMatch, "number" | "kind" | "ha
 }
 
 // The match a table opens on: the one being played, otherwise the last one played, otherwise Meč 1
-export function currentMatchNumber(matches: Pick<OverviewMatch, "number" | "kind">[]): number {
+export function currentMatchNumber(matches: Pick<OverviewMatch, "number" | "kind">[], count = TABLE_MATCHES): number {
   const ongoing = matches.find((m) => m.kind === "ongoing");
   if (ongoing) return ongoing.number;
-  return matches.length ? Math.min(TABLE_MATCHES, matches[matches.length - 1].number) : 1;
+  return matches.length ? Math.min(count, matches[matches.length - 1].number) : 1;
 }
 
 // Matches each team won in the round

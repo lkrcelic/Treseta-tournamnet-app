@@ -63,6 +63,17 @@ export function nightLabel(iso: string): string {
   return `${WEEKDAYS_SHORT[d.getUTCDay()]} ${d.getUTCDate()}. ${d.getUTCMonth() + 1}.`;
 }
 
+const WEEKDAYS_TILE = ["NED", "PON", "UTO", "SRI", "ČET", "PET", "SUB"];
+const MONTHS_TILE = ["SIJ", "VEL", "OŽU", "TRA", "SVI", "LIP", "SRP", "KOL", "RUJ", "LIS", "STU", "PRO"];
+
+// The date tile of a tournament card (Turniri): "SUB", "31", "LIS"; null for anything but a real day
+export function dateTile(iso: string): {weekday: string; day: string; month: string} | null {
+  const time = utcTime(iso);
+  if (time == null) return null;
+  const d = new Date(time);
+  return {weekday: WEEKDAYS_TILE[d.getUTCDay()], day: String(d.getUTCDate()), month: MONTHS_TILE[d.getUTCMonth()]};
+}
+
 // A night's start time: a wall-clock "HH:MM" from 00:00 to 23:59, as League.start_time and LeagueNight.start_time
 export const isStartTime = (v: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
 

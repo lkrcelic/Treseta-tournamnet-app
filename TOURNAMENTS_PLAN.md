@@ -183,11 +183,18 @@ reviewable order inside one branch, not separate merges: a half-transferred tour
    match's stored `winner_side` instead of replaying its hands, or a match the time decided showed no winner.
    `gameMinutesOf` reads the table's minutes and its league's; the tournament's line joins it in step 5, and Otključaj
    partiju (the table's own minutes) comes with the tournament screens.
-4. **Tournament logic and data access.** `_lib/tournaments.ts`, `tournamentEntries.ts`, `tournamentDay.ts`
-   (`NO_SHOW_SCORE` → `[BYE_MATCH_POINTS, 0]` at threshold 41), `tableState.ts`, `matching/tournamentPairing.ts`,
-   `ui/tableScope.ts` (and `roundBackBy` moved back out of `_lib/ui/adminEntry.ts`), `_interfaces/tournament.ts`,
-   `_lib/service/tournament/**`, `_lib/bans.ts` and `_lib/service/bans/`. `_lib/leagueOrder.ts` goes back to
-   importing `rankTeams` from `_lib/tournaments.ts` instead of carrying its own copy.
+4. ~~**Tournament logic and data access.**~~ Done 10 Nov 2026: `_lib/tournaments.ts`, `tournamentEntries.ts`,
+   `tournamentDay.ts` (`NO_SHOW_SCORE` → `[BYE_MATCH_POINTS, 0]` at threshold 41, written as a Match with its
+   `winner_side`), `tableState.ts`, `matching/tournamentPairing.ts`, `ui/tableScope.ts` (`roundBackBy` moved back out
+   of `_lib/ui/adminEntry.ts`), `_interfaces/tournament.ts`, the eleven files of `_lib/service/tournament/`,
+   `_lib/bans.ts` and `_lib/service/bans/`, with their tests. `_lib/leagueOrder.ts` imports `rankTeams` from
+   `_lib/tournaments.ts` again instead of carrying a copy. The shared files these needed came with them: `Competition`
+   in `_lib/service/admin/tables.ts` (a table belongs to a league's night or a tournament's Kolo, with
+   `addCompetitionTable`, `tableCompetition` and `refuseUnlessMyTable`), `insertTeam` out of `service/team/create.ts`,
+   a bye table of one match in `insertPairRounds.ts`, `dateTile` in `_lib/nights.ts`, `matchSlots` /
+   `currentMatchNumber` for a table of one match, the tournament table in `_lib/ui/lineupPass.ts`, and the rating
+   replay skipping a table decided without play (`attendance`). Zvanja stay out: Pravila igre reads `41 · s ovim
+   dosta`. Nothing reads any of this yet — no route and no screen.
 5. **Routes.** `api/tournaments/**`, `api/admin/tournaments/**`, `api/admin/bans/**`,
    `api/rounds/[id]/attendance/`, `api/players/search/` with `_lib/service/players/search.ts`, and
    `_fetchers/tournament/` + `_hooks/useTournaments.ts`.
