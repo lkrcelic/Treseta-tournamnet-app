@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import {after, before, test} from "node:test";
 import {prisma} from "@/app/_lib/prisma";
 import {getTablePad} from "@/app/_lib/service/admin/hands";
-import {expireDueMatches} from "@/app/_lib/service/match/timeLimit";
+import {expireDueMatches, gameMinutesOf} from "@/app/_lib/service/match/timeLimit";
 import {createResult, TIME_UP} from "@/app/_lib/service/ongoingResult/create";
 import {MATCH_THRESHOLD} from "@/app/_lib/game/scoring";
+import {leagueNight} from "@/app/_lib/dates";
 
 // Vrijeme partije against a real Postgres: a match whose time is up closes at once (no wait after the deadline) with
 // the team ahead winning, a player's hand after the time is refused, a level score plays one more hand, and a raised
@@ -14,7 +15,10 @@ import {MATCH_THRESHOLD} from "@/app/_lib/game/scoring";
 
 const tag = `tl${Date.now()}`;
 const MINUTES = 45;
+// the tournament's own Vrijeme partije, different from the league's and from the default
+const TOURNAMENT_MINUTES = 30;
 let leagueId = 0;
+let tournamentId = 0;
 const teams: number[] = [];
 
 before(async () => {
@@ -30,6 +34,8 @@ before(async () => {
 after(async () => {
   await prisma.ongoingMatch.deleteMany({where: {round: {leagueRounds: {some: {league_id: leagueId}}}}});
   await prisma.round.deleteMany({where: {leagueRounds: {some: {league_id: leagueId}}}});
+  await prisma.round.deleteMany({where: {tournamentRounds: {some: {tournament_id: tournamentId}}}});
+  await prisma.tournament.deleteMany({where: {tournament_id: tournamentId}});
   await prisma.league.delete({where: {league_id: leagueId}});
   await prisma.team.deleteMany({where: {team_id: {in: teams}}});
   await prisma.$disconnect();
@@ -135,4 +141,52 @@ test("the target raised to 51 gives the match five more minutes, and to 61 anoth
   const ahead = await prisma.ongoingMatch.findUniqueOrThrow({where: {id: matchId}});
   assert.deepEqual([ahead.player_pair1_score, ahead.player_pair2_score], [62, 51]);
   assert.equal(ahead.ends_at?.getTime(), deadline(2));
+});
+
+test("a tournament's table takes its tournament's Vrijeme partije, not the default", async () => {
+  const tournament = await prisma.tournament.create({
+    data: {tournament_name: `${tag} turnir`, date: leagueNight(), game_minutes: TOURNAMENT_MINUTES, rounds: 3},
+  });
+  tournamentId = tournament.tournament_id;
+  const koloTable = await prisma.round.create({
+    data: {team1_id: teams[0], team2_id: teams[1], round_number: 1, round_date: leagueNight(), status: "PUBLISHED", published_at: new Date(), tournamentRounds: {create: {tournament_id: tournamentId}}},
+  });
+  assert.equal(await gameMinutesOf(prisma, koloTable.id), TOURNAMENT_MINUTES);
+
+  // a table that was unlocked with its own minutes keeps those, over its tournament's
+  await prisma.round.update({where: {id: koloTable.id}, data: {game_minutes: 12}});
+  assert.equal(await gameMinutesOf(prisma, koloTable.id), 12);
+});
+
+test("the clock doesn't take a win from the team that called \"s ovim dosta\"", async () => {
+  // 45 : 41, and team 2 called "s ovim dosta" on the hand that took it to 41: the rules give the match to team 2
+  // although team 1 has more points
+  const round = await prisma.round.create({
+    data: {team1_id: teams[5], team2_id: teams[0], status: "PUBLISHED", published_at: new Date(), leagueRounds: {create: {league_id: leagueId}}},
+  });
+  const ends = new Date(Date.now() - 1000);
+  const match = await prisma.ongoingMatch.create({
+    data: {
+      round_id: round.id,
+      score_threshold: MATCH_THRESHOLD,
+      player_pair1_score: 45,
+      player_pair2_score: 41,
+      started_at: new Date(ends.getTime() - MINUTES * 60_000),
+      ends_at: ends,
+      results: {
+        create: [
+          {team1_game_points: 45, team2_game_points: 30, custom: true},
+          {team1_game_points: 0, team2_game_points: 11, custom: true, dosta_side: 2},
+        ],
+      },
+    },
+  });
+
+  assert.deepEqual(await expireDueMatches({roundIds: [round.id]}), [round.id]);
+  const finished = await prisma.match.findFirstOrThrow({where: {round_id: round.id}});
+  assert.equal(await prisma.ongoingMatch.count({where: {id: match.id}}), 0);
+  // the caller wins, and the clock didn't decide it
+  assert.deepEqual([finished.winner_side, finished.time_expired], [2, false]);
+  const closed = await prisma.round.findUniqueOrThrow({where: {id: round.id}});
+  assert.deepEqual([closed.team1_wins, closed.team2_wins], [0, 1]);
 });

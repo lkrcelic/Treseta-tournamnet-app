@@ -24,8 +24,9 @@ export type FinishMatchOutcome = {
 // standings and ratings once both matches are played. Everything happens in one transaction holding a lock on the
 // match, so when two phones tap "Završi meč" at the same time only the first one counts.
 //
-// byTime: Vrijeme partije is up, so the team with more points wins whatever the rules say (refused while the score is
-// level or before the deadline).
+// byTime: Vrijeme partije is up, so the team with more points wins — unless the rules already decided the match (a
+// team over the target, or one that called "s ovim dosta" and may have fewer points): that winner stands, as it would
+// have after Završi meč. Refused before the deadline, and while nothing decides it and the score is level.
 export async function finishOngoingMatch(ongoingMatchId: number, {byTime = false}: {byTime?: boolean} = {}): Promise<FinishMatchOutcome> {
   return prisma.$transaction(async (tx) => {
     const [locked] = await tx.$queryRaw<{id: number}[]>`
@@ -46,7 +47,9 @@ export async function finishOngoingMatch(ongoingMatchId: number, {byTime = false
       if (!ongoingMatch.ends_at || ongoingMatch.ends_at.getTime() > Date.now()) {
         throw new InvalidResultError("Vrijeme partije još nije isteklo.");
       }
-      winner = timeWinner(ongoingMatch.player_pair1_score, ongoingMatch.player_pair2_score);
+      // the rules first: a match won by "s ovim dosta" belongs to the team that called it, not to the one with more
+      // points
+      winner = byRules ?? timeWinner(ongoingMatch.player_pair1_score, ongoingMatch.player_pair2_score);
       if (winner === null) throw new InvalidResultError("Rezultat je izjednačen: igra se još jedna igra.");
     }
     if (winner === null) {
