@@ -218,11 +218,13 @@ reviewable order inside one branch, not separate merges: a half-transferred tour
    logged-out visitor's Prijavi se goes to `/login` instead of Bela's "Sjedni za stol." sheet. Bela's Otključaj
    partiju (`_ui/admin/UnlockTable.tsx`, `api/admin/tables/[roundId]/unlock`) is not here: it is Bela's own work from
    after the sync point, for the nightly sync to bring.
-7. **Branding.** Every tournament screen that imports Bela's `_ui/sp/brand.ts` reads `BRAND` from `_lib/brand.ts`
-   instead; "Belatronika", the install sheet's name and `manifest.webmanifest` stay Treseta's.
-8. **Ratings.** `_lib/service/admin/recalc.ts` filters on `attendance`, so a no-show or skipped table is not rated —
-   without it a no-show feeds the rating.
-9. **Tests and the click-through.** Below.
+7. ~~**Branding.**~~ Done: nothing imports `_ui/sp/brand.ts`; the sign-up invitation and the share sheet read `BRAND`,
+   and the no-show's score is said as `NO_SHOW_SCORE` (5 : 0) on the day's screens instead of Bela's 1001 : 700.
+8. ~~**Ratings.**~~ Done in step 4: the replay and `isRatedRound` leave out a table decided without play.
+9. ~~**Tests and the click-through.**~~ Done 10 Nov 2026, below. The seed now makes a tournament of today with six
+   teams signed up, its Okupljanje half an hour and its Početak an hour from the moment it runs, so Potvrda dolaska
+   is open while the seed is being used. `_bootstrap/TournamentAttention.tsx` came with it (mounted in `layout.tsx`):
+   the question "Jesu li … za stolom?" was the one screen the earlier steps had copied nothing for.
 
 ## Tests
 

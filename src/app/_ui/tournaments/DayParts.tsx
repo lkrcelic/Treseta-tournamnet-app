@@ -29,6 +29,10 @@ import TimerOffRoundedIcon from "@mui/icons-material/TimerOffRounded";
 import WarningRoundedIcon from "@mui/icons-material/WarningRounded";
 import {Box, SxProps, Theme} from "@mui/material";
 import React, {useState} from "react";
+import {NO_SHOW_SCORE} from "@/app/_lib/tournamentDay";
+
+// what a table nobody came to is won by, as a Slobodna runda is (5 : 0)
+const noShowScore = `${NO_SHOW_SCORE[0]} : ${NO_SHOW_SCORE[1]}`;
 
 // The tournament's day on the players' pages (Claude Design "Potvrda dolaska" C1–C3 and P1–P9, "Nedolazak za stol"
 // N5, N6, N8, "Zabrana prijava" ZP1): Tu smo and what follows it, the organizer's card, a team out of the tournament,
@@ -362,7 +366,7 @@ function exclusionLines(t: TournamentDetail): {title: string; lines: {icon: Reac
     return {
       title: `${last.opponent} su u ${clockOf(last.at)} prijavili da niste došli za Stol ${last.table_number ?? ""} u Kolu ${last.kolo}.`,
       lines: [
-        {icon: <EmojiEventsRoundedIcon />, text: `${last.opponent} su dobili 1001 : 700${last.matches.length > 1 ? " po partiji" : ""}.`},
+        {icon: <EmojiEventsRoundedIcon />, text: `${last.opponent} su dobili ${noShowScore}${last.matches.length > 1 ? " po partiji" : ""}.`},
         {icon: <BlockRoundedIcon />, text: `Ne igrate ostala kola ovog turnira. ${ban ? "Dobili ste i zabranu prijava na turnire na mjesec dana." : "Zabrane prijava nema."}`},
         ...(stays ? [stays] : []),
       ],
@@ -408,13 +412,13 @@ export function ExcludedCard({t}: {t: TournamentDetail}) {
   );
 }
 
-// Pobjeda bez igre (N5): the table won 1001:700 because the opponent didn't come
+// Pobjeda bez igre (N5): the table won as a Slobodna runda is (NO_SHOW_SCORE) because the opponent didn't come
 export function NoShowWinCard({last, kolo}: {last: MyLastTable; kolo: number | null}) {
   return (
     <Box component="section" aria-label="Pobjeda bez igre" sx={navyCard}>
       <Eyebrow icon={<EmojiEventsRoundedIcon aria-hidden />}>Pobjeda bez igre{last.table_number != null && ` · Stol ${last.table_number}`}</Eyebrow>
       <Box sx={{fontSize: 16, lineHeight: 1.45}}>
-        {last.opponent} nisu došli. Dobivate 1001 : 700{last.matches.length > 1 ? " po partiji" : ""}.
+        {last.opponent} nisu došli. Dobivate {noShowScore}{last.matches.length > 1 ? " po partiji" : ""}.
       </Box>
       <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
         {last.matches.map((m, i) => (

@@ -9,7 +9,7 @@ own; everything else is kept identical to Bela.
 | | |
 |---|---|
 | Bela branch | `development`, read through the remote `bela` (the local Bela repo). Only commits come over, never Bela's uncommitted work |
-| Last synced Bela commit | `a0686e1` (7 Nov 2026) |
+| Last synced Bela commit | `a0686e1` (7 Nov 2026); the tournament files are at Bela's `d2a0b98` (10 Nov 2026), see below |
 | Target branch | `master` |
 | Sync branch | `bela-sync` in the repo itself (no worktree): created from `master`, or rebased onto it, by every run |
 
@@ -80,6 +80,19 @@ Treseta directly only for what has to differ, and add it below.
 Every Bela commit up to `a0686e1` (7 Nov 2026) came over or was skipped by 7 Nov 2026. Decisions for Bela work that
 touches Treseta's differences before it comes over go here.
 
+**The tournaments were brought over by hand on 10 Nov 2026** (see [Turniri](#turniri)), copied from Bela's
+`development` as it stood at `d2a0b98`. So the tournament files are ahead of the last synced commit: everything Bela
+did to them between `a0686e1` and `d2a0b98` — Organizator, Otvorene prijave, Obriši kolo, the Kolo full-screen, the
+status chips — is already here, while the 14 tournament commits the earlier runs skipped (`79d735a..6c84c4b` and
+after) never came as commits at all.
+
+What the next run does with `a0686e1..d2a0b98`: a commit that only touches tournament files is already here, so its
+cherry-pick either applies cleanly to the same end state or comes up empty — either way nothing is lost, and an empty
+one is skipped with that reason. A conflict there means Bela changed the same lines after this copy: take Bela's
+side, keeping the Treseta rules in the table below. Commits that touch other files (Burza's phone numbers, the
+install sheet, Raspored on Android, the admin's no-winner warning, Vidljivost slike, the hands-changed question) come
+over as usual, and Otključaj partiju is listed under Turniri as still to come.
+
 ## Differences from Bela
 
 Each difference is one of four kinds, and the nightly sync treats a Bela change to it by its kind:
@@ -121,7 +134,7 @@ winner (`Match.winner_side`); everything else is worked out by replaying the han
 | `_lib/ui/adminEntry.ts`, `league/[leagueId]/daily-standings/table/AdminEntryPanel.tsx` | same paths | The admin scorepad: Normal and Custom, where Bela has "Ručni unos"; Custom's hint names "s ovim dosta". `manualFields` (the phone's Custom sheet) takes 0 to `CUSTOM_HAND_MAX` (Bela: 0 to 9999). `adminEntry.ts` also holds `roundBackBy` (Natrag na kolo after a reload), which Bela keeps in the not copied `_lib/ui/tableScope.ts` |
 | `_ui/admin/TablePhone.tsx` | same path | The admin's phone scorepad on Bela's board and sheets: one keypad step (the 11-split) where Bela has the trump caller, zvanja and points (so Bela's redirect from a Korak 2 or 3 without a hand isn't here); Natrag na kolo reads `roundBackBy` from `adminEntry.ts`; Custom (0 to 99, a custom hand) where Bela has Ručno and Ručni unos; after a custom hand the "s ovim dosta" question (`DostaPrompt`), and the "Do 51" flag on the board |
 | `_bootstrap/refreshUser.ts`, `_utils/resetStores.ts` | same paths | No announcement store |
-| `_lib/__tests__/`: `scoring`, `serverHand`, `handEntryStores`, `scoreboardMatch`, `adminEntry`, `tableOverview`, `roundClose`, `finishedMatchEdit` tests, `db/roundClose`, `db/finishedMatchEdit`, `helpers/handEntry.ts` | same names | Tests of Treseta's rules (`tableOverview`: Treseta's hands, 41 and Custom's 0–99; the `db/` tests play custom hands to 41 and a bye worth `2 × BYE_MATCH_POINTS`; `roundClose` has no tournament table of one match; `adminEntry` also tests `roundBackBy`) |
+| `_lib/__tests__/`: `scoring`, `serverHand`, `handEntryStores`, `scoreboardMatch`, `adminEntry`, `tableOverview`, `roundClose`, `finishedMatchEdit` tests, `db/roundClose`, `db/finishedMatchEdit`, `helpers/handEntry.ts` | same names | Tests of Treseta's rules (`tableOverview`: Treseta's hands, 41 and Custom's 0–99; the `db/` tests play custom hands to 41 and a bye worth `2 × BYE_MATCH_POINTS`; `roundClose` has no tournament table of one match) |
 
 ### Shared files with a small edit
 
@@ -133,7 +146,6 @@ winner (`Match.winner_side`); everything else is worked out by replaying the han
 | `_lib/service/round/insertPairRounds.ts` | Bye matches `BYE_MATCH_POINTS : 0` (Bela: `301 : 0`), threshold `MATCH_THRESHOLD` |
 | `ongoing-match/ui/useMatchSides.ts` | Imports `TeamSide` from `_interfaces/side` |
 | `_store/ongoingMatchStore.ts` | The hands field is `results` (Bela: `belaResults`) |
-| `_lib/service/league/getStandings.ts` | No `tournament_id: null`: Treseta has no tournament tables |
 | `_lib/service/admin/recalc.ts` | `RATINGS_FROM` = 1 Aug 2025, so the whole Treseta history is rated (Bela: 7 Oct 2025) |
 | `_lib/rating/glicko2.ts` | One comment: "for teams of two" (Bela: "for Bela teams of two") |
 | `next.config.mjs` (root) | Redirects the old `/match/:id` to `/` |
@@ -196,7 +208,7 @@ The database part (the `Conference` table and `LeagueTeam.conference_id`) is und
 
 | Path (root) | Kind | Treseta's |
 |---|---|---|
-| `prisma/schema.prisma` | Own version | Bela's schema with Treseta's hand tables (`Result`, `OngoingResult`: `team1_game_points`, `team2_game_points`, `custom`, `dosta_side`) and `Match.winner_side` and without Bela's tournament and announcement tables. Bela's changes to the other models are merged in. The datasource also has `directUrl = env("DATABASE_URL_UNPOOLED")`, so migrations use Neon's direct connection (Bela has only `url`). Treseta also has the `Conference` table and `LeagueTeam.conference_id` (see Conferences) |
+| `prisma/schema.prisma` | Own version | Bela's schema with Treseta's hand tables (`Result`, `OngoingResult`: `team1_game_points`, `team2_game_points`, `custom`, `dosta_side`) and `Match.winner_side`, without Bela's announcement tables and without `Tournament.declarations`, `Round.declarations` and `TeamScore.tournament_id` (see Turniri). Bela's changes to the other models are merged in. The datasource also has `directUrl = env("DATABASE_URL_UNPOOLED")`, so migrations use Neon's direct connection (Bela has only `url`). Treseta also has the `Conference` table and `LeagueTeam.conference_id` (see Conferences) |
 | `prisma/migrations/**` | Treseta only | This database's history. Bela's migrations are never copied: a Bela schema change gets a Treseta migration with Bela's SQL adapted to this schema, named with a timestamp after the newest migration here. Bela's names can collide with Treseta's: Bela's `20261011120000_league_nights_burza` has the timestamp of Treseta's `20261011120000_match_like_bela`, so it came as `20261011233000_league_nights_burza`, and Bela's `20261014120000_round_status` has the timestamp of Treseta's `20261014120000_s_ovim_dosta`, so it came as `20261014130000_round_status` |
 | `prisma/seed.ts` | Own version | The Treseta seed (users `admin` and `player`, a league of 8 teams in two conferences, playing 16 Thursday nights from five weeks before the last Thursday). Seed data for new Bela tables is added here |
 | `prisma/usefulQueries/**` | Own version | Treseta's queries, with `transition_checks.sql`. Bela's aren't copied |
@@ -223,9 +235,6 @@ The database part (the `Conference` table and `LeagueTeam.conference_id`) is und
   trump-caller and announcement steps (`ongoing-match/[matchId]/ongoing-result/new/` and `…/[resultId]/`:
   `trump-caller/`, `announcement/`; `…/ui/pages/TrumpCallerPage.tsx`, `…/ui/pages/AnnouncementPage.tsx`). Their
   Treseta counterparts are under Game rules.
-- Bela's tournaments (Turniri). See [Bela's tournaments](#belas-tournaments) below.
-- The clock's backup `api/cron/tick/` with `_lib/cron.ts` and `_lib/__tests__/cron.test.ts` (Bela's `faf4836`): it
-  runs the tournaments' day and closes matches out of time (Vrijeme partije), neither of which Treseta has.
 - **Gost i poziv** (`3b85bfa`, DECISIONS #75, and its follow-ups `8e91edf`, `578330e`, `78caddb`), not copied for now
   (decided 7 Nov 2026): Treseta's league stays public without an account (Liga, Raspored, Dnevni and Ukupni poredak,
   Rejting and their APIs), Početna has no guest version, and there is no `GuestHome.tsx`, `GuestSheet.tsx`,
@@ -239,89 +248,53 @@ The database part (the `Conference` table and `LeagueTeam.conference_id`) is und
 - Unused images: `public/TitleBackground.png`, `public/TitleBackgroundSponsors.png`, `public/background.png`,
   `public/title.png`.
 
-### Bela's tournaments
+### Turniri
 
-Treseta has leagues only, and doesn't get Bela's one-day tournaments (decided 26 Oct 2026). These come from Bela's Turniri,
-first brought by `79d735a..86cbcec`, and never come here. A later Bela change to them is dropped too:
+Treseta has Bela's one-day tournaments since 10 Nov 2026, which reverses the decision of 26 Oct 2026. The whole of
+them came over — the Kolos and their pairing, the sign-ups and the waiting list, Potvrda dolaska, Nedolazak za stol,
+the day's clock, the standings, the sign-up bans, the organizer role and Vrijeme partije — so `turniri/**`,
+`api/tournaments/**`, `api/admin/tournaments/**`, `_ui/tournaments/**`, `_lib/tournaments.ts`, `_lib/tournamentDay.ts`,
+`_lib/service/tournament/**`, `_lib/bans.ts`, `_lib/auth/**` and the rest are shared files now: a Bela change to them
+comes over as usual, and the sync no longer stops at a tournament commit.
 
-- Pages and routes: `turniri/**`, `api/tournaments/**`, `api/admin/tournaments/**`, and `api/players/search/` (finding
-  a partner for a sign-up).
-- Screens: `_ui/tournaments/**`.
-- Logic: `_lib/tournaments.ts`, `_lib/tournamentEntries.ts`, `_lib/matching/tournamentPairing.ts`,
-  `_lib/service/tournament/**`, `_lib/service/players/search.ts`, `_lib/ui/tableScope.ts` (a table page's links for a
-  league's night or a tournament's Kolo; its `roundBackBy` is carried into `_lib/ui/adminEntry.ts`),
-  `_lib/__tests__/tableScope.test.ts`, `_lib/__tests__/tournaments.test.ts`, `_lib/__tests__/lineupPass.test.ts`.
-- Data access: `_interfaces/tournament.ts`, `_fetchers/tournament.ts`, `_hooks/useTournaments.ts`.
-- Bela's game: `_lib/bela/declarations.ts` ("bez zvanja") is already covered by `_lib/bela/` above.
-- Database: the `Tournament*` models, which stay out of `prisma/schema.prisma`, the `Round.matches_per_round` and
-  `Round.declarations` columns, and Bela's migration `20261026120000_tournaments`, which gets no Treseta migration.
-- Branding: Bela's name "Belatronika" (part 5: the header, the title, the install sheet, `public/manifest.webmanifest`)
-  and its `_ui/sp/brand.ts`. Treseta keeps `BRAND` (`_lib/brand.ts`). Shared code that imports `_ui/sp/brand.ts`
-  reads `BRAND` instead.
+What stays Treseta's in them is the game, not the tournament:
 
-Turniri v1 (`14f988f..6c84c4b`, 30 Oct 2026) stays out too, with two parts Bela also uses outside tournaments
-(decided 30 Oct 2026):
+| What | Treseta | Bela |
+|---|---|---|
+| A match | to 41 with "s ovim dosta" (`MATCH_THRESHOLD`); Pravila igre reads `41 · s ovim dosta` | to 1001, with or without zvanja |
+| Zvanja | none: no `Tournament.declarations`, no `Round.declarations`, no Zvanja field in the tournament form, no "bez zvanja" | the column, the switch and the labels |
+| Nedolazak za stol | the answering team wins every match as a Slobodna runda is won: `NO_SHOW_SCORE = [BYE_MATCH_POINTS, 0]` (5 : 0) at threshold 41, written with `Match.winner_side` | 1001 : 700 |
+| Vrijeme partije | 45 minutes by default (`GAME_MINUTES_DEFAULT`), and five minutes more for every raise of the target (`TARGET_RAISE_MINUTES`, `syncDeadline` in `_lib/service/match/timeLimit.ts`), which Bela has no rule for | 35 minutes, no raises |
+| `TeamScore` | league only: no `tournament_id` and no either-or CHECK, since a tournament's standings are counted from its tables | the column and the CHECK |
+| A team's chip in a tournament | Treseta's `TeamLabel` with no conference (a tournament has none) | `TeamChipBadge` |
+| Prijavi se without an account | goes to Prijava; the tournament's pages are public, as the league's season table is | "Sjedni za stol." (Gost i poziv) |
+| `_ui/sp/brand.ts` | `BRAND` from `_lib/brand.ts` (see Branding) | "Belatronika" |
 
-- **Vrijeme partije** (a match's time limit): Treseta's league matches don't get it. A match ends only by Treseta's
-  rules (41, section 10's raised target, "s ovim dosta"), never by time. Not copied: `_lib/gameTime.ts`,
-  `_lib/__tests__/gameTime.test.ts`, `_lib/__tests__/db/timeLimit.test.ts`, `_lib/service/match/timeLimit.ts`,
-  `ongoing-match/ui/MatchClock.tsx` (and Bela's `a0686e1`, the match ending the moment its time is up); the columns
-  `League.game_minutes`, `OngoingMatch.started_at` / `ends_at` and `Match.time_expired`; and in shared files the
-  league's `game_minutes` (`_interfaces/league.ts`, `_lib/service/league/leagues.ts`, `_hooks/useLeagues.ts`, Nova liga
-  and Postavke lige on both screens: `league/new/page.tsx`, `league/[leagueId]/manage/LeagueDetailsView.tsx`,
-  `_ui/admin/NewLeaguePhone.tsx`, `_ui/admin/LeaguePhone.tsx`), the match's `started_at`, `ends_at` and `server_now`
-  (`_interfaces/match.ts`, `_lib/service/ongoingMatch/create.ts`, `…/getOneWithResults.ts`), closing by time
-  (`_lib/service/match/finishOngoingMatch.ts`, `_lib/service/admin/hands.ts`' `timeWinner` and `{admin: true}`, the
-  hand's `entry_started_at` in `ongoing-match/ui/handFlow.ts` and Bela's `ongoingBelaResult`), and the scorepad's timer
-  (`ongoing-match/[matchId]/page.tsx`).
-- **Zabrana prijava** (sign-up bans): tournaments only. Not copied: `_lib/bans.ts`, `_lib/service/bans/`,
-  `api/admin/bans/**`, `_ui/profiles/BanSection.tsx` and its place on `_ui/profiles/PlayerPage.tsx` and
-  `_ui/profiles/TeamPage.tsx`, and the `SignupBan` model. Bela's bans on league nights (`de2001c`, DECISIONS #73) stay
-  out too (decided 31 Oct 2026): Treseta's league Tu smo came without them (see [Tu smo without the
-  bans](#tu-smo-without-the-bans)), and later Bela changes to Tu smo come the same way.
-- The rest is the tournament day: `_lib/tournamentDay.ts`, `_lib/__tests__/tournamentDay.test.ts`, `_lib/tableState.ts`,
-  `_bootstrap/TournamentAttention.tsx` (and its mount in `layout.tsx`), `api/rounds/[id]/attendance/`, and the
-  `Round.attendance*` columns (and the ratings' `attendance` filter in `_lib/service/admin/recalc.ts`). Bela's migration
-  `20261030120000_turniri_v1` gets no Treseta migration.
+Bela's migrations `20261026120000_tournaments`, `20261030120000_turniri_v1`, `20261031120000_tournament_auto_publish`,
+`20261107120000_organizer_role`, `20261107180000_open_signups`, `20261107190000_open_signups_check` and
+`20261107200000_round_game_minutes` are Treseta's `20261110120000_tournaments`, `20261110120100_game_time` and
+`20261110120200_bans_and_organizer`: the same shape by different SQL, since Treseta never had Bela's old unused
+`Tournament` tables and creates them instead of altering them.
 
-Shared files these commits change (Početna, the scorepad, the admin's tables, the open table, the round services, the
-tab bars, the middleware's public paths and so on) are merged without the tournament code:
+Still out, for now:
 
-- No `tournament_id` or tournament branches, and no Turniri · Liga switch or tournament card on Početna.
-- No Turniri in the menu, the admin's tab bar or the phone's bottom bar, and no link back to a tournament from the
-  scorepad or Pregled stola.
-- A table always plays two matches with Treseta's hands (no `matches_per_round`, no `declarations`, no single Bela
-  button).
-- No `/turniri` public paths.
-
-The shared files that differ from Bela only by the tournament code left out, or by it as well as by a difference
-listed above:
-
-| Files | Left out |
-|---|---|
-| `prisma/schema.prisma`, `_interfaces/round.ts`, `_interfaces/adminHand.ts` | The `Tournament*` models and their relations, `Round.matches_per_round` and `Round.declarations`; a round's `matches_per_round` and `declarations`; `TablePad`'s `tournamentId`, `matchesPerRound` and `declarations` |
-| `_lib/nights.ts`, `_lib/tableOverview.ts`, `_lib/publicPaths.ts`, `middleware.ts`, `_lib/ui/lineupPass.ts` | `dateTile` (a tournament card's date); `matchSlots` and `currentMatchNumber` for a table of one match; `/turniri` public and coming back after login; a tournament table's path |
-| `_lib/service/admin/tables.ts`, `_lib/service/admin/hands.ts`, `_lib/service/round/finish.ts`, `_lib/service/round/getById.ts`, `_lib/service/round/getLastOpenByPlayerId.ts`, `_lib/service/round/insertPairRounds.ts`, `_lib/service/ongoingMatch/create.ts`, `_lib/service/match/finishOngoingMatch.ts`, `_lib/service/team/create.ts`, `_lib/validation/validateResult.ts` | A table of a tournament's Kolo (`Competition`, `addCompetitionTable`), a table of one match, `roundPlayedMessage`, the open table's scope, `insertTeam` (a team made on sign-up), "bez zvanja" (`declarationsError`) |
-| `_lib/service/team/delete.ts`, `_interfaces/team.ts`, `_interfaces/profiles.ts`, `api/teams/[id]/route.ts`, `_ui/profiles/TeamAdmin.tsx` | Obriši ekipu's tournament check (`TEAM_DELETE_TOURNAMENT`; `teamDeleteBlocker` counts only the team's tables) and the comments that mention it |
-| `api/admin/tables/[roundId]/route.ts`, `api/admin/tables/[roundId]/finish/route.ts`, `api/matches/route.ts`, `api/rounds/open/route.ts` | The next Kolo's draft once a Kolo's last table closes; `?scope=` and `tournamentId` |
-| `_fetchers/round/getOpenByPlayerId.ts`, `_hooks/useOpenTable.ts`, `_hooks/useStartGame.ts` | The open table's scope and `tournamentId` |
-| `_ui/sp/DesktopShell.tsx`, `_ui/admin/AdminTabBar.tsx`, `_ui/home/PhoneHome.tsx`, `_ui/home/DesktopHome.tsx` | Turniri in the menu and the admin's bottom bar; Početna's Turniri · Liga switch (`LeagueHome`) and the computer's tournament strip. The rating chip next to Moj profil came over |
-| `league/[leagueId]/daily-standings/table/[roundId]/page.tsx`, `…/table/TablePreview.tsx`, `…/table/AdminEntryPanel.tsx`, `_ui/admin/TablePhone.tsx`, `round/lineup/[roundId]/page.tsx`, `round/[roundId]/result/page.tsx`, `ongoing-match/[matchId]/page.tsx`, `ongoing-match/ui/BoardParts.tsx`, `ongoing-match/ui/HandEntryPanel.tsx`, `ongoing-match/ui/WizardParts.tsx` | `tableScope` links, a table of one match (`ScorePanel`'s `of`), "bez zvanja", and Kraj kola's Poredak i rezultati |
-| `league/[leagueId]/daily-standings/ui/RoundEditing.tsx`, `…/ui/RoundTables.tsx` | `RoundAdmin.addTable` and `byeWins` (a Kolo's tables), `DesktopTableRow`'s `draft` |
-| `_lib/__tests__/adminGuards.test.ts`, `_lib/__tests__/roundPublication.test.ts`, `_lib/__tests__/session.test.ts`, `_lib/__tests__/tableOverview.test.ts` | Their tournament routes, reads, paths and `TablePad` fields |
-
-What isn't about tournaments comes over as usual. Examples are #67's fixes in Bela's `DECISIONS.md`, a long team name
-taking two lines in a draft, and a page's tab kept in its address (`?view=`, `?round=`) so a reload and Back return to
-it. A new shared file that both kinds of code use (`_ui/home/StartCard.tsx`, `_lib/ui/tableScope.ts`) comes over
-without its tournament part, or isn't copied if nothing outside tournaments uses it. If a change can't be told apart
-from the tournaments, the sync stops at that commit.
+- **Otključaj partiju** (Bela's `e63ea99`, `b9f1a91`, `880baac`, DECISIONS #89): `_ui/admin/UnlockTable.tsx`,
+  `_lib/service/admin/unlock.ts`, `api/admin/tables/[roundId]/unlock/`, `TablePad`'s `lock` and `gameMinutes`, and
+  `_lib/__tests__/db/unlock.test.ts`. It is Bela's own work from after the sync point, not part of the tournaments as
+  they stood: the nightly sync brings it like any other Bela change. `Round.game_minutes` is already here, and
+  `gameMinutesOf` already reads the table's minutes before its tournament's and its league's.
+- **Sign-up bans on league nights** (Bela's `de2001c`, DECISIONS #73), as decided on 31 Oct 2026: the bans are the
+  tournaments' only. Tu smo, Novo kolo, Novi stol, Uredi stolove, Dodaj ekipu, Nova liga, publishing a Skica and a new
+  team don't check them (see [Tu smo without the bans](#tu-smo-without-the-bans)).
+- **Gost i poziv**, as decided on 7 Nov 2026 (see [Not copied from Bela](#not-copied-from-bela)). `PlayerFrame.tsx`
+  came with the tournament screens, since `PlayerParts.tsx` needs it; nothing else of the guest did.
 
 ### Tu smo without the bans
 
 Bela's league Tu smo (`de2001c`, DECISIONS #73) came on 1 Nov 2026 without its ban checks (decided 31 Oct 2026): Tu smo,
 Novo kolo, Novi stol, Uredi stolove, Dodaj ekipu, Nova liga, publishing a Skica and a new team don't check bans, the
 league's teams carry no `ban`, and Novo kolo has no Zabrana chip or reason (`OutReason` is `absent`, `inactive`, `off`).
-Bela's head-to-head (`92df912`) reads a tournament's `rankTeams`, which Treseta carries in its own file.
+Bela's head-to-head (`92df912`) reads a tournament's `rankTeams`, which `_lib/leagueOrder.ts` imports from `_lib/tournaments.ts` since the tournaments came over.
 
 | Files | Left out, or Treseta's |
 |---|---|
@@ -332,7 +305,6 @@ Bela's head-to-head (`92df912`) reads a tournament's `rankTeams`, which Treseta 
 | `_ui/home/LeaveParts.tsx` (Treseta only), `_ui/home/LeagueArrival.tsx`, `_ui/home/PhoneHome.tsx` | The league's part of Bela's `_ui/tournaments/DayParts.tsx`: `leaveButton` (Odlazimo, Ipak otkazujemo) and `LeaveRow` (Odlazimo under Započni igru, with `699984e`'s navy look). `LeagueArrival.tsx` and `PhoneHome.tsx` import them from here; Početna's `here` has no `!ban`. A Bela change to these two in `DayParts.tsx` is carried here |
 | `_lib/service/league/arrival.ts`, `_interfaces/leagueArrival.ts`, `_lib/__tests__/leagueArrival.test.ts` | `last_round` (no Tu smo after the night's last round) came without `ban` |
 | `_lib/service/admin/tables.ts` | `lockLeague` is the advisory lock itself (Bela: through `lockCompetition`), and `deleteNightTables` settles by the league's id |
-| `_lib/leagueOrder.ts` | Holds the standings part of Bela's `_lib/tournaments.ts` (`TableResult`, `TeamTotals`, `tournamentTotals`, `rankTeams`, not exported) where Bela imports `rankTeams` from it. A Bela change to that part of `_lib/tournaments.ts` is carried here |
 
 ### Adding a difference
 
@@ -366,4 +338,5 @@ The nightly sync adds a row when it brings something over or stops.
 | 30 Oct 2026 | `9a16ca9..6c84c4b` (9) | All 9 skipped (Turniri v1): decided that league matches don't get Vrijeme partije and the sign-up bans stay with the tournaments, so nothing outside tournaments was left; `DECISIONS.md` not copied; no migration |
 | 31 Oct 2026 | `6c84c4b..bed3e29` (6 of 27) | Stopped at `de2001c` (league Tu smo also makes the sign-up bans keep teams from league nights, not decided). The 6 before it skipped: the cron clock backup (tournaments and Vrijeme partije), `CHANGELOG.md` twice, Kolo drafts and Automatska kola (tournaments, with migration `tournament_auto_publish`), `DECISIONS.md`; no migration |
 | 1 Nov 2026 | `bed3e29..92df912` (2 of 25) | Stopped at `3b85bfa` (Gost i poziv: a guest's Početna is built on the tournaments, Turniri · Liga, PlayerFrame and TournamentsOverview, and the league's season table needs a login; not decided). 2 came over: league Tu smo without the bans (1 migration, `20261031180000_league_arrival`, Bela's SQL), and the standings' head-to-head with `rankTeams` carried into `_lib/leagueOrder.ts` |
+| 10 Nov 2026 | tournament files from `d2a0b98` | **Turniri brought over by hand** (not a nightly run): the schema and 3 migrations, the organizer role, Vrijeme partije (45 min, +5 a raised target), the tournament logic, 21 routes and 31 screens. Treseta's rules kept: 41 with "s ovim dosta", a no-show scored as a bye (5 : 0), no zvanja, no `TeamScore.tournament_id`. Otključaj partiju and Gost i poziv still out |
 | 7 Nov 2026 | `92df912..a0686e1` (42) | Run by hand after the nightly stop at `3b85bfa`: Gost i poziv decided not copied for now. 19 came over (6 adapted by hand): Registracija s Googleom (without `?next=`), Datumi (Uredi večer moves a night, Obriši večer i kola, Dodaj večer, the phone sheet), Okupljanje (1 migration, `20261101120000_league_gathering_time`, Bela's SQL), Nađi zamjenu until Tu smo opens, Dnevni poredak lists arrived teams, Odlazimo and Ipak otkazujemo as buttons and under Započni igru (`LeaveParts.tsx`), the round-close tests and the finished-match guard on Treseta's hands, Natrag na kolo after a reload, Igrači A–Ž / Najnoviji, the sign-up checks and limit, no Tu smo after the last round, the phone's Back closing sheets, the bold Tu smo note. 23 skipped: Gost i poziv (4), tournaments (14; the Burza test part of `726b292` came separately), Vrijeme partije, `CHANGELOG.md` (2), `CLAUDE.md`, and `699984e` (its look came with `LeaveRow`) |

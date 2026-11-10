@@ -1,6 +1,6 @@
 // prisma/seed.ts
-// Local data for `npm run dev:reset`: the users `admin` and `player` (password `sifra`), the bye team, and one league
-// with 8 teams of two in two conferences.
+// Local data for `npm run dev:reset`: the users `admin` and `player` (password `sifra`), the bye team, one league
+// with 8 teams of two in two conferences, and a tournament of today that six of those teams have signed up for.
 
 import {PrismaClient} from "@prisma/client";
 
@@ -127,6 +127,36 @@ async function main() {
   for (const team of teams) {
     await prisma.$executeRaw`CALL update_team_score(${team.team_id}, ${league.league_id})`;
   }
+
+  // Okupljanje and Početak of the seeded tournament: half an hour and an hour from now, so Potvrda dolaska is open
+  // while the seed is being used; late in the evening they stay on this side of midnight (23:15 and 23:45)
+  const hhmm = (minutesOfDay: number) => `${String(Math.floor(minutesOfDay / 60)).padStart(2, "0")}:${String(minutesOfDay % 60).padStart(2, "0")}`;
+  const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+  const startMinutes = Math.min(nowMinutes + 60, 23 * 60 + 45);
+  const gatheringTime = hhmm(Math.max(0, startMinutes - 30));
+  const startTime = hhmm(startMinutes);
+
+  // A tournament of today, with sign-ups open: six of the league's teams are in it, and nobody has confirmed arrival
+  // yet (Tu smo opens an hour before Početak). Kolo 1 is made and published from Upravljanje turnirom.
+  const tournament = await prisma.tournament.create({
+    data: {
+      tournament_name: "Trešetski turnir",
+      date: today,
+      // half an hour from now and an hour from now, so Potvrda dolaska is open while the seed is being used
+      gathering_time: gatheringTime,
+      start_time: startTime,
+      location_name: "Caffe bar Kartaš",
+      location_address: "Ilica 128, Zagreb",
+      rounds: 5,
+      matches_per_round: 2,
+      entry_fee: 10,
+      organizer_phone: "+385 91 234 5678",
+      created_by: admin.id,
+      prizes: {create: [{place: 1, prize: "Pršut", description: ""}, {place: 2, prize: "Boca vina", description: ""}]},
+      tournamentTeams: {create: teams.slice(0, 6).map((t) => ({team_id: t.team_id}))},
+    },
+  });
+  console.log(`Turnir "${tournament.tournament_name}" za danas, 6 prijavljenih ekipa.`);
 }
 
 main()

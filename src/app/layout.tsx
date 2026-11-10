@@ -11,6 +11,7 @@ import {BRAND} from "@/app/_lib/brand";
 import {color} from "@/app/_styles/tokens";
 import {CssBaseline, ThemeProvider} from "@mui/material";
 import React, {useEffect, useState} from "react";
+import TournamentAttention from "@/app/_bootstrap/TournamentAttention";
 
 export default function RootLayout({children}: Readonly<{children: React.ReactNode}>) {
   // Pages pick the phone or desktop layout from the window width, which the server cannot know.
@@ -48,6 +49,8 @@ export default function RootLayout({children}: Readonly<{children: React.ReactNo
           {mounted && <BirthDatePrompt />}
           {/* "Pušiš li?" for players who haven't answered it, after the birth date */}
           {mounted && <SmokerPrompt />}
+          {/* Nedolazak za stol: "Jesu li … za stolom?" over every screen on a tournament day */}
+          {mounted && <TournamentAttention />}
         </ThemeProvider>
       </body>
     </html>
