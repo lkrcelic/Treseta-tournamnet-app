@@ -195,9 +195,16 @@ reviewable order inside one branch, not separate merges: a half-transferred tour
    `currentMatchNumber` for a table of one match, the tournament table in `_lib/ui/lineupPass.ts`, and the rating
    replay skipping a table decided without play (`attendance`). Zvanja stay out: Pravila igre reads `41 · s ovim
    dosta`. Nothing reads any of this yet — no route and no screen.
-5. **Routes.** `api/tournaments/**`, `api/admin/tournaments/**`, `api/admin/bans/**`,
-   `api/rounds/[id]/attendance/`, `api/players/search/` with `_lib/service/players/search.ts`, and
-   `_fetchers/tournament/` + `_hooks/useTournaments.ts`.
+5. ~~**Routes.**~~ Done 10 Nov 2026: `api/tournaments/**` (9 handlers), `api/admin/tournaments/**` (12),
+   `api/admin/bans/**`, `api/rounds/[id]/attendance/`, `api/players/search/` with `_lib/service/players/search.ts`,
+   and `_fetchers/tournament.ts` + `_hooks/useTournaments.ts`. The shared routes moved with them:
+   `api/admin/tables/[roundId]/**` and `api/admin/hands/[kind]/[resultId]` ask `requireCan("tournament.manage.own")`
+   and then `refuseUnlessMyTable` / `refuseUnlessMyHand` (so a league night stays the admin's and a Kolo is its
+   organizer's), and closing a table — by Završi meč, by the admin's scorepad or by removing it — makes the next
+   Kolo's draft (`afterTableClosed`). `adminGuards.test.ts` now counts `requireCan` as a guard and has a test that
+   every handler under `admin/tournaments/[id]`, `admin/tables` and `admin/hands` says whose it is. A tournament's
+   Vrijeme partije defaults to 45 minutes, as a league's does. The open table's scope (`api/rounds/open`) waits for
+   Početna in step 6.
 6. **Screens.** `_ui/tournaments/**` (with `PlayerFrame.tsx`, without the guest's Početna), `turniri/**`,
    `_ui/profiles/BanSection.tsx` and its place on a player's and a team's page. Then the shared files, from
    BELA_SYNC.md's tables: Turniri in the menu, the admin's tab bar and the phone's bottom bar, Početna's Turniri ·

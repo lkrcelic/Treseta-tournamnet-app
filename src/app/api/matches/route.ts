@@ -8,6 +8,7 @@ import {finishOngoingMatch, MatchAlreadyFinishedError} from "@/app/_lib/service/
 import {canPlayRound, notYourRoundResponse, requireAdmin, requireUser} from "@/app/_lib/service/auth/requireUser";
 import {getRoundIdOfOngoingMatch} from "@/app/_lib/service/ongoingMatch/getRoundId";
 import {errorResponse} from "@/app/_lib/apiErrors";
+import {afterTableClosed} from "@/app/_lib/service/tournament/kola";
 
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin(request);
@@ -42,6 +43,8 @@ export async function POST(request: NextRequest) {
     }
 
     const outcome = await finishOngoingMatch(ongoingMatchId);
+    // the last table of a tournament's Kolo: the next Kolo's draft for the admin
+    if (outcome.roundFinished) await afterTableClosed(outcome.roundId);
 
     return NextResponse.json(outcome, {status: STATUS.OK});
   } catch (error) {

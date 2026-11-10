@@ -65,10 +65,20 @@ const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 // What counts as a guard: requireAdmin means "only ADMIN", requireCan asks the capability map (DECISIONS #86), so a
 // route more than one role may reach is guarded by requireCan — never by nothing.
 const GUARD = /require(Admin|Can)\(/;
+
+// A tournament's own handlers must also say WHOSE tournament it is: capability first, then ownership. getAdminTournament
+// and refuseIfFinished refuse by themselves; the writes that never read the tournament call refuseUnlessMine.
+const OWNERSHIP = /refuseUnlessMine\(|refuseUnlessMyTable\(|refuseUnlessMyHand\(|getAdminTournament\(|refuseIfFinished\(/;
+// The folders whose handlers act on one tournament, one of its tables, or a hand played at one: a round of its own
+const OWNED_DIRS = ["admin/tournaments/[id]", "admin/tables", "admin/hands"];
 // "path METHOD" → why it doesn't call requireAdmin: the handlers in the scanned folders that players use too
 const ALLOWED_WITHOUT_ADMIN: Record<string, string> = {
   "rounds/[id]/lineup/route.ts PUT": "Tko igra ovu rundu?: a player of either team confirms the lineup (canPlayRound)",
   "matches/route.ts POST": "the players of the round finish their match (canPlayRound)",
+  "tournaments/[id]/registrations/route.ts POST": "a player signs up a team they play in, or a new one with a partner (signUp checks it)",
+  "tournaments/[id]/registrations/[teamId]/route.ts DELETE": "a player of the team signs it off before the start (signOff checks it)",
+  "tournaments/[id]/arrival/route.ts POST": "Tu smo, Ipak otkazujemo, Želimo uskočiti, Odlazimo: a player of an entered team, for the team (arrivalAction checks it)",
+  "rounds/[id]/attendance/route.ts POST": "Jesu li … za stolom?: a player of one of the table's teams answers (answerAttendance checks it)",
   "teams/[id]/route.ts PATCH": "any player of the team chooses who sees its photo; renaming asks team.edit and blocking photos team.moderate in the handler",
   "teams/[id]/photo/route.ts PUT": "any player of the team sets its photo (teamPhotoChangeError); an admin may not",
   "teams/[id]/photo/route.ts DELETE": "a player of the team or an admin removes its photo (teamPhotoChangeError)",
@@ -114,6 +124,14 @@ function scan(paths: string[]): Handler[] {
     assert.equal(reexportsHandler(source), false, `${file} re-exports a handler; export it as a function`);
     return handlersIn(source, file);
   });
+}
+
+// A handler of one tournament that more than one role may reach (requireCan) and doesn't check whose tournament it is.
+// A requireAdmin handler needs no ownership: only an admin gets in, and an admin owns everything.
+function missingOwnership(handlers: Handler[]): string[] {
+  return handlers
+    .filter((h) => OWNED_DIRS.some((dir) => h.file.startsWith(dir)) && h.body.includes("requireCan(") && !OWNERSHIP.test(h.body))
+    .map((h) => `${h.file} ${h.method}`);
 }
 
 function missingAdmin(handlers: Handler[]): string[] {
@@ -185,6 +203,7 @@ test("every admin endpoint calls requireAdmin", () => {
     teams: routeFiles(join(API, "teams")),
     leagues: routeFiles(join(API, "leagues")),
     rounds: routeFiles(join(API, "rounds")),
+    tournaments: routeFiles(join(API, "tournaments")),
     matches: routeFiles(join(API, "matches")),
   };
   // a moved folder must not make this pass with nothing to check
@@ -195,6 +214,12 @@ test("every admin endpoint calls requireAdmin", () => {
   const mutations = scan(Object.values(groups).flat()).filter((h) => MUTATING.has(h.method));
   assert.ok(adminHandlers.length > 0 && mutations.length > 0);
   assert.deepEqual(missingAdmin([...adminHandlers, ...mutations]), []);
+});
+
+test("every handler of one tournament, table or hand checks whose it is", () => {
+  const handlers = scan(routeFiles(join(API, "admin")));
+  for (const dir of OWNED_DIRS) assert.ok(handlers.some((h) => h.file.startsWith(dir)), `no routes found under api/${dir}`);
+  assert.deepEqual(missingOwnership(handlers), []);
 });
 
 test("the allowlist only names handlers that exist", () => {

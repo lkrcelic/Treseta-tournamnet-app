@@ -5,7 +5,7 @@ import type {TournamentPhase} from "@/app/_lib/tournaments";
 import type {ArrivalPhase} from "@/app/_lib/tournamentDay";
 import type {TableState} from "@/app/_lib/tableState";
 import type {StandingsItem} from "@/app/_lib/ui/standings";
-import {GAME_MINUTES_ERROR, GAME_MINUTES_MAX, GAME_MINUTES_MIN} from "@/app/_lib/gameTime";
+import {GAME_MINUTES_DEFAULT, GAME_MINUTES_ERROR, GAME_MINUTES_MAX, GAME_MINUTES_MIN} from "@/app/_lib/gameTime";
 import {isValidPhone, PHONE_ERROR} from "@/app/_lib/phone";
 
 // Turniri: what the admin sends to create or change a tournament, what a player sends to sign a team up, and what the
@@ -48,7 +48,7 @@ export const TournamentRequestValidation = z.object({
   rules_url: url,
   prizes: z.array(PrizeValidation).max(20, "Najviše 20 nagrada."),
   // Vrijeme partije in minutes
-  game_minutes: z.number().int().min(GAME_MINUTES_MIN, GAME_MINUTES_ERROR).max(GAME_MINUTES_MAX, GAME_MINUTES_ERROR).default(35),
+  game_minutes: z.number().int().min(GAME_MINUTES_MIN, GAME_MINUTES_ERROR).max(GAME_MINUTES_MAX, GAME_MINUTES_ERROR).default(GAME_MINUTES_DEFAULT),
   // Automatska kola: the Kolos after the first are published by themselves
   auto_publish: z.boolean().default(false),
   // Otvorene prijave: ekipe se mogu prijaviti i dok turnir traje, do zadnjeg kola (DECISIONS #88)
