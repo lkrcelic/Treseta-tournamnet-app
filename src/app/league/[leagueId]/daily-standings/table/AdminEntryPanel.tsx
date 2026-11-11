@@ -13,7 +13,7 @@ import {
   typeDigit,
 } from "@/app/_lib/ui/adminEntry";
 import {Side} from "@/app/_lib/game/scoring";
-import {ZvanjaButtons, zvanjaNote} from "@/app/ongoing-match/ui/WizardParts";
+import {ZvanjaButtons, ZvanjaStrip} from "@/app/ongoing-match/ui/WizardParts";
 import {count, NOUN} from "@/app/_lib/ui/text";
 import {color, font, shadow, teamColor, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, ErrorNote, PrimaryButton, SHORT_WINDOW, tabular} from "@/app/_ui/sp";
@@ -195,41 +195,33 @@ export default function AdminEntryPanel({
               type="button"
               role="radio"
               aria-checked={on}
-              aria-label={`${names[i]}: ${count(points, NOUN.bod)}${zv[i] ? `, zvanja ${zv[i]}` : ""}`}
+              aria-label={`${names[i]}: ${count(points, NOUN.bod)}${showZvanja ? `, zvanja ${zv[i]}, ukupno ${points + zv[i]}` : ""}`}
               onClick={() => onChange(setActive(entry, side))}
               sx={{
                 ...buttonBase,
-                height: 84,
-                [SHORT_WINDOW]: {height: 60},
+                // the zvanja strip adds its own height under the points
+                height: showZvanja ? 112 : 84,
+                [SHORT_WINDOW]: {height: showZvanja ? 84 : 60},
                 minWidth: 0,
                 borderRadius: "16px",
                 border: `2px solid ${teamColor[i]}`,
                 background: on ? teamColor[i] : color.white,
                 color: on ? color.white : teamColor[i],
-                display: "grid",
-                gridTemplateColumns: "minmax(0,1fr)",
-                alignItems: "center",
-                px: "14px",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
                 textAlign: "left",
                 transition: "background 200ms ease, color 200ms ease",
               }}
             >
-              <Stat label={names[i]} value={points} size={34} />
+              <Box component="span" sx={{flex: 1, display: "grid", gridTemplateColumns: "minmax(0,1fr)", alignItems: "center", px: "14px", minWidth: 0}}>
+                <Stat label={names[i]} value={points} size={34} />
+              </Box>
+              {showZvanja && <ZvanjaStrip compact zvanja={zv[i]} points={points} on={on} team={i === 1 ? 1 : 0} />}
             </Box>
           );
         })}
       </Box>
-
-      {/* as Bela's "Σ" line: each team's zvanja and its total with them, under its box (points only in the box) */}
-      {showZvanja && (zv[0] > 0 || zv[1] > 0) && (
-        <Box aria-live="polite" sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "10px", mt: "-6px", [SHORT_WINDOW]: {mt: "-2px"}}}>
-          {SIDES.map((side, i) => (
-            <Box key={side} sx={{pl: "8px", fontSize: 13, fontWeight: 600, color: color.muted, whiteSpace: "nowrap", ...tabular}}>
-              {zvanjaNote(zv[i], entry.points[i])}
-            </Box>
-          ))}
-        </Box>
-      )}
 
       {showZvanja && (
         <ZvanjaButtons

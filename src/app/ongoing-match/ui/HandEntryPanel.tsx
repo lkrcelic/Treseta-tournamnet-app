@@ -10,7 +10,7 @@ import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
 import {Box} from "@mui/material";
 import {useEffect, useState} from "react";
 import {discardHand, saveHand} from "./handFlow";
-import {ZvanjaButtons, zvanjaNote} from "./WizardParts";
+import {ZvanjaButtons, ZvanjaStrip} from "./WizardParts";
 
 // Desktop: the team boxes, the zvanja of the active team (3, 4, Obriši zvanja; not at a table "bez zvanja" nor on a
 // custom hand) and the keypad in one panel next to the scoreboard
@@ -153,48 +153,38 @@ export default function HandEntryPanel({
               type="button"
               role="radio"
               aria-checked={on}
-              aria-label={`${names[i]}: igra ${points(side)}${zvanja(side) ? `, zvanja ${zvanja(side)}` : ""}`}
+              aria-label={`${names[i]}: igra ${points(side)}${showZvanja ? `, zvanja ${zvanja(side)}, ukupno ${points(side) + zvanja(side)}` : ""}`}
               onClick={() => setActiveTeam(side === 1 ? "team1" : "team2")}
               sx={{
                 ...buttonBase,
-                height: 84,
+                // the zvanja strip adds its own height under the points
+                height: showZvanja ? 112 : 84,
                 minWidth: 0,
-                [SHORT_WINDOW]: {height: 68},
+                [SHORT_WINDOW]: {height: showZvanja ? 92 : 68},
                 borderRadius: "16px",
                 border: `2px solid ${teamColor[i]}`,
                 background: on ? teamColor[i] : color.white,
                 color: on ? color.white : teamColor[i],
                 display: "flex",
                 flexDirection: "column",
-                alignItems: "flex-start",
-                justifyContent: "center",
-                gap: "2px",
-                px: "14px",
+                overflow: "hidden",
                 textAlign: "left",
                 transition: "background 200ms ease, color 200ms ease",
               }}
             >
-              <Box component="span" sx={{maxWidth: "100%", fontSize: 11, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
-                Igra · {names[i]}
+              <Box component="span" sx={{flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: "2px", px: "14px", minWidth: 0}}>
+                <Box component="span" sx={{maxWidth: "100%", fontSize: 11, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
+                  Igra · {names[i]}
+                </Box>
+                <Box component="span" sx={{fontFamily: font.display, fontSize: 34, fontWeight: 800, lineHeight: 1, ...tabular}}>
+                  {points(side)}
+                </Box>
               </Box>
-              <Box component="span" sx={{fontFamily: font.display, fontSize: 34, fontWeight: 800, lineHeight: 1, ...tabular}}>
-                {points(side)}
-              </Box>
+              {showZvanja && <ZvanjaStrip compact zvanja={zvanja(side)} points={points(side)} on={on} team={i === 1 ? 1 : 0} />}
             </Box>
           );
         })}
       </Box>
-
-      {/* as Bela's "Σ" line: each team's zvanja and its total with them, under its box (points only in the box) */}
-      {showZvanja && (zvanja(1) > 0 || zvanja(2) > 0) && (
-        <Box aria-live="polite" sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "10px", mt: "-6px", [SHORT_WINDOW]: {mt: "-2px"}}}>
-          {sides.map((side) => (
-            <Box key={side} sx={{pl: "8px", fontSize: 13, fontWeight: 600, color: color.muted, whiteSpace: "nowrap", ...tabular}}>
-              {zvanjaNote(zvanja(side), points(side))}
-            </Box>
-          ))}
-        </Box>
-      )}
 
       {showZvanja && (
         <ZvanjaButtons

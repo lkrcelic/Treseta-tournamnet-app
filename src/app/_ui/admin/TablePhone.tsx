@@ -44,7 +44,7 @@ import {
 import {HandList, MatchTabs, ScorePanel} from "@/app/ongoing-match/ui/BoardParts";
 import RoundResultCards from "@/app/ongoing-match/ui/RoundResultCards";
 import {DostaPrompt, DostaTeam, TargetFlag} from "@/app/ongoing-match/ui/MatchEnd";
-import {PointsKeypad, TeamValueBoxes, ZvanjaButtons, zvanjaNote} from "@/app/ongoing-match/ui/WizardParts";
+import {PointsKeypad, TeamValueBoxes, ZvanjaButtons} from "@/app/ongoing-match/ui/WizardParts";
 import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
 import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
@@ -380,13 +380,14 @@ function MatchPhone({
         </>,
       );
     }
-    // the line under each box (Bela's "Σ"): the team's zvanja and its total with them; points only in the box
-    const notes: [string, string] = [zvanjaNote(zv[0], entry.points[0]), zvanjaNote(zv[1], entry.points[1])];
+    // the strip at the bottom of each box: the team's zvanja and its total with them (none at a table "bez zvanja" or
+    // on a custom hand, whose points are the total)
+    const strips: [number, number] | null = pad.declarations && entry.mode !== "man" ? zv : null;
     return wizard(
       <>
         <Box component="header" sx={{display: "flex", flexDirection: "column", gap: "12px", pb: "12px", flex: "none"}}>
           {title}
-          <TeamValueBoxes names={names} label="Igra" values={entry.points} notes={notes} active={active} onPick={pickTeam} />
+          <TeamValueBoxes names={names} label="Igra" values={entry.points} zvanja={strips} active={active} onPick={pickTeam} />
         </Box>
         <PointsKeypad onDigit={(d) => setEntry((s) => typeDigit(s, d))} onClear={() => setEntry((s) => clearPoints(s))} />
         <ActionPair

@@ -11,10 +11,45 @@ import {ZVANJA_VALUES, Zvanje} from "@/app/_lib/game/scoring";
 // and the admin's phone scorepad (admin-mobile 26–28). They only draw; the caller keeps the hand. Index 0 is the left
 // team (green), 1 the right one (red).
 
-// The line under a team's box on the points step, as Bela's "Σ" line: the team's zvanja and its total with them
-// ("Zvanja 7 · Σ 14"); empty when the team has none
-export function zvanjaNote(zvanja: number, points: number): string {
-  return zvanja > 0 ? `Zvanja ${zvanja} · Σ ${points + zvanja}` : "";
+// the strip's ground when its box isn't picked: the team's colour, faint enough for its text to stay readable
+const STRIP_TINT = [tint.green[9], tint.red[6]] as const;
+
+// The strip at the bottom of a team's box on the points step (Claude Design "Zvanja na upisu bodova", option B): the
+// team's zvanja and its total with them, "Zvanja +7 · Σ 14", or "Bez zvanja · Σ 4"; the box above it holds the points
+// only. compact: the desktop panels' smaller boxes.
+export function ZvanjaStrip({zvanja, points, on, team, compact}: {zvanja: number; points: number; on: boolean; team: 0 | 1; compact?: boolean}) {
+  return (
+    <Box
+      component="span"
+      aria-hidden
+      sx={{
+        flex: "none",
+        height: compact ? 28 : 34,
+        [SHORT_WINDOW]: compact ? {height: 24} : {},
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: "8px",
+        px: compact ? "14px" : "16px",
+        background: on ? tint.scrim[28] : STRIP_TINT[team],
+        color: on ? color.white : teamColor[team],
+        fontSize: compact ? 12 : 13,
+        fontWeight: 700,
+        whiteSpace: "nowrap",
+        transition: "background 200ms ease, color 200ms ease",
+        ...tabular,
+      }}
+    >
+      {zvanja > 0 ? (
+        <span>Zvanja +{zvanja}</span>
+      ) : (
+        <Box component="span" sx={{color: on ? tint.white[70] : color.muted}}>
+          Bez zvanja
+        </Box>
+      )}
+      <span>Σ {points + zvanja}</span>
+    </Box>
+  );
 }
 
 // what each zvanje's button says under its value
@@ -95,13 +130,14 @@ export function CallerCards({names, caller, onPick, disabled}: {names: readonly 
 }
 
 // Steps 2 and 3: the two team boxes that pick which team the zvanja or points are entered for (label "Zvanja",
-// "Igra"; sums: the "Σ 162" line under each box on the points step; notes: that line's own text, Treseta's zvanjaNote)
+// "Igra"; sums: the "Σ 162" line under each box on the points step). zvanja (Treseta): on the points step each box ends
+// in a ZvanjaStrip with the team's zvanja and its total, in the room the Σ line takes, so the step keeps its height.
 export function TeamValueBoxes({
   names,
   label,
   values,
   sums,
-  notes,
+  zvanja,
   active,
   onPick,
 }: {
@@ -109,7 +145,7 @@ export function TeamValueBoxes({
   label: string;
   values: [number, number];
   sums?: [number, number] | null;
-  notes?: [string, string] | null;
+  zvanja?: [number, number] | null;
   active: 0 | 1;
   onPick: (i: 0 | 1) => void;
 }) {
@@ -117,6 +153,7 @@ export function TeamValueBoxes({
     <Box role="radiogroup" aria-label={`${label}: upis za ekipu`} sx={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px"}}>
       {([0, 1] as const).map((i) => {
         const on = active === i;
+        const strip = zvanja != null;
         return (
           <Box key={i} sx={{display: "flex", flexDirection: "column", gap: "6px", minWidth: 0}}>
             <Box
@@ -124,35 +161,45 @@ export function TeamValueBoxes({
               type="button"
               role="radio"
               aria-checked={on}
-              aria-label={`${names[i]}: ${label.toLowerCase()} ${values[i]}`}
+              aria-label={`${names[i]}: ${label.toLowerCase()} ${values[i]}${strip ? `, zvanja ${zvanja[i]}, ukupno ${values[i] + zvanja[i]}` : ""}`}
               onClick={() => onPick(i)}
               sx={{
                 ...buttonBase,
-                height: 92,
+                // with the strip the box also takes the Σ line's 24 px
+                height: strip ? 116 : 92,
                 borderRadius: "20px",
                 border: `2.5px solid ${teamColor[i]}`,
                 background: on ? teamColor[i] : color.white,
                 color: on ? color.white : teamColor[i],
                 display: "flex",
                 flexDirection: "column",
-                alignItems: "flex-start",
+                alignItems: strip ? "stretch" : "flex-start",
                 justifyContent: "center",
-                gap: "2px",
-                px: "16px",
+                gap: strip ? 0 : "2px",
+                px: strip ? 0 : "16px",
+                overflow: "hidden",
                 transition: "background 200ms ease, color 200ms ease",
                 minWidth: 0,
               }}
             >
-              <Box component="span" sx={{fontSize: 12, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
-                {label} · {names[i]}
+              <Box
+                component="span"
+                sx={strip ? {flex: 1, display: "flex", flexDirection: "column", alignItems: "flex-start", justifyContent: "center", gap: "2px", px: "16px", minWidth: 0} : {display: "contents"}}
+              >
+                <Box component="span" sx={{fontSize: 12, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
+                  {label} · {names[i]}
+                </Box>
+                <Box component="span" sx={{fontFamily: font.display, fontSize: 38, fontWeight: 800, lineHeight: 1, ...tabular}}>
+                  {values[i]}
+                </Box>
               </Box>
-              <Box component="span" sx={{fontFamily: font.display, fontSize: 38, fontWeight: 800, lineHeight: 1, ...tabular}}>
-                {values[i]}
+              {strip && <ZvanjaStrip zvanja={zvanja[i]} points={values[i]} on={on} team={i} />}
+            </Box>
+            {!strip && (
+              <Box aria-live="polite" sx={{height: 18, pl: "8px", fontSize: 14, fontWeight: 600, color: color.muted, ...tabular}}>
+                {sums ? `Σ ${sums[i]}` : ""}
               </Box>
-            </Box>
-            <Box aria-live="polite" sx={{height: 18, pl: "8px", fontSize: 14, fontWeight: 600, color: color.muted, ...tabular}}>
-              {notes ? notes[i] : sums ? `Σ ${sums[i]}` : ""}
-            </Box>
+            )}
           </Box>
         );
       })}
