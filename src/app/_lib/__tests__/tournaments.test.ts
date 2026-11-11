@@ -341,6 +341,7 @@ test("the words of the tournament screens", () => {
   assert.equal(rulesLabel(true), "41 · zvanja · s ovim dosta");
   assert.equal(rulesLabel(false), "41 · bez zvanja · s ovim dosta");
   assert.equal(rulesLabel(true, 51), "51 · zvanja · s ovim dosta");
+  assert.equal(rulesLabel(false, 41, "NA_PROLAZ"), "41 · bez zvanja · na prolaz");
   assert.equal(formatLabel(9, 2), "9 kola");
   assert.equal(formatLabel(7, 1), "7 kola · 1 partija po kolu");
   assert.deepEqual(feeLabel(20), {title: "Kotizacija 20 € po igraču", sub: "Plaća se na dan turnira", free: false});
@@ -480,6 +481,10 @@ test("the tournament form's switch reaches the server: open_signups survives the
   // the field would be dropped without a line in the schema, and the tournament would quietly stay closed
   assert.equal(TournamentRequestValidation.parse({...body, open_signups: true}).open_signups, true);
   assert.equal(TournamentRequestValidation.parse({...body, open_signups: false}).open_signups, false);
+  // Kraj partije: a form from before it came plays "s ovim dosta"
+  assert.equal(TournamentRequestValidation.parse(body).match_end, "S_OVIM_DOSTA");
+  assert.equal(TournamentRequestValidation.parse({...body, match_end: "NA_PROLAZ"}).match_end, "NA_PROLAZ");
+  assert.throws(() => TournamentRequestValidation.parse({...body, match_end: "DOSTA"}));
   // left out: a tournament is closed, as every tournament made before this was
   assert.equal(TournamentRequestValidation.parse(body).open_signups, false);
   // Zvanja: kept as sent, and with zvanja when a form opened before the switch came back leaves it out

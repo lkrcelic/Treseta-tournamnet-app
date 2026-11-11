@@ -15,6 +15,7 @@ import {
   entryZvanjaPoints,
   fromPadHand,
   manualFields,
+  levelAtTarget,
   setActive,
   toAdminHand,
   typeDigit,
@@ -43,7 +44,7 @@ import {
 } from "@/app/_ui/sp";
 import {HandList, MatchTabs, ScorePanel} from "@/app/ongoing-match/ui/BoardParts";
 import RoundResultCards from "@/app/ongoing-match/ui/RoundResultCards";
-import {DostaPrompt, DostaTeam, TargetFlag} from "@/app/ongoing-match/ui/MatchEnd";
+import {DostaPrompt, DostaTeam, LevelFlag, TargetFlag} from "@/app/ongoing-match/ui/MatchEnd";
 import {PointsKeypad, TeamValueBoxes, ZvanjaButtons} from "@/app/ongoing-match/ui/WizardParts";
 import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
 import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
@@ -440,7 +441,7 @@ function MatchPhone({
   const askHand = match.hands[match.hands.length - 1];
   const dostaTeams: DostaTeam[] =
     askDosta && askHand?.custom && !askHand.dosta && (askDosta.hand == null || askDosta.hand === askHand.id)
-      ? dostaCallers(padPlayedHands(match), THRESHOLD).map((side) => ({side, name: names[side - 1], color: teamColor[side - 1]}))
+      ? dostaCallers(padPlayedHands(match), THRESHOLD, pad.matchEnd).map((side) => ({side, name: names[side - 1], color: teamColor[side - 1]}))
       : [];
   const pickDosta = async (side: Side) => {
     if (!askHand) return;
@@ -483,7 +484,7 @@ function MatchPhone({
             {pad.done ? "Runda je završena. Izmjene mijenjaju rezultat i poredak." : `Meč ${number} je završen. Izmjene mijenjaju rezultat i poredak.`}
           </Box>
         )}
-        {dostaTeams.length === 0 && match.threshold > THRESHOLD && <TargetFlag target={match.threshold} />}
+        {dostaTeams.length === 0 && (levelAtTarget(pad, match) ? <LevelFlag /> : match.threshold > THRESHOLD && <TargetFlag target={match.threshold} />)}
       </Box>
       <HandList rows={match.hands.map((h) => ({id: h.id, left: h.total1, right: h.total2}))} onOpen={openSheet} sx={{mt: "14px"}} />
       {!viewDone && (

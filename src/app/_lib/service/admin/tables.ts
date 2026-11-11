@@ -1,3 +1,4 @@
+import type {MatchEnd} from "@/app/_lib/game/scoring";
 import {Prisma} from "@prisma/client";
 import {prisma} from "@/app/_lib/prisma";
 import {isByeTeam} from "@/app/_lib/bye";
@@ -33,6 +34,7 @@ type TableRound = {
   matches_per_round: number;
   declarations: boolean;
   score_threshold: number;
+  match_end: MatchEnd;
 };
 
 // What a table belongs to: a league's night or a tournament's Kolo
@@ -59,6 +61,7 @@ const tableSelect = {
   matches_per_round: true,
   declarations: true,
   score_threshold: true,
+  match_end: true,
 } as const;
 
 // The competition's edit lock: a league's is the one round creation takes, a tournament's is lockTournament
@@ -239,7 +242,7 @@ export async function addCompetitionTable(c: Competition, roundDate: Date, round
     const status = roundStatusOf(tables);
     const tableNumber = newTableNumber(tables, bye);
     const smokers = await teamSmokers([team1Id, team2Id], tx);
-    const {matches_per_round: matches, declarations, score_threshold} = tables[0];
+    const {matches_per_round: matches, declarations, score_threshold, match_end} = tables[0];
     const round = await tx.round.create({
       data: {
         round_number: roundNumber,
@@ -254,9 +257,11 @@ export async function addCompetitionTable(c: Competition, roundDate: Date, round
         // a draft's table is part of its Skica A, B…
         draft_order: status === "PUBLISHED" ? null : tables[0].draft_order,
         matches_per_round: matches,
-        // a Kolo's new table plays as its others do: with zvanja or "bez zvanja", to 41 or 51
+        // a Kolo's new table plays as its others do: with zvanja or "bez zvanja", to 41 or 51, "s ovim dosta" or
+        // "na prolaz"
         declarations,
         score_threshold,
+        match_end,
         ...(bye && {team1_wins: isByeTeam(team1Id) ? 0 : matches, team2_wins: isByeTeam(team1Id) ? matches : 0, open: false}),
         ...(c.kind === "league" ? {leagueRounds: {create: {league_id: c.id}}} : {tournamentRounds: {create: {tournament_id: c.id}}}),
       },

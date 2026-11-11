@@ -28,6 +28,7 @@ const request = (declarations: boolean): TournamentRequest => ({
   rounds: 3,
   matches_per_round: 2,
   declarations,
+  match_end: "S_OVIM_DOSTA",
   score_threshold: 41,
   max_teams: null,
   entry_fee: 0,

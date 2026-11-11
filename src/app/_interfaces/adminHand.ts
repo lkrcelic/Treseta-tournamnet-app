@@ -1,3 +1,4 @@
+import type {MatchEnd} from "@/app/_lib/game/scoring";
 import {z} from "zod";
 import {CUSTOM_HAND_MAX, ZvanjaCounts} from "@/app/_lib/game/scoring";
 import {TeamSide, TeamSideValidation} from "@/app/_interfaces/side";
@@ -70,6 +71,8 @@ export type TablePad = {
   matchesPerRound: number;
   // zvanja are entered at the table; false: a tournament's table "bez zvanja"
   declarations: boolean;
+  // "s ovim dosta" or "na prolaz" (no "s ovim dosta" question, and Kaput on the keypad)
+  matchEnd: MatchEnd;
   roundNumber: number | null;
   date: string | null;
   table: number | null;

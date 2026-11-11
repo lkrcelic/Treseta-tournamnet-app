@@ -28,6 +28,12 @@ enum RoundStatus {
 
 // Who sees a player's or a team's profile photo (others get the initials or the team's letter). A team is ALL or
 // TEAMMATES (its own players); ME is a player's only (CHECK in the migration script).
+// Kraj partije: how a tournament's matches end (_lib/game/scoring.ts, MatchEnd). A league plays S_OVIM_DOSTA
+enum MatchEnd {
+  S_OVIM_DOSTA // a team may call "s ovim dosta"; level at or above the target raises it by 10
+  NA_PROLAZ // the team with more points once one is at the target; level, one more hand
+}
+
 enum PhotoVisibility {
   ALL
   TEAMMATES
@@ -177,6 +183,8 @@ model Tournament {
   // Igra se do: the points a match is played to, 41 or 51 (CHECK in the migration script); every Kolo's tables take it
   // when the Kolo is made
   score_threshold    Int       @default(41)
+  // Kraj partije: "s ovim dosta" or "na prolaz"; every Kolo's tables take it when the Kolo is made
+  match_end          MatchEnd  @default(S_OVIM_DOSTA)
   // Najveći broj ekipa; null = no limit. Teams over it wait on the waiting list
   max_teams          Int?
   // Kotizacija po igraču in whole euros; 0 = "Bez stresa, bez obveza"
@@ -651,6 +659,9 @@ model Round {
   // the points its matches are played to: 41 in a league, 41 or 51 in a tournament (its Igra se do; CHECK in the
   // migration). A match started at the table takes it, whatever the phone sends
   score_threshold   Int     @default(41)
+  // how its matches end: S_OVIM_DOSTA in a league, either in a tournament (its Kraj partije). The server reads it from
+  // the table for every hand and every Završi meč
+  match_end         MatchEnd @default(S_OVIM_DOSTA)
   // Vrijeme partije for this table alone: the minutes an admin chose when they unlocked it (Otključaj partiju,
   // DECISIONS #89); null (every other table): its tournament's or its league's. CHECK in the migration script keeps it
   // between GAME_MINUTES_MIN and GAME_MINUTES_MAX.

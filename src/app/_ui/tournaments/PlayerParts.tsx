@@ -244,7 +244,7 @@ export function InfoCard({t, hidePlace = false}: {t: TournamentDetail; hidePlace
       <InfoRow
         icon={<MenuBookRoundedIcon />}
         title="Pravila igre"
-        sub={rulesLabel(t.declarations, t.score_threshold)}
+        sub={rulesLabel(t.declarations, t.score_threshold, t.match_end)}
         last
         action={
           rules && (
@@ -560,6 +560,7 @@ export function NextTournamentCard({t, arrival}: {t: TournamentCard; arrival?: {
           {formatLabel(t.rounds, t.matches_per_round)}
           {t.declarations ? "" : " · bez zvanja"}
           {t.score_threshold > 41 ? ` · do ${t.score_threshold}` : ""}
+          {t.match_end === "NA_PROLAZ" ? " · na prolaz" : ""}
         </Box>
         <Box sx={{fontFamily: font.display, fontSize: 30, fontWeight: 800, lineHeight: 1.02, overflowWrap: "anywhere"}}>{t.name}</Box>
       </Box>

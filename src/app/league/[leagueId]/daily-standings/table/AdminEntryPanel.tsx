@@ -30,9 +30,11 @@ import React, {useEffect, useRef} from "react";
 const SIDES: Side[] = [1, 2];
 
 // The right-hand panel of the admin scorepad: enter a new hand or change the selected one. A standard hand has the
-// active team's zvanja (3, 4, Obriši zvanja) above the keypad, unless the table is a tournament's "bez zvanja".
+// active team's zvanja (3, 4, Obriši zvanja) above the keypad, unless the table is a tournament's "bez zvanja". At a
+// table "na prolaz" the admin has no Kaput (the players' shortcut): Ručni unos stays, for corrections.
 export default function AdminEntryPanel({
   declarations = true,
+  naProlaz = false,
   entry,
   onChange,
   names,
@@ -59,6 +61,8 @@ export default function AdminEntryPanel({
   finish: {winner: string; color: string; onFinish: () => void; busy: boolean} | null;
   // false: the table is a tournament's "bez zvanja"
   declarations?: boolean;
+  // the table is a tournament's "na prolaz"
+  naProlaz?: boolean;
 }) {
   const custom = entry.mode === "man";
   const savable = canSave(entry, declarations);
@@ -178,7 +182,9 @@ export default function AdminEntryPanel({
       <Box sx={{display: "flex", alignItems: "flex-start", gap: "10px", p: "10px 12px", borderRadius: "12px", background: tint.navy[7], fontSize: 13, lineHeight: 1.4, "& svg": {fontSize: 18, color: color.navy, flex: "none"}}}>
         <InfoRoundedIcon />
         {custom
-          ? "Upiši bodove za obje ekipe, npr. kad se zove „s ovim dosta”, sa zvanjima u njima. Bez ograničenja na 11."
+          ? naProlaz
+            ? "Upiši bodove za obje ekipe, za ispravak, sa zvanjima u njima. Bez ograničenja na 11."
+            : "Upiši bodove za obje ekipe, npr. kad se zove „s ovim dosta”, sa zvanjima u njima. Bez ograničenja na 11."
           : showZvanja
             ? "Klikni zvanja odabrane ekipe i upiši bodove jedne ekipe, druga dobiva ostatak do 11."
             : "Upiši bodove jedne ekipe, druga dobiva ostatak do 11."}

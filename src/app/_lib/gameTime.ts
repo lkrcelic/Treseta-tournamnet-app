@@ -7,7 +7,8 @@ import {TARGET_RAISE} from "@/app/_lib/game/scoring";
 // after it.
 //
 // Treseta's own rule: every time the target goes up (41 → 51 → 61 …, the teams level at or above it), the match gets
-// TARGET_RAISE_MINUTES more minutes. The deadline is therefore counted from the hands the match has, not stored up:
+// TARGET_RAISE_MINUTES more minutes, and so does every hand of a "na prolaz" match that leaves the teams level at or
+// above the target (MatchState.extensions). The deadline is therefore counted from the hands the match has, not stored up:
 // an edit of an old hand puts it exactly where the hands say it belongs (service/match/timeLimit.ts, syncDeadline).
 // Framework free so it can be unit tested.
 

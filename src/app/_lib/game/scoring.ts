@@ -4,7 +4,8 @@
 // A hand is worth 11 points: the points typed for one team, the rest to the other team
 export const HAND_POINTS = 11;
 // A custom hand (one cut short by "s ovim dosta", or a correction) is typed freely for each team, up to this
-// many points
+// many points. "Na prolaz" has no custom hand on the players' screens: Kaput (11 : 0) takes its key, and only an
+// admin's correction is custom
 export const CUSTOM_HAND_MAX = 99;
 // A match is over once a team has this many points and the scores differ
 export const MATCH_THRESHOLD = 41;
@@ -14,6 +15,15 @@ export const TARGET_RAISE = 10;
 export const BYE_MATCH_POINTS = 5;
 
 export type Side = 1 | 2;
+
+// How a tournament's matches end (Kraj partije; a league plays "s ovim dosta"):
+//   S_OVIM_DOSTA: a team may call "s ovim dosta" (a custom hand), and teams level at or above the target play on to a
+//                 target 10 higher
+//   NA_PROLAZ: no call and no raise: once a team is at the target the team with more points wins; level at or above
+//              it, one more hand is played (and again while level)
+export const MATCH_ENDS = ["S_OVIM_DOSTA", "NA_PROLAZ"] as const;
+export type MatchEnd = (typeof MATCH_ENDS)[number];
+export const DEFAULT_MATCH_END: MatchEnd = "S_OVIM_DOSTA";
 
 // Returns a reason the hand's points can't be right, or null when they are fine.
 export function handError(points1: number, points2: number, custom: boolean): string | null {
@@ -159,18 +169,25 @@ export type MatchState = {
   calledBy: Side | null;
   // why a "s ovim dosta" mark can't stand, or null
   callError: string | null;
+  // the times the match got more time (TARGET_RAISE_MINUTES each): every raise of the target, or "na prolaz" every
+  // hand that left the teams level at or above it
+  extensions: number;
+  // "na prolaz": the teams are level at or above the target, so one more hand is played
+  levelAtTarget: boolean;
 };
 
 // Plays the hands in order:
 //   - "s ovim dosta": the calling team wins once it has reached the target with that hand, even with fewer points
-//   - level at or above the target: the target goes up by 10, and the rules apply again
+//   - level at or above the target: the target goes up by 10, and the rules apply again ("na prolaz": it stays, and
+//     the next hand decides)
 //   - otherwise the first team over the target with more points wins (matchWinner)
-export function matchState(hands: PlayedHand[], threshold = MATCH_THRESHOLD): MatchState {
+export function matchState(hands: PlayedHand[], threshold = MATCH_THRESHOLD, end: MatchEnd = DEFAULT_MATCH_END): MatchState {
   let score1 = 0;
   let score2 = 0;
   let target = threshold;
   let calledBy: Side | null = null;
   let callError: string | null = null;
+  let extensions = 0;
 
   for (const hand of hands) {
     const [total1, total2] = handTotals(hand);
@@ -178,7 +195,9 @@ export function matchState(hands: PlayedHand[], threshold = MATCH_THRESHOLD): Ma
     score2 += total2;
     const caller = hand.dosta_side;
     if (caller === 1 || caller === 2) {
-      if (calledBy !== null) {
+      if (end === "NA_PROLAZ") {
+        callError = "Na prolaz se ne zove „s ovim dosta”.";
+      } else if (calledBy !== null) {
         callError = "„S ovim dosta” može se zvati samo jednom.";
       } else if ((caller === 1 ? score1 : score2) < target) {
         callError = `Ekipa koja zove „s ovim dosta” mora s tom igrom doći do ${target}.`;
@@ -186,17 +205,26 @@ export function matchState(hands: PlayedHand[], threshold = MATCH_THRESHOLD): Ma
         calledBy = caller;
       }
     }
-    while (calledBy === null && score1 === score2 && score1 >= target) target += TARGET_RAISE;
+    if (end === "NA_PROLAZ") {
+      if (score1 === score2 && score1 >= target) extensions++;
+      continue;
+    }
+    while (calledBy === null && score1 === score2 && score1 >= target) {
+      target += TARGET_RAISE;
+      extensions++;
+    }
   }
 
   const winner = calledBy ?? matchWinner(score1, score2, target);
-  return {score1, score2, target, winner, calledBy, callError};
+  const levelAtTarget = end === "NA_PROLAZ" && score1 === score2 && score1 >= target;
+  return {score1, score2, target, winner, calledBy, callError, extensions, levelAtTarget};
 }
 
-// The teams that may have called "s ovim dosta" on the last hand: those that reached the target with it
-export function dostaCallers(hands: PlayedHand[], threshold = MATCH_THRESHOLD): Side[] {
+// The teams that may have called "s ovim dosta" on the last hand: those that reached the target with it ("na prolaz":
+// none)
+export function dostaCallers(hands: PlayedHand[], threshold = MATCH_THRESHOLD, end: MatchEnd = DEFAULT_MATCH_END): Side[] {
   const last = hands[hands.length - 1];
-  if (!last) return [];
+  if (!last || end === "NA_PROLAZ") return [];
   const before = matchState(hands.slice(0, -1), threshold);
   if (before.winner !== null) return [];
   const [total1, total2] = handTotals(last);

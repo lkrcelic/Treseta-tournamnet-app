@@ -10,6 +10,7 @@ import {
   clearZvanja,
   entryZvanjaPoints,
   fromPadHand,
+  levelAtTarget,
   setActive,
   switchMode,
   toAdminHand,
@@ -135,4 +136,11 @@ test("Ručni unos drops the zvanja, and a table bez zvanja takes none", () => {
   assert.equal(toAdminHand({...s, mode: "man"}).zvanja1, undefined);
   assert.equal(canSave(s, false), false);
   assert.equal(canSave(clearZvanja(s), false), true);
+});
+
+test("na prolaz: the board's flag for a level score at or above the target", () => {
+  const m = {score1: 44, score2: 44, threshold: 41, winner: null};
+  assert.equal(levelAtTarget({matchEnd: "NA_PROLAZ"}, m), true);
+  assert.equal(levelAtTarget({matchEnd: "S_OVIM_DOSTA"}, m), false);
+  assert.equal(levelAtTarget({matchEnd: "NA_PROLAZ"}, {...m, score1: 30, score2: 30}), false);
 });

@@ -1,7 +1,7 @@
 import {Prisma} from "@prisma/client";
 import {prisma} from "@/app/_lib/prisma";
-import {closesByTime, GAME_MINUTES_DEFAULT, matchDeadline, targetRaises} from "@/app/_lib/gameTime";
-import {MATCH_THRESHOLD, MatchState} from "@/app/_lib/game/scoring";
+import {closesByTime, GAME_MINUTES_DEFAULT, matchDeadline} from "@/app/_lib/gameTime";
+import {MatchState} from "@/app/_lib/game/scoring";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {finishOngoingMatch, MatchAlreadyFinishedError} from "@/app/_lib/service/match/finishOngoingMatch";
 import {afterTableClosed} from "@/app/_lib/service/tournament/kola";
@@ -39,16 +39,17 @@ export async function matchClock(db: Db, roundId: number, now = new Date()): Pro
 
 /**
  * The deadline after the match's hands changed (saved, corrected or deleted): the table's minutes from the start of
- * the match, plus five for every raise of the target (41 → 51 → 61 …). Counted from the hands rather than added up as
+ * the match, plus five for every raise of the target (41 → 51 → 61 …), or "na prolaz" for every hand that left the
+ * teams level at or above it (MatchState.extensions). Counted from the hands rather than added up as
  * they are played, so a correction of an old hand can only put the deadline where the hands say it belongs.
  *
  * A match that was already running when Vrijeme partije came in has no start and keeps no deadline.
  */
-export async function syncDeadline(db: Db, matchId: number, state: MatchState, threshold: number | null): Promise<void> {
+export async function syncDeadline(db: Db, matchId: number, state: MatchState): Promise<void> {
   const match = await db.ongoingMatch.findUnique({where: {id: matchId}, select: {round_id: true, started_at: true, ends_at: true}});
   if (!match?.started_at || match.round_id == null) return;
   const minutes = await gameMinutesOf(db, match.round_id);
-  const ends = matchDeadline(match.started_at, minutes, targetRaises(state.target, threshold ?? MATCH_THRESHOLD));
+  const ends = matchDeadline(match.started_at, minutes, state.extensions);
   if (match.ends_at?.getTime() === ends.getTime()) return;
   await db.ongoingMatch.update({where: {id: matchId}, data: {ends_at: ends}});
 }

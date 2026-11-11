@@ -8,7 +8,8 @@ import {Box} from "@mui/material";
 import React, {useRef} from "react";
 
 // The end of a match as Treseta has it, shared by the players' scoreboard and the admin scorepad:
-// the "s ovim dosta" question after a custom hand, and the flag of a target raised by a tie.
+// the "s ovim dosta" question after a custom hand, the flag of a target raised by a tie, and "na prolaz" the flag of a
+// level score at or above the target (one more hand).
 
 export type DostaTeam = {side: Side; name: string; color: string};
 
@@ -49,6 +50,34 @@ export function DostaPrompt({
   );
 }
 
+// "Na prolaz", the teams level at or above the target: one more hand is played (with five more minutes). Pops in when
+// it appears.
+export function LevelFlag() {
+  return (
+    <Box role="status" aria-label="Izjednačeno, igra se još jedna igra" sx={flagSx}>
+      <FlagRoundedIcon />
+      Izjednačeno · još jedna igra
+    </Box>
+  );
+}
+
+const flagSx = {
+  alignSelf: "center",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "6px",
+  height: 32,
+  px: "12px",
+  borderRadius: "16px",
+  background: color.cream,
+  color: color.navy,
+  fontSize: 14,
+  fontWeight: 700,
+  whiteSpace: "nowrap",
+  animation: "spFadeUp 320ms ease both, spPop 480ms 320ms ease",
+  "& svg": {fontSize: 18, color: color.red},
+} as const;
+
 // "Do 51": the match is played past 41 — the teams were level at or above the target, so it went up, or the match
 // started there (a tournament played to 51; base: the target it started with). Pops in when it appears.
 export function TargetFlag({target, base = MATCH_THRESHOLD}: {target: number; base?: number}) {
@@ -58,22 +87,7 @@ export function TargetFlag({target, base = MATCH_THRESHOLD}: {target: number; ba
       key={target}
       role="status"
       aria-label={target > base ? `Izjednačeno, igra se do ${target}` : `Igra se do ${target}`}
-      sx={{
-        alignSelf: "center",
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "6px",
-        height: 32,
-        px: "12px",
-        borderRadius: "16px",
-        background: color.cream,
-        color: color.navy,
-        fontSize: 14,
-        fontWeight: 700,
-        whiteSpace: "nowrap",
-        animation: "spFadeUp 320ms ease both, spPop 480ms 320ms ease",
-        "& svg": {fontSize: 18, color: color.red},
-      }}
+      sx={flagSx}
     >
       <FlagRoundedIcon />
       Do {target}

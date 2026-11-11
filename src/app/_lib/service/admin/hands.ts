@@ -3,7 +3,7 @@ import {prisma} from "@/app/_lib/prisma";
 import {AdminHand, HandKind, PadHand, PadMatch, TablePad} from "@/app/_interfaces/adminHand";
 import {ResultCreateRequest} from "@/app/_interfaces/result";
 import {isByeTeam, teamLabel} from "@/app/_lib/bye";
-import {HandZvanja, handTotals, handZvanja, MATCH_THRESHOLD, MatchState, matchState, Side, zvanjaColumns, ZvanjaCounts} from "@/app/_lib/game/scoring";
+import {DEFAULT_MATCH_END, HandZvanja, handTotals, handZvanja, MATCH_THRESHOLD, MatchState, matchState, Side, zvanjaColumns, ZvanjaCounts} from "@/app/_lib/game/scoring";
 import {assertZvanja, InvalidResultError, newHandZvanja, NoWinnerWarning, normalizeResult} from "@/app/_lib/validation/validateResult";
 import {transformResult} from "@/app/_lib/helpers/databaseHelpers";
 import {createResult} from "@/app/_lib/service/ongoingResult/create";
@@ -72,7 +72,7 @@ export async function getTablePad(roundId: number): Promise<TablePad> {
   if (!round) throw new NotFoundError("Stol ne postoji.");
 
   const matches: PadMatch[] = round.matches.map((m, i) => {
-    const {target} = matchState(m.results, m.score_threshold ?? MATCH_THRESHOLD);
+    const {target} = matchState(m.results, m.score_threshold ?? MATCH_THRESHOLD, round.match_end);
     return {
       kind: "finished",
       id: m.id,
@@ -88,7 +88,7 @@ export async function getTablePad(roundId: number): Promise<TablePad> {
   });
   const ongoing = round.ongoingMatches[0];
   if (ongoing) {
-    const {target, winner} = matchState(ongoing.results, ongoing.score_threshold ?? MATCH_THRESHOLD);
+    const {target, winner} = matchState(ongoing.results, ongoing.score_threshold ?? MATCH_THRESHOLD, round.match_end);
     matches.push({
       kind: "ongoing",
       id: ongoing.id,
@@ -107,6 +107,7 @@ export async function getTablePad(roundId: number): Promise<TablePad> {
     tournamentId: round.tournamentRounds[0]?.tournament_id ?? null,
     matchesPerRound: round.matches_per_round,
     declarations: round.declarations,
+    matchEnd: round.match_end,
     roundNumber: round.round_number,
     date: round.round_date ? round.round_date.toISOString().slice(0, 10) : null,
     table: round.table_number,
@@ -153,11 +154,11 @@ export type HandEditOptions = {allowNoWinner?: boolean};
 // standings (and the ratings when the round's outcome changed). A match left without a winner needs the admin's
 // confirmation.
 async function recountFinishedMatch(tx: Tx, matchId: number, allowNoWinner: boolean) {
-  const {score_threshold, winner_side, results} = await tx.match.findUniqueOrThrow({
+  const {score_threshold, winner_side, results, round: table} = await tx.match.findUniqueOrThrow({
     where: {id: matchId},
-    select: {score_threshold: true, winner_side: true, results: {orderBy: {result_id: "asc"}}},
+    select: {score_threshold: true, winner_side: true, results: {orderBy: {result_id: "asc"}}, round: {select: {match_end: true}}},
   });
-  const state = matchState(results, score_threshold ?? MATCH_THRESHOLD);
+  const state = matchState(results, score_threshold ?? MATCH_THRESHOLD, table?.match_end ?? DEFAULT_MATCH_END);
   assertCallStands(state);
   const warning = allowNoWinner ? null : noWinnerWarning(winner_side as Side | null, state);
   if (warning) throw new NoWinnerWarning(warning);
@@ -250,7 +251,7 @@ export async function updateHand(kind: HandKind, resultId: number, hand: AdminHa
     const stored = await prisma.ongoingResult.findUnique({where: {result_id: resultId}, select: {match_id: true}});
     if (!stored) throw new NotFoundError("Igra ne postoji.");
     const result = adminHandToResult(hand, stored.match_id);
-    await updateOngoingResult({result_id: resultId, resultData: result, normalize: (r) => r});
+    await updateOngoingResult({result_id: resultId, resultData: result, normalize: (r) => r, admin: true});
     return;
   }
 
@@ -297,7 +298,7 @@ export async function deleteHand(kind: HandKind, resultId: number, options: Hand
       const state = await ongoingMatchState(tx, hand.match_id, match.score_threshold);
       assertCallStands(state);
       // the target may have fallen back with the deleted hand, and the deadline with it
-      await syncDeadline(tx, hand.match_id, state, match.score_threshold);
+      await syncDeadline(tx, hand.match_id, state);
     });
     return;
   }

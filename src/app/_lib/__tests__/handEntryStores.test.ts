@@ -164,3 +164,15 @@ test("a click the cards can't make is ignored, even before the button goes off",
   result().addZvanje(3);
   assert.deepEqual(zvanja().team2, {3: 0, 4: 0});
 });
+
+test("Kaput: 11 : 0 to the active team, a normal hand that keeps its zvanja, and the next digit starts anew", () => {
+  result().setActiveTeam("team2");
+  result().addZvanje(3);
+  type("4");
+  result().setKaput();
+  assert.deepEqual(points(), [0, 11]);
+  assert.equal(result().resultData.custom, false);
+  assert.deepEqual(result().resultData.zvanja.team2, {3: 1, 4: 0});
+  type("6");
+  assert.deepEqual(points(), [5, 6]);
+});

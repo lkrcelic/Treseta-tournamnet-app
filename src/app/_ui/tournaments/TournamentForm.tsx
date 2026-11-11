@@ -13,7 +13,8 @@ import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import {Box, SxProps, Theme} from "@mui/material";
 import React, {useEffect, useMemo, useState} from "react";
 import {GAME_MINUTES_DEFAULT} from "@/app/_lib/gameTime";
-import {gameLengthNote} from "@/app/_lib/tournaments";
+import {gameLengthNote, matchEndNote} from "@/app/_lib/tournaments";
+import type {MatchEnd} from "@/app/_lib/game/scoring";
 
 // Novi turnir and Upravljanje turnirom · Podaci (desktop and phone): one form for the whole tournament. Every field
 // as it is typed, the checks before anything is sent, and the request the server takes.
@@ -31,6 +32,8 @@ export type TournamentDraft = {
   declarations: boolean;
   // Igra se do
   target: 41 | 51;
+  // Kraj partije: "s ovim dosta" or "na prolaz"
+  matchEnd: MatchEnd;
   // "" = no limit
   maxTeams: string;
   fee: string;
@@ -58,6 +61,7 @@ export const EMPTY_TOURNAMENT: TournamentDraft = {
   matches: 2,
   declarations: true,
   target: 41,
+  matchEnd: "S_OVIM_DOSTA",
   maxTeams: "",
   fee: "0",
   rulesUrl: DEFAULT_RULES_URL,
@@ -79,6 +83,7 @@ type Source = Pick<
   | "matches_per_round"
   | "declarations"
   | "score_threshold"
+  | "match_end"
   | "max_teams"
   | "entry_fee"
   | "rules_url"
@@ -100,6 +105,7 @@ export function draftOf(t: Source): TournamentDraft {
     matches: t.matches_per_round === 1 ? 1 : 2,
     declarations: t.declarations,
     target: t.score_threshold === 51 ? 51 : 41,
+    matchEnd: t.match_end === "NA_PROLAZ" ? "NA_PROLAZ" : "S_OVIM_DOSTA",
     maxTeams: t.max_teams == null ? "" : String(t.max_teams),
     fee: String(t.entry_fee),
     rulesUrl: t.rules_url ?? "",
@@ -159,6 +165,7 @@ export function draftPayload(d: TournamentDraft): TournamentRequest {
     matches_per_round: d.matches,
     declarations: d.declarations,
     score_threshold: d.target,
+    match_end: d.matchEnd,
     max_teams: d.maxTeams.trim() ? Number(d.maxTeams) : null,
     entry_fee: Number(d.fee || "0"),
     rules_url: text(d.rulesUrl),
@@ -346,6 +353,17 @@ export function TournamentFields({form, locks, compact = false, sx}: {form: Tour
         <Choice<1 | 2> label="Partija po kolu" value={d.matches} items={[{key: 1, label: "1"}, {key: 2, label: "2"}]} onChange={(v) => set("matches", v)} />
         <Choice<"da" | "ne"> label="Zvanja" value={d.declarations ? "da" : "ne"} items={[{key: "da", label: "Da"}, {key: "ne", label: "Ne"}]} onChange={(v) => set("declarations", v === "da")} />
         <Choice<41 | 51> label="Igra se do" value={d.target} items={[{key: 41, label: "41"}, {key: 51, label: "51"}]} onChange={(v) => set("target", v)} />
+      </Box>
+      <Box sx={columns(2)}>
+        <Choice<MatchEnd>
+          label="Kraj partije"
+          value={d.matchEnd}
+          items={[{key: "S_OVIM_DOSTA", label: "S ovim dosta"}, {key: "NA_PROLAZ", label: "Na prolaz"}]}
+          onChange={(v) => set("matchEnd", v)}
+        />
+      </Box>
+      <Box aria-live="polite" sx={{mt: "-6px", pl: "4px", fontSize: 13, lineHeight: 1.45, color: color.muted}}>
+        {matchEndNote(d.matchEnd)}
       </Box>
       <Box aria-live="polite" sx={{mt: "-6px", pl: "4px", fontSize: 13, lineHeight: 1.45, color: color.muted}}>
         {gameLengthNote(d.target, d.declarations)}

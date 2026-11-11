@@ -7,6 +7,7 @@ import type {TableState} from "@/app/_lib/tableState";
 import type {StandingsItem} from "@/app/_lib/ui/standings";
 import {GAME_MINUTES_DEFAULT, GAME_MINUTES_ERROR, GAME_MINUTES_MAX, GAME_MINUTES_MIN} from "@/app/_lib/gameTime";
 import {isValidPhone, PHONE_ERROR} from "@/app/_lib/phone";
+import {MATCH_ENDS, type MatchEnd} from "@/app/_lib/game/scoring";
 
 // Turniri: what the admin sends to create or change a tournament, what a player sends to sign a team up, and what the
 // tournament API answers with.
@@ -48,6 +49,9 @@ export const TournamentRequestValidation = z.object({
   declarations: z.boolean().optional().default(true),
   // Igra se do: 41 or 51. Left out (a form opened before it came): 41, as every tournament before
   score_threshold: z.union([z.literal(41), z.literal(51)]).optional().default(41),
+  // Kraj partije: "s ovim dosta" or "na prolaz". Left out (a form opened before it came): "s ovim dosta", as every
+  // tournament before
+  match_end: z.enum(MATCH_ENDS).optional().default("S_OVIM_DOSTA"),
   max_teams: z.number().int().min(2, MAX_TEAMS_ERROR).max(500, "Najviše 500 ekipa.").nullable(),
   entry_fee: z.number().int().min(0, FEE_ERROR).max(999, FEE_ERROR),
   rules_url: url,
@@ -75,6 +79,7 @@ export type TournamentRequest = {
   matches_per_round: 1 | 2;
   declarations: boolean;
   score_threshold: 41 | 51;
+  match_end: MatchEnd;
   max_teams: number | null;
   entry_fee: number;
   rules_url: string | null;
@@ -171,6 +176,8 @@ export type TournamentCard = {
   declarations: boolean;
   // Igra se do: 41 or 51
   score_threshold: number;
+  // Kraj partije
+  match_end: MatchEnd;
   entry_fee: number;
   max_teams: number | null;
   registrations_open: boolean;

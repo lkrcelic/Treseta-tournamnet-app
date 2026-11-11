@@ -1,3 +1,4 @@
+import {MATCH_ENDS} from "@/app/_lib/game/scoring";
 import {TeamExtendedResponseValidation} from "@/app/_interfaces/team";
 import {z} from "zod";
 import {OngoingMatchExtendedResponseValidation} from "./match";
@@ -10,6 +11,8 @@ export const RoundResponseValidation = z.object({
   matches_per_round: z.number().int().optional(),
   // zvanja are entered at the table; false: a tournament's table "bez zvanja"
   declarations: z.boolean().optional(),
+  // how its matches end: "s ovim dosta" or "na prolaz" (a tournament's Kraj partije)
+  match_end: z.enum(MATCH_ENDS).optional(),
   league_id: z.number().int().optional(),
   round_number: z.number().int(),
   round_date: z.date(),

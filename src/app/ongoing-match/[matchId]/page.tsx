@@ -6,7 +6,7 @@ import {getRoundDataAPI} from "@/app/_fetchers/round/getOne";
 import useCountUp from "@/app/_hooks/useCountUp";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useShortWindow from "@/app/_hooks/useShortWindow";
-import {dostaCallers, handTotals, MATCH_THRESHOLD, matchState, PlayedHand, Side, zvanjaOf} from "@/app/_lib/game/scoring";
+import {DEFAULT_MATCH_END, dostaCallers, handTotals, MATCH_THRESHOLD, matchState, PlayedHand, Side, zvanjaOf} from "@/app/_lib/game/scoring";
 import useRoundStore from "@/app/_store/RoundStore";
 import useOngoingMatchStore from "@/app/_store/ongoingMatchStore";
 import {color, shadow, teamColor} from "@/app/_styles/tokens";
@@ -15,7 +15,7 @@ import {currentRoundPath} from "@/app/ongoing-match/ui/currentRoundPath";
 import {HandList, HandRow, ScorePanel} from "@/app/ongoing-match/ui/BoardParts";
 import HandEntryPanel from "@/app/ongoing-match/ui/HandEntryPanel";
 import {callDosta, markEntryOpened, openHandForEdit, previousTotals, rememberTotals, startNewHand, takeHandMark} from "@/app/ongoing-match/ui/handFlow";
-import {DostaPrompt, DostaTeam, TargetFlag} from "@/app/ongoing-match/ui/MatchEnd";
+import {DostaPrompt, DostaTeam, LevelFlag, TargetFlag} from "@/app/ongoing-match/ui/MatchEnd";
 import useMatchSides from "@/app/ongoing-match/ui/useMatchSides";
 import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
 import DoneRoundedIcon from "@mui/icons-material/DoneRounded";
@@ -53,6 +53,8 @@ export default function ScoreBoardPage() {
   const matchesPerRound = useRoundStore((s) => s.roundData?.matches_per_round) ?? 2;
   // a tournament's table "bez zvanja": the hand entry has no Zvanja step
   const declarations = useRoundStore((s) => s.roundData?.declarations) ?? true;
+  // a tournament's table "na prolaz": no "s ovim dosta", no raise of the target
+  const matchEnd = useRoundStore((s) => s.roundData?.match_end) ?? DEFAULT_MATCH_END;
   const sides = useMatchSides();
 
   const [loading, setLoading] = useState(true);
@@ -147,7 +149,7 @@ export default function ScoreBoardPage() {
   const results = match.results ?? [];
   const hands: PlayedHand[] = results.map(toPlayedHand);
   const firstTarget = match.score_threshold ?? MATCH_THRESHOLD;
-  const state = matchState(hands, firstTarget);
+  const state = matchState(hands, firstTarget, matchEnd);
   const threshold = state.target;
   const indexOf = (side: Side): 0 | 1 => (side === sides.left ? 0 : 1);
 
@@ -155,7 +157,7 @@ export default function ScoreBoardPage() {
   const lastHand = results[results.length - 1];
   const dostaTeams: DostaTeam[] =
     dostaHand != null && lastHand?.result_id === dostaHand && !lastHand.dosta_side
-      ? dostaCallers(hands, firstTarget)
+      ? dostaCallers(hands, firstTarget, matchEnd)
           .map((side) => ({side, name: sides.names[indexOf(side)], color: teamColor[indexOf(side)]}))
           .sort((a, b) => indexOf(a.side) - indexOf(b.side))
       : [];
@@ -252,7 +254,7 @@ export default function ScoreBoardPage() {
     <DostaPrompt teams={dostaTeams} onPick={pickDosta} onSkip={skipDosta} busy={dostaBusy} error={dostaError} />
   );
   // shown once the question is answered
-  const targetFlag = !asking && <TargetFlag target={state.target} base={firstTarget} />;
+  const targetFlag = !asking && (state.levelAtTarget ? <LevelFlag /> : <TargetFlag target={state.target} base={firstTarget} />);
 
   const openPhone = async (resultId: number) => {
     if (opening != null) return;

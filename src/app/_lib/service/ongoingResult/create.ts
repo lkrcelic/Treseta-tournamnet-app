@@ -3,7 +3,8 @@ import {prisma} from "@/app/_lib/prisma";
 import {transformResult} from "@/app/_lib/helpers/databaseHelpers";
 import {assertZvanja, InvalidResultError, newHandZvanja, normalizeResult} from "@/app/_lib/validation/validateResult";
 import {handTotals} from "@/app/_lib/game/scoring";
-import {assertCallStands, ongoingMatchState} from "./matchState";
+import {assertCallStands, assertPlayersHand, ongoingMatchState} from "./matchState";
+import type {MatchEnd} from "@/app/_lib/game/scoring";
 import {closesAfterHand, handTiming} from "@/app/_lib/gameTime";
 import {closeByTime, syncDeadline} from "@/app/_lib/service/match/timeLimit";
 
@@ -25,8 +26,8 @@ export async function createResult(
     const {resultId, closeNow} = await prisma.$transaction(async (tx) => {
         // Lock the match row so two phones saving at the same time are applied one after the other
         // (and read whether its table plays with zvanja: a tournament's table "bez zvanja" takes none)
-        const [match] = await tx.$queryRaw<{score_threshold: number | null, ends_at: Date | null, declarations: boolean | null}[]>`
-            SELECT om.score_threshold, om.ends_at, r.declarations
+        const [match] = await tx.$queryRaw<{score_threshold: number | null, ends_at: Date | null, declarations: boolean | null, match_end: MatchEnd | null}[]>`
+            SELECT om.score_threshold, om.ends_at, r.declarations, r.match_end
             FROM "OngoingMatch" om LEFT JOIN "Round" r ON r.id = om.round_id
             WHERE om.id = ${result.match_id} FOR UPDATE OF om`;
         if (!match) {
@@ -34,6 +35,7 @@ export async function createResult(
         }
         const zvanja = newHandZvanja(result);
         assertZvanja(zvanja, {custom: result.custom ?? false, declarations: match.declarations ?? true});
+        assertPlayersHand(result.custom ?? false, match.match_end, admin);
         const before = await ongoingMatchState(tx, result.match_id, match.score_threshold);
         if (before.winner !== null) {
             throw new InvalidResultError("Meč je gotov – završi ga umjesto da dodaješ igru.");
@@ -55,8 +57,8 @@ export async function createResult(
         });
         const after = await ongoingMatchState(tx, result.match_id, match.score_threshold);
         assertCallStands(after);
-        // a raised target gives the match five more minutes
-        await syncDeadline(tx, result.match_id, after, match.score_threshold);
+        // a raised target ("na prolaz": a level score at or above it) gives the match five more minutes
+        await syncDeadline(tx, result.match_id, after);
         return {resultId: created.result_id, closeNow: closesAfterHand(timing, after.score1 === after.score2)};
     });
 

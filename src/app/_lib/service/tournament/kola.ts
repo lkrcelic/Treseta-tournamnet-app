@@ -134,6 +134,7 @@ export async function makeKoloDraft(tournamentId: number, {redo = false}: {redo?
           // with zvanja or "bez zvanja", and to 41 or 51, as the tournament says when the Kolo is made
           declarations: t.declarations,
           score_threshold: t.score_threshold,
+          match_end: t.match_end,
           // the bye's table is won by the real team at once (2:0, 1:0 at a table of one match), as in a league
           ...(bye && {
             team1_wins: isByeTeam(team1) ? 0 : t.matches_per_round,

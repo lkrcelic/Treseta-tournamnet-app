@@ -16,16 +16,18 @@ export type ActionProps = {
 };
 
 // The hand's points for the selected team; the other team gets the rest of 11. "Custom" types each team on its own
-// (and drops the zvanja: a custom hand's typed points are its total).
+// (and drops the zvanja: a custom hand's typed points are its total). A table "na prolaz" has Kaput on that key
+// instead: 11 : 0 to the selected team, a normal hand with its zvanja.
 export default function ScorePage({actionType}: ActionProps) {
   const router = useTransitionRouter();
   const params = useParams<{matchId: string; resultId?: string}>();
   const result = useResultStore((s) => s.resultData);
-  const {setGamePoints, resetScore, toggleCustom} = useResultStore.getState();
+  const {setGamePoints, resetScore, toggleCustom, setKaput} = useResultStore.getState();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const declarations = useRoundStore((s) => s.roundData?.declarations) ?? true;
+  const naProlaz = useRoundStore((s) => s.roundData?.match_end) === "NA_PROLAZ";
   const invalid =
     handError(result.team1_game_points, result.team2_game_points, result.custom) !== null ||
     zvanjaError(result.zvanja.team1, result.zvanja.team2, {custom: result.custom, declarations}) !== null;
@@ -82,23 +84,35 @@ export default function ScorePage({actionType}: ActionProps) {
               {d}
             </Box>
           ))}
-          <Box
-            component="button"
-            type="button"
-            onClick={toggleCustom}
-            aria-pressed={result.custom}
-            sx={{
-              ...key,
-              background: result.custom ? color.navy : color.cream,
-              color: result.custom ? color.white : color.navy,
-              fontFamily: font.body,
-              fontSize: 17,
-              boxShadow: "none",
-              "&:active:not(:disabled)": {transform: "scale(.95)"},
-            }}
-          >
-            Ručno
-          </Box>
+          {naProlaz ? (
+            <Box
+              component="button"
+              type="button"
+              onClick={setKaput}
+              aria-label="Kaput: 11 : 0"
+              sx={{...key, background: color.cream, color: color.navy, fontFamily: font.body, fontSize: 17, boxShadow: "none", "&:active:not(:disabled)": {transform: "scale(.95)"}}}
+            >
+              Kaput
+            </Box>
+          ) : (
+            <Box
+              component="button"
+              type="button"
+              onClick={toggleCustom}
+              aria-pressed={result.custom}
+              sx={{
+                ...key,
+                background: result.custom ? color.navy : color.cream,
+                color: result.custom ? color.white : color.navy,
+                fontFamily: font.body,
+                fontSize: 17,
+                boxShadow: "none",
+                "&:active:not(:disabled)": {transform: "scale(.95)"},
+              }}
+            >
+              Ručno
+            </Box>
+          )}
           <Box component="button" type="button" onClick={() => setGamePoints(0)} sx={key}>
             0
           </Box>

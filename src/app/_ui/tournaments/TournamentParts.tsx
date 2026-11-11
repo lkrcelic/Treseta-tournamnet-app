@@ -83,13 +83,14 @@ export function StatusChip({status, height = 28, sx}: {status: TournamentStatusL
 
 export const statusOf = (t: Pick<TournamentCard, "phase" | "registrations_open" | "waiting">) => tournamentStatus(t.phase, t.registrations_open, t.waiting);
 
-// "10:00 · 9 kola · zvanja" or "· do 51" (the admin's list) or with the teams: "· 22 / 24 ekipa"
-export function tournamentMeta(t: Pick<TournamentCard, "start_time" | "rounds" | "matches_per_round" | "declarations" | "score_threshold">): string {
+// "10:00 · 9 kola · zvanja", "· do 51" or "· na prolaz" (the admin's list) or with the teams: "· 22 / 24 ekipa"
+export function tournamentMeta(t: Pick<TournamentCard, "start_time" | "rounds" | "matches_per_round" | "declarations" | "score_threshold" | "match_end">): string {
   return [
     t.start_time,
     formatLabel(t.rounds, t.matches_per_round),
     t.declarations ? "zvanja" : "bez zvanja",
     t.score_threshold > 41 ? `do ${t.score_threshold}` : null,
+    t.match_end === "NA_PROLAZ" ? "na prolaz" : null,
   ]
     .filter(Boolean)
     .join(" · ");

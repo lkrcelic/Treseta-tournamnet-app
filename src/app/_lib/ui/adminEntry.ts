@@ -1,4 +1,4 @@
-import {AdminHand, PadHand} from "@/app/_interfaces/adminHand";
+import {AdminHand, PadHand, PadMatch, TablePad} from "@/app/_interfaces/adminHand";
 import {canAddZvanje, CUSTOM_HAND_MAX, HAND_POINTS, handError, NO_ZVANJA, Side, Zvanje, zvanjaError, ZvanjaCounts, zvanjaPoints} from "@/app/_lib/game/scoring";
 
 // Hand entry on the admin scorepad. Kept in local state (not the players' persisted stores), so an admin editing
@@ -40,6 +40,11 @@ export function typeDigit(s: EntryState, digit: number): EntryState {
   points[1 - i] = HAND_POINTS - value;
   return {...s, points, fresh: false};
 }
+
+// "Na prolaz": the teams level at or above the target with no winner yet, so one more hand is played (the flag on the
+// admin's board)
+export const levelAtTarget = (pad: Pick<TablePad, "matchEnd">, m: Pick<PadMatch, "score1" | "score2" | "threshold" | "winner">): boolean =>
+  pad.matchEnd === "NA_PROLAZ" && m.winner == null && m.score1 === m.score2 && m.score1 >= m.threshold;
 
 export const setActive = (s: EntryState, side: Side): EntryState => ({...s, active: side, fresh: true});
 export const clearPoints = (s: EntryState): EntryState => ({...s, points: [0, 0], fresh: true});

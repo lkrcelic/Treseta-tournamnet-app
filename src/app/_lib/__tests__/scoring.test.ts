@@ -74,7 +74,7 @@ const play = (...hands: [number, number, (1 | 2)?][]): PlayedHand[] =>
 
 test("a match without calls: the first team over 41 with more points wins", () => {
   const s = matchState(play([6, 5], [11, 0], [8, 3]));
-  assert.deepEqual(s, {score1: 25, score2: 8, target: 41, winner: null, calledBy: null, callError: null});
+  assert.deepEqual(s, {score1: 25, score2: 8, target: 41, winner: null, calledBy: null, callError: null, extensions: 0, levelAtTarget: false});
   const won = matchState(play([30, 20], [11, 0]));
   assert.equal(won.winner, 1);
   assert.equal(won.target, 41);
@@ -225,4 +225,42 @@ test("canAddZvanje: a click that would make an impossible hand is not offered", 
   assert.equal(canAddZvanje({3: 0, 4: 3}, NO_ZVANJA, 1, 3), false);
   assert.equal(canAddZvanje({3: 0, 4: 2}, NO_ZVANJA, 1, 4), true);
   assert.equal(canAddZvanje({3: 0, 4: 1}, {3: 3, 4: 0}, 2, 3), false); // 1 × 4 against 4 × 3
+});
+
+// ---------- Na prolaz ----------
+
+const prolaz = (...hands: [number, number, (1 | 2)?][]) => matchState(play(...hands), MATCH_THRESHOLD, "NA_PROLAZ");
+
+test("na prolaz: once a team is at the target the team with more points wins", () => {
+  assert.equal(prolaz([30, 20], [11, 0]).winner, 1); // 41 : 20
+  assert.equal(prolaz([30, 44], [11, 0]).winner, 2); // 41 : 44, team 2 passed more
+  assert.equal(prolaz([30, 30], [5, 6]).winner, null); // 35 : 36, nobody there yet
+  assert.equal(matchState(play([30, 20], [21, 0]), 51, "NA_PROLAZ").winner, 1); // 51 : 20 to 51
+});
+
+test("na prolaz: level at or above the target, the target stays and the next hand decides", () => {
+  const level = prolaz([35, 35], [6, 6]); // 41 : 41
+  assert.deepEqual([level.winner, level.target, level.levelAtTarget, level.extensions], [null, 41, true, 1]);
+
+  const decided = prolaz([35, 35], [6, 6], [5, 6]); // 46 : 47
+  assert.deepEqual([decided.winner, decided.target, decided.levelAtTarget, decided.extensions], [2, 41, false, 1]);
+
+  // level again after the extra hand: one more, and five more minutes again
+  const again = prolaz([35, 35], [6, 6], [6, 6]); // 47 : 47
+  assert.deepEqual([again.winner, again.target, again.levelAtTarget, again.extensions], [null, 41, true, 2]);
+
+  // level below the target is no tie of the rule
+  const below = prolaz([20, 20]);
+  assert.deepEqual([below.levelAtTarget, below.extensions], [false, 0]);
+});
+
+test("na prolaz: nobody calls s ovim dosta", () => {
+  assert.match(prolaz([30, 20], [11, 0, 1]).callError!, /Na prolaz/);
+  assert.deepEqual(dostaCallers(play([30, 20], [11, 4]), MATCH_THRESHOLD, "NA_PROLAZ"), []);
+});
+
+test("s ovim dosta counts every raise of the target as more time", () => {
+  assert.equal(matchState(play([35, 35], [6, 6])).extensions, 1); // 41 : 41 → 51
+  assert.equal(matchState(play([45, 45], [6, 6])).extensions, 2); // 45 : 45 → 51, 51 : 51 → 61
+  assert.equal(matchState(play([35, 35], [6, 6])).levelAtTarget, false);
 });

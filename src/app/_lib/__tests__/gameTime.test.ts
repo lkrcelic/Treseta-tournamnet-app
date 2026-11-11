@@ -95,3 +95,11 @@ test("the scorepad's clock", () => {
   assert.equal(clockLabel(6_500), "0:07");
   assert.equal(clockLabel(-3000), "0:00");
 });
+
+test("na prolaz: every hand level at or above the target gives five more minutes", () => {
+  const h = (a: number, b: number) => ({team1_game_points: a, team2_game_points: b, ...NO_HAND_ZVANJA});
+  const level = matchState([h(35, 35), h(6, 6)], MATCH_THRESHOLD, "NA_PROLAZ"); // 41 : 41
+  assert.equal(matchDeadline(start, GAME_MINUTES_DEFAULT, level.extensions).toISOString(), "2026-11-10T19:50:00.000Z");
+  const again = matchState([h(35, 35), h(6, 6), h(6, 6)], MATCH_THRESHOLD, "NA_PROLAZ"); // 47 : 47
+  assert.equal(matchDeadline(start, GAME_MINUTES_DEFAULT, again.extensions).toISOString(), "2026-11-10T19:55:00.000Z");
+});

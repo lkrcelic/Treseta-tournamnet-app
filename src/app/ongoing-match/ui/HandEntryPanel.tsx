@@ -12,7 +12,7 @@ import {useEffect, useState} from "react";
 import {discardHand, saveHand} from "./handFlow";
 import {ZvanjaButtons, ZvanjaStrip} from "./WizardParts";
 
-// Desktop: the team boxes, the zvanja of the active team (3, 4, Obriši zvanja; not at a table "bez zvanja" nor on a
+// Desktop ("na prolaz": Kaput, 11 : 0, where the Custom key is): the team boxes, the zvanja of the active team (3, 4, Obriši zvanja; not at a table "bez zvanja" nor on a
 // custom hand) and the keypad in one panel next to the scoreboard
 export default function HandEntryPanel({
   matchId,
@@ -32,8 +32,10 @@ export default function HandEntryPanel({
   onCancelEdit: () => void;
 }) {
   const result = useResultStore((s) => s.resultData);
-  const {setActiveTeam, setGamePoints, resetScore, toggleCustom, setMatchId, addZvanje, clearZvanja} = useResultStore.getState();
+  const {setActiveTeam, setGamePoints, resetScore, toggleCustom, setKaput, setMatchId, addZvanje, clearZvanja} = useResultStore.getState();
   const declarations = useRoundStore((s) => s.roundData?.declarations) ?? true;
+  // a table "na prolaz": Kaput (11 : 0) on the Custom key
+  const naProlaz = useRoundStore((s) => s.roundData?.match_end) === "NA_PROLAZ";
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -202,8 +204,8 @@ export default function HandEntryPanel({
         {result.custom
           ? "Ručni unos: bodovi svake ekipe upisuju se posebno, bez zvanja."
           : showZvanja
-            ? "Zvanja ekipe koja je odabrana, pa bodovi: druga ekipa dobiva ostatak do 11."
-            : "Druga ekipa dobiva ostatak do 11."}
+            ? `Zvanja ekipe koja je odabrana, pa bodovi: druga ekipa dobiva ostatak do 11.${naProlaz ? " Kaput je 11 : 0." : ""}`
+            : `Druga ekipa dobiva ostatak do 11.${naProlaz ? " Kaput je 11 : 0." : ""}`}
       </Box>
 
       <Box
@@ -216,15 +218,21 @@ export default function HandEntryPanel({
             {d}
           </Box>
         ))}
-        <Box
-          component="button"
-          type="button"
-          onClick={toggleCustom}
-          aria-pressed={result.custom}
-          sx={{...key, background: result.custom ? color.navy : color.cream, color: result.custom ? color.white : color.navy, fontFamily: font.body, fontSize: 16}}
-        >
-          Ručno
-        </Box>
+        {naProlaz ? (
+          <Box component="button" type="button" onClick={setKaput} aria-label="Kaput: 11 : 0" sx={{...key, background: color.cream, color: color.navy, fontFamily: font.body, fontSize: 16}}>
+            Kaput
+          </Box>
+        ) : (
+          <Box
+            component="button"
+            type="button"
+            onClick={toggleCustom}
+            aria-pressed={result.custom}
+            sx={{...key, background: result.custom ? color.navy : color.cream, color: result.custom ? color.white : color.navy, fontFamily: font.body, fontSize: 16}}
+          >
+            Ručno
+          </Box>
+        )}
         <Box component="button" type="button" onClick={() => setGamePoints(0)} sx={key}>
           0
         </Box>

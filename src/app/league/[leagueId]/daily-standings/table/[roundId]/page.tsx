@@ -8,7 +8,7 @@ import TablePhone from "@/app/_ui/admin/TablePhone";
 import {NoWinnerAsk, NoWinnerConfirm} from "@/app/_ui/admin/NoWinnerConfirm";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useShortWindow from "@/app/_hooks/useShortWindow";
-import {blankEntry, EntryState, fromPadHand, toAdminHand} from "@/app/_lib/ui/adminEntry";
+import {blankEntry, EntryState, fromPadHand, levelAtTarget, toAdminHand} from "@/app/_lib/ui/adminEntry";
 import {dostaCallers, MATCH_THRESHOLD, Side} from "@/app/_lib/game/scoring";
 import {padPlayedHands} from "@/app/_lib/tableOverview";
 import {leaveRoundPages, lineupPassed} from "@/app/_lib/ui/lineupPass";
@@ -16,7 +16,7 @@ import {color, shadow, teamColor, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, CenteredSpinner, DesktopShell, EmptyState, ErrorNote} from "@/app/_ui/sp";
 import {HandList, ScorePanel} from "@/app/ongoing-match/ui/BoardParts";
 import AdminEntryPanel from "@/app/league/[leagueId]/daily-standings/table/AdminEntryPanel";
-import {DostaPrompt, DostaTeam, TargetFlag} from "@/app/ongoing-match/ui/MatchEnd";
+import {DostaPrompt, DostaTeam, LevelFlag, TargetFlag} from "@/app/ongoing-match/ui/MatchEnd";
 import TablePreview from "@/app/league/[leagueId]/daily-standings/table/TablePreview";
 import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
 import HistoryEduRoundedIcon from "@mui/icons-material/HistoryEduRounded";
@@ -153,7 +153,7 @@ function TableScorepadDesktop() {
   const askHand = askMatch?.hands[askMatch.hands.length - 1];
   const dostaTeams: DostaTeam[] =
     askMatch && askHand?.custom && !askHand.dosta && (askDosta?.hand == null || askDosta.hand === askHand.id)
-      ? dostaCallers(padPlayedHands(askMatch), THRESHOLD).map((side) => ({side, name: names[side - 1], color: teamColor[side - 1]}))
+      ? dostaCallers(padPlayedHands(askMatch), THRESHOLD, pad?.matchEnd).map((side) => ({side, name: names[side - 1], color: teamColor[side - 1]}))
       : [];
   const pickDosta = async (side: Side) => {
     if (!askMatch || !askHand) return;
@@ -189,7 +189,7 @@ function TableScorepadDesktop() {
       title={pad ? `${pad.team1.name} vs ${pad.team2.name}` : "Stol"}
       right={
         <Box sx={{display: "flex", alignItems: "center", gap: "10px"}}>
-          {match && dostaTeams.length === 0 && <TargetFlag target={match.threshold} />}
+          {match && dostaTeams.length === 0 && (pad && levelAtTarget(pad, match) ? <LevelFlag /> : <TargetFlag target={match.threshold} />)}
           <Box sx={{height: 36, display: "flex", alignItems: "center", gap: "6px", pl: "10px", pr: "14px", borderRadius: "18px", background: color.navy, color: color.white, fontSize: 13, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", whiteSpace: "nowrap", "& svg": {fontSize: 18}}}>
             <AdminPanelSettingsRoundedIcon />
             Admin · uređivanje
@@ -281,6 +281,7 @@ function TableScorepadDesktop() {
           </Box>
           <AdminEntryPanel
             declarations={pad.declarations}
+            naProlaz={pad.matchEnd === "NA_PROLAZ"}
             entry={entry}
             onChange={setEntry}
             names={names}

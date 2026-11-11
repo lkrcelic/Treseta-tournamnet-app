@@ -7,6 +7,7 @@ import {canAddZvanje, CUSTOM_HAND_MAX, HAND_POINTS, NO_ZVANJA, Zvanje, ZvanjaCou
 //   normal: the active team's points are typed, the other team gets the rest of 11, and each team's zvanja are clicked
 //   custom: the "Custom" key, each team's points are typed on their own (a hand cut short by "s ovim dosta"), with no
 //           zvanja: the typed points are the hand's total
+//   Kaput: "na prolaz" has it on the Custom key: only a shortcut for 11 : 0 to the active team, a normal hand
 
 type TeamKey = "team1" | "team2";
 
@@ -26,6 +27,8 @@ export type ResultState = {
   setActiveTeam: (team: "team1" | "team2") => void;
   setGamePoints: (digit: number) => void;
   toggleCustom: () => void;
+  // Kaput: the active team gets all 11, the other none (the zvanja stay)
+  setKaput: () => void;
   resetScore: () => void;
   setMatchId: (id: number) => void;
   resetResult: () => void;
@@ -146,6 +149,20 @@ const useResultStore = create<ResultState>()(
           resultData: {...state.resultData, custom: !state.resultData.custom, zvanja: noZvanja()},
           startNewNumber: true,
         })),
+
+      setKaput: () =>
+        set((state) => {
+          const {activeTeam} = state.resultData;
+          return {
+            resultData: {
+              ...state.resultData,
+              custom: false,
+              team1_game_points: activeTeam === "team1" ? HAND_POINTS : 0,
+              team2_game_points: activeTeam === "team2" ? HAND_POINTS : 0,
+            },
+            startNewNumber: true,
+          };
+        }),
 
       resetScore: () =>
         set((state) => ({

@@ -27,6 +27,7 @@ const pad = (matches: PadMatch[], done = false): TablePad => ({
   tournamentId: null,
   matchesPerRound: 2,
   declarations: true,
+  matchEnd: "S_OVIM_DOSTA",
   roundNumber: 3,
   date: "2026-02-17",
   table: 4,

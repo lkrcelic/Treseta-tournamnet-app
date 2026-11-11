@@ -1,6 +1,6 @@
 import {prisma} from "@/app/_lib/prisma";
 import {MatchAllIncluded, transformMatch} from "@/app/_lib/helpers/databaseHelpers";
-import {MATCH_THRESHOLD, matchState} from "@/app/_lib/game/scoring";
+import {DEFAULT_MATCH_END, MATCH_THRESHOLD, matchState} from "@/app/_lib/game/scoring";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {closeRound, lockRound, MATCHES_PER_ROUND, roundAfterMatch, roundWinsIncrement} from "@/app/_lib/service/round/finish";
 import {combineDateAndTime} from "@/app/_lib/dates";
@@ -37,11 +37,12 @@ export async function finishOngoingMatch(ongoingMatchId: number, {byTime = false
 
     const ongoingMatch = await tx.ongoingMatch.findUniqueOrThrow({
       where: {id: ongoingMatchId},
-      include: {results: {orderBy: {result_id: "asc"}}},
+      include: {results: {orderBy: {result_id: "asc"}}, round: {select: {match_end: true}}},
     });
 
     const threshold = ongoingMatch.score_threshold ?? MATCH_THRESHOLD;
-    const {winner: byRules, target} = matchState(ongoingMatch.results, threshold);
+    // the table's rule: "s ovim dosta" or "na prolaz"
+    const {winner: byRules, target} = matchState(ongoingMatch.results, threshold, ongoingMatch.round?.match_end ?? DEFAULT_MATCH_END);
     let winner = byRules;
     if (byTime) {
       if (!ongoingMatch.ends_at || ongoingMatch.ends_at.getTime() > Date.now()) {

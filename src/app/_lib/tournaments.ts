@@ -1,7 +1,7 @@
 // Tournaments (Turniri): how far one has got, its standings and the words the screens use for it. Framework free so it
 // can be unit tested.
 import {BYE_TEAM_ID, isByeTeam} from "@/app/_lib/bye";
-import {MATCH_THRESHOLD} from "@/app/_lib/game/scoring";
+import {DEFAULT_MATCH_END, MATCH_THRESHOLD, type MatchEnd} from "@/app/_lib/game/scoring";
 import {count, NOUN, plural} from "@/app/_lib/ui/text";
 
 // upcoming: before Kolo 1 is published (sign-ups); active: from then until the last Kolo is played; cancelled: Otkaži
@@ -291,10 +291,19 @@ export function daysUntilLabel(date: string, today: string): string {
   return `Za ${days} ${plural(days, "dan", "dana", "dana")}`;
 }
 
-// Pravila igre's line: Trešeta's own match, to 41 or 51 (a tournament's Igra se do), with zvanja or without, and "s ovim dosta"
-// (in that order)
-export function rulesLabel(declarations: boolean, threshold: number = MATCH_THRESHOLD): string {
-  return `${threshold} · ${declarations ? "zvanja" : "bez zvanja"} · s ovim dosta`;
+// Pravila igre's line: Trešeta's own match, to 41 or 51 (a tournament's Igra se do), with zvanja or without, and how it
+// ends, "s ovim dosta" or "na prolaz" (in that order)
+export function rulesLabel(declarations: boolean, threshold: number = MATCH_THRESHOLD, end: MatchEnd = DEFAULT_MATCH_END): string {
+  return `${threshold} · ${declarations ? "zvanja" : "bez zvanja"} · ${matchEndLabel(end)}`;
+}
+
+export const matchEndLabel = (end: MatchEnd): string => (end === "NA_PROLAZ" ? "na prolaz" : "s ovim dosta");
+
+// The tournament form's grey note under Kraj partije
+export function matchEndNote(end: MatchEnd): string {
+  return end === "NA_PROLAZ"
+    ? "Pobjeđuje ekipa s više bodova kad netko dođe do cilja. Kod izjednačenja igra se još jedna igra (+5 min). Umjesto ručnog unosa igrači imaju Kaput (11 : 0)."
+    : "Ekipa može zvati „s ovim dosta” i pobijediti i s manje bodova. Kod izjednačenja cilj se diže za 10 (+5 min).";
 }
 
 // How long a match takes, from the club's games: to 41 without zvanja 95 % of the matches end within 40 minutes, with

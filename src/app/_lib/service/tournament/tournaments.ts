@@ -44,6 +44,7 @@ function fields(r: TournamentRequest) {
     matches_per_round: r.matches_per_round,
     declarations: r.declarations,
     score_threshold: r.score_threshold,
+    match_end: r.match_end,
     max_teams: r.max_teams,
     entry_fee: r.entry_fee,
     rules_url: blankToNull(r.rules_url),
@@ -104,9 +105,9 @@ export async function updateTournament(id: number, request: TournamentRequest): 
 
     if (t.started_at) {
       if (next.date.getTime() !== t.date.getTime()) throw new InvalidResultError(STARTED_LOCKED);
-      // the next Kolo's draft is made again with the new format (Partija po kolu, Zvanja, Igra se do)
-      const format = (x: {matches_per_round: number; declarations: boolean; score_threshold: number}) =>
-        `${x.matches_per_round}/${x.declarations}/${x.score_threshold}`;
+      // the next Kolo's draft is made again with the new format (Partija po kolu, Zvanja, Igra se do, Kraj partije)
+      const format = (x: {matches_per_round: number; declarations: boolean; score_threshold: number; match_end: string}) =>
+        `${x.matches_per_round}/${x.declarations}/${x.score_threshold}/${x.match_end}`;
       if (format(next) !== format(t)) await dropDrafts(tx, id);
       const published = await tx.round.aggregate({
         _max: {round_number: true},
@@ -122,6 +123,7 @@ export async function updateTournament(id: number, request: TournamentRequest): 
       if (next.date.getTime() !== t.date.getTime()) await tx.round.updateMany({where: drafts, data: {round_date: next.date}});
       if (next.declarations !== t.declarations) await tx.round.updateMany({where: drafts, data: {declarations: next.declarations}});
       if (next.score_threshold !== t.score_threshold) await tx.round.updateMany({where: drafts, data: {score_threshold: next.score_threshold}});
+      if (next.match_end !== t.match_end) await tx.round.updateMany({where: drafts, data: {match_end: next.match_end}});
     }
 
     // Otvorene prijave switched off while the tournament is played: the sign-ups close with it, because a started
