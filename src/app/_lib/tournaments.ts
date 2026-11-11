@@ -291,10 +291,10 @@ export function daysUntilLabel(date: string, today: string): string {
   return `Za ${days} ${plural(days, "dan", "dana", "dana")}`;
 }
 
-// Pravila igre's line: Trešeta's own match, to 41 or 51 (a tournament's Igra se do) with "s ovim dosta", with zvanja
-// or without
+// Pravila igre's line: Trešeta's own match, to 41 or 51 (a tournament's Igra se do), with zvanja or without, and "s ovim dosta"
+// (in that order)
 export function rulesLabel(declarations: boolean, threshold: number = MATCH_THRESHOLD): string {
-  return `${threshold} · s ovim dosta · ${declarations ? "zvanja" : "bez zvanja"}`;
+  return `${threshold} · ${declarations ? "zvanja" : "bez zvanja"} · s ovim dosta`;
 }
 
 // How long a match takes, from the club's games: to 41 without zvanja 95 % of the matches end within 40 minutes, with
