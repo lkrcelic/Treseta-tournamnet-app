@@ -152,8 +152,8 @@ export function TeamValueBoxes({
   );
 }
 
-// The zvanja step: 3 and 4 for the team picked above, each click one zvanje, with how many of each (in the team's
-// colour), and Obriši zvanja. canAdd: whether one more of a value is still possible (the button is off otherwise, so a
+// The zvanja step: 3 and 4 side by side for the team picked above, each click one zvanje, with how many of each (in
+// the team's colour), and Obriši zvanja across the width under them. canAdd: whether one more of a value is still possible (the button is off otherwise, so a
 // hand the cards can't make isn't clicked together). compact: the row above the keypad in the desktop panels (the
 // players' and the admin's), lower and without the line under each value.
 export function ZvanjaButtons({
@@ -174,6 +174,7 @@ export function ZvanjaButtons({
   compact?: boolean;
 }) {
   const height = compact ? {height: 48, [SHORT_WINDOW]: {height: 40}} : {height: 84};
+  const clearHeight = compact ? {height: 40, [SHORT_WINDOW]: {height: 34}} : {height: 56};
   const radius = compact ? "14px" : "20px";
   const badge = compact ? 24 : 28;
   return (
@@ -182,8 +183,8 @@ export function ZvanjaButtons({
       aria-label={label}
       sx={
         compact
-          ? {display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: "8px", [SHORT_WINDOW]: {gap: "6px"}}
-          : {flex: 1, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", alignContent: "center", py: "16px"}
+          ? {display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: "8px", [SHORT_WINDOW]: {gap: "6px"}}
+          : {flex: 1, display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: "12px", alignContent: "center", py: "16px"}
       }
     >
       {ZVANJA_VALUES.map((v) => {
@@ -269,7 +270,8 @@ export function ZvanjaButtons({
         onClick={onClear}
         sx={{
           ...buttonBase,
-          ...height,
+          ...clearHeight,
+          gridColumn: "1 / -1",
           borderRadius: radius,
           border: `2px solid ${compact ? tint.navy[25] : color.borderStrong}`,
           color: color.navy,
