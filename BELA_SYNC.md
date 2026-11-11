@@ -9,7 +9,7 @@ own; everything else is kept identical to Bela.
 | | |
 |---|---|
 | Bela branch | `development`, read through the remote `bela` (the local Bela repo). Only commits come over, never Bela's uncommitted work |
-| Last synced Bela commit | `a0686e1` (7 Nov 2026); the tournament files are at Bela's `d2a0b98` (10 Nov 2026), see below |
+| Last synced Bela commit | `a0686e1` (7 Nov 2026). The tournament files are ahead of it, see [Bela's work waiting to come over](#belas-work-waiting-to-come-over) |
 | Target branch | `master` |
 | Sync branch | `bela-sync` in the repo itself (no worktree): created from `master`, or rebased onto it, by every run |
 
@@ -18,7 +18,7 @@ task along with them.
 
 ## How the nightly sync works
 
-Every morning at about 06:00 (cron `0 6 * * *`, plus a few minutes of jitter) the Claude desktop app runs the
+Every morning at about 05:00 (cron `0 5 * * *`, plus a few minutes of jitter) the Claude desktop app runs the
 scheduled task **Bela → Treseta sync** (`bela-nightly-sync`; its prompt is
 `~/.claude/scheduled-tasks/bela-nightly-sync/SKILL.md`). It runs while the app is open; a run missed because the app
 was closed or the Mac was asleep starts when it is back. To run it now: Scheduled → Bela → Treseta sync → Run now.
@@ -270,6 +270,17 @@ What stays Treseta's in them is the game, not the tournament:
 | Prijavi se without an account | goes to Prijava; the tournament's pages are public, as the league's season table is | "Sjedni za stol." (Gost i poziv) |
 | `_ui/sp/brand.ts` | `BRAND` from `_lib/brand.ts` (see Branding) | "Belatronika" |
 
+Those rules live in these files, each Bela's with a small Treseta edit, so a Bela change to one is merged around the
+edit:
+
+| File | Treseta's edit |
+|---|---|
+| `_lib/tournamentDay.ts`, `_lib/service/tournament/attendance.ts`, `_bootstrap/TournamentAttention.tsx`, `_ui/tournaments/DayParts.tsx` | Nedolazak za stol: `NO_SHOW_SCORE = [BYE_MATCH_POINTS, 0]`, every match of the table written at `MATCH_THRESHOLD` with `winner_side`, and the texts reading the score (Bela: `1001 : 700`) |
+| `_lib/gameTime.ts`, `_lib/service/match/timeLimit.ts` | Vrijeme partije: `GAME_MINUTES_DEFAULT = 45` and `TARGET_RAISE_MINUTES = 5` for every raise of the target (`targetRaises`, `matchDeadline`, `syncDeadline`), which Bela has no rule for; `gameMinutesOf` reads the Kolo's minutes, then its tournament's, then its league's |
+| `_interfaces/tournament.ts`, `_ui/tournaments/TournamentForm.tsx`, `_ui/tournaments/TournamentParts.tsx`, `_ui/tournaments/PlayerParts.tsx`, `_lib/tournaments.ts`, `_lib/service/tournament/kola.ts`, `_lib/service/tournament/tournaments.ts`, `_lib/service/tournament/views.ts`, `_ui/tournaments/admin/ManageTournamentPhone.tsx`, `_ui/tournaments/admin/StandingsDetailsDesktop.tsx` | No zvanja: no `declarations` anywhere, no Zvanja choice in the form, no "bez zvanja" chip, label or sentence, and `rulesLabel()` is `41 · s ovim dosta`. The form's Vrijeme partije starts at `GAME_MINUTES_DEFAULT` (Bela: 35) |
+| `_ui/tournaments/PlayerParts.tsx`, `_ui/tournaments/SignUpSheet.tsx` | Prijavi se without an account goes to `/login` (Bela: the "Sjedni za stol." sheet, `useGuestSheet`), and the invitation links the tournament's page and names `BRAND` (Bela: Registracija's link, "Belatronika") |
+| `_ui/tournaments/admin/KolaDesktop.tsx` | Novo kolo's team rows carry `conferenceId: null`: a tournament has no conferences |
+
 Bela's migrations `20261026120000_tournaments`, `20261030120000_turniri_v1`, `20261031120000_tournament_auto_publish`,
 `20261107120000_organizer_role`, `20261107180000_open_signups`, `20261107190000_open_signups_check` and
 `20261107200000_round_game_minutes` are Treseta's `20261110120000_tournaments`, `20261110120100_game_time` and
@@ -286,6 +297,11 @@ Still out, for now:
 - **Sign-up bans on league nights** (Bela's `de2001c`, DECISIONS #73), as decided on 31 Oct 2026: the bans are the
   tournaments' only. Tu smo, Novo kolo, Novi stol, Uredi stolove, Dodaj ekipu, Nova liga, publishing a Skica and a new
   team don't check them (see [Tu smo without the bans](#tu-smo-without-the-bans)).
+- **The tournaments' half of `/api/cron/tick`**: the route here calls only `expireDueMatches`, where Bela's calls
+  `tick` from `_lib/service/tournament/clock.ts` (which came over and is unused), so the backup clock closes matches
+  out of time but doesn't run today's tournaments. It costs nothing today, since neither app has a scheduler calling
+  the route and the day's steps happen whenever someone reads the tournament's pages (`syncTournament`), but a
+  scheduler (`CRON_SECRET` and a cron entry, still to be set up) wants Bela's `tick`.
 - **Gost i poziv**, as decided on 7 Nov 2026 (see [Not copied from Bela](#not-copied-from-bela)). `PlayerFrame.tsx`
   came with the tournament screens, since `PlayerParts.tsx` needs it; nothing else of the guest did.
 
