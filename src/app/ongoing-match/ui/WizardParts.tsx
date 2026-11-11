@@ -11,6 +11,12 @@ import {ZVANJA_VALUES, Zvanje} from "@/app/_lib/game/scoring";
 // and the admin's phone scorepad (admin-mobile 26–28). They only draw; the caller keeps the hand. Index 0 is the left
 // team (green), 1 the right one (red).
 
+// The line under a team's box on the points step, as Bela's "Σ" line: the team's zvanja and its total with them
+// ("Zvanja 7 · Σ 14"); empty when the team has none
+export function zvanjaNote(zvanja: number, points: number): string {
+  return zvanja > 0 ? `Zvanja ${zvanja} · Σ ${points + zvanja}` : "";
+}
+
 // what each zvanje's button says under its value
 const ZVANJE_HINT: Record<Zvanje, string> = {3: "tri iste · napola", 4: "četiri iste"};
 
@@ -89,12 +95,13 @@ export function CallerCards({names, caller, onPick, disabled}: {names: readonly 
 }
 
 // Steps 2 and 3: the two team boxes that pick which team the zvanja or points are entered for (label "Zvanja",
-// "Igra"; sums: the "Σ 162" line under each box on the points step)
+// "Igra"; sums: the "Σ 162" line under each box on the points step; notes: that line's own text, Treseta's zvanjaNote)
 export function TeamValueBoxes({
   names,
   label,
   values,
   sums,
+  notes,
   active,
   onPick,
 }: {
@@ -102,6 +109,7 @@ export function TeamValueBoxes({
   label: string;
   values: [number, number];
   sums?: [number, number] | null;
+  notes?: [string, string] | null;
   active: 0 | 1;
   onPick: (i: 0 | 1) => void;
 }) {
@@ -143,7 +151,7 @@ export function TeamValueBoxes({
               </Box>
             </Box>
             <Box aria-live="polite" sx={{height: 18, pl: "8px", fontSize: 14, fontWeight: 600, color: color.muted, ...tabular}}>
-              {sums ? `Σ ${sums[i]}` : ""}
+              {notes ? notes[i] : sums ? `Σ ${sums[i]}` : ""}
             </Box>
           </Box>
         );

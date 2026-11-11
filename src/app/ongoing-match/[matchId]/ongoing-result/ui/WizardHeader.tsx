@@ -8,9 +8,10 @@ import {Box} from "@mui/material";
 import {usePathname} from "next/navigation";
 import {useEffect} from "react";
 import {zvanjaPoints} from "@/app/_lib/game/scoring";
+import {zvanjaNote} from "@/app/ongoing-match/ui/WizardParts";
 
-// The two team boxes pick which team the zvanja (the Zvanja step) or the points (Igra) are entered for. On Igra a
-// team's box also says what its zvanja add.
+// The two team boxes pick which team the zvanja (the Zvanja step) or the points (Igra) are entered for. On Igra the box
+// holds the points only, and the line under it (as Bela's "Σ") says the team's zvanja and its total with them.
 export default function WizardHeader() {
   const sides = useMatchSides();
   const result = useResultStore((s) => s.resultData);
@@ -39,44 +40,43 @@ export default function WizardHeader() {
           // on Igra: what the team's zvanja add to its points
           const extra = onZvanja ? 0 : zvanja(side);
           return (
-            <Box
-              key={side}
-              component="button"
-              type="button"
-              role="radio"
-              aria-checked={on}
-              aria-label={`${sides.names[i]}: ${label.toLowerCase()} ${value}${extra ? `, zvanja ${extra}` : ""}`}
-              onClick={() => setActiveTeam(sides.key(side))}
-              sx={{
-                ...buttonBase,
-                height: 92,
-                borderRadius: "20px",
-                border: `2.5px solid ${teamColor[i]}`,
-                background: on ? teamColor[i] : color.white,
-                color: on ? color.white : teamColor[i],
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "flex-start",
-                justifyContent: "center",
-                gap: "2px",
-                px: "16px",
-                transition: "background 200ms ease, color 200ms ease",
-                minWidth: 0,
-              }}
-            >
-              <Box component="span" sx={{fontSize: 12, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
-                {label} · {sides.names[i]}
-              </Box>
-              <Box component="span" sx={{display: "flex", alignItems: "baseline", gap: "8px", minWidth: 0}}>
+            <Box key={side} sx={{display: "flex", flexDirection: "column", gap: "6px", minWidth: 0}}>
+              <Box
+                component="button"
+                type="button"
+                role="radio"
+                aria-checked={on}
+                aria-label={`${sides.names[i]}: ${label.toLowerCase()} ${value}${extra ? `, zvanja ${extra}` : ""}`}
+                onClick={() => setActiveTeam(sides.key(side))}
+                sx={{
+                  ...buttonBase,
+                  height: 92,
+                  borderRadius: "20px",
+                  border: `2.5px solid ${teamColor[i]}`,
+                  background: on ? teamColor[i] : color.white,
+                  color: on ? color.white : teamColor[i],
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  justifyContent: "center",
+                  gap: "2px",
+                  px: "16px",
+                  transition: "background 200ms ease, color 200ms ease",
+                  minWidth: 0,
+                }}
+              >
+                <Box component="span" sx={{fontSize: 12, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
+                  {label} · {sides.names[i]}
+                </Box>
                 <Box component="span" sx={{fontFamily: font.display, fontSize: 38, fontWeight: 800, lineHeight: 1, ...tabular}}>
                   {value}
                 </Box>
-                {extra > 0 && (
-                  <Box component="span" sx={{fontSize: 15, fontWeight: 700, opacity: 0.85, whiteSpace: "nowrap", ...tabular}}>
-                    +{extra} zvanja
-                  </Box>
-                )}
               </Box>
+              {!onZvanja && (
+                <Box aria-live="polite" sx={{height: 18, pl: "8px", fontSize: 14, fontWeight: 600, color: color.muted, whiteSpace: "nowrap", ...tabular}}>
+                  {zvanjaNote(extra, value)}
+                </Box>
+              )}
             </Box>
           );
         })}

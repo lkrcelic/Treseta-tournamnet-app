@@ -13,7 +13,7 @@ import {
   typeDigit,
 } from "@/app/_lib/ui/adminEntry";
 import {Side} from "@/app/_lib/game/scoring";
-import {ZvanjaButtons} from "@/app/ongoing-match/ui/WizardParts";
+import {ZvanjaButtons, zvanjaNote} from "@/app/ongoing-match/ui/WizardParts";
 import {count, NOUN} from "@/app/_lib/ui/text";
 import {color, font, shadow, teamColor, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, ErrorNote, PrimaryButton, SHORT_WINDOW, tabular} from "@/app/_ui/sp";
@@ -214,14 +214,22 @@ export default function AdminEntryPanel({
                 transition: "background 200ms ease, color 200ms ease",
               }}
             >
-              <Box component="span" sx={{display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "8px", minWidth: 0}}>
-                <Stat label={names[i]} value={points} size={34} />
-                {showZvanja && zv[i] > 0 && <Stat label="Zvanja" value={zv[i]} size={26} />}
-              </Box>
+              <Stat label={names[i]} value={points} size={34} />
             </Box>
           );
         })}
       </Box>
+
+      {/* as Bela's "Σ" line: each team's zvanja and its total with them, under its box (points only in the box) */}
+      {showZvanja && (zv[0] > 0 || zv[1] > 0) && (
+        <Box aria-live="polite" sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "10px", mt: "-6px", [SHORT_WINDOW]: {mt: "-2px"}}}>
+          {SIDES.map((side, i) => (
+            <Box key={side} sx={{pl: "8px", fontSize: 13, fontWeight: 600, color: color.muted, whiteSpace: "nowrap", ...tabular}}>
+              {zvanjaNote(zv[i], entry.points[i])}
+            </Box>
+          ))}
+        </Box>
+      )}
 
       {showZvanja && (
         <ZvanjaButtons

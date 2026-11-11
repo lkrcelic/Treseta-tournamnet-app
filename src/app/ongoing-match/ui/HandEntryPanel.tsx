@@ -10,7 +10,7 @@ import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
 import {Box} from "@mui/material";
 import {useEffect, useState} from "react";
 import {discardHand, saveHand} from "./handFlow";
-import {ZvanjaButtons} from "./WizardParts";
+import {ZvanjaButtons, zvanjaNote} from "./WizardParts";
 
 // Desktop: the team boxes, the zvanja of the active team (3, 4, Obriši zvanja; not at a table "bez zvanja" nor on a
 // custom hand) and the keypad in one panel next to the scoreboard
@@ -177,20 +177,24 @@ export default function HandEntryPanel({
               <Box component="span" sx={{maxWidth: "100%", fontSize: 11, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
                 Igra · {names[i]}
               </Box>
-              <Box component="span" sx={{display: "flex", alignItems: "baseline", gap: "8px", minWidth: 0}}>
-                <Box component="span" sx={{fontFamily: font.display, fontSize: 34, fontWeight: 800, lineHeight: 1, ...tabular}}>
-                  {points(side)}
-                </Box>
-                {zvanja(side) > 0 && (
-                  <Box component="span" sx={{fontSize: 14, fontWeight: 700, opacity: 0.85, whiteSpace: "nowrap", ...tabular}}>
-                    +{zvanja(side)} zvanja
-                  </Box>
-                )}
+              <Box component="span" sx={{fontFamily: font.display, fontSize: 34, fontWeight: 800, lineHeight: 1, ...tabular}}>
+                {points(side)}
               </Box>
             </Box>
           );
         })}
       </Box>
+
+      {/* as Bela's "Σ" line: each team's zvanja and its total with them, under its box (points only in the box) */}
+      {showZvanja && (zvanja(1) > 0 || zvanja(2) > 0) && (
+        <Box aria-live="polite" sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "10px", mt: "-6px", [SHORT_WINDOW]: {mt: "-2px"}}}>
+          {sides.map((side) => (
+            <Box key={side} sx={{pl: "8px", fontSize: 13, fontWeight: 600, color: color.muted, whiteSpace: "nowrap", ...tabular}}>
+              {zvanjaNote(zvanja(side), points(side))}
+            </Box>
+          ))}
+        </Box>
+      )}
 
       {showZvanja && (
         <ZvanjaButtons
