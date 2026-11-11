@@ -479,6 +479,11 @@ test("the tournament form's switch reaches the server: open_signups survives the
   assert.equal(TournamentRequestValidation.parse({...body, open_signups: false}).open_signups, false);
   // left out: a tournament is closed, as every tournament made before this was
   assert.equal(TournamentRequestValidation.parse(body).open_signups, false);
+  // Zvanja: kept as sent, and with zvanja when a form opened before the switch came back leaves it out
+  assert.equal(TournamentRequestValidation.parse({...body, declarations: false}).declarations, false);
+  const {declarations: _declarations, ...beforeZvanja} = body;
+  void _declarations;
+  assert.equal(TournamentRequestValidation.parse(beforeZvanja).declarations, true);
 });
 
 test("Otvorene prijave: who counts as present, and what switching the setting off does", () => {

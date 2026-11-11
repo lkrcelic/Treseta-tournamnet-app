@@ -43,8 +43,9 @@ export const TournamentRequestValidation = z.object({
   location_url: url,
   rounds: z.number().int().min(1, ROUNDS_ERROR).max(20, ROUNDS_ERROR),
   matches_per_round: z.union([z.literal(1), z.literal(2)]),
-  // Zvanja: false = "bez zvanja", no zvanja at its tables
-  declarations: z.boolean(),
+  // Zvanja: false = "bez zvanja", no zvanja at its tables. Left out (a form opened before zvanja came back): with
+  // zvanja, as every tournament before
+  declarations: z.boolean().optional().default(true),
   max_teams: z.number().int().min(2, MAX_TEAMS_ERROR).max(500, "Najviše 500 ekipa.").nullable(),
   entry_fee: z.number().int().min(0, FEE_ERROR).max(999, FEE_ERROR),
   rules_url: url,

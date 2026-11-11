@@ -3,7 +3,7 @@
 import {addHandAPI, deleteHandAPI, finishTableMatchAPI, getTablePadAPI, HandTarget, NoWinnerError, updateHandAPI} from "@/app/_fetchers/admin/daily";
 import {NoWinnerAsk, NoWinnerConfirm} from "./NoWinnerConfirm";
 import {PadHand, PadMatch, TablePad} from "@/app/_interfaces/adminHand";
-import {currentMatchNumber, matchSlots, matchTabSub, roundWins} from "@/app/_lib/tableOverview";
+import {currentMatchNumber, matchSlots, matchTabSub, padPlayedHands, roundWins} from "@/app/_lib/tableOverview";
 import {
   addZvanje,
   blankEntry,
@@ -20,7 +20,7 @@ import {
   typeDigit,
 } from "@/app/_lib/ui/adminEntry";
 import {adminLineupHref, roundBackBy, roundHref, tableHref, tableScopeOf} from "@/app/_lib/ui/tableScope";
-import {dostaCallers, MATCH_THRESHOLD, NO_HAND_ZVANJA, PlayedHand, Side} from "@/app/_lib/game/scoring";
+import {dostaCallers, MATCH_THRESHOLD, Side} from "@/app/_lib/game/scoring";
 import {navigateWithTransition, useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {leaveRoundPages, lineupPassed} from "@/app/_lib/ui/lineupPass";
 import {color, font, shadow, teamColor, tint} from "@/app/_styles/tokens";
@@ -65,9 +65,6 @@ const THRESHOLD = MATCH_THRESHOLD;
 // caller, and Treseta's keypad before zvanja) opens the zvanja. A table "bez zvanja" has only 3.
 type Step = "1" | "2" | "3";
 
-// a hand's totals already hold its zvanja, so the rules replay them as points without zvanja
-const playedHands = (m: PadMatch): PlayedHand[] =>
-  m.hands.map((h) => ({team1_game_points: h.total1, team2_game_points: h.total2, ...NO_HAND_ZVANJA, dosta_side: h.dosta}));
 
 // How many entry steps were opened from the board in this tab, so saving goes back to the board in the browser's
 // history too (a reload in the middle doesn't know, and replaces the address instead)
@@ -437,7 +434,7 @@ function MatchPhone({
   const askHand = match.hands[match.hands.length - 1];
   const dostaTeams: DostaTeam[] =
     askDosta && askHand?.custom && !askHand.dosta && (askDosta.hand == null || askDosta.hand === askHand.id)
-      ? dostaCallers(playedHands(match), THRESHOLD).map((side) => ({side, name: names[side - 1], color: teamColor[side - 1]}))
+      ? dostaCallers(padPlayedHands(match), THRESHOLD).map((side) => ({side, name: names[side - 1], color: teamColor[side - 1]}))
       : [];
   const pickDosta = async (side: Side) => {
     if (!askHand) return;

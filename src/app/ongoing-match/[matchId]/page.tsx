@@ -6,7 +6,7 @@ import {getRoundDataAPI} from "@/app/_fetchers/round/getOne";
 import useCountUp from "@/app/_hooks/useCountUp";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useShortWindow from "@/app/_hooks/useShortWindow";
-import {dostaCallers, handTotals, MATCH_THRESHOLD, matchState, PlayedHand, Side} from "@/app/_lib/game/scoring";
+import {dostaCallers, handTotals, MATCH_THRESHOLD, matchState, PlayedHand, Side, zvanjaOf} from "@/app/_lib/game/scoring";
 import useRoundStore from "@/app/_store/RoundStore";
 import useOngoingMatchStore from "@/app/_store/ongoingMatchStore";
 import {color, shadow, teamColor} from "@/app/_styles/tokens";
@@ -34,10 +34,7 @@ const pipPops = new Map<number, number>();
 const toPlayedHand = (r: Partial<PlayedHand>): PlayedHand => ({
   team1_game_points: r.team1_game_points ?? 0,
   team2_game_points: r.team2_game_points ?? 0,
-  team1_zvanja3: r.team1_zvanja3 ?? 0,
-  team1_zvanja4: r.team1_zvanja4 ?? 0,
-  team2_zvanja3: r.team2_zvanja3 ?? 0,
-  team2_zvanja4: r.team2_zvanja4 ?? 0,
+  ...zvanjaOf(r),
   dosta_side: r.dosta_side,
 });
 

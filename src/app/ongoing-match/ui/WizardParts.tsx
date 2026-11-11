@@ -1,7 +1,7 @@
 "use client";
 
-import {color, ease, font, shadow, teamColor} from "@/app/_styles/tokens";
-import {buttonBase, tabular} from "@/app/_ui/sp";
+import {color, ease, font, shadow, teamColor, tint} from "@/app/_styles/tokens";
+import {buttonBase, SHORT_WINDOW, tabular} from "@/app/_ui/sp";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import {Box} from "@mui/material";
 import React from "react";
@@ -154,7 +154,8 @@ export function TeamValueBoxes({
 
 // The zvanja step: 3 and 4 for the team picked above, each click one zvanje, with how many of each (in the team's
 // colour), and Obriši zvanja. canAdd: whether one more of a value is still possible (the button is off otherwise, so a
-// hand the cards can't make isn't clicked together).
+// hand the cards can't make isn't clicked together). compact: the row above the keypad in the desktop panels (the
+// players' and the admin's), lower and without the line under each value.
 export function ZvanjaButtons({
   label,
   counts,
@@ -162,6 +163,7 @@ export function ZvanjaButtons({
   onAdd,
   onClear,
   canAdd,
+  compact = false,
 }: {
   label: string;
   counts: Partial<Record<number, number>>;
@@ -169,9 +171,21 @@ export function ZvanjaButtons({
   onAdd: (v: Zvanje) => void;
   onClear: () => void;
   canAdd?: (v: Zvanje) => boolean;
+  compact?: boolean;
 }) {
+  const height = compact ? {height: 48, [SHORT_WINDOW]: {height: 40}} : {height: 84};
+  const radius = compact ? "14px" : "20px";
+  const badge = compact ? 24 : 28;
   return (
-    <Box role="group" aria-label={label} sx={{flex: 1, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", alignContent: "center", py: "16px"}}>
+    <Box
+      role="group"
+      aria-label={label}
+      sx={
+        compact
+          ? {display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: "8px", [SHORT_WINDOW]: {gap: "6px"}}
+          : {flex: 1, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", alignContent: "center", py: "16px"}
+      }
+    >
       {ZVANJA_VALUES.map((v) => {
         const cnt = counts[v] ?? 0;
         const off = canAdd ? !canAdd(v) : false;
@@ -185,13 +199,13 @@ export function ZvanjaButtons({
             aria-label={`Zvanje ${v}${cnt ? `, upisano ${cnt}` : ""}`}
             sx={{
               ...buttonBase,
+              ...height,
               position: "relative",
-              height: 84,
-              borderRadius: "20px",
+              borderRadius: radius,
               background: color.cream,
               color: color.navy,
               fontFamily: font.display,
-              fontSize: 30,
+              fontSize: compact ? 22 : 30,
               fontWeight: 800,
               display: "flex",
               flexDirection: "column",
@@ -206,35 +220,38 @@ export function ZvanjaButtons({
             <Box component="span" sx={{lineHeight: 1, opacity: off ? 0.35 : 1, transition: "opacity 200ms ease"}}>
               {v}
             </Box>
-            <Box
-              component="span"
-              aria-hidden
-              sx={{fontFamily: font.body, fontSize: 11.5, fontWeight: 600, color: color.muted, lineHeight: 1.1, opacity: off ? 0.35 : 1, transition: "opacity 200ms ease"}}
-            >
-              {ZVANJE_HINT[v]}
-            </Box>
+            {!compact && (
+              <Box
+                component="span"
+                aria-hidden
+                sx={{fontFamily: font.body, fontSize: 11.5, fontWeight: 600, color: color.muted, lineHeight: 1.1, opacity: off ? 0.35 : 1, transition: "opacity 200ms ease"}}
+              >
+                {ZVANJE_HINT[v]}
+              </Box>
+            )}
             <Box
               key={`${team}-${cnt}`}
               component="span"
               aria-hidden
               sx={{
                 position: "absolute",
-                top: "-7px",
-                right: "-7px",
-                minWidth: 28,
-                height: 28,
-                px: "7px",
+                top: compact ? "-6px" : "-7px",
+                right: compact ? "-6px" : "-7px",
+                minWidth: badge,
+                height: badge,
+                px: compact ? "6px" : "7px",
                 boxSizing: "border-box",
-                borderRadius: "14px",
+                borderRadius: `${badge / 2}px`,
                 background: teamColor[team],
                 color: color.white,
                 fontFamily: font.body,
-                fontSize: 14,
+                fontSize: compact ? 13 : 14,
                 fontWeight: 700,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: `0 0 0 3px ${color.paper}`,
+                // the ring is the colour of what the buttons sit on: the panel's card, or the phone's page
+                boxShadow: `0 0 0 3px ${compact ? color.white : color.paper}`,
                 opacity: cnt ? 1 : 0,
                 transform: cnt ? "scale(1)" : "scale(.4)",
                 transition: "opacity 160ms ease, transform 200ms ease, background 200ms ease",
@@ -252,11 +269,11 @@ export function ZvanjaButtons({
         onClick={onClear}
         sx={{
           ...buttonBase,
-          height: 84,
-          borderRadius: "20px",
-          border: `2px solid ${color.borderStrong}`,
+          ...height,
+          borderRadius: radius,
+          border: `2px solid ${compact ? tint.navy[25] : color.borderStrong}`,
           color: color.navy,
-          fontSize: 15,
+          fontSize: compact ? 14 : 15,
           fontWeight: 600,
           lineHeight: 1.15,
           px: "8px",

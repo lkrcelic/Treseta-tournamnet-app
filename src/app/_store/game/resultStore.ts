@@ -1,7 +1,7 @@
 import {create} from "zustand";
 import {createJSONStorage, persist} from "zustand/middleware";
 import {ResultResponse} from "@/app/_interfaces/result";
-import {CUSTOM_HAND_MAX, HAND_POINTS, NO_ZVANJA, Zvanje, ZvanjaCounts} from "@/app/_lib/game/scoring";
+import {canAddZvanje, CUSTOM_HAND_MAX, HAND_POINTS, NO_ZVANJA, Zvanje, ZvanjaCounts} from "@/app/_lib/game/scoring";
 
 // The hand being entered on the scoreboard (phone screen or desktop panel). Persisted, so a reload mid-entry keeps it.
 //   normal: the active team's points are typed, the other team gets the rest of 11, and each team's zvanja are clicked
@@ -82,6 +82,8 @@ const useResultStore = create<ResultState>()(
       addZvanje: (value) =>
         set((state) => {
           const {activeTeam, zvanja} = state.resultData;
+          // a click the cards can't make (a second tap before the button went off) is ignored
+          if (!canAddZvanje(zvanja.team1, zvanja.team2, activeTeam === "team1" ? 1 : 2, value)) return state;
           const team = zvanja[activeTeam];
           return {resultData: {...state.resultData, zvanja: {...zvanja, [activeTeam]: {...team, [value]: team[value] + 1}}}};
         }),

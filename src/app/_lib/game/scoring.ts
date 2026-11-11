@@ -75,6 +75,14 @@ export const zvanjaColumns = (z1: ZvanjaCounts, z2: ZvanjaCounts): HandZvanja =>
 
 export const NO_HAND_ZVANJA: HandZvanja = zvanjaColumns(NO_ZVANJA, NO_ZVANJA);
 
+// A hand's zvanja from something that may leave counts out (a request, a hand from the server): a missing count is none
+export const zvanjaOf = (h: Partial<HandZvanja>): HandZvanja => ({
+  team1_zvanja3: h.team1_zvanja3 ?? 0,
+  team1_zvanja4: h.team1_zvanja4 ?? 0,
+  team2_zvanja3: h.team2_zvanja3 ?? 0,
+  team2_zvanja4: h.team2_zvanja4 ?? 0,
+});
+
 // What the cards allow. Only the 12 cards A, 2 and 3 of the four suits make zvanja, and a player holds 10 of the 40.
 // Counting every deal (each of the 12 cards with one of the four players, at most 10 each; zvanjaDeals.test.ts does it
 // again), a hand's zvanja [team 1's threes, fours, team 2's threes, fours] can be at most one of these. A team may

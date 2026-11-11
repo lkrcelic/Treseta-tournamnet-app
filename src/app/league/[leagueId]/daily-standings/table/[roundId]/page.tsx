@@ -9,7 +9,8 @@ import {NoWinnerAsk, NoWinnerConfirm} from "@/app/_ui/admin/NoWinnerConfirm";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useShortWindow from "@/app/_hooks/useShortWindow";
 import {blankEntry, EntryState, fromPadHand, toAdminHand} from "@/app/_lib/ui/adminEntry";
-import {dostaCallers, MATCH_THRESHOLD, NO_HAND_ZVANJA, PlayedHand, Side} from "@/app/_lib/game/scoring";
+import {dostaCallers, MATCH_THRESHOLD, Side} from "@/app/_lib/game/scoring";
+import {padPlayedHands} from "@/app/_lib/tableOverview";
 import {leaveRoundPages, lineupPassed} from "@/app/_lib/ui/lineupPass";
 import {color, shadow, teamColor, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, CenteredSpinner, DesktopShell, EmptyState, ErrorNote} from "@/app/_ui/sp";
@@ -27,9 +28,6 @@ import {adminLineupHref, roundHref, scopeHomeLabel, tableScopeOf} from "@/app/_l
 
 const THRESHOLD = MATCH_THRESHOLD;
 
-// a hand's totals already hold its zvanja, so the rules replay them as points without zvanja
-const playedHands = (m: PadMatch): PlayedHand[] =>
-  m.hands.map((h) => ({team1_game_points: h.total1, team2_game_points: h.total2, ...NO_HAND_ZVANJA, dosta_side: h.dosta}));
 
 // One Dnevni poredak table. For an admin it is the table's scorepad: every hand of its matches, finished or being
 // played, can be added, changed or deleted, also as a custom hand ("Custom"); the admin's phone has its own layout of
@@ -155,7 +153,7 @@ function TableScorepadDesktop() {
   const askHand = askMatch?.hands[askMatch.hands.length - 1];
   const dostaTeams: DostaTeam[] =
     askMatch && askHand?.custom && !askHand.dosta && (askDosta?.hand == null || askDosta.hand === askHand.id)
-      ? dostaCallers(playedHands(askMatch), THRESHOLD).map((side) => ({side, name: names[side - 1], color: teamColor[side - 1]}))
+      ? dostaCallers(padPlayedHands(askMatch), THRESHOLD).map((side) => ({side, name: names[side - 1], color: teamColor[side - 1]}))
       : [];
   const pickDosta = async (side: Side) => {
     if (!askMatch || !askHand) return;

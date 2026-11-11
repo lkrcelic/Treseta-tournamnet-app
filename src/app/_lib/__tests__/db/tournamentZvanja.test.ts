@@ -76,9 +76,22 @@ test("a Kolo's tables play as the tournament says when the Kolo is made, and a c
 test("after the start a published Kolo keeps its Zvanja, and the next draft is made again with the new one", async () => {
   await publishKolo(tournamentId, 1);
   assert.equal(await prisma.tournament.count({where: {tournament_id: tournamentId, started_at: {not: null}}}), 1);
+  // Kolo 1 played out, so Kolo 2's draft can be made: with zvanja, as the tournament still says
+  await prisma.round.updateMany({where: {tournamentRounds: {some: {tournament_id: tournamentId}}}, data: {open: false}});
+  await makeKoloDraft(tournamentId);
+  const before = await tables();
+  assert.equal(before.length, 2);
+  assert.ok(before.every((r) => r.declarations === true));
+
   await updateTournament(tournamentId, request(false));
+  // the draft is gone, to be made again with the new Zvanja; Kolo 1 keeps its own
+  assert.equal((await tables()).length, 0);
   const published = await tables("PUBLISHED");
   assert.equal(published.length, 2);
   assert.ok(published.every((r) => r.declarations === true));
-  assert.equal((await prisma.tournament.findUniqueOrThrow({where: {tournament_id: tournamentId}})).declarations, false);
+
+  await makeKoloDraft(tournamentId);
+  const remade = await tables();
+  assert.equal(remade.length, 2);
+  assert.ok(remade.every((r) => r.declarations === false));
 });

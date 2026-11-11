@@ -1,7 +1,7 @@
 "use client";
 
 import {TeamSide} from "@/app/_interfaces/side";
-import {canAddZvanje, handError, ZVANJA_VALUES, zvanjaError, zvanjaPoints} from "@/app/_lib/game/scoring";
+import {canAddZvanje, handError, zvanjaError, zvanjaPoints} from "@/app/_lib/game/scoring";
 import useResultStore from "@/app/_store/game/resultStore";
 import useRoundStore from "@/app/_store/RoundStore";
 import {color, font, teamColor, tint} from "@/app/_styles/tokens";
@@ -10,6 +10,7 @@ import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
 import {Box} from "@mui/material";
 import {useEffect, useState} from "react";
 import {discardHand, saveHand} from "./handFlow";
+import {ZvanjaButtons} from "./WizardParts";
 
 // Desktop: the team boxes, the zvanja of the active team (3, 4, Obriši zvanja; not at a table "bez zvanja" nor on a
 // custom hand) and the keypad in one panel next to the scoreboard
@@ -192,62 +193,15 @@ export default function HandEntryPanel({
       </Box>
 
       {showZvanja && (
-        <Box role="group" aria-label={`Zvanja: ${names[activeIndex]}`} sx={{display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: "8px"}}>
-          {ZVANJA_VALUES.map((v) => {
-            const cnt = activeCounts[v];
-            return (
-              <Box
-                key={v}
-                component="button"
-                type="button"
-                disabled={!canAddZvanje(team1, team2, activeSide, v)}
-                onClick={() => addZvanje(v)}
-                aria-label={`Zvanje ${v}${cnt ? `, upisano ${cnt}` : ""}`}
-                sx={{...key, position: "relative", height: 48, [SHORT_WINDOW]: {height: 40}, background: color.cream, color: color.navy, fontSize: 22, "&:disabled": {}}}
-              >
-                {/* off: the value fades, the count stays readable */}
-                <Box component="span" sx={{opacity: canAddZvanje(team1, team2, activeSide, v) ? 1 : 0.35}}>
-                  {v}
-                </Box>
-                <Box
-                  component="span"
-                  aria-hidden
-                  sx={{
-                    position: "absolute",
-                    top: "-6px",
-                    right: "-6px",
-                    minWidth: 24,
-                    height: 24,
-                    px: "6px",
-                    boxSizing: "border-box",
-                    borderRadius: "12px",
-                    background: teamColor[activeIndex],
-                    color: color.white,
-                    fontFamily: font.body,
-                    fontSize: 13,
-                    fontWeight: 700,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    boxShadow: `0 0 0 3px ${color.white}`,
-                    opacity: cnt ? 1 : 0,
-                    transition: "opacity 160ms ease",
-                  }}
-                >
-                  {cnt || ""}
-                </Box>
-              </Box>
-            );
-          })}
-          <Box
-            component="button"
-            type="button"
-            onClick={clearZvanja}
-            sx={{...key, height: 48, [SHORT_WINDOW]: {height: 40}, background: "transparent", border: `2px solid ${tint.navy[25]}`, color: color.navy, fontFamily: font.body, fontSize: 14, fontWeight: 600}}
-          >
-            Obriši zvanja
-          </Box>
-        </Box>
+        <ZvanjaButtons
+          compact
+          label={`Zvanja: ${names[activeIndex]}`}
+          counts={activeCounts}
+          team={activeIndex}
+          onAdd={addZvanje}
+          onClear={clearZvanja}
+          canAdd={(v) => canAddZvanje(team1, team2, activeSide, v)}
+        />
       )}
 
       <Box sx={{minHeight: 18, fontSize: 13, fontWeight: 600, color: color.muted}}>

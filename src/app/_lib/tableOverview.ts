@@ -1,4 +1,5 @@
-import type {OverviewMatch, TableOverview, TablePad} from "@/app/_interfaces/adminHand";
+import type {OverviewMatch, PadMatch, TableOverview, TablePad} from "@/app/_interfaces/adminHand";
+import {NO_HAND_ZVANJA, PlayedHand} from "@/app/_lib/game/scoring";
 
 // A table's matches as Pregled stola and the admin's phone scorepad show them (Meč 1 · Meč 2; a tournament's table
 // of one match has only Meč 1)
@@ -66,3 +67,8 @@ export function matchTabSub(
   if (style === "admin") return `${score} · završen`;
   return m.winner ? `${score} · ${names[m.winner - 1]}` : score;
 }
+
+// A match on the admin's pad as the rules replay it (the target, "s ovim dosta"): each hand's totals already hold its
+// zvanja, so they count as points without zvanja
+export const padPlayedHands = (m: Pick<PadMatch, "hands">): PlayedHand[] =>
+  m.hands.map((h) => ({team1_game_points: h.total1, team2_game_points: h.total2, ...NO_HAND_ZVANJA, dosta_side: h.dosta}));

@@ -1,5 +1,5 @@
 import {ResultCreateRequest} from "@/app/_interfaces/result";
-import {handError, HandZvanja, handZvanja, NO_HAND_ZVANJA, zvanjaError} from "@/app/_lib/game/scoring";
+import {handError, HandZvanja, handZvanja, NO_HAND_ZVANJA, zvanjaError, zvanjaOf} from "@/app/_lib/game/scoring";
 
 export class InvalidResultError extends Error {
   constructor(message: string) {
@@ -24,12 +24,7 @@ export const NO_WINNER_CODE = "no_winner";
 export function sentZvanja(result: ResultCreateRequest): HandZvanja | null {
   const {team1_zvanja3, team1_zvanja4, team2_zvanja3, team2_zvanja4} = result;
   if ([team1_zvanja3, team1_zvanja4, team2_zvanja3, team2_zvanja4].every((n) => n === undefined)) return null;
-  return {
-    team1_zvanja3: team1_zvanja3 ?? 0,
-    team1_zvanja4: team1_zvanja4 ?? 0,
-    team2_zvanja3: team2_zvanja3 ?? 0,
-    team2_zvanja4: team2_zvanja4 ?? 0,
-  };
+  return zvanjaOf(result);
 }
 
 // The zvanja a new hand is stored with

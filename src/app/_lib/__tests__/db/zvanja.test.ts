@@ -27,6 +27,8 @@ before(async () => {
 });
 
 after(async () => {
+  // the finished matches too (their hands go with them): a deleted round would leave them without one
+  await prisma.match.deleteMany({where: {round: {leagueRounds: {some: {league_id: leagueId}}}}});
   await prisma.ongoingMatch.deleteMany({where: {round: {leagueRounds: {some: {league_id: leagueId}}}}});
   await prisma.round.deleteMany({where: {leagueRounds: {some: {league_id: leagueId}}}});
   await prisma.league.delete({where: {league_id: leagueId}});

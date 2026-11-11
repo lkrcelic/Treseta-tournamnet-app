@@ -151,3 +151,16 @@ test("an entry kept on a phone from before zvanja gets none when it is loaded", 
   assert.equal(migrated.resultData.team1_game_points, 7);
   assert.equal(RESULT_STORE_VERSION, 1);
 });
+
+test("a click the cards can't make is ignored, even before the button goes off", () => {
+  result().setActiveTeam("team1");
+  for (let i = 0; i < 9; i++) result().addZvanje(3);
+  // 7 × 3 is the most a team can have
+  assert.deepEqual(zvanja().team1, {3: 7, 4: 0});
+  result().addZvanje(4);
+  assert.deepEqual(zvanja().team1, {3: 7, 4: 0});
+  // and nothing is left for the other team
+  result().setActiveTeam("team2");
+  result().addZvanje(3);
+  assert.deepEqual(zvanja().team2, {3: 0, 4: 0});
+});
