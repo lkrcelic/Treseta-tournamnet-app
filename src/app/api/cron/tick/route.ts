@@ -2,20 +2,21 @@ import {NextRequest, NextResponse} from "next/server";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {errorResponse} from "@/app/_lib/apiErrors";
 import {cronAuthorized} from "@/app/_lib/cron";
-import {expireDueMatches} from "@/app/_lib/service/match/timeLimit";
+import {NO_STORE} from "@/app/_lib/service/tournament/routes";
+import {tick} from "@/app/_lib/service/tournament/clock";
 
 export const dynamic = "force-dynamic";
 
 // The clock's backup for when nobody has the app open: a scheduler (Vercel Cron, or a pinger such as cron-job.org)
-// calls it every minute with `Authorization: Bearer <CRON_SECRET>`, and every match whose Vrijeme partije is up
-// closes. Otherwise a match closes the moment someone reads its scorepad, which is enough while anyone is looking.
-// Calling it twice, or alongside the scorepads' reads, does nothing more: each match is closed once.
+// calls it every minute with `Authorization: Bearer <CRON_SECRET>`. Today's tournaments run what is due and every match
+// out of time closes, the league's too. Calling it twice, or alongside the pages' reads, does nothing more: each step
+// happens once.
 export async function GET(request: NextRequest) {
   if (!cronAuthorized(request.headers.get("authorization"), process.env.CRON_SECRET)) {
     return NextResponse.json({error: "Nije dopušteno."}, {status: STATUS.Unauthorized});
   }
   try {
-    return NextResponse.json({closed_tables: await expireDueMatches()}, {status: STATUS.OK, headers: {"Cache-Control": "no-store"}});
+    return NextResponse.json(await tick(), {status: STATUS.OK, headers: NO_STORE});
   } catch (error) {
     return errorResponse(error, "Provjera vremena nije uspjela.");
   }

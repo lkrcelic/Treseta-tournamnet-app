@@ -261,7 +261,10 @@ them came over — the Kolos and their pairing, the sign-ups and the waiting lis
 the day's clock, the standings, the sign-up bans, the organizer role and Vrijeme partije — so `turniri/**`,
 `api/tournaments/**`, `api/admin/tournaments/**`, `_ui/tournaments/**`, `_lib/tournaments.ts`, `_lib/tournamentDay.ts`,
 `_lib/service/tournament/**`, `_lib/bans.ts`, `_lib/auth/**` and the rest are shared files now: a Bela change to them
-comes over as usual, and the sync no longer stops at a tournament commit.
+comes over as usual, and the sync no longer stops at a tournament commit. Nothing runs on a timer in either app
+(Bela's DECISIONS #69 and #70): whatever the day owes happens when someone reads the tournament (`syncTournament`),
+and `/api/cron/tick`, the backup for the minutes nobody has the app open, is switched off in both — without
+`CRON_SECRET` every request gets 401, and no scheduler calls it.
 
 What stays Treseta's in them is the game, not the tournament:
 
@@ -303,11 +306,6 @@ Still out, for now:
 - **Sign-up bans on league nights** (Bela's `de2001c`, DECISIONS #73), as decided on 31 Oct 2026: the bans are the
   tournaments' only. Tu smo, Novo kolo, Novi stol, Uredi stolove, Dodaj ekipu, Nova liga, publishing a Skica and a new
   team don't check them (see [Tu smo without the bans](#tu-smo-without-the-bans)).
-- **The tournaments' half of `/api/cron/tick`**: the route here calls only `expireDueMatches`, where Bela's calls
-  `tick` from `_lib/service/tournament/clock.ts` (which came over and is unused), so the backup clock closes matches
-  out of time but doesn't run today's tournaments. It costs nothing today, since neither app has a scheduler calling
-  the route and the day's steps happen whenever someone reads the tournament's pages (`syncTournament`), but a
-  scheduler (`CRON_SECRET` and a cron entry, still to be set up) wants Bela's `tick`.
 - **Gost i poziv**, as decided on 7 Nov 2026 (see [Not copied from Bela](#not-copied-from-bela)). `PlayerFrame.tsx`
   came with the tournament screens, since `PlayerParts.tsx` needs it; nothing else of the guest did.
 
