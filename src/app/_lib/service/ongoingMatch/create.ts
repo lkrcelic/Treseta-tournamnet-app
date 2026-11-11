@@ -38,8 +38,15 @@ export async function createOngoingMatch(createRequest: CreateOngoingMatchReques
         // zone while both are read back as UTC (after local midnight the date would be a day off)
         const now = new Date();
         const ongoingMatch = await tx.ongoingMatch.create({
-            // Vrijeme partije: the match's own clock, from the table's minutes (its league's, unless the table has its own)
-            data: {...createRequest, match_date: now, start_time: now, ...(await matchClock(tx, createRequest.round_id, now))},
+            // Vrijeme partije: the match's own clock, from the table's minutes (its league's, unless the table has its own).
+            // The target is the table's (41, or a tournament's 51), not what the phone sent
+            data: {
+                ...createRequest,
+                score_threshold: round.score_threshold,
+                match_date: now,
+                start_time: now,
+                ...(await matchClock(tx, createRequest.round_id, now)),
+            },
         });
 
         await tx.round.update({

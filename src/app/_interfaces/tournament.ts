@@ -46,6 +46,8 @@ export const TournamentRequestValidation = z.object({
   // Zvanja: false = "bez zvanja", no zvanja at its tables. Left out (a form opened before zvanja came back): with
   // zvanja, as every tournament before
   declarations: z.boolean().optional().default(true),
+  // Igra se do: 41 or 51. Left out (a form opened before it came): 41, as every tournament before
+  score_threshold: z.union([z.literal(41), z.literal(51)]).optional().default(41),
   max_teams: z.number().int().min(2, MAX_TEAMS_ERROR).max(500, "Najviše 500 ekipa.").nullable(),
   entry_fee: z.number().int().min(0, FEE_ERROR).max(999, FEE_ERROR),
   rules_url: url,
@@ -72,6 +74,7 @@ export type TournamentRequest = {
   rounds: number;
   matches_per_round: 1 | 2;
   declarations: boolean;
+  score_threshold: 41 | 51;
   max_teams: number | null;
   entry_fee: number;
   rules_url: string | null;
@@ -166,6 +169,8 @@ export type TournamentCard = {
   rounds: number;
   matches_per_round: number;
   declarations: boolean;
+  // Igra se do: 41 or 51
+  score_threshold: number;
   entry_fee: number;
   max_teams: number | null;
   registrations_open: boolean;

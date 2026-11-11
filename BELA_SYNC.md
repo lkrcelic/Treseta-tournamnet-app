@@ -270,7 +270,7 @@ What stays Treseta's in them is the game, not the tournament:
 
 | What | Treseta | Bela |
 |---|---|---|
-| A match | to 41 with "s ovim dosta" (`MATCH_THRESHOLD`); Pravila igre reads `41 · s ovim dosta · zvanja` or `· bez zvanja` | to 1001, with or without zvanja |
+| A match | to 41 with "s ovim dosta" (`MATCH_THRESHOLD`), a tournament to 41 or 51 (Igra se do: `Tournament.score_threshold` and `Round.score_threshold`, which `createOngoingMatch` puts on the match, whatever the phone sends), and the form's grey note on how long a match takes (`gameLengthNote`); Pravila igre reads `41 · s ovim dosta · zvanja`, `51 · …` or `· bez zvanja` | to 1001, with or without zvanja |
 | Zvanja | 3 and 4, a click a zvanje, per team per hand (`Result`/`OngoingResult` counts); Bela's switch, form field and labels, where "bez zvanja" means none at all | 20 to 200 in announcement tables; "bez zvanja" still lets bela (20) through |
 | Nedolazak za stol | the answering team wins every match as a Slobodna runda is won: `NO_SHOW_SCORE = [BYE_MATCH_POINTS, 0]` (5 : 0) at threshold 41, written with `Match.winner_side` | 1001 : 700 |
 | Vrijeme partije | 45 minutes by default (`GAME_MINUTES_DEFAULT`), and five minutes more for every raise of the target (`TARGET_RAISE_MINUTES`, `syncDeadline` in `_lib/service/match/timeLimit.ts`), which Bela has no rule for | 35 minutes, no raises |

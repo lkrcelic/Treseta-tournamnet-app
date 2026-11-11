@@ -11,7 +11,6 @@ import {NO_SHOW_BAN_MONTHS, NO_SHOW_SCORE, noShowStep, noShowTimes, tournamentDa
 import {fillPlaces} from "./day";
 import {lockTournament} from "./lock";
 import {afterTableClosed} from "./kola";
-import {MATCH_THRESHOLD} from "@/app/_lib/game/scoring";
 
 // Nedolazak za stol: a published table of today's tournament where no game has started is asked "Jesu li … za
 // stolom?" 3 minutes after its Kolo went out; the answer works from 5 minutes. Da, tu su: the question is gone and they
@@ -36,6 +35,7 @@ const tableSelect = {
   published_at: true,
   attendance: true,
   matches_per_round: true,
+  score_threshold: true,
   tournamentRounds: {select: {tournament: {select: {tournament_id: true, tournament_name: true, max_teams: true}}}, take: 1},
   _count: {select: {matches: true, ongoingMatches: true}},
 } as const;
@@ -80,7 +80,7 @@ async function applyNoShow(tx: Tx, table: Table, answeringTeam: number, by: numb
         round_id: table.id,
         player_pair1_score: first ? winner : loser,
         player_pair2_score: first ? loser : winner,
-        score_threshold: MATCH_THRESHOLD,
+        score_threshold: table.score_threshold,
         winner_side: first ? 1 : 2,
         start_time: now,
         end_time: now,

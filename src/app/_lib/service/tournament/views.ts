@@ -156,6 +156,7 @@ export function cardView(s: Snapshot, viewer: Viewer | null): TournamentCard {
     rounds: t.rounds,
     matches_per_round: t.matches_per_round,
     declarations: t.declarations,
+    score_threshold: t.score_threshold,
     entry_fee: t.entry_fee,
     max_teams: t.max_teams,
     registrations_open: t.registrations_open,

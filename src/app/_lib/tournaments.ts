@@ -291,9 +291,25 @@ export function daysUntilLabel(date: string, today: string): string {
   return `Za ${days} ${plural(days, "dan", "dana", "dana")}`;
 }
 
-// Pravila igre's line: Trešeta's own match, to MATCH_THRESHOLD with "s ovim dosta", with zvanja or without
-export function rulesLabel(declarations: boolean): string {
-  return `${MATCH_THRESHOLD} · s ovim dosta · ${declarations ? "zvanja" : "bez zvanja"}`;
+// Pravila igre's line: Trešeta's own match, to 41 or 51 (a tournament's Igra se do) with "s ovim dosta", with zvanja
+// or without
+export function rulesLabel(declarations: boolean, threshold: number = MATCH_THRESHOLD): string {
+  return `${threshold} · s ovim dosta · ${declarations ? "zvanja" : "bez zvanja"}`;
+}
+
+// How long a match takes, from the club's games: to 41 without zvanja 95 % of the matches end within 40 minutes, with
+// zvanja (they reach the target sooner) within 35, and to 51 everything takes 5 minutes more
+export function typicalGameMinutes(threshold: number, declarations: boolean): number {
+  return (declarations ? 35 : 40) + (threshold > MATCH_THRESHOLD ? 5 : 0);
+}
+
+// The tournament form's grey note under Zvanja and Igra se do, for choosing Vrijeme partije
+export function gameLengthNote(threshold: number, declarations: boolean): string {
+  const format = `do ${threshold}, ${declarations ? "sa zvanjima" : "bez zvanja"}`;
+  return (
+    `Za ovaj format (${format}) 95 % partija završi unutar ${typicalGameMinutes(threshold, declarations)} min. ` +
+    "Do 41 bez zvanja to je 40 min, sa zvanjima 35 min; do 51 sve traje 5 min dulje (45 min bez zvanja, 40 min sa zvanjima)."
+  );
 }
 
 // How the standings are ordered, as Poredak tells the admin: a win is worth 1 with one match a table (no draws then)

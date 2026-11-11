@@ -110,7 +110,8 @@ async function insertRounds(
  * Create the automatic matches of a bye round: the real team wins every match BYE_MATCH_POINTS:0 (5:0). night: the
  * round's night, the matches' date; matches: how many the table plays (a league's two, a tournament's one or two)
  */
-export async function createByeMatches(tx: Prisma.TransactionClient, roundId: number, team1Id: number, night: Date, matches = MATCHES_PER_ROUND): Promise<void> {
+// threshold: the points the table's matches are played to (a tournament's Igra se do; 41 in a league)
+export async function createByeMatches(tx: Prisma.TransactionClient, roundId: number, team1Id: number, night: Date, matches = MATCHES_PER_ROUND, threshold = MATCH_THRESHOLD): Promise<void> {
   const isByeTeam1 = isByeTeam(team1Id);
 
   for (let i = 0; i < matches; i++) {
@@ -119,7 +120,7 @@ export async function createByeMatches(tx: Prisma.TransactionClient, roundId: nu
         round_id: roundId,
         player_pair1_score: isByeTeam1 ? 0 : BYE_MATCH_POINTS,
         player_pair2_score: isByeTeam1 ? BYE_MATCH_POINTS : 0,
-        score_threshold: MATCH_THRESHOLD,
+        score_threshold: threshold,
         match_date: night,
       },
     });

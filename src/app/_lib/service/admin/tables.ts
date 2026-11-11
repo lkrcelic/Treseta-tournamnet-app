@@ -32,6 +32,7 @@ type TableRound = {
   draft_order: number | null;
   matches_per_round: number;
   declarations: boolean;
+  score_threshold: number;
 };
 
 // What a table belongs to: a league's night or a tournament's Kolo
@@ -57,6 +58,7 @@ const tableSelect = {
   draft_order: true,
   matches_per_round: true,
   declarations: true,
+  score_threshold: true,
 } as const;
 
 // The competition's edit lock: a league's is the one round creation takes, a tournament's is lockTournament
@@ -237,7 +239,7 @@ export async function addCompetitionTable(c: Competition, roundDate: Date, round
     const status = roundStatusOf(tables);
     const tableNumber = newTableNumber(tables, bye);
     const smokers = await teamSmokers([team1Id, team2Id], tx);
-    const {matches_per_round: matches, declarations} = tables[0];
+    const {matches_per_round: matches, declarations, score_threshold} = tables[0];
     const round = await tx.round.create({
       data: {
         round_number: roundNumber,
@@ -252,8 +254,9 @@ export async function addCompetitionTable(c: Competition, roundDate: Date, round
         // a draft's table is part of its Skica A, B…
         draft_order: status === "PUBLISHED" ? null : tables[0].draft_order,
         matches_per_round: matches,
-        // a Kolo's new table plays as its others do: with zvanja or "bez zvanja"
+        // a Kolo's new table plays as its others do: with zvanja or "bez zvanja", to 41 or 51
         declarations,
+        score_threshold,
         ...(bye && {team1_wins: isByeTeam(team1Id) ? 0 : matches, team2_wins: isByeTeam(team1Id) ? matches : 0, open: false}),
         ...(c.kind === "league" ? {leagueRounds: {create: {league_id: c.id}}} : {tournamentRounds: {create: {tournament_id: c.id}}}),
       },

@@ -17,6 +17,8 @@ import {
   prizeSummary,
   rankTeams,
   rulesLabel,
+  typicalGameMinutes,
+  gameLengthNote,
   standingsOrderLabel,
   TableResult,
   tournamentPhase,
@@ -338,6 +340,7 @@ test("the words of the tournament screens", () => {
   assert.equal(daysUntilLabel("2026-10-20", "2026-10-25"), "");
   assert.equal(rulesLabel(true), "41 · s ovim dosta · zvanja");
   assert.equal(rulesLabel(false), "41 · s ovim dosta · bez zvanja");
+  assert.equal(rulesLabel(true, 51), "51 · s ovim dosta · zvanja");
   assert.equal(formatLabel(9, 2), "9 kola");
   assert.equal(formatLabel(7, 1), "7 kola · 1 partija po kolu");
   assert.deepEqual(feeLabel(20), {title: "Kotizacija 20 € po igraču", sub: "Plaća se na dan turnira", free: false});
@@ -484,6 +487,10 @@ test("the tournament form's switch reaches the server: open_signups survives the
   const {declarations: _declarations, ...beforeZvanja} = body;
   void _declarations;
   assert.equal(TournamentRequestValidation.parse(beforeZvanja).declarations, true);
+  // Igra se do: 41 or 51, and 41 when an older form leaves it out
+  assert.equal(TournamentRequestValidation.parse({...body, score_threshold: 51}).score_threshold, 51);
+  assert.equal(TournamentRequestValidation.parse(body).score_threshold, 41);
+  assert.equal(TournamentRequestValidation.safeParse({...body, score_threshold: 61}).success, false);
 });
 
 test("Otvorene prijave: who counts as present, and what switching the setting off does", () => {
@@ -504,4 +511,13 @@ test("Otvorene prijave: who counts as present, and what switching the setting of
   assert.equal(signUpsCloseWithSwitch({started: true, registrationsOpen: true, openSignupsAfter: true}), false);
   // before the start the sign-ups are the admin's own business, whatever the setting says
   assert.equal(signUpsCloseWithSwitch({started: false, registrationsOpen: true, openSignupsAfter: false}), false);
+});
+
+test("how long a match takes: 40 min to 41 without zvanja, 35 with them, 5 more to 51", () => {
+  assert.equal(typicalGameMinutes(41, false), 40);
+  assert.equal(typicalGameMinutes(41, true), 35);
+  assert.equal(typicalGameMinutes(51, false), 45);
+  assert.equal(typicalGameMinutes(51, true), 40);
+  assert.match(gameLengthNote(51, true), /^Za ovaj format \(do 51, sa zvanjima\) 95 % partija završi unutar 40 min\./);
+  assert.match(gameLengthNote(41, false), /unutar 40 min\. Do 41 bez zvanja to je 40 min, sa zvanjima 35 min; do 51 sve traje 5 min dulje/);
 });

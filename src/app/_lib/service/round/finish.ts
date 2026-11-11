@@ -7,8 +7,8 @@ import {Side} from "@/app/_lib/game/scoring";
 export const MATCHES_PER_ROUND = 2;
 
 export async function lockRound(tx: Prisma.TransactionClient, roundId: number) {
-  const [round] = await tx.$queryRaw<{id: number, open: boolean, status: RoundStatus}[]>`
-      SELECT id, open, status FROM "Round" WHERE id = ${roundId} FOR UPDATE`;
+  const [round] = await tx.$queryRaw<{id: number, open: boolean, status: RoundStatus, score_threshold: number}[]>`
+      SELECT id, open, status, score_threshold FROM "Round" WHERE id = ${roundId} FOR UPDATE`;
   return round;
 }
 

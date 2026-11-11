@@ -174,6 +174,9 @@ model Tournament {
   matches_per_round  Int       @default(2)
   // Zvanja: false = "bez zvanja", no zvanja are entered at its tables (every Kolo's tables take it when the Kolo is made)
   declarations       Boolean   @default(true)
+  // Igra se do: the points a match is played to, 41 or 51 (CHECK in the migration script); every Kolo's tables take it
+  // when the Kolo is made
+  score_threshold    Int       @default(41)
   // Najveći broj ekipa; null = no limit. Teams over it wait on the waiting list
   max_teams          Int?
   // Kotizacija po igraču in whole euros; 0 = "Bez stresa, bez obveza"
@@ -645,6 +648,9 @@ model Round {
   matches_per_round Int @default(2)
   // zvanja are entered at the table; false (a tournament "bez zvanja"): none are
   declarations      Boolean @default(true)
+  // the points its matches are played to: 41 in a league, 41 or 51 in a tournament (its Igra se do; CHECK in the
+  // migration). A match started at the table takes it, whatever the phone sends
+  score_threshold   Int     @default(41)
   // Vrijeme partije for this table alone: the minutes an admin chose when they unlocked it (Otključaj partiju,
   // DECISIONS #89); null (every other table): its tournament's or its league's. CHECK in the migration script keeps it
   // between GAME_MINUTES_MIN and GAME_MINUTES_MAX.

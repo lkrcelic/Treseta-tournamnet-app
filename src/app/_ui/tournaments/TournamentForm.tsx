@@ -13,6 +13,7 @@ import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import {Box, SxProps, Theme} from "@mui/material";
 import React, {useEffect, useMemo, useState} from "react";
 import {GAME_MINUTES_DEFAULT} from "@/app/_lib/gameTime";
+import {gameLengthNote} from "@/app/_lib/tournaments";
 
 // Novi turnir and Upravljanje turnirom · Podaci (desktop and phone): one form for the whole tournament. Every field
 // as it is typed, the checks before anything is sent, and the request the server takes.
@@ -28,6 +29,8 @@ export type TournamentDraft = {
   rounds: string;
   matches: 1 | 2;
   declarations: boolean;
+  // Igra se do
+  target: 41 | 51;
   // "" = no limit
   maxTeams: string;
   fee: string;
@@ -54,6 +57,7 @@ export const EMPTY_TOURNAMENT: TournamentDraft = {
   rounds: "9",
   matches: 2,
   declarations: true,
+  target: 41,
   maxTeams: "",
   fee: "0",
   rulesUrl: DEFAULT_RULES_URL,
@@ -74,6 +78,7 @@ type Source = Pick<
   | "rounds"
   | "matches_per_round"
   | "declarations"
+  | "score_threshold"
   | "max_teams"
   | "entry_fee"
   | "rules_url"
@@ -94,6 +99,7 @@ export function draftOf(t: Source): TournamentDraft {
     rounds: String(t.rounds),
     matches: t.matches_per_round === 1 ? 1 : 2,
     declarations: t.declarations,
+    target: t.score_threshold === 51 ? 51 : 41,
     maxTeams: t.max_teams == null ? "" : String(t.max_teams),
     fee: String(t.entry_fee),
     rulesUrl: t.rules_url ?? "",
@@ -152,6 +158,7 @@ export function draftPayload(d: TournamentDraft): TournamentRequest {
     rounds: Number(d.rounds),
     matches_per_round: d.matches,
     declarations: d.declarations,
+    score_threshold: d.target,
     max_teams: d.maxTeams.trim() ? Number(d.maxTeams) : null,
     entry_fee: Number(d.fee || "0"),
     rules_url: text(d.rulesUrl),
@@ -334,10 +341,14 @@ export function TournamentFields({form, locks, compact = false, sx}: {form: Tour
 
       <Box component="hr" sx={rule} />
       <SectionTitle>Format i prijave</SectionTitle>
-      <Box sx={columns(3)}>
+      <Box sx={columns(4)}>
         <TextField label="Broj kola" type="number" inputMode="numeric" min={1} max={20} value={d.rounds} onChange={(e) => set("rounds", e.target.value)} soft inputSx={input} error={errors.rounds} />
         <Choice<1 | 2> label="Partija po kolu" value={d.matches} items={[{key: 1, label: "1"}, {key: 2, label: "2"}]} onChange={(v) => set("matches", v)} />
         <Choice<"da" | "ne"> label="Zvanja" value={d.declarations ? "da" : "ne"} items={[{key: "da", label: "Da"}, {key: "ne", label: "Ne"}]} onChange={(v) => set("declarations", v === "da")} />
+        <Choice<41 | 51> label="Igra se do" value={d.target} items={[{key: 41, label: "41"}, {key: 51, label: "51"}]} onChange={(v) => set("target", v)} />
+      </Box>
+      <Box aria-live="polite" sx={{mt: "-6px", pl: "4px", fontSize: 13, lineHeight: 1.45, color: color.muted}}>
+        {gameLengthNote(d.target, d.declarations)}
       </Box>
       <Box sx={columns(3)}>
         <Field label="Vrijeme partije · min" error={errors.gameMinutes}>

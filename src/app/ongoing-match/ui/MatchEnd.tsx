@@ -49,14 +49,15 @@ export function DostaPrompt({
   );
 }
 
-// "Do 51": the teams were level at or above 41, so the match goes on to a higher target. Pops in when it appears.
-export function TargetFlag({target}: {target: number}) {
+// "Do 51": the match is played past 41 — the teams were level at or above the target, so it went up, or the match
+// started there (a tournament played to 51; base: the target it started with). Pops in when it appears.
+export function TargetFlag({target, base = MATCH_THRESHOLD}: {target: number; base?: number}) {
   if (target <= MATCH_THRESHOLD) return null;
   return (
     <Box
       key={target}
       role="status"
-      aria-label={`Izjednačeno, igra se do ${target}`}
+      aria-label={target > base ? `Izjednačeno, igra se do ${target}` : `Igra se do ${target}`}
       sx={{
         alignSelf: "center",
         display: "inline-flex",

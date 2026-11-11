@@ -252,7 +252,7 @@ export default function ScoreBoardPage() {
     <DostaPrompt teams={dostaTeams} onPick={pickDosta} onSkip={skipDosta} busy={dostaBusy} error={dostaError} />
   );
   // shown once the question is answered
-  const targetFlag = !asking && <TargetFlag target={state.target} />;
+  const targetFlag = !asking && <TargetFlag target={state.target} base={firstTarget} />;
 
   const openPhone = async (resultId: number) => {
     if (opening != null) return;

@@ -131,8 +131,9 @@ export async function makeKoloDraft(tournamentId: number, {redo = false}: {redo?
           table_number: i + 1,
           status: "DRAFT",
           matches_per_round: t.matches_per_round,
-          // with zvanja or "bez zvanja", as the tournament says when the Kolo is made
+          // with zvanja or "bez zvanja", and to 41 or 51, as the tournament says when the Kolo is made
           declarations: t.declarations,
+          score_threshold: t.score_threshold,
           // the bye's table is won by the real team at once (2:0, 1:0 at a table of one match), as in a league
           ...(bye && {
             team1_wins: isByeTeam(team1) ? 0 : t.matches_per_round,
@@ -143,7 +144,7 @@ export async function makeKoloDraft(tournamentId: number, {redo = false}: {redo?
         },
         select: {id: true},
       });
-      if (bye) await createByeMatches(tx, round.id, team1, t.date, t.matches_per_round);
+      if (bye) await createByeMatches(tx, round.id, team1, t.date, t.matches_per_round, t.score_threshold);
     }
     return {number, tables: pairs.length, repeats};
   }, {timeout: 30_000});

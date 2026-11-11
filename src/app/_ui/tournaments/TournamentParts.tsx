@@ -83,9 +83,16 @@ export function StatusChip({status, height = 28, sx}: {status: TournamentStatusL
 
 export const statusOf = (t: Pick<TournamentCard, "phase" | "registrations_open" | "waiting">) => tournamentStatus(t.phase, t.registrations_open, t.waiting);
 
-// "10:00 · 9 kola · zvanja" (the admin's list) or with the teams: "· 22 / 24 ekipa"
-export function tournamentMeta(t: Pick<TournamentCard, "start_time" | "rounds" | "matches_per_round" | "declarations">): string {
-  return [t.start_time, formatLabel(t.rounds, t.matches_per_round), t.declarations ? "zvanja" : "bez zvanja"].filter(Boolean).join(" · ");
+// "10:00 · 9 kola · zvanja" or "· do 51" (the admin's list) or with the teams: "· 22 / 24 ekipa"
+export function tournamentMeta(t: Pick<TournamentCard, "start_time" | "rounds" | "matches_per_round" | "declarations" | "score_threshold">): string {
+  return [
+    t.start_time,
+    formatLabel(t.rounds, t.matches_per_round),
+    t.declarations ? "zvanja" : "bez zvanja",
+    t.score_threshold > 41 ? `do ${t.score_threshold}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 export type ViewTab<K extends string> = {key: K; label: string; icon: React.ReactNode; count?: number | null};
