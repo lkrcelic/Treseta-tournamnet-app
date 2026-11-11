@@ -273,6 +273,11 @@ function MatchPhone({
     setError(null);
   }, [igra, entryFor, editing]);
 
+  // steps 2 and 3 start with the left team picked, as the players' steps do (Bela's rule)
+  useEffect(() => {
+    if (korak === "2" || korak === "3") setEntry((s) => setActive(s, 1));
+  }, [korak]);
+
   const board = `${base}?mec=${number}`;
   // a hand starts on its zvanja, unless the table plays without them
   const firstStep: Step = pad.declarations ? "2" : "3";
