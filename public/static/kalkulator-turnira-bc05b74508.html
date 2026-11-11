@@ -208,6 +208,18 @@ img{max-width:100%}
       </div>
 
       <div class="field">
+        <label>Prvih kola koja ne broje poraze</label>
+        <div class="seg" id="segFree" role="group">
+          <button type="button" data-v="0">nijedno</button>
+          <button type="button" data-v="1">1</button>
+          <button type="button" data-v="2">2</button>
+          <button type="button" data-v="3">3</button>
+          <button type="button" data-v="4">4</button>
+        </div>
+        <span class="hint">Ta se kola igraju i pobjede iz njih ulaze u ljestvicu, ali poraz ne troši kvotu. Dok traju, nitko ne ispada i nema ponude za repasaž.</span>
+      </div>
+
+      <div class="field">
         <label for="K">Kola kvalifikacija</label>
         <div class="kola-row">
           <input type="number" id="K" value="4" min="2" max="14" step="1">
@@ -311,7 +323,8 @@ img{max-width:100%}
     <p>Po pravilu ljestvice — prvo pobjede — ekipa koja plati i nastavi igrati skuplja pobjede, a ona koja je odbila prestaje, pa je razlika u svim mjerenim postavkama pozitivna. Negativna razlika nije sama po sebi greška u računu: značila bi da dopuna playoffa prije uzme ekipu koja nije platila. Kad je razlika unutar mjerne nesigurnosti, piše <em>≈ 0</em> s rasponom, jer tada brojevi ne dokazuju nikakav predznak.</p>
     <p>Kolona <strong>Šansa</strong> piše <em>0%</em> samo kad je prolaz dokazano nemoguć — tada se taj repasaž ne smije prodavati. Kad je šansa mala ali postoji, piše <em>&lt;1%</em>. Crtica znači da u tom prozoru nije bilo dovoljno uzoraka za pouzdan broj.</p>
     <p><strong>Preživi kvalifikacije</strong> je koliko je ekipa na kraju kvalifikacija još u turniru: one koje nisu skupile dovoljno poraza da ispadnu, plus one koje su platile povratak i poslije toga više nisu izgubile. Taj broj treba biti barem onoliki koliki je playoff. Ako je manji, playoff se mora popuniti ekipama koje su ispale — tada prođu i one koje nisu platile i repasaž gubi smisao, pa kalkulator na to upozori.</p>
-    <p><strong>Poraza po ekipi u playoffu</strong> pokazuje koliko je letvica visoka. Manji broj znači da su prošle ekipe koje su stvarno igrale dobro; ako naraste, playoff se napunio ekipama koje su se uglavnom plaćale natrag.</p>
+    <p><strong>Poraza po ekipi u playoffu</strong> pokazuje koliko je letvica visoka. Manji broj znači da su prošle ekipe koje su stvarno igrale dobro; ako naraste, playoff se napunio ekipama koje su se uglavnom plaćale natrag. Broje se samo porazi iz kola koja ulaze u kvotu.</p>
+    <p><strong>Kola koja ne broje poraze</strong> igraju se kao i sva ostala: traju jednako dugo i pobjede iz njih ulaze u ljestvicu — ne broji se samo poraz. Dok traju, nitko ne ispada, pa nema ni ponude za repasaž: prvo ispadanje je najranije u kolu koje je za <em>L</em> iza njih, a prva ponuda u onom poslije. Za ispadanje je zato bitno samo onoliko kola koliko ih ostane, a trajanje večeri, ljestvica i playoff računaju se na sva kola. Uz isti broj kola to znači više preživjelih i manje prodanih repasaža, pa preporuka broja kola poraste za točno toliko koliko ih ne broji.</p>
     <p>Kolo je jedna partija do 41, a koliko traje s rotacijom i upisom postavljaš sam. Trajanje računa kvalifikacije plus krugove playoffa, a krug je gotov tek kad i najsporiji stol završi. Svaki iznos je zaokružen na 5 minuta, pa se tri prikazana broja zbrajaju točno; pojedini krugovi playoffa u objašnjenju ispod zaokruženi su svaki za sebe i ne moraju se zbrojiti na prikazani playoff.</p>
     <p>Losers bracket se ne procjenjuje formulom nego mu se izgradi stvarni raspored, pa broj termina i broj mečeva u svakom terminu izlaze iz mreže, a ne iz pretpostavke. Kad broj ekipa nije potencija dvojke, raspored ovisi o tome kako se gubitnici ubacuju u gubitnički dio: ovdje je uzeta standardna konvencija, koja daje najkraću noć i najviše slobodnih prolaza. Druga, jednako ispravna, daje jedan termin više.</p>
     <p><strong>Koliko ih plati</strong> nije izračun nego pretpostavka: ekipa koja je ispala bira hoće li doma ili dalje igrati, pa je osnovica visoka i na nju se dodaje sama šansa. Postavka <em>Spremnost</em> pomiče tu osnovicu. Jedino kad je prolaz matematički nemoguć ne plati nitko. To vrijedi samo za švicarac — kod losers bracketa se računa da plate <em>sve</em> ekipe koje ispadnu, dakle njegov najbolji mogući slučaj.</p>
@@ -365,13 +378,19 @@ img{max-width:100%}
   //      se ne napuni T, pa nitko ne plati uzalud, a playoff nikad nije veci
   //      od T.
   //   3  po ljestvici, iz svih ispalih, bez obzira na broj poraza.
-  function sim(M,T,k,L,maxBuys,pBuy,trials,seed,fillMode){
+  //
+  // fr = koliko PRVIH kola ne ulazi u brojanje poraza. Ta se kola odigraju,
+  // pobjeda u njima vrijedi za ljestvicu, ali poraz ne troši kvotu: nitko ne
+  // ispada i nitko ne dobiva ponudu dok ne prodju, pa prvo ispadanje moze pasti
+  // najranije u kolu fr+L.
+  function sim(M,T,k,L,maxBuys,pBuy,trials,seed,fillMode,fr){
     var c=getCtx(M,k);
     var loss=c.loss,buys=c.buys,st=c.st,fw=c.fw,pass=c.pass,won=c.won,outR=c.outR,
         A=c.a,B=c.b,newly=c.newly,cnt=c.cnt,hist=c.hist,psz=c.psz,
         offers=c.offers,sold=c.sold,adv=c.adv,nobuy=c.nobuy,nadv=c.nadv;
     offers.fill(0);sold.fill(0);adv.fill(0);nobuy.fill(0);nadv.fill(0);psz.fill(0);
     if(fillMode!==1&&fillMode!==2)fillMode=3;
+    fr=fr>0?Math.floor(fr):0; if(fr>k)fr=k;
     var rng=mulberry32(seed);
     var boughtAny=0,boughtInT=0,totalSold=0,aliveSum=0,shortfall=0,fillSum=0,
         emptySum=0,pszSum=0,tieEdge=0,lossInT=0,cntT=0;
@@ -432,11 +451,12 @@ img{max-width:100%}
 
         arrange(n);
 
-        var nn=0;
+        var nn=0,counts=(kolo>fr);
         for(i=0;i+1<n;i+=2){
           var x=B[i],y=B[i+1];
           var lo=rng()<0.5?x:y,wi=(lo===x)?y:x;
           won[wi]++;
+          if(!counts)continue;    // kolo koje ne broji: poraz ne ulazi u kvotu i nitko ne ispada
           loss[lo]++;
           if(st[lo]===1||loss[lo]>=L){st[lo]=2;outR[lo]=kolo;if(buys[lo]<maxBuys)newly[nn++]=lo;}
         }
@@ -595,14 +615,26 @@ img{max-width:100%}
   // Od kola L+2 parnost zivih je stvarno slucajna i uzima se 1/2. Izmjerena
   // najveca greska cijele procjene prema simulaciji je 0,50 ekipe (1862
   // kombinacije, M 4..128, L 1..8, k L+1..14; stara formula grijesi do 1,40).
-  function expectedAlive(M,k,L){
-    var out=aliveNoBye(M,k,L),r,g,odd=(M%2)===1;
-    for(r=1;r<=k;r++){
+  // Uz kola koja ne broje poraze greska ne raste: 1080 kombinacija (M 5..127,
+  // L 1..4, fr 0..4) daje najvise 0,48 ekipe, i to bas pri fr=0.
+  // Kola koja ne broje poraze (fr) ne ulaze u ovu procjenu. Za prezivljavanje
+  // su bitna samo preostala kc = k - fr kola, i to su obicna kola istog modela:
+  // u kolu koje ne broji ekipa ne moze ispasti ni kupiti povratak, a kako su po
+  // pretpostavci sve ekipe jednako jake, ishod te partije na prezivljavanje ne
+  // utjece nikako. Formula zato racuna turnir od kc kola. Jedino sto tako ne
+  // vidi je da se slobodne pobjede dijele i u kolima koja ne broje, pa ekipa
+  // koja je svoju vec dobila nema prednost poslije; koliko to kosta izmjereno
+  // je prema simulaciji.
+  function expectedAlive(M,k,L,fr){
+    var kc=k-(fr>0?fr:0);
+    if(kc<1)return M;
+    var out=aliveNoBye(M,kc,L),r,g,odd=(M%2)===1;
+    for(r=1;r<=kc;r++){
       if(r<=L+1){
         if(!odd)continue;
-        if(r<=L){for(g=0;g<r;g++)out+=comb(r-1,g)/Math.pow(2,r-1)*byeGain(g,r,k,L);}
-        else out+=byeGain(L,r,k,L);
-      }else out+=0.5*byeGain(L,r,k,L);
+        if(r<=L){for(g=0;g<r;g++)out+=comb(r-1,g)/Math.pow(2,r-1)*byeGain(g,r,kc,L);}
+        else out+=byeGain(L,r,kc,L);
+      }else out+=0.5*byeGain(L,r,kc,L);
     }
     return out;
   }
@@ -611,13 +643,13 @@ img{max-width:100%}
   // i inace vrti, s fiksnim sjemenom (pa je ishod uvijek isti) i s istim
   // sjemenom za sve kandidate, da razlika medju njima ne pliva na slucajnosti.
   // Broj pokusaja je vezan na velicinu turnira: tocnost gdje je jeftina.
-  function aliveSim(M,T,k,L){
+  function aliveSim(M,T,k,L,fr){
     var tr=Math.round(SK_WORK/(M*k));
     if(tr<SK_MINTR)tr=SK_MINTR;
     if(tr>SK_MAXTR)tr=SK_MAXTR;
     // avgAlive je broj prezivjelih, a on ne ovisi o tome kako se playoff
     // puni, pa nacin punjenja ovdje nije vazan.
-    return sim(M,T,k,L,1,function(){return 1;},tr,SK_SEED,3).avgAlive;
+    return sim(M,T,k,L,1,function(){return 1;},tr,SK_SEED,3,fr).avgAlive;
   }
 
   // Preporuka broja kola: trazi k kojim prezivi otprilike T ekipa.
@@ -631,12 +663,15 @@ img{max-width:100%}
   // promjenu polja, a odgovor za iste postavke je uvijek isti.
   var SK_EPS=0.8,SK_MAX=4,SK_TIE=0.05,SK_WORK=300000,SK_MINTR=300,SK_MAXTR=2500,SK_SEED=20261111;
   var skCache={};
-  function suggestK(M,T,L){
-    var ck=M+"|"+T+"|"+L;
+  function suggestK(M,T,L,fr){
+    fr=fr>0?Math.floor(fr):0;
+    var ck=M+"|"+T+"|"+L+"|"+fr;
     if(skCache[ck]!==undefined)return skCache[ck];
     var all=[],k,i;
-    for(k=L+1;k<=14;k++)all.push({k:k,d:Math.abs(expectedAlive(M,k,L)-T)});
-    if(!all.length)return L+1;
+    // Prvo kolo u kojem se uopce moze ispasti je fr+L, a da bi ispala ekipa
+    // stigla dobiti ponudu, mora biti barem jos jedno kolo poslije njega.
+    for(k=fr+L+1;k<=14;k++)all.push({k:k,d:Math.abs(expectedAlive(M,k,L,fr)-T)});
+    if(!all.length)return fr+L+1;
     var bestD=all[0].d;
     for(i=1;i<all.length;i++)if(all[i].d<bestD)bestD=all[i].d;
     var near=[];
@@ -654,7 +689,7 @@ img{max-width:100%}
       // razlike, i tada treba pobijediti manji broj kola.
       var bd=Infinity;
       for(i=0;i<near.length;i++){
-        var dd=Math.abs(aliveSim(M,T,near[i].k,L)-T);
+        var dd=Math.abs(aliveSim(M,T,near[i].k,L,fr)-T);
         if(dd<bd-SK_TIE){bd=dd;out=near[i].k;}
         else if(dd<bd)bd=dd;
       }
@@ -1188,11 +1223,17 @@ img{max-width:100%}
     };
   }
 
-  function solveChance(M,T,k,L,maxBuys,W,fillMode){
+  function solveChance(M,T,k,L,maxBuys,W,fillMode,fr){
+    fr=fr>0?Math.floor(fr):0; if(fr>k)fr=k;
     // Kad se playoff puni prodajom (nacin 2), postoji jos jedan prozor:
     // poslije ZADNJEG kola. Zato petlje po kolima idu do kLast, a ne do k-1.
     var kLast=(fillMode===2)?k:k-1;
-    var span=(k+2)*100,unit=M*k,key,it,R,sd;
+    // Mjera posla po pokusaju. Kola koja ne broje poraze drze cijelo polje u
+    // igri dulje, pa je i pokusaj skuplji: uz fr=4 i M=128, k=14, L=1 noc
+    // prodje s dvostruko vise odigranih mececa nego bez njih. Zato u mjeru
+    // ulazi i fr. Uz fr=0 je izraz isti kao i prije, pa se nijedan dosadasnji
+    // broj ne mijenja.
+    var span=(k+2)*100,unit=M*(k+(fr>0?fr:0)),key,it,R,sd;
     // Broj pokusaja. Budzet je oko sekunde po preracunu, a ne desetinka: bolje
     // mirniji brojevi nego brz odgovor, jer se stranicom ne upravlja u stvarnom
     // vremenu nego se postavke mijenjaju povremeno. Vise pokusaja znaci uzu
@@ -1217,7 +1258,7 @@ img{max-width:100%}
     var pf=function(){return p0;};
 
     for(it=0;it<PROBES;it++){
-      R=sim(M,T,k,L,maxBuys,pf,tP,990001+it*7919,fillMode);
+      R=sim(M,T,k,L,maxBuys,pf,tP,990001+it*7919,fillMode,fr);
       for(key=0;key<span;key++){
         sd=R.sold[key];
         if(sd>0){
@@ -1246,7 +1287,7 @@ img{max-width:100%}
       }
     }
     fillPUsed();
-    R=sim(M,T,k,L,maxBuys,pFinal,tF,990001+PROBES*7919,fillMode);
+    R=sim(M,T,k,L,maxBuys,pFinal,tF,990001+PROBES*7919,fillMode,fr);
 
     // ISPRAVKA 1b: ako ZADNJI prolaz sam dokaze da je prozor mrtav, a u njemu
     // je prodavao, onda su te prodaje prodaje proizvoda koji u istom retku
@@ -1262,7 +1303,7 @@ img{max-width:100%}
     if(flip){
       pFinal=mkBuy(ch,dead,W,false);
       fillPUsed();
-      R=sim(M,T,k,L,maxBuys,pFinal,tF,990001+PROBES*7919,fillMode);
+      R=sim(M,T,k,L,maxBuys,pFinal,tF,990001+PROBES*7919,fillMode,fr);
       out.repaired=1;
     }
 
@@ -1339,7 +1380,7 @@ img{max-width:100%}
   }
 
   var el=function(id){return document.getElementById(id);};
-  var state={maxBuys:1,will:0.45,po:"bo1",fill:3};
+  var state={maxBuys:1,will:0.45,po:"bo1",fill:3,free:0};
 
   function readInt(id,def,lo,hi){
     var v=parseInt(el(id).value,10);
@@ -1355,8 +1396,13 @@ img{max-width:100%}
     var M=readInt("M",16,4,128),T=readInt("T",8,2,127),L=readInt("L",2,1,8),
         k=readInt("K",4,2,14),price=readInt("P",20,0,500),g=readInt("G",30,10,90);
     if(T>=M)T=M-1<2?2:M-1;
+    // Kola koja ne broje poraze. Igraju se, pa ulaze u trajanje i u ljestvicu,
+    // ali za ispadanje vrijedi samo preostalih k-fr kola.
+    var fr=state.free; if(fr>k)fr=k;
+    var frTxt=fr===1?"1 kolo koje ne broji poraze":fr+" kola koja ne broje poraze";
 
-    el("autoHint").textContent="Preporuka za ove postavke: "+suggestK(M,T,L)+" kola.";
+    el("autoHint").textContent="Preporuka za ove postavke: "+suggestK(M,T,L,fr)+" kola"
+      +(fr?(fr===1?" — u to ulazi i 1 kolo koje ne broji poraze":" — u to ulaze i "+fr+" kola koja ne broje poraze"):"")+".";
 
     var qMin=k*g,qShown=r5(qMin);
 
@@ -1371,7 +1417,8 @@ img{max-width:100%}
       var seq=det.map(function(r){
         return (r.last?"finale":r.m+" meč"+(r.m===1?"":r.m<5?"a":"eva"))+" "+(r.bo3?"bo3":"bo1")+" "+hm(r.d);
       }).join(" · ");
-      var tip="Partija traje "+g+" min. Kvalifikacije su "+k+" kola, pa "+rounds+" krug"+(rounds===1?"":rounds<5?"a":"ova")+" playoffa: "+seq+".";
+      var tip="Partija traje "+g+" min. Kvalifikacije su "+k+" kola"
+        +(fr?" (od toga "+frTxt+")":"")+", pa "+rounds+" krug"+(rounds===1?"":rounds<5?"a":"ova")+" playoffa: "+seq+".";
       if(varies){
         tip+=" Playoff nije uvijek jednako velik, pa je prikazano trajanje prosjek preko svih turnira; niz krugova je za najčešću veličinu, "+size+" ekip"+(size===1?"u":size<5?"e":"a")+".";
       }
@@ -1383,7 +1430,7 @@ img{max-width:100%}
       return {poShown:poShown,ukShown:ukShown};
     }
 
-    if(L>=k){
+    if(L>=k-fr){
       var po0=playoffPlan(T,state.po,g);
       showTime(po0.mins,po0.det,po0.rounds,T,false);
       el("o1").textContent="—";el("o2").textContent="—";el("o3").textContent="—";
@@ -1393,7 +1440,7 @@ img{max-width:100%}
       el("foot").innerHTML="";
       el("cmp").innerHTML='<tr><td colspan="3" class="dim">Popravi postavke pa će se usporedba izračunati.</td></tr>';
       el("lbHint").textContent="";
-      el("notes").innerHTML=noteHtml([["bad","<strong>Nema nijednog prozora.</strong> Granica za ispadanje ("+L+" poraza) nije manja od broja kola, pa nitko ne stigne ispasti dovoljno rano da plati povratak. Povećaj broj kola ili smanji broj poraza."]]);
+      el("notes").innerHTML=noteHtml([["bad","<strong>Nema nijednog prozora.</strong> Poraze broji samo "+(k-fr)+" od "+k+" kola, a za ispadanje ih treba "+L+", pa nitko ne stigne ispasti dovoljno rano da plati povratak. Povećaj broj kola"+(fr?", smanji broj kola koja ne broje poraze":"")+" ili smanji broj poraza."]]);
       return;
     }
 
@@ -1402,7 +1449,7 @@ img{max-width:100%}
     // vjerojatnost kupnje stvarnoj, pa zadnji prolaz mjeri i sansu i drugu
     // ruku na realnoj mjesavini kupaca.
     var W=state.will,fillMode=state.fill,kLast=(fillMode===2)?k:k-1;
-    var sol=solveChance(M,T,k,L,state.maxBuys,W,fillMode),B=sol.B;
+    var sol=solveChance(M,T,k,L,state.maxBuys,W,fillMode,fr),B=sol.B;
 
     // Trajanje playoffa iz raspodjele njegove velicine. Kad se playoff ne puni
     // do kraja (nacini 1 i 2), velicina se mijenja od turnira do turnira, pa je
@@ -1613,8 +1660,9 @@ img{max-width:100%}
   wireSeg("segWill","will",function(v){return parseFloat(v);});
   wireSeg("segPo","po",function(v){return v;});
   wireSeg("segFill","fill",function(v){return parseInt(v,10);});
+  wireSeg("segFree","free",function(v){return parseInt(v,10);});
   el("auto").addEventListener("click",function(){
-    el("K").value=suggestK(readInt("M",16,4,128),readInt("T",8,2,127),readInt("L",2,1,8));
+    el("K").value=suggestK(readInt("M",16,4,128),readInt("T",8,2,127),readInt("L",2,1,8),state.free);
     queue();
   });
   el("form").addEventListener("submit",function(e){e.preventDefault();});
