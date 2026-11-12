@@ -2,7 +2,7 @@
 
 import {runningHands} from "@/app/_lib/ui/handRows";
 import {count, NOUN} from "@/app/_lib/ui/text";
-import {color, ease, font, shadow, teamColor, teamTint, teamTrack} from "@/app/_styles/tokens";
+import {color, ease, font, shadow, teamColor, teamTint, teamTrack, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, ellipsis, EmptyState, rowFocus, Segmented, tabular, visuallyHidden} from "@/app/_ui/sp";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
@@ -152,7 +152,7 @@ export function ScorePanel({
             position: "absolute",
             inset: 0,
             borderRadius: "inherit",
-            "&:active": {background: "rgba(14,27,51,.05)"},
+            "&:active": {background: tint.navy[4]},
             "&:focus-visible": {outline: `3px solid ${color.navy}`, outlineOffset: "-3px"},
           }}
         />
