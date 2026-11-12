@@ -278,7 +278,12 @@ export default function ScoreBoardPage() {
     }
   };
 
+  // A second tap while the hand entry is still opening (a double tap on Upiši igru) is ignored: pushing it twice
+  // leaves an extra history entry, and saving would then go back to the first step instead of the board.
+  const openedAt = useRef(0);
   const newHand = () => {
+    if (Date.now() - openedAt.current < 1500) return;
+    openedAt.current = Date.now();
     // the hands the board shows: a hand saved from another phone after this makes the server ask before saving
     startNewHand(matchId, rows.length);
     markEntryOpened(matchId);
