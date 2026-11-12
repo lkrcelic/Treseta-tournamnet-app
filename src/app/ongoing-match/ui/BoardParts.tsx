@@ -11,11 +11,11 @@ import React from "react";
 
 // One team's running total: name, round-win pips, big score and progress towards the threshold.
 // href: the name opens the team (Pregled stola); mine: the viewer's own team, cream with a navy ring.
+// onPick: the whole card is a button (the scoreboard: opens the hand entry with this team as the caller).
 export function ScorePanel({
   index,
   name,
   wins,
-  of = 2,
   total,
   finalTotal,
   threshold,
@@ -24,12 +24,13 @@ export function ScorePanel({
   size = "phone",
   href,
   mine = false,
+  of = 2,
+  onPick,
+  pickLabel,
 }: {
   index: 0 | 1;
   name: string;
   wins: number;
-  // the matches the table plays: a win pip each (2 in a league, a tournament's table can play 1)
-  of?: number;
   total: number;
   // the real total (total is the animated value); announced to screen readers when it changes
   finalTotal?: number;
@@ -39,6 +40,11 @@ export function ScorePanel({
   size?: "phone" | "desktop";
   href?: string;
   mine?: boolean;
+  // the matches the table plays: a win pip each (2 in a league, a tournament's table can play 1)
+  of?: number;
+  onPick?: () => void;
+  // the button's name for screen readers
+  pickLabel?: string;
 }) {
   const c = teamColor[index];
   const desk = size === "desktop";
@@ -94,7 +100,7 @@ export function ScorePanel({
             </Box>
           )}
         </Box>
-        <Box role="img" aria-label={`${wins} od ${of} u kolu`} sx={{display: "flex", gap: desk ? "6px" : "5px", flex: "none"}}>
+        <Box role="img" aria-label={`${wins} od ${of} ${of === 1 ? "pobjede" : "pobjede"} u kolu`} sx={{display: "flex", gap: desk ? "6px" : "5px", flex: "none"}}>
           {Array.from({length: of}, (_, k) => k).map((k) => (
             <Box
               key={k}
@@ -134,6 +140,23 @@ export function ScorePanel({
       <Box aria-hidden sx={{position: "relative", height: desk ? 5 : 4, borderRadius: "3px", background: teamTrack[index], overflow: "hidden"}}>
         <Box sx={{height: "100%", width: `${pct}%`, background: c, borderRadius: "3px", transition: `width 600ms ${ease}`}} />
       </Box>
+      {onPick && (
+        // laid over the card, so the card's heading stays a heading (a button can't hold one)
+        <Box
+          component="button"
+          type="button"
+          onClick={onPick}
+          aria-label={pickLabel ?? name}
+          sx={{
+            ...buttonBase,
+            position: "absolute",
+            inset: 0,
+            borderRadius: "inherit",
+            "&:active": {background: "rgba(14,27,51,.05)"},
+            "&:focus-visible": {outline: `3px solid ${color.navy}`, outlineOffset: "-3px"},
+          }}
+        />
+      )}
     </Card>
   );
 }
