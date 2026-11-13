@@ -3,13 +3,18 @@ import {replayRatings} from "@/app/_lib/service/admin/recalc";
 import {RoundStatus} from "@/app/_lib/roundStatus";
 import {Side} from "@/app/_lib/game/scoring";
 
-// A round between two teams is two matches.
+// A round between two teams is two matches, unless the tournament plays one per Kolo (Round.matches_per_round).
 export const MATCHES_PER_ROUND = 2;
 
 export async function lockRound(tx: Prisma.TransactionClient, roundId: number) {
-  const [round] = await tx.$queryRaw<{id: number, open: boolean, status: RoundStatus, score_threshold: number}[]>`
-      SELECT id, open, status, score_threshold FROM "Round" WHERE id = ${roundId} FOR UPDATE`;
+  const [round] = await tx.$queryRaw<{id: number, open: boolean, status: RoundStatus, score_threshold: number, matches_per_round: number}[]>`
+      SELECT id, open, status, score_threshold, matches_per_round FROM "Round" WHERE id = ${roundId} FOR UPDATE`;
   return round;
+}
+
+// "Oba meča ove runde već su odigrana." / "Meč ove runde već je odigran." (a table of one match)
+export function roundPlayedMessage(matchesPerRound: number): string {
+  return matchesPerRound === 1 ? "Meč ove runde već je odigran." : "Oba meča ove runde već su odigrana.";
 }
 
 // What the round gets once one of its matches is stored: the winner's side counts one more won match
@@ -17,7 +22,7 @@ export function roundWinsIncrement(winner: Side) {
   return winner === 1 ? {team1_wins: {increment: 1}} : {team2_wins: {increment: 1}};
 }
 
-// After a match is stored: the round is played once it has its matches (MATCHES_PER_ROUND) ("close"), else its next match
+// After a match is stored: the round is played once it has its matches (the round's matches_per_round) ("close"), else its next match
 // opens ("next")
 export function roundAfterMatch(playedMatches: number, matchesPerRound: number): "close" | "next" {
   return playedMatches >= matchesPerRound ? "close" : "next";

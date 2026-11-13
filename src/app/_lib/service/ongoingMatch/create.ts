@@ -2,7 +2,7 @@ import {prisma} from "@/app/_lib/prisma";
 import {OngoingMatch} from "@prisma/client";
 import {CreateOngoingMatchRequest} from "@/app/_interfaces/match";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
-import {lockRound, MATCHES_PER_ROUND} from "@/app/_lib/service/round/finish";
+import {lockRound, roundPlayedMessage} from "@/app/_lib/service/round/finish";
 import {ROUND_NOT_PUBLISHED} from "@/app/_lib/roundStatus";
 import {matchClock} from "@/app/_lib/service/match/timeLimit";
 
@@ -30,8 +30,8 @@ export async function createOngoingMatch(createRequest: CreateOngoingMatchReques
             throw new InvalidResultError("Ova runda je već završena.");
         }
         const playedMatches = await tx.match.count({where: {round_id: createRequest.round_id}});
-        if (playedMatches >= MATCHES_PER_ROUND) {
-            throw new InvalidResultError("Oba meča ove runde već su odigrana.");
+        if (playedMatches >= round.matches_per_round) {
+            throw new InvalidResultError(roundPlayedMessage(round.matches_per_round));
         }
 
         // set here rather than by the columns' CURRENT_DATE / CURRENT_TIME defaults, which use the database's time

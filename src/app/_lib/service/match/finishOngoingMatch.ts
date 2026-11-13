@@ -2,7 +2,7 @@ import {prisma} from "@/app/_lib/prisma";
 import {MatchAllIncluded, transformMatch} from "@/app/_lib/helpers/databaseHelpers";
 import {DEFAULT_MATCH_END, MATCH_THRESHOLD, matchState} from "@/app/_lib/game/scoring";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
-import {closeRound, lockRound, MATCHES_PER_ROUND, roundAfterMatch, roundWinsIncrement} from "@/app/_lib/service/round/finish";
+import {closeRound, lockRound, roundAfterMatch, roundWinsIncrement} from "@/app/_lib/service/round/finish";
 import {combineDateAndTime} from "@/app/_lib/dates";
 import {timeWinner} from "@/app/_lib/gameTime";
 import {matchClock} from "@/app/_lib/service/match/timeLimit";
@@ -74,14 +74,14 @@ export async function finishOngoingMatch(ongoingMatchId: number, {byTime = false
       return {roundId: null, roundFinished: false, nextOngoingMatchId: null};
     }
 
-    await lockRound(tx, roundId);
+    const round = await lockRound(tx, roundId);
     await tx.round.update({
       where: {id: roundId},
       data: roundWinsIncrement(winner),
     });
 
     const playedMatches = await tx.match.count({where: {round_id: roundId}});
-    if (roundAfterMatch(playedMatches, MATCHES_PER_ROUND) === "close") {
+    if (roundAfterMatch(playedMatches, round.matches_per_round) === "close") {
       await closeRound(tx, roundId);
       return {roundId, roundFinished: true, nextOngoingMatchId: null};
     }
