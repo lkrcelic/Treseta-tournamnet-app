@@ -9,7 +9,7 @@ own; everything else is kept identical to Bela.
 | | |
 |---|---|
 | Bela branch | `development`, read through the remote `bela` (the local Bela repo). Only commits come over, never Bela's uncommitted work |
-| Last synced Bela commit | `e7f0047` (12 Nov 2026) |
+| Last synced Bela commit | `b3443b9` (12 Nov 2026) |
 | Target branch | `master` |
 | Sync branch | `bela-sync` in the repo itself (no worktree): created from `master`, or rebased onto it, by every run |
 
@@ -77,7 +77,7 @@ Treseta directly only for what has to differ, and add it below.
 
 ## Bela's work waiting to come over
 
-Every Bela commit up to `e7f0047` (12 Nov 2026) came over or was skipped by 12 Nov 2026, including the range
+Every Bela commit up to `b3443b9` (12 Nov 2026) came over or was skipped by 13 Nov 2026, including the range
 `88425c3..d2a0b98` whose tournament files had been copied by hand on 10 Nov: a commit whose files were already here
 was skipped, and one that was partly here came with only the part the copy missed. Decisions for Bela work that touches
 Treseta's differences before it comes over go here.
@@ -448,3 +448,4 @@ The nightly sync adds a row when it brings something over or stops.
 | 8 Nov 2026 | `a0686e1..88425c3` (9 of 22) | Stopped at `28d19f2` (Organizator: a tournament role on a new role→capability foundation across about 80 shared files, with a migration; not decided). 4 came over: the admin's no-winner warning (Meč ostaje bez pobjednika?, Spremi / Obriši svejedno) on Treseta's `winner_side` and hands, Raspored scrolling on Android (twice; Bela's mistaken revert of the warning left out), Vidljivost slike behind the photo. 5 skipped: `CHANGELOG.md` (4) and Bela's restore `ba7fb02` (already here); no migration |
 | 11 Nov 2026 | `a0686e1..88425c3` (merged) | The four commits the 8 Nov run left on `bela-sync` were rebased onto the tournaments and merged into `master`. Five conflicts, each resolved by keeping both sides: the no-winner warning keeps the organizer's `refuseUnlessMyHand` and takes Bela's `allow_no_winner`, Vidljivost slike keeps the `team.moderate` guard, and the sync state took `88425c3`. The Organizator question the run parked is answered: the tournaments brought the whole role→capability foundation on 10 Nov. Unit tests (552), `tsc`, ESLint and `next build` pass; the `db/` tests were not run, since the repo's generated Prisma client belongs to the `zvanja` branch being built in parallel |
 | 12 Nov 2026 | `88425c3..e7f0047` (42) | 25 came over (13 adapted by hand), 17 skipped. Of `88425c3..d2a0b98` (copied by hand on 10 Nov) only what the copy missed: the team routes' `requireCan`, the public username (#88), Otključaj partiju on Treseta's hands, the 16 px phone fields, the install sheet's week, Burza's number for logged-in players (Prijava instead of the guest sheet), the same hand from two phones (on Treseta's hand entry); 13 skipped as already here (or empty, `6040549`), and `d2a0b98` (`CHANGELOG.md`). After it: Google not linking a password account, the night after midnight, the Kalkulator ("do 41"), the tournament card for non-players, Sakrij broj prijava (migration `20261111180000_hide_entries`), Broj kola po večeri (migration `20261112120000_night_rounds`, without bans), Novo kolo after published rounds; the scorepad card tap only as `ScorePanel`'s prop (Bela's caller). Skipped: `reports/` (2), `CHANGELOG.md` (`fc74fd9`). Migrations tested on a fresh local database only |
+| 13 Nov 2026 | `e7f0047..b3443b9` (1) | Came over adapted: the double-tap guard on Upiši igru only (the team cards stay without `onPick`, no Tko je zvao); `CHANGELOG.md` not copied; no migration |
