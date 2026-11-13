@@ -43,6 +43,18 @@ export async function finishOngoingMatch(ongoingMatchId: number, {byTime = false
     const threshold = ongoingMatch.score_threshold ?? MATCH_THRESHOLD;
     // the table's rule: "s ovim dosta" or "na prolaz"
     const {winner: byRules, target} = matchState(ongoingMatch.results, threshold, ongoingMatch.round?.match_end ?? DEFAULT_MATCH_END);
+    // a table that already has its matches (a one-match Kolo that opened a second match before the fix): the extra match
+    // is dropped and the table closes with what was played
+    if (ongoingMatch.round_id != null) {
+      const round = await lockRound(tx, ongoingMatch.round_id);
+      const played = await tx.match.count({where: {round_id: ongoingMatch.round_id}});
+      if (round && played >= round.matches_per_round) {
+        await tx.ongoingMatch.delete({where: {id: ongoingMatchId}});
+        if (round.open) await closeRound(tx, ongoingMatch.round_id);
+        return {roundId: ongoingMatch.round_id, roundFinished: true, nextOngoingMatchId: null};
+      }
+    }
+
     let winner = byRules;
     if (byTime) {
       if (!ongoingMatch.ends_at || ongoingMatch.ends_at.getTime() > Date.now()) {
