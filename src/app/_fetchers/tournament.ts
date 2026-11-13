@@ -84,6 +84,8 @@ export const removeTournamentTeamAPI = (id: number, teamId: number) => send<Admi
 // the admin's buttons on the tournament's day: {arrived} (Označi dolazak / Makni potvrdu), {active}, {excluded}
 export const setTeamDayAPI = (id: number, teamId: number, body: {arrived?: boolean; active?: boolean; excluded?: boolean}) =>
   send<AdminTournament>(`${admin(id)}/teams/${teamId}`, "PATCH", body, "Promjena nije spremljena.");
+// Vrati stol: a skipped table or a no-show is back in play, its excluded teams back in the tournament
+export const restoreTableAPI = (id: number, tableId: number) => send<AdminTournament>(`${admin(id)}/tables/${tableId}/restore`, "POST", undefined, "Stol nije vraćen.");
 export const admitTournamentTeamAPI = (id: number, teamId: number) => send<AdminTournament>(`${admin(id)}/teams/${teamId}/admit`, "POST", undefined, "Ekipa nije ubačena.");
 export const makeKoloAPI = (id: number, redo = false) =>
   send<{made: {number: number; tables: number; repeats: KoloPair[]}; tournament: AdminTournament}>(`${admin(id)}/kola`, "POST", {redo}, "Kolo nije složeno.");

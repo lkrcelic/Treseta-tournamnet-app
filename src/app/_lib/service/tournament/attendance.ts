@@ -10,7 +10,7 @@ import {autoBanTeam} from "@/app/_lib/service/bans/bans";
 import {NO_SHOW_BAN_MONTHS, NO_SHOW_SCORE, noShowStep, noShowTimes, tournamentDays} from "@/app/_lib/tournamentDay";
 import {fillPlaces} from "./day";
 import {lockTournament} from "./lock";
-import {afterTableClosed} from "./kola";
+import {afterTableClosed, dropTables} from "./kola";
 
 // Nedolazak za stol: a published table of today's tournament where no game has started is asked "Jesu li … za
 // stolom?" 3 minutes after its Kolo went out; the answer works from 5 minutes. Da, tu su: the question is gone and they
@@ -174,4 +174,46 @@ export async function answerAttendance(roundId: number, viewer: Viewer, answer: 
   }, {timeout: 30_000});
   if (outcome === "NO_SHOW" || outcome === "SKIPPED") await afterTableClosed(roundId);
   return outcome;
+}
+
+// Vrati stol (admin or the organizer whose tournament it is): a skipped table, or one closed by "Ne, nisu došli", is
+// back in play as if "Da, tu su" had been answered (by the admin): open, its no-show matches gone, no question and no
+// skip any more. The teams this table put out are back from now (active), and the ban Kolo 1 gave them is lifted. A
+// next Kolo's draft not published yet is dropped: it was made without this table, and comes again once its Kolo is
+// played. A table that isn't skipped or a no-show is left as it is.
+export async function restoreTable(tournamentId: number, roundId: number, adminId: number): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    await lockTournament(tx, tournamentId);
+    const t = await tx.tournament.findUnique({where: {tournament_id: tournamentId}, select: {cancelled_at: true}});
+    if (!t) throw new NotFoundError("Turnir ne postoji.");
+    if (t.cancelled_at) throw new InvalidResultError("Turnir je otkazan.");
+    const table = await tx.round.findFirst({
+      where: {id: roundId, tournamentRounds: {some: {tournament_id: tournamentId}}},
+      select: {id: true, round_number: true, team1_id: true, team2_id: true, attendance: true},
+    });
+    if (!table) throw new NotFoundError("Stol ne postoji.");
+    if (table.attendance !== "SKIPPED" && table.attendance !== "NO_SHOW") return;
+    const now = new Date();
+    const teams = [table.team1_id, table.team2_id];
+
+    // a no-show's matches were written by the app, never played
+    await tx.match.deleteMany({where: {round_id: table.id}});
+    await tx.round.update({
+      where: {id: table.id},
+      data: {open: true, active: true, team1_wins: 0, team2_wins: 0, attendance: "PRESENT", attendance_team_id: table.team1_id, attendance_by: adminId, attendance_at: now},
+    });
+    await tx.tournamentTeam.updateMany({
+      where: {tournament_id: tournamentId, team_id: {in: teams}, excluded_reason: {in: ["SKIPPED", "NO_SHOW"]}, excluded_kolo: table.round_number ?? 0},
+      data: {excluded_at: null, excluded_kolo: null, excluded_reason: null, active: true, status: "REGISTERED"},
+    });
+    if (table.round_number === 1) {
+      const bans = await tx.signupBan.findMany({where: {tournament_id: tournamentId, team_id: {in: teams}, created_by: null, lifted_at: null}, select: {id: true}});
+      const ids = bans.map((b) => b.id);
+      if (ids.length > 0) {
+        await tx.signupBan.updateMany({where: {OR: [{id: {in: ids}}, {via_ban_id: {in: ids}}], lifted_at: null}, data: {lifted_at: now, lifted_by: adminId}});
+      }
+    }
+    const drafts = await tx.round.findMany({where: {tournamentRounds: {some: {tournament_id: tournamentId}}, status: {not: "PUBLISHED"}}, select: {id: true}});
+    await dropTables(tx, drafts.map((d) => d.id));
+  }, {timeout: 30_000});
 }

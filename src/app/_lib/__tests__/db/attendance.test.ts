@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {after, before, test} from "node:test";
 import {prisma} from "@/app/_lib/prisma";
-import {answerAttendance} from "@/app/_lib/service/tournament/attendance";
+import {answerAttendance, restoreTable, skipDueTables} from "@/app/_lib/service/tournament/attendance";
 import {NO_SHOW_SCORE} from "@/app/_lib/tournamentDay";
 import {BYE_MATCH_POINTS, MATCH_THRESHOLD} from "@/app/_lib/game/scoring";
 import {leagueNight} from "@/app/_lib/dates";
@@ -45,7 +45,7 @@ before(async () => {
 });
 
 after(async () => {
-  await prisma.match.deleteMany({where: {round_id: roundId}});
+  await prisma.match.deleteMany({where: {round: {tournamentRounds: {some: {tournament_id: tournamentId}}}}});
   await prisma.round.deleteMany({where: {tournamentRounds: {some: {tournament_id: tournamentId}}}});
   await prisma.tournament.delete({where: {tournament_id: tournamentId}});
   await prisma.teamPlayer.deleteMany({where: {team_id: {in: teams}}});
@@ -89,4 +89,48 @@ test("Ne, nisu došli: every match goes to the answering team as a bye does, and
 
 test("a table that is already answered keeps its answer", async () => {
   assert.equal(await answerAttendance(roundId, {id: players[0], player_role: "PLAYER"}, "PRESENT"), "NO_SHOW");
+});
+
+test("Vrati stol after a no-show: the table plays again, the absent team is back and its Kolo 1 ban is lifted", async () => {
+  const bans = await prisma.signupBan.findMany({where: {tournament_id: tournamentId, lifted_at: null}});
+  assert.ok(bans.some((b) => b.team_id === teams[1]));
+
+  await restoreTable(tournamentId, roundId, players[0]);
+  assert.equal(await prisma.match.count({where: {round_id: roundId}}), 0);
+  const round = await prisma.round.findUniqueOrThrow({where: {id: roundId}});
+  assert.deepEqual([round.team1_wins, round.team2_wins, round.open, round.active, round.attendance], [0, 0, true, true, "PRESENT"]);
+  const back = await prisma.tournamentTeam.findUniqueOrThrow({where: {tournament_id_team_id: {tournament_id: tournamentId, team_id: teams[1]}}});
+  assert.deepEqual([back.excluded_at, back.excluded_reason, back.active, back.status], [null, null, true, "REGISTERED"]);
+  assert.equal(await prisma.signupBan.count({where: {tournament_id: tournamentId, lifted_at: null}}), 0);
+
+  // no question and no skip any more: the clock leaves it open
+  assert.deepEqual(await skipDueTables(tournamentId), []);
+  assert.equal((await prisma.round.findUniqueOrThrow({where: {id: roundId}})).open, true);
+  // a second tap changes nothing
+  await restoreTable(tournamentId, roundId, players[0]);
+});
+
+test("Vrati stol after a skip: both teams are back and the table is live again", async () => {
+  await prisma.round.update({where: {id: roundId}, data: {open: false, active: false}});
+  const skipped = await prisma.round.create({
+    data: {
+      team1_id: teams[0],
+      team2_id: teams[1],
+      round_number: 2,
+      round_date: leagueNight(),
+      status: "PUBLISHED",
+      published_at: new Date(Date.now() - 9 * 60_000),
+      matches_per_round: 2,
+      tournamentRounds: {create: {tournament_id: tournamentId}},
+    },
+  });
+  assert.deepEqual(await skipDueTables(tournamentId), [skipped.id]);
+  const out = await prisma.tournamentTeam.findMany({where: {tournament_id: tournamentId, excluded_reason: "SKIPPED"}});
+  assert.equal(out.length, 2);
+
+  await restoreTable(tournamentId, skipped.id, players[0]);
+  const round = await prisma.round.findUniqueOrThrow({where: {id: skipped.id}});
+  assert.deepEqual([round.open, round.attendance], [true, "PRESENT"]);
+  assert.equal(await prisma.tournamentTeam.count({where: {tournament_id: tournamentId, excluded_at: {not: null}}}), 0);
+  assert.deepEqual(await skipDueTables(tournamentId), []);
 });

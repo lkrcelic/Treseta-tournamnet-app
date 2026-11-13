@@ -845,7 +845,7 @@ function KoloPhone({t, kolo, onBack, onChanged, reload}: {t: AdminTournament; ko
           <DraftTableList rows={rows} label={`Skica Kola ${kolo}, stolovi`} />
         ) : (
           <>
-            <TableStates t={t} kolo={view} />
+            <TableStates t={t} kolo={view} onChanged={onChanged} />
             <PhoneRoundTables title={`Kolo ${kolo}`} rows={rows} tableTarget={(r) => ({href: `/turniri/${t.id}/stol/${r.id}`})} />
           </>
         )}

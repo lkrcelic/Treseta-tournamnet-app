@@ -389,7 +389,7 @@ export default function KolaDesktop({t, kolo, onKolo, onChanged, reload}: Props)
       </Card>
       <Box sx={{minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: "16px"}}>
         <SideCard t={t} kolo={kolo} step={step} done={done} tables={rows.length} busy={busy} repeats={repeats} onMake={make} onPublish={publish} onPlayers={() => router.push(`/turniri/${t.id}/poredak`)} />
-        {view && view.published && <TableStates t={t} kolo={view} />}
+        {view && view.published && <TableStates t={t} kolo={view} onChanged={onChanged} />}
         <InfoNote icon={<InfoRoundedIcon />}>
           {kolo === 1 && step !== "played" && step !== "live"
             ? "Od drugog kola parovi se slažu po poretku (švicarski sustav): ekipe sličnih bodova igraju jedna protiv druge i ne ponavljaju protivnika. Slobodna runda radi isto kao u ligi: kod neparnog broja ekipa jedna ekipa nema protivnika i dobiva pobjedu."

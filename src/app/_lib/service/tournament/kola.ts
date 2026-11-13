@@ -61,7 +61,7 @@ type RoundRow = Awaited<ReturnType<typeof tournamentRounds>>[number];
 
 const lastPublished = (rounds: RoundRow[]) => Math.max(0, ...rounds.filter((r) => r.status === "PUBLISHED").map((r) => r.round_number ?? 0));
 
-async function dropTables(tx: Tx, ids: number[]) {
+export async function dropTables(tx: Tx, ids: number[]) {
   if (ids.length === 0) return;
   await tx.ongoingMatch.deleteMany({where: {round_id: {in: ids}}});
   await tx.match.deleteMany({where: {round_id: {in: ids}}});

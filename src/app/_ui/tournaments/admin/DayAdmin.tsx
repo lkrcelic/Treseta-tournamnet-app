@@ -1,6 +1,6 @@
 "use client";
 
-import {setTeamDayAPI} from "@/app/_fetchers/tournament";
+import {restoreTableAPI, setTeamDayAPI} from "@/app/_fetchers/tournament";
 import {AdminTournament, EntryExclusion, KoloView, TournamentEntryView} from "@/app/_interfaces/tournament";
 import {clockLabel} from "@/app/_lib/gameTime";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
@@ -264,8 +264,24 @@ export function StateChip({label, kind, skipAt}: {label: string; kind: string; s
 }
 
 // The Kolo's tables whose day went other than a plain game (Upit, Nedolazak, Vrijeme isteklo, Preskočen), each with its
-// line and a link to the table (the admin scorepad corrects the result)
-export function TableStates({t, kolo}: {t: AdminTournament; kolo: KoloView}) {
+// line and a link to the table (the admin scorepad corrects the result). A skipped table and a no-show have Vrati stol.
+export function TableStates({t, kolo, onChanged}: {t: AdminTournament; kolo: KoloView; onChanged: (t: AdminTournament) => void}) {
+  const [restoring, setRestoring] = useState<KoloView["tables"][number] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const restore = async () => {
+    if (!restoring) return;
+    setBusy(true);
+    setError(null);
+    try {
+      onChanged(await restoreTableAPI(t.id, restoring.id));
+      setRestoring(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Stol nije vraćen.");
+    } finally {
+      setBusy(false);
+    }
+  };
   const special = kolo.tables.filter((x) => x.state && ["asking", "no_show", "time_expired", "skipped"].includes(x.state.kind));
   if (special.length === 0) return null;
   return (
@@ -296,9 +312,41 @@ export function TableStates({t, kolo}: {t: AdminTournament; kolo: KoloView}) {
               </Box>
               <ChevronRightRoundedIcon aria-hidden sx={{fontSize: 24, color: color.navy, flex: "none"}} />
             </Box>
+            {(x.state!.kind === "skipped" || x.state!.kind === "no_show") && (
+              <Box sx={{display: "flex", p: "0 10px 10px 8px"}}>
+                <Box
+                  component="button"
+                  type="button"
+                  aria-label={`Vrati Stol ${x.table_number} u igru`}
+                  onClick={() => {
+                    setError(null);
+                    setRestoring(x);
+                  }}
+                  sx={{...textButton, display: "flex", alignItems: "center", gap: "4px", "& svg": {fontSize: 18}}}
+                >
+                  <UndoRoundedIcon aria-hidden />
+                  Vrati stol
+                </Box>
+              </Box>
+            )}
           </Box>
         ))}
       </Box>
+      <ConfirmSheet
+        open={restoring != null}
+        onClose={() => setRestoring(null)}
+        onConfirm={restore}
+        title={restoring ? `Vratiti Stol ${restoring.table_number} u igru?` : ""}
+        text={
+          restoring
+            ? `${restoring.team1.team_name} i ${restoring.team2.team_name} igraju ovaj stol kao da su potvrdili da su tu.${restoring.state?.kind === "no_show" ? " Upisani rezultat nedolaska se briše." : ""} Ekipe koje je ovaj stol isključio vraćaju se u turnir${kolo.number === 1 ? ", a zabrana prijava im se ukida" : ""}. Neobjavljena skica sljedećeg kola se briše i slaže ponovo kad kolo završi.`
+            : ""
+        }
+        action="Vrati stol"
+        icon={<UndoRoundedIcon />}
+        busy={busy}
+        error={restoring ? error : null}
+      />
       <Box sx={{px: "4px", fontSize: 13, lineHeight: 1.4, color: color.muted}}>Ispravak rezultata odmah mijenja poredak i rejting, i nakon kraja turnira.</Box>
     </Box>
   );
