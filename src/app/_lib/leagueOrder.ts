@@ -1,8 +1,19 @@
 // The order of the league's standings, Ukupni and Dnevni poredak (DECISIONS #74): points, then the difference, then the
 // head-to-head among the teams still level (the points and then the difference of only their tables against each
-// other), then the name. It is the tournaments' order too (rankTeams, _lib/tournaments.ts), which the league simply
-// feeds its own rows. Framework free so it can be unit tested.
+// other), then the name. It is a tournament's order (rankTeams), so the two never drift apart. Framework free so it can
+// be unit tested.
 import {rankTeams, TableResult} from "@/app/_lib/tournaments";
+
+// The league's points for a table: 2 for a win, 1 for a draw, 0 for a loss. The same rule is written three more
+// times, which must change with these: the update_team_score procedure (the latest one in prisma/migrations, it writes
+// TeamScore), standingsUntil's SQL (the table after an earlier night, for the +/−) and rankTeams, which gives a
+// table won `matches` points and a draw 1 (asResult below). db/standings.test.ts checks that the first two agree.
+export const LEAGUE_WIN_POINTS = 2;
+export const LEAGUE_DRAW_POINTS = 1;
+
+// A team's points for one table it won `won` and lost `lost` matches of
+export const leaguePoints = (won: number, lost: number): number =>
+  won > lost ? LEAGUE_WIN_POINTS : won === lost ? LEAGUE_DRAW_POINTS : 0;
 
 // A team's numbers as the order reads them
 export type LeagueRow = {team_id: number; name: string; score: number; point_difference: number; rounds_played: number};
@@ -20,8 +31,8 @@ const asResult = (t: LeagueTable): TableResult => ({
   started: true,
   diff: t.diff,
   scored: true,
-  // a league's table always plays two matches, so a win is worth two points
-  matches: 2,
+  // rankTeams gives a won table `matches` points, so the league's win; a draw it counts 1 (LEAGUE_DRAW_POINTS)
+  matches: LEAGUE_WIN_POINTS,
 });
 
 // The rows in the league's order; of: a row's numbers. Without tables the head-to-head can't decide, and the name does.
