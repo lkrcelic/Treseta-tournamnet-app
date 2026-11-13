@@ -156,6 +156,21 @@ export function koloSteps(rounds: number, kolos: KoloSummary[]): {number: number
   });
 }
 
+// How long a Kolo lasts (the admin's timer): it starts when it is published (the players go to their tables then, and
+// the Nedolazak question counts from then too) and ends when its last table is closed. A table's close is the latest
+// end of its matches or of its no-show or skip; the bye's matches have no end, so they don't count. ended is null while
+// a table is open. A finished Kolo whose tables don't say when they closed (rounds from before) has no times at all,
+// so no timer runs on: it just shows as Odigrano.
+export function koloTimes(tables: {published_at: Date | null; open: boolean; closed_at: Date | null}[]): {started_at: Date | null; ended_at: Date | null} {
+  const none = {started_at: null, ended_at: null};
+  const starts = tables.map((t) => t.published_at?.getTime()).filter((ms): ms is number => ms != null);
+  if (starts.length === 0) return none;
+  const started = Math.min(...starts);
+  if (tables.some((t) => t.open)) return {started_at: new Date(started), ended_at: null};
+  const ends = tables.map((t) => t.closed_at?.getTime()).filter((ms): ms is number => ms != null && ms >= started);
+  return ends.length ? {started_at: new Date(started), ended_at: new Date(Math.max(...ends))} : none;
+}
+
 // A Kolo's draft seats other teams than the ones that play now: one joined, left, or was excluded or let back after it
 // was made (Kolo 1 before the start, any later Kolo made by itself when the Kolo before it ended). It has to be made
 // again before it is published. The bye is not a team.

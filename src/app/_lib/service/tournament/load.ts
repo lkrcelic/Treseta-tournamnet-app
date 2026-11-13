@@ -56,6 +56,8 @@ export type LoadedTable = {
   diff: number;
   // its matches played, in order: the points, and whether the time closed it (Vrijeme partije)
   matches: {score1: number; score2: number; time_expired: boolean}[];
+  // when it was closed: the latest end of its matches or of its no-show or skip (null: none says so, or still open)
+  closed_at: Date | null;
   // the running match's points and its time
   ongoing: {player_pair1_score: number; player_pair2_score: number; started_at: Date | null; ends_at: Date | null} | null;
   // the players who played it (Tko igra)
@@ -98,6 +100,9 @@ const playerSelect = {
 
 // A table counts as being played once a match is running at it or was played
 export const tableStarted = (t: Pick<LoadedTable, "active" | "played" | "ongoing" | "open">) => !t.open || t.active || t.played > 0 || t.ongoing != null;
+
+// the latest of these moments (null: none)
+const latest = (moments: (Date | null)[]): Date | null => moments.reduce<Date | null>((a, m) => (m != null && (a == null || m > a) ? m : a), null);
 
 // The snapshots of these tournaments (unknown ids are left out), in the order of ids
 export async function loadSnapshots(ids: number[], viewer: Viewer | null, db: Db = prisma): Promise<Snapshot[]> {
@@ -148,7 +153,7 @@ export async function loadSnapshots(ids: number[], viewer: Viewer | null, db: Db
         attendance_team_id: true,
         attendance_at: true,
         tournamentRounds: {select: {tournament_id: true}},
-        matches: {select: {player_pair1_score: true, player_pair2_score: true, time_expired: true}, orderBy: {id: "asc"}},
+        matches: {select: {player_pair1_score: true, player_pair2_score: true, time_expired: true, end_time: true}, orderBy: {id: "asc"}},
         ongoingMatches: {select: {player_pair1_score: true, player_pair2_score: true, started_at: true, ends_at: true}, orderBy: {id: "desc"}, take: 1},
         roundPlayers: {select: {player_id: true, team_id: true}},
         team1: {select: {team_id: true, team_name: true, photo_updated_at: true, photo_visibility: true}},
@@ -210,6 +215,7 @@ export async function loadSnapshots(ids: number[], viewer: Viewer | null, db: Db
         played: r.matches.length,
         diff: r.matches.reduce((sum, m) => sum + m.player_pair1_score - m.player_pair2_score, 0),
         matches: r.matches.map((m) => ({score1: m.player_pair1_score, score2: m.player_pair2_score, time_expired: m.time_expired})),
+        closed_at: r.open ? null : latest([...r.matches.map((m) => m.end_time), r.attendance === "NO_SHOW" || r.attendance === "SKIPPED" ? r.attendance_at : null]),
         ongoing: r.ongoingMatches[0] ?? null,
         lineup: r.roundPlayers,
         matches_per_round: r.matches_per_round,

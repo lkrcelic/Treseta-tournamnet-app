@@ -12,6 +12,7 @@ import {
   feeLabel,
   formatLabel,
   koloSteps,
+  koloTimes,
   liveKolo,
   opponentsOf,
   prizeSummary,
@@ -525,4 +526,36 @@ test("how long a match takes: 40 min to 41 without zvanja, 35 with them, 5 more 
   assert.equal(typicalGameMinutes(51, true), 40);
   assert.match(gameLengthNote(51, true), /^Za ovaj format \(do 51, sa zvanjima\) 95 % partija završi unutar 40 min\./);
   assert.match(gameLengthNote(41, false), /unutar 40 min\. Do 41 bez zvanja to je 40 min, sa zvanjima 35 min; do 51 sve traje 5 min dulje/);
+});
+
+// Vrijeme kola: from the Kolo's publishing to its last table's close
+
+const at = (hhmm: string) => new Date(`2026-11-13T${hhmm}:00Z`);
+
+test("a Kolo's timer starts when it is published and runs while a table is open", () => {
+  const times = koloTimes([
+    {published_at: at("19:00"), open: false, closed_at: at("19:40")},
+    {published_at: at("19:00"), open: true, closed_at: null},
+  ]);
+  assert.equal(times.started_at?.toISOString(), at("19:00").toISOString());
+  assert.equal(times.ended_at, null);
+});
+
+test("a played Kolo ends with its last table's close; the bye and a draft have no time", () => {
+  const times = koloTimes([
+    {published_at: at("19:00"), open: false, closed_at: at("19:52")},
+    {published_at: at("19:00"), open: false, closed_at: at("20:07")},
+    // the bye's table: closed from the start, its matches without an end
+    {published_at: at("19:00"), open: false, closed_at: null},
+  ]);
+  assert.equal(times.started_at?.toISOString(), at("19:00").toISOString());
+  assert.equal(times.ended_at?.toISOString(), at("20:07").toISOString());
+  assert.deepEqual(koloTimes([{published_at: null, open: true, closed_at: null}]), {started_at: null, ended_at: null});
+  assert.deepEqual(koloTimes([]), {started_at: null, ended_at: null});
+});
+
+test("a played Kolo whose tables don't say when they closed shows no timer", () => {
+  // e.g. rounds from before, or only a close from before its publishing (a draft's bye)
+  assert.deepEqual(koloTimes([{published_at: at("19:00"), open: false, closed_at: null}]), {started_at: null, ended_at: null});
+  assert.deepEqual(koloTimes([{published_at: at("19:00"), open: false, closed_at: at("18:30")}]), {started_at: null, ended_at: null});
 });

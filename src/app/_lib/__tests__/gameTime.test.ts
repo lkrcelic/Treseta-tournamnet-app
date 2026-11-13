@@ -4,6 +4,8 @@ import {
   clockLabel,
   closesAfterHand,
   closesByTime,
+  durationLabel,
+  elapsedLabel,
   GAME_MINUTES_DEFAULT,
   handTiming,
   matchDeadline,
@@ -102,4 +104,15 @@ test("na prolaz: every hand level at or above the target gives five more minutes
   assert.equal(matchDeadline(start, GAME_MINUTES_DEFAULT, level.extensions).toISOString(), "2026-11-10T19:50:00.000Z");
   const again = matchState([h(35, 35), h(6, 6), h(6, 6)], MATCH_THRESHOLD, "NA_PROLAZ"); // 47 : 47
   assert.equal(matchDeadline(start, GAME_MINUTES_DEFAULT, again.extensions).toISOString(), "2026-11-10T19:55:00.000Z");
+});
+
+test("the Kolo timer reads m:ss, then h:mm:ss after an hour; a played Kolo's time is in minutes", () => {
+  assert.equal(elapsedLabel(7_000), "0:07");
+  assert.equal(elapsedLabel((23 * 60 + 41) * 1000 + 999), "23:41");
+  assert.equal(elapsedLabel((65 * 60 + 12) * 1000), "1:05:12");
+  assert.equal(elapsedLabel(-5_000), "0:00");
+  assert.equal(durationLabel(52 * 60_000 + 10_000), "52 min");
+  assert.equal(durationLabel(67 * 60_000), "1 h 7 min");
+  assert.equal(durationLabel(120 * 60_000), "2 h");
+  assert.equal(durationLabel(20_000), "0 min");
 });

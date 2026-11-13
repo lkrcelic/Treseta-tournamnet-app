@@ -32,6 +32,7 @@ import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import WarningRoundedIcon from "@mui/icons-material/WarningRounded";
 import {Box, Dialog} from "@mui/material";
 import {TableStates} from "./DayAdmin";
+import {KoloTimerChip, KoloTimerPanel} from "./KoloTimer";
 import React, {useEffect, useId, useState} from "react";
 
 // Upravljanje turnirom · Kola (Claude Design "Turniri admin" C1–C4): one Kolo's tables on the left with the Kolos 1…N
@@ -273,6 +274,8 @@ export default function KolaDesktop({t, kolo, onKolo, onChanged, reload}: Props)
         {view && (
           <Box sx={{flex: "none", display: "flex", alignItems: "center", gap: "10px", p: "0 18px 14px", flexWrap: "wrap"}}>
             {statusTag}
+            {/* the side card has the big timer (Kolo N traje); a finished tournament's side card hasn't, so it's here */}
+            {t.phase === "finished" && <KoloTimerChip kolo={view} height={30} fontSize={13} />}
             <Box component="span" sx={{flex: 1, minWidth: 0, fontSize: 14, color: color.muted, whiteSpace: "nowrap"}}>
               {count(rows.filter((r) => !r.bye).length, NOUN.stol)}
               {rows.some((r) => r.bye) ? " + slobodna runda" : ""}
@@ -388,7 +391,7 @@ export default function KolaDesktop({t, kolo, onKolo, onChanged, reload}: Props)
         )}
       </Card>
       <Box sx={{minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: "16px"}}>
-        <SideCard t={t} kolo={kolo} step={step} done={done} tables={rows.length} busy={busy} repeats={repeats} onMake={make} onPublish={publish} onPlayers={() => router.push(`/turniri/${t.id}/poredak`)} />
+        <SideCard t={t} kolo={kolo} view={view} step={step} done={done} tables={rows.length} busy={busy} repeats={repeats} onMake={make} onPublish={publish} onPlayers={() => router.push(`/turniri/${t.id}/poredak`)} />
         {view && view.published && <TableStates t={t} kolo={view} onChanged={onChanged} />}
         <InfoNote icon={<InfoRoundedIcon />}>
           {kolo === 1 && step !== "played" && step !== "live"
@@ -403,6 +406,7 @@ export default function KolaDesktop({t, kolo, onKolo, onChanged, reload}: Props)
 function SideCard({
   t,
   kolo,
+  view,
   step,
   done,
   tables,
@@ -414,6 +418,7 @@ function SideCard({
 }: {
   t: AdminTournament;
   kolo: number;
+  view: KoloView | null;
   step: keyof typeof STEP_LOOK;
   done: number;
   tables: number;
@@ -489,6 +494,7 @@ function SideCard({
     return (
       <Card component="section" sx={card}>
         {title(step === "live" ? `Kolo ${kolo} traje` : `Kolo ${kolo} je odigrano`)}
+        {view && <KoloTimerPanel kolo={view} />}
         <Box sx={{display: "flex", justifyContent: "space-between", fontSize: 14, color: color.ink2}}>
           <span>Gotovo</span>
           <Box component="span" sx={{fontWeight: 700, color: color.ink, fontVariantNumeric: "tabular-nums"}}>
@@ -565,6 +571,7 @@ export function KoloFullscreen({t, kolo, rows, live, done, onClose}: {t: AdminTo
   const twoColumns = tableColumns(rows.length, areaHeight == null ? undefined : Math.floor(areaHeight / TABLE_ROW_HEIGHT)) > 1;
   const standings = toStandingsRows(t.results.standings);
   const titleId = useId();
+  const view = t.results.kolos.find((k) => k.number === kolo) ?? null;
 
   // the browser's own full screen too, so the tabs and the address bar go away; it needs the click that opened the
   // view, and a browser that refuses it just shows the view over the page
@@ -594,6 +601,7 @@ export function KoloFullscreen({t, kolo, rows, live, done, onClose}: {t: AdminTo
             {count(live, NOUN.stol)} uživo
           </Box>
         )}
+        {view && <KoloTimerChip kolo={view} height={38} fontSize={18} sx={{px: "14px", borderRadius: "12px", ...(view.ended_at == null && {background: color.navy, color: color.cream})}} />}
         <Box component="span" sx={{flex: "none", fontSize: 16, color: color.ink2}}>
           Gotovo {done} od {rows.length}
         </Box>

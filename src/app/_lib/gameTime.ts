@@ -61,6 +61,24 @@ export function timeWinner(score1: number, score2: number): 1 | 2 | null {
   return score1 > score2 ? 1 : 2;
 }
 
+// "0:07", "23:41", "1:05:12": how long a Kolo has been going (the admin's Kolo timer; never below 0:00)
+export function elapsedLabel(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = String(total % 60).padStart(2, "0");
+  return hours > 0 ? `${hours}:${String(minutes).padStart(2, "0")}:${seconds}` : `${minutes}:${seconds}`;
+}
+
+// "52 min", "1 h 7 min", "2 h": how long a played Kolo lasted, to the minute
+export function durationLabel(ms: number): string {
+  const total = Math.max(0, Math.round(ms / 60_000));
+  const hours = Math.floor(total / 60);
+  const minutes = total % 60;
+  if (hours === 0) return `${minutes} min`;
+  return minutes === 0 ? `${hours} h` : `${hours} h ${minutes} min`;
+}
+
 // "23:41", "5:00", "0:07": the time left on the scorepad (never below 0:00)
 export function clockLabel(ms: number): string {
   const total = Math.max(0, Math.ceil(ms / 1000));

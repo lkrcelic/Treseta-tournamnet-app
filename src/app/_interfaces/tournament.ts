@@ -300,7 +300,9 @@ export type KoloTable = {
   state?: TableState;
 };
 
-export type KoloView = {number: number; published: boolean; tables: KoloTable[]};
+// started_at: when the Kolo was published; ended_at: when its last table closed (null while one is open), for the
+// admin's timer (koloTimes)
+export type KoloView = {number: number; published: boolean; tables: KoloTable[]; started_at: string | null; ended_at: string | null};
 
 // A standings row: the league's shape (StandingsRows / StandingsGrid read it) with the team's players; an excluded team
 // stays with its Kolos played (Isključena nakon Kola 3 · nedolazak)

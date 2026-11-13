@@ -18,7 +18,7 @@ import {
   TournamentWinner,
 } from "@/app/_interfaces/tournament";
 import {waitingList} from "@/app/_lib/tournamentEntries";
-import {draftIsStale, lastKoloMade, signUpsOpenNow} from "@/app/_lib/tournaments";
+import {draftIsStale, koloTimes, lastKoloMade, signUpsOpenNow} from "@/app/_lib/tournaments";
 import {leagueClock} from "@/app/_lib/dates";
 import {displayName} from "@/app/_lib/players/names";
 import {arrivalPhase, DayEntry, isTournamentDay, startSwitch} from "@/app/_lib/tournamentDay";
@@ -288,11 +288,17 @@ export function resultsView(s: Snapshot, viewer: Viewer | null): TournamentResul
     })(),
   }));
   const now = new Date();
-  const kolos: KoloView[] = s.kolos.map((k) => ({
-    number: k.number,
-    published: k.published,
-    tables: s.tables.filter((x) => x.kolo === k.number).map((x) => koloTable(s, x, now)),
-  }));
+  const kolos: KoloView[] = s.kolos.map((k) => {
+    const tables = s.tables.filter((x) => x.kolo === k.number);
+    const times = koloTimes(k.published ? tables : []);
+    return {
+      number: k.number,
+      published: k.published,
+      tables: tables.map((x) => koloTable(s, x, now)),
+      started_at: times.started_at?.toISOString() ?? null,
+      ended_at: times.ended_at?.toISOString() ?? null,
+    };
+  });
   return {
     id: t.tournament_id,
     name: t.tournament_name,

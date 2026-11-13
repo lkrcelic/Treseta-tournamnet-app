@@ -81,6 +81,7 @@ import WarningRoundedIcon from "@mui/icons-material/WarningRounded";
 import {Box} from "@mui/material";
 import {useSearchParams} from "next/navigation";
 import {ActiveSwitch, ArrivalButton, ArrivalChip, ArrivalSummaryLine, AtStartCard, dayOn, ExcludeControls, ExcludedStandings, ExclusionTag, TableStates, useTeamDay} from "./DayAdmin";
+import {KoloTimerChip, KoloTimerOnNavy, ListDuration} from "./KoloTimer";
 import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
 import BlockRoundedIcon from "@mui/icons-material/BlockRounded";
 import React, {useEffect, useState} from "react";
@@ -333,7 +334,13 @@ function StatusCard({t, onChanged, onOpen}: {t: AdminTournament; onChanged: (t: 
         />
         <ChevronRightRoundedIcon aria-hidden sx={{fontSize: 26}} />
       </Box>
-      {p && <FillBar registered={p.done} max={p.tables} onNavy />}
+      {/* the tables done and, beside them, how long the Kolo has been going */}
+      {p && playing && (
+        <Box component="span" sx={{display: "flex", alignItems: "center", gap: "12px"}}>
+          <FillBar registered={p.done} max={p.tables} onNavy sx={{flex: 1, minWidth: 0}} />
+          <KoloTimerOnNavy kolo={playing} />
+        </Box>
+      )}
     </Box>
   );
 }
@@ -647,6 +654,7 @@ function KolaTab({t, onOpen, onChanged}: {t: AdminTournament; onOpen: (kolo: num
                 {view && (
                   <Box component="span" sx={{fontSize: 13, color: color.muted, ...tabular, ...ellipsis}}>
                     {s.step === "live" ? `${p.done}/${p.tables} gotovo` : count(p.tables, NOUN.stol)}
+                    <ListDuration kolo={view} />
                   </Box>
                 )}
               </Box>
@@ -818,6 +826,7 @@ function KoloPhone({t, kolo, onBack, onChanged, reload}: {t: AdminTournament; ko
             {p.done === p.tables ? "Odigrano" : `${p.done}/${p.tables} gotovo`}
           </Box>
         )}
+        {!draft && <KoloTimerChip kolo={view} />}
         <Box component="span" sx={{flex: 1, minWidth: 0, textAlign: "right", fontSize: 14, color: color.ink2, whiteSpace: "nowrap", ...ellipsis}}>
           {count(p.tables, NOUN.stol)}
           {rows.some((r) => r.bye) ? " + slobodna" : ""}
