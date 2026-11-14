@@ -580,6 +580,29 @@ test("a played Kolo whose tables don't say when they closed shows no timer", () 
   assert.deepEqual(koloTimes([{published_at: at("19:00"), open: false, closed_at: at("18:30")}]), {started_at: null, ended_at: null});
 });
 
+test("the card on top: the viewer's own tournament being played, else the soonest coming up (as Treseta)", async () => {
+  const {mainTournament} = await import("@/app/_lib/tournaments");
+  type T = {id: number; phase: "upcoming" | "active" | "finished" | "cancelled"; date: string; me: {status: "REGISTERED" | "WAITING"} | null};
+  const today = "2026-11-11";
+  const live: T = {id: 1, phase: "active", date: today, me: null};
+  const next: T = {id: 2, phase: "upcoming", date: "2026-11-18", me: null};
+  // someone not playing doesn't get the tournament being played on top (it is under Uživo), but the next one
+  assert.equal(mainTournament([live], today), null);
+  assert.equal(mainTournament([next, live], today)?.id, 2);
+  // nor does a team on the waiting list
+  const waiting: T = {...live, id: 3, me: {status: "WAITING"}};
+  assert.equal(mainTournament([live, waiting, next], today)?.id, 2);
+  // the viewer's own table comes first
+  const playing: T = {...live, id: 4, me: {status: "REGISTERED"}};
+  assert.equal(mainTournament([waiting, playing, next], today)?.id, 4);
+  // the viewer's own one starting today (Tu smo) before someone else's on the same day
+  const mineToday: T = {id: 5, phase: "upcoming", date: today, me: {status: "REGISTERED"}};
+  assert.equal(mainTournament([live, {id: 8, phase: "upcoming", date: today, me: null}, mineToday], today)?.id, 5);
+  // finished or passed ones never
+  assert.equal(mainTournament([next, {id: 6, phase: "finished", date: "2026-11-01", me: null}], today)?.id, 2);
+  assert.equal(mainTournament([{id: 7, phase: "upcoming", date: "2026-11-10", me: null}], today), null);
+});
+
 test("Uživo and Nadolazeći: the lists behind Početna's rows and their pages", async () => {
   const {liveTournaments, upcomingTournaments, liveProgressLabel, liveDayLabel, monthLabel} = await import("@/app/_lib/tournaments");
   type T = {id: number; phase: "upcoming" | "active" | "finished" | "cancelled"; date: string; me: {status: "REGISTERED" | "WAITING"} | null};

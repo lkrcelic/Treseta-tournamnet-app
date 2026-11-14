@@ -27,6 +27,14 @@ export function isComingUp(t: {phase: TournamentPhase; date: string}, today: str
   return t.phase === "upcoming" && t.date >= today;
 }
 
+// The tournament the card on top of Početna · Turniri (and the computer's strip) shows, as in Treseta: one being played
+// that the viewer plays in; else the soonest coming up (the viewer's first on the same day; isComingUp leaves out one
+// whose day passed without starting). Someone not playing follows a tournament being played from the Uživo row.
+// today: the league's date (YYYY-MM-DD).
+export function mainTournament<T extends {phase: TournamentPhase; date: string; me: {status: "REGISTERED" | "WAITING"} | null}>(list: T[], today: string): T | null {
+  return list.find((t) => t.phase === "active" && t.me?.status === "REGISTERED") ?? upcomingTournaments(list, today)[0] ?? null;
+}
+
 type Listed = {phase: TournamentPhase; date: string; me: {status: "REGISTERED" | "WAITING"} | null};
 
 // Uživo (Početna's row and /turniri/uzivo): every tournament being played, for anyone, not only its players. The
