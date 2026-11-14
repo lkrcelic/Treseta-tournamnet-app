@@ -173,7 +173,7 @@ export function LivePage() {
             <Box component="span" sx={{...metaSx, color: t.live_kolo ? color.red : color.muted, fontWeight: t.live_kolo ? 600 : 400}}>
               {t.live_kolo != null && <LiveDot size={7} />}
               <Box component="span" sx={ellipsis}>
-                {[liveProgressLabel(t), t.entries_hidden ? null : count(t.teams, NOUN.ekipa)].filter(Boolean).join(" · ")}
+                {[liveProgressLabel(t), count(t.teams, NOUN.ekipa)].filter(Boolean).join(" · ")}
               </Box>
             </Box>
           }
@@ -206,7 +206,7 @@ export function UpcomingPage() {
           tile={<DateTile date={t.date} size={44} />}
           meta={
             <Box component="span" sx={{...metaSx, ...ellipsis, display: "block"}}>
-              {[t.start_time, t.location.name, t.entries_hidden ? null : t.max_teams == null ? count(t.teams, NOUN.ekipa) : capacityLabel(t.teams, t.max_teams)].filter(Boolean).join(" · ")}
+              {[t.start_time, t.location.name, t.max_teams == null ? count(t.teams, NOUN.ekipa) : capacityLabel(t.teams, t.max_teams)].filter(Boolean).join(" · ")}
             </Box>
           }
           right={
