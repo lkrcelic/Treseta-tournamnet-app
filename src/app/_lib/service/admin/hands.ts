@@ -15,7 +15,9 @@ import {lockRound} from "@/app/_lib/service/round/finish";
 import {ROUND_NOT_PUBLISHED} from "@/app/_lib/roundStatus";
 import {isRatedRound, recalcTeamScores, replayRatings} from "./recalc";
 import {NotFoundError} from "./tables";
-import {syncDeadline} from "@/app/_lib/service/match/timeLimit";
+import {gameMinutesOf, syncDeadline} from "@/app/_lib/service/match/timeLimit";
+import {matchDeadline, timeWinner} from "@/app/_lib/gameTime";
+import {leagueNight} from "@/app/_lib/dates";
 import {refuseUnlessMyTable} from "@/app/_lib/service/admin/tables";
 import type {Viewer} from "@/app/_lib/players/privacy";
 
@@ -147,27 +149,180 @@ export function noWinnerWarning(before: Side | null, after: Pick<MatchState, "sc
   return `Nakon ove promjene meč je ${why}, pa se ne broji nijednoj ekipi. Rezultat stola, poredak i rejting ponovno se računaju.`;
 }
 
+// The warning when a finished match can't go back in play (reopenCheck says why): it stays without a winner until the
+// admin adds the hands that were played
+export function noWinnerAddHandsWarning(after: Pick<MatchState, "score1" | "score2" | "target">, why: string): string {
+  return `Nakon ove promjene meč je ${after.score1}:${after.score2} i nitko nema ${after.target}. ${why}, pa se ne može ponovno otvoriti igračima: ostaje bez pobjednika dok ne dopišeš igre koje su odigrane. Rezultat stola, poredak i rejting ponovno se računaju.`;
+}
+
 // Options of a change of a finished match: allowNoWinner, the admin confirmed the "Meč ostaje bez pobjednika" warning
 export type HandEditOptions = {allowNoWinner?: boolean};
 
-// After a finished match's hands changed: its score and winner, the round's wins, and for a finished round the
-// standings (and the ratings when the round's outcome changed). A match left without a winner needs the admin's
-// confirmation.
-async function recountFinishedMatch(tx: Tx, matchId: number, allowNoWinner: boolean) {
-  const {score_threshold, winner_side, results, round: table} = await tx.match.findUniqueOrThrow({
-    where: {id: matchId},
-    select: {score_threshold: true, winner_side: true, results: {orderBy: {result_id: "asc"}}, round: {select: {match_end: true}}},
+// What a change of a finished match did: reopened, the match is back in play at its table (reopenMatch)
+export type HandEditOutcome = {reopened: boolean};
+
+type FinishedMatchRow = {
+  id: number;
+  round_id: number | null;
+  score_threshold: number | null;
+  match_date: Date | null;
+  start_time: Date | null;
+  end_time: Date | null;
+};
+
+// A table's won matches per team: a match without a winner counts for neither team
+const roundWins = (matches: {winner_side: number | null}[]) => ({
+  team1_wins: matches.filter((m) => m.winner_side === 1).length,
+  team2_wins: matches.filter((m) => m.winner_side === 2).length,
+});
+
+// The clock of a match going back in play: its start moved on by the time it stood closed, so it has the time it had
+// left when it was closed (and every later hand's deadline sync counts from there)
+type ReopenClock = {startedAt: Date; endsAt: Date};
+
+/**
+ * Whether a finished match left without a winner can go back in play: the reason it can't, or its clock. The players
+ * go on with it only at a table of tonight (a league night, a tournament day) while nothing came after it: no later
+ * match at the table (one already opened is fine while it has no hand), and no next Kolo of its league or tournament
+ * made yet, not even a draft. A match without a time it had left (no start or end stored, or none left when it was
+ * closed) isn't reopened either. Otherwise only the admin adds its hands.
+ *
+ * The table's open match is locked first, so a player's hand saved into it at the same moment is either counted here
+ * or waits until this change is done (and then finds its match gone).
+ */
+async function reopenCheck(tx: Tx, match: FinishedMatchRow, extensions: number): Promise<{why: string} | ReopenClock> {
+  if (match.round_id == null) return {why: "Meč nije ni za jednim stolom"};
+  const round = await tx.round.findUnique({
+    where: {id: match.round_id},
+    select: {
+      round_number: true,
+      round_date: true,
+      status: true,
+      attendance: true,
+      leagueRounds: {select: {league_id: true}},
+      tournamentRounds: {select: {tournament_id: true}},
+    },
   });
+  if (!round || round.status !== "PUBLISHED") return {why: "Stol nije objavljen"};
+  if (round.attendance === "NO_SHOW" || round.attendance === "SKIPPED") return {why: "Stol nije odigran"};
+  if (round.round_date?.getTime() !== leagueNight().getTime()) return {why: "Stol nije od večeras"};
+  if ((await tx.match.count({where: {round_id: match.round_id, id: {gt: match.id}}})) > 0) return {why: "Za stolom je već odigran sljedeći meč"};
+  await tx.$queryRaw`SELECT id FROM "OngoingMatch" WHERE round_id = ${match.round_id} FOR UPDATE`;
+  if ((await tx.ongoingResult.count({where: {match: {round_id: match.round_id}}})) > 0) return {why: "Za stolom se već igra sljedeći meč"};
+  const leagues = round.leagueRounds.map((l) => l.league_id);
+  const tournaments = round.tournamentRounds.map((t) => t.tournament_id);
+  const nextKolo = await tx.round.count({
+    where: {
+      round_number: {gt: round.round_number ?? 0},
+      OR: [{leagueRounds: {some: {league_id: {in: leagues}}}}, {tournamentRounds: {some: {tournament_id: {in: tournaments}}}}],
+    },
+  });
+  if (nextKolo > 0) return {why: "Sljedeće kolo je već složeno"};
+
+  if (!match.start_time || !match.end_time) return {why: "Meč nema zapisano vrijeme"};
+  const startedAt = new Date(Date.now() - (match.end_time.getTime() - match.start_time.getTime()));
+  const endsAt = matchDeadline(startedAt, await gameMinutesOf(tx, match.round_id), extensions);
+  if (endsAt.getTime() <= Date.now()) return {why: "Meču je vrijeme već isteklo"};
+  return {startedAt, endsAt};
+}
+
+/**
+ * Puts a finished match back in play at its table (reopenCheck allowed it): it is the table's match being played
+ * again, with its hands and the time it had left. The empty match its closing opened is dropped, and a closed table
+ * opens again: it no longer counts in the standings and the ratings until it closes.
+ */
+async function reopenMatch(tx: Tx, match: FinishedMatchRow, results: StoredHand[], state: MatchState, clock: ReopenClock) {
+  const roundId = match.round_id!;
+  await tx.ongoingMatch.deleteMany({where: {round_id: roundId}});
+  const ongoing = await tx.ongoingMatch.create({
+    data: {
+      round_id: roundId,
+      player_pair1_score: state.score1,
+      player_pair2_score: state.score2,
+      score_threshold: match.score_threshold,
+      match_date: match.match_date ?? clock.startedAt,
+      start_time: clock.startedAt,
+      started_at: clock.startedAt,
+      ends_at: clock.endsAt,
+    },
+    select: {id: true},
+  });
+  await tx.ongoingResult.createMany({
+    data: results.map((h) => ({
+      match_id: ongoing.id,
+      team1_game_points: h.team1_game_points,
+      team2_game_points: h.team2_game_points,
+      team1_zvanja3: h.team1_zvanja3,
+      team1_zvanja4: h.team1_zvanja4,
+      team2_zvanja3: h.team2_zvanja3,
+      team2_zvanja4: h.team2_zvanja4,
+      custom: h.custom,
+      dosta_side: h.dosta_side,
+    })),
+  });
+  await tx.match.delete({where: {id: match.id}});
+
+  const round = await tx.round.findUniqueOrThrow({
+    where: {id: roundId},
+    select: {open: true, team1_id: true, team2_id: true, leagueRounds: {select: {league_id: true}}, matches: {select: {winner_side: true}}},
+  });
+  await tx.round.update({where: {id: roundId}, data: {open: true, active: true, ...roundWins(round.matches)}});
+  if (round.open) return;
+  for (const {league_id} of round.leagueRounds) {
+    await recalcTeamScores(tx, league_id, [round.team1_id, round.team2_id]);
+  }
+  if (isRatedRound(round)) await replayRatings(tx);
+}
+
+/**
+ * After a finished match's hands changed: its score and winner, the round's wins, and for a finished round the
+ * standings (and the ratings when the round's outcome changed).
+ *
+ * A match closed by Vrijeme partije goes to the team with more points, as it did when the time ran out ("s ovim
+ * dosta" isn't called once the time is up); a level score leaves it without a winner. A match closed with time left
+ * that no team has won any more goes back in play (reopenMatch) when nothing came after it; otherwise it is left
+ * without a winner until the admin adds its hands. A match left without a winner that had one needs the admin's
+ * confirmation.
+ */
+async function recountFinishedMatch(tx: Tx, matchId: number, allowNoWinner: boolean): Promise<HandEditOutcome> {
+  const found = await tx.match.findUniqueOrThrow({
+    where: {id: matchId},
+    select: {
+      id: true,
+      round_id: true,
+      score_threshold: true,
+      winner_side: true,
+      time_expired: true,
+      match_date: true,
+      start_time: true,
+      end_time: true,
+      results: {orderBy: {result_id: "asc"}},
+      round: {select: {match_end: true}},
+    },
+  });
+  const {score_threshold, winner_side, results, round: table} = found;
   const state = matchState(results, score_threshold ?? MATCH_THRESHOLD, table?.match_end ?? DEFAULT_MATCH_END);
   assertCallStands(state);
-  const warning = allowNoWinner ? null : noWinnerWarning(winner_side as Side | null, state);
+
+  let winner: Side | null = state.winner;
+  if (found.time_expired) {
+    winner = timeWinner(state.score1, state.score2);
+  } else if (winner == null) {
+    const check = await reopenCheck(tx, found, state.extensions);
+    if (!("why" in check)) {
+      await reopenMatch(tx, found, results, state, check);
+      return {reopened: true};
+    }
+    if (!allowNoWinner && winner_side != null) throw new NoWinnerWarning(noWinnerAddHandsWarning(state, check.why));
+  }
+  const warning = allowNoWinner ? null : noWinnerWarning(winner_side as Side | null, {...state, winner});
   if (warning) throw new NoWinnerWarning(warning);
   const match = await tx.match.update({
     where: {id: matchId},
-    data: {player_pair1_score: state.score1, player_pair2_score: state.score2, winner_side: state.winner},
+    data: {player_pair1_score: state.score1, player_pair2_score: state.score2, winner_side: winner},
     select: {round_id: true},
   });
-  if (match.round_id == null) return;
+  if (match.round_id == null) return {reopened: false};
 
   const round = await tx.round.findUniqueOrThrow({
     where: {id: match.round_id},
@@ -183,34 +338,34 @@ async function recountFinishedMatch(tx: Tx, matchId: number, allowNoWinner: bool
     },
   });
   // a match without a winner (the admin confirmed it) counts for neither team
-  const team1Wins = round.matches.filter((m) => m.winner_side === 1).length;
-  const team2Wins = round.matches.filter((m) => m.winner_side === 2).length;
-  await tx.round.update({where: {id: round.id}, data: {team1_wins: team1Wins, team2_wins: team2Wins}});
+  const wins = roundWins(round.matches);
+  await tx.round.update({where: {id: round.id}, data: wins});
 
-  if (round.open) return;
+  if (round.open) return {reopened: false};
   for (const {league_id} of round.leagueRounds) {
     await recalcTeamScores(tx, league_id, [round.team1_id, round.team2_id]);
   }
   const outcome = (a: number, b: number) => Math.sign(a - b);
-  if (isRatedRound(round) && outcome(round.team1_wins, round.team2_wins) !== outcome(team1Wins, team2Wins)) {
+  if (isRatedRound(round) && outcome(round.team1_wins, round.team2_wins) !== outcome(wins.team1_wins, wins.team2_wins)) {
     await replayRatings(tx);
   }
+  return {reopened: false};
 }
 
 // Runs a change of a finished match's hands with the round locked, then recounts
-async function changeFinishedMatch(matchId: number, change: (tx: Tx) => Promise<void>, options: HandEditOptions) {
-  await prisma.$transaction(async (tx) => {
+async function changeFinishedMatch(matchId: number, change: (tx: Tx) => Promise<void>, options: HandEditOptions): Promise<HandEditOutcome> {
+  return prisma.$transaction(async (tx) => {
     const match = await tx.match.findUnique({where: {id: matchId}, select: {round_id: true}});
     if (!match) throw new NotFoundError("Meč ne postoji.");
     if (match.round_id != null) await lockRound(tx, match.round_id);
     await change(tx);
-    await recountFinishedMatch(tx, matchId, options.allowNoWinner === true);
+    return recountFinishedMatch(tx, matchId, options.allowNoWinner === true);
   }, {timeout: 60000});
 }
 
 export type HandTarget = {kind: "ongoing"} | {kind: "finished"; matchId: number};
 
-export async function addHand(roundId: number, target: HandTarget, hand: AdminHand, options: HandEditOptions = {}): Promise<void> {
+export async function addHand(roundId: number, target: HandTarget, hand: AdminHand, options: HandEditOptions = {}): Promise<HandEditOutcome> {
   const {declarations} = await assertEditableTable(roundId);
   if (target.kind === "ongoing") {
     // a table that hasn't started gets its first match here (refused when the round is over)
@@ -220,14 +375,14 @@ export async function addHand(roundId: number, target: HandTarget, hand: AdminHa
     const result = adminHandToResult(hand, ongoing.id);
     // an admin's hand is never refused for being late: they enter what was played, Vrijeme partije or not
     await createResult(result, (r) => r, {admin: true});
-    return;
+    return {reopened: false};
   }
 
   const match = await prisma.match.findUnique({where: {id: target.matchId}, select: {round_id: true}});
   if (!match || match.round_id !== roundId) throw new NotFoundError("Taj meč nije za ovim stolom.");
   const result = adminHandToResult(hand, target.matchId);
   assertTableZvanja(result, declarations);
-  await changeFinishedMatch(target.matchId, async (tx) => {
+  return changeFinishedMatch(target.matchId, async (tx) => {
     await tx.result.create({data: transformResult(result)});
   }, options);
 }
@@ -246,13 +401,13 @@ export async function refuseUnlessMyHand(kind: HandKind, resultId: number, viewe
   await refuseUnlessMyTable(roundId, viewer);
 }
 
-export async function updateHand(kind: HandKind, resultId: number, hand: AdminHand, options: HandEditOptions = {}): Promise<void> {
+export async function updateHand(kind: HandKind, resultId: number, hand: AdminHand, options: HandEditOptions = {}): Promise<HandEditOutcome> {
   if (kind === "ongoing") {
     const stored = await prisma.ongoingResult.findUnique({where: {result_id: resultId}, select: {match_id: true}});
     if (!stored) throw new NotFoundError("Igra ne postoji.");
     const result = adminHandToResult(hand, stored.match_id);
     await updateOngoingResult({result_id: resultId, resultData: result, normalize: (r) => r, admin: true});
-    return;
+    return {reopened: false};
   }
 
   const stored = await prisma.result.findUnique({
@@ -262,7 +417,7 @@ export async function updateHand(kind: HandKind, resultId: number, hand: AdminHa
   if (!stored) throw new NotFoundError("Igra ne postoji.");
   const result = adminHandToResult(hand, stored.match_id);
   assertTableZvanja(result, stored.match.round?.declarations ?? true);
-  await changeFinishedMatch(stored.match_id, async (tx) => {
+  return changeFinishedMatch(stored.match_id, async (tx) => {
     await tx.result.update({
       where: {result_id: resultId},
       data: {
@@ -276,7 +431,7 @@ export async function updateHand(kind: HandKind, resultId: number, hand: AdminHa
   }, options);
 }
 
-export async function deleteHand(kind: HandKind, resultId: number, options: HandEditOptions = {}): Promise<void> {
+export async function deleteHand(kind: HandKind, resultId: number, options: HandEditOptions = {}): Promise<HandEditOutcome> {
   if (kind === "ongoing") {
     await prisma.$transaction(async (tx) => {
       const [hand] = await tx.$queryRaw<(HandZvanja & {match_id: number; team1_game_points: number; team2_game_points: number})[]>`
@@ -300,12 +455,12 @@ export async function deleteHand(kind: HandKind, resultId: number, options: Hand
       // the target may have fallen back with the deleted hand, and the deadline with it
       await syncDeadline(tx, hand.match_id, state);
     });
-    return;
+    return {reopened: false};
   }
 
   const stored = await prisma.result.findUnique({where: {result_id: resultId}, select: {match_id: true}});
   if (!stored) throw new NotFoundError("Igra ne postoji.");
-  await changeFinishedMatch(stored.match_id, async (tx) => {
+  return changeFinishedMatch(stored.match_id, async (tx) => {
     await tx.result.delete({where: {result_id: resultId}});
   }, options);
 }
