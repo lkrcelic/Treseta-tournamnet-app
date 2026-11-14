@@ -23,6 +23,8 @@ export type StateTable = {
   started: boolean;
   attendance: "PRESENT" | "NO_SHOW" | "SKIPPED" | null;
   attendance_at: Date | null;
+  // the admin picked the result (Uredi ishod)
+  attendance_by_admin?: boolean;
   // the team that answered and the other one, by name
   answered_by: string | null;
   other: string | null;
@@ -39,7 +41,12 @@ export type StateTable = {
 export function tableState(t: StateTable, now: Date, gameMinutes: number, clock: (d: Date) => string): TableState {
   if (t.status !== "PUBLISHED") return {kind: "draft", label: "Skica", note: null};
   if (t.bye) return {kind: "bye", label: "Slobodna runda", note: null};
-  if (t.attendance === "SKIPPED") return {kind: "skipped", label: "Preskočen", note: "Meč se ne boduje, obje ekipe su isključene."};
+  if (t.attendance === "SKIPPED") {
+    return {kind: "skipped", label: "Preskočen", note: `${t.attendance_by_admin ? "Odluka admina: m" : "M"}eč se ne boduje, obje ekipe su isključene.`};
+  }
+  if (t.attendance === "NO_SHOW" && t.attendance_by_admin) {
+    return {kind: "no_show", label: "Dodijeljena pobjeda", note: `Odluka admina: pobjeđuju ${t.answered_by} · ${NO_SHOW_SCORE[0]} : ${NO_SHOW_SCORE[1]} po partiji · ${t.other} isključeni`};
+  }
   if (t.attendance === "NO_SHOW") {
     const at = t.attendance_at ? ` u ${clock(t.attendance_at)}` : "";
     return {kind: "no_show", label: "Nedolazak", note: `${t.answered_by} prijavili${at} · ${NO_SHOW_SCORE[0]} : ${NO_SHOW_SCORE[1]} po partiji · ${t.other} isključeni`};

@@ -134,6 +134,9 @@ test("the admin's table statuses", () => {
   assert.equal(noShow.label, "Nedolazak");
   assert.equal(noShow.note, "Dalmatinci prijavili u 11:08 · 5 : 0 po partiji · Purgeri isključeni");
   assert.equal(tableState({...base, open: false, attendance: "SKIPPED", attendance_at: at(10)}, at(11), 35, clock).label, "Preskočen");
+  // Uredi ishod: the admin's result says so
+  const given = tableState({...base, open: false, attendance: "NO_SHOW", attendance_by_admin: true, attendance_at: at(30), answered_by: "Dalmatinci", other: "Purgeri"}, at(31), 35, clock);
+  assert.deepEqual([given.kind, given.label, given.note], ["no_show", "Dodijeljena pobjeda", "Odluka admina: pobjeđuju Dalmatinci · 5 : 0 po partiji · Purgeri isključeni"]);
   const expired = tableState(
     {...base, started: true, matches: [{score1: 1010, score2: 700, time_expired: false}, {score1: 640, score2: 588, time_expired: true}], open: false},
     at(80),

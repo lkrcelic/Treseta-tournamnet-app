@@ -7,8 +7,8 @@ import {addToDay} from "@/app/_lib/bans";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {autoBanTeam} from "@/app/_lib/service/bans/bans";
-import {NO_SHOW_BAN_MONTHS, NO_SHOW_SCORE, noShowStep, noShowTimes, tournamentDays} from "@/app/_lib/tournamentDay";
-import {fillPlaces} from "./day";
+import {NO_SHOW_BAN_MONTHS, NO_SHOW_SCORE, noShowStep, noShowTimes, playing, tournamentDays} from "@/app/_lib/tournamentDay";
+import {dayEntries, fillPlaces} from "./day";
 import {lockTournament} from "./lock";
 import {afterTableClosed, dropTables} from "./kola";
 
@@ -34,6 +34,7 @@ const tableSelect = {
   status: true,
   published_at: true,
   attendance: true,
+  attendance_team_id: true,
   matches_per_round: true,
   score_threshold: true,
   tournamentRounds: {select: {tournament: {select: {tournament_id: true, tournament_name: true, max_teams: true}}}, take: 1},
@@ -107,10 +108,11 @@ async function applyNoShow(tx: Tx, table: Table, answeringTeam: number, by: numb
   await fillPlaces(tx, t.tournament_id, t.max_teams);
 }
 
-// The skip at 8 minutes: closed without a result, both teams out (and banned after Kolo 1)
-async function applySkip(tx: Tx, table: Table, now: Date) {
+// The skip at 8 minutes: closed without a result, both teams out (and banned after Kolo 1). by: the admin whose
+// result it is (Uredi ishod); null for the clock's skip
+async function applySkip(tx: Tx, table: Table, now: Date, by: number | null = null) {
   const t = table.tournamentRounds[0].tournament;
-  await tx.round.update({where: {id: table.id}, data: {attendance: "SKIPPED", attendance_at: now, open: false, active: false}});
+  await tx.round.update({where: {id: table.id}, data: {attendance: "SKIPPED", attendance_team_id: null, attendance_by: by, attendance_at: now, open: false, active: false}});
   for (const team of [table.team1_id, table.team2_id]) {
     await exclude(tx, t.tournament_id, team, table.round_number ?? 0, "SKIPPED");
     if (table.round_number === 1) await autoBanTeam(tx, team, t, banUntil());
@@ -176,17 +178,72 @@ export async function answerAttendance(roundId: number, viewer: Viewer, answer: 
   return outcome;
 }
 
+// The tournament an admin changes a table of: there, and not cancelled
+async function editableTournament(tx: Tx, tournamentId: number) {
+  await lockTournament(tx, tournamentId);
+  const t = await tx.tournament.findUnique({where: {tournament_id: tournamentId}, select: {cancelled_at: true}});
+  if (!t) throw new NotFoundError("Turnir ne postoji.");
+  if (t.cancelled_at) throw new InvalidResultError("Turnir je otkazan.");
+}
+
+// Kolo 1's sign-up bans the app gave the teams (with their players'), lifted by the admin
+async function liftAutoBans(tx: Tx, tournamentId: number, teams: number[], adminId: number, now: Date) {
+  if (teams.length === 0) return;
+  const bans = await tx.signupBan.findMany({where: {tournament_id: tournamentId, team_id: {in: teams}, created_by: null, lifted_at: null}, select: {id: true}});
+  const ids = bans.map((b) => b.id);
+  if (ids.length > 0) {
+    await tx.signupBan.updateMany({where: {OR: [{id: {in: ids}}, {via_ban_id: {in: ids}}], lifted_at: null}, data: {lifted_at: now, lifted_by: adminId}});
+  }
+}
+
+// What a skipped table or a no-show did, undone: its no-show matches gone (written by the app, never played), the table
+// open and live as if "Da, tu su" had been answered by the admin, the teams it put out back in the tournament
+async function undoAttendance(tx: Tx, tournamentId: number, table: {id: number; round_number: number | null; team1_id: number; team2_id: number}, adminId: number, now: Date) {
+  await tx.match.deleteMany({where: {round_id: table.id}});
+  await tx.round.update({
+    where: {id: table.id},
+    data: {open: true, active: true, team1_wins: 0, team2_wins: 0, attendance: "PRESENT", attendance_team_id: table.team1_id, attendance_by: adminId, attendance_at: now},
+  });
+  await tx.tournamentTeam.updateMany({
+    where: {tournament_id: tournamentId, team_id: {in: [table.team1_id, table.team2_id]}, excluded_reason: {in: ["SKIPPED", "NO_SHOW"]}, excluded_kolo: table.round_number ?? 0},
+    data: {excluded_at: null, excluded_kolo: null, excluded_reason: null, active: true, status: "REGISTERED"},
+  });
+}
+
+// A next Kolo's draft not published yet: it was made with the table as it was
+async function dropUnpublished(tx: Tx, tournamentId: number) {
+  const drafts = await tx.round.findMany({where: {tournamentRounds: {some: {tournament_id: tournamentId}}, status: {not: "PUBLISHED"}}, select: {id: true}});
+  await dropTables(tx, drafts.map((d) => d.id));
+}
+
+// With a table's teams back the tournament may be over its limit: the teams that came in from the waiting list in their
+// place (fillPlaces) and that no published table has yet go back to waiting, the last one in first. A team that already
+// has a table stays; the admin decides about it.
+async function returnOverflow(tx: Tx, tournamentId: number) {
+  const t = await tx.tournament.findUnique({where: {tournament_id: tournamentId}, select: {max_teams: true}});
+  if (t?.max_teams == null) return;
+  const entries = await dayEntries(tx, tournamentId);
+  const over = entries.filter(playing).length - t.max_teams;
+  if (over <= 0) return;
+  const tables = await tx.round.findMany({where: {tournamentRounds: {some: {tournament_id: tournamentId}}, status: "PUBLISHED"}, select: {team1_id: true, team2_id: true}});
+  const seated = new Set(tables.flatMap((r) => [r.team1_id, r.team2_id]));
+  const back = entries
+    .filter((e) => playing(e) && e.arrived && !seated.has(e.teamId))
+    .sort((a, b) => b.registeredAt.getTime() - a.registeredAt.getTime() || b.teamId - a.teamId)
+    .slice(0, over)
+    .map((e) => e.teamId);
+  if (back.length > 0) await tx.tournamentTeam.updateMany({where: {tournament_id: tournamentId, team_id: {in: back}}, data: {status: "WAITING", active: true}});
+}
+
 // Vrati stol (admin or the organizer whose tournament it is): a skipped table, or one closed by "Ne, nisu došli", is
 // back in play as if "Da, tu su" had been answered (by the admin): open, its no-show matches gone, no question and no
 // skip any more. The teams this table put out are back from now (active), and the ban Kolo 1 gave them is lifted. A
 // next Kolo's draft not published yet is dropped: it was made without this table, and comes again once its Kolo is
-// played. A table that isn't skipped or a no-show is left as it is.
+// played. A waiting team that came in for them and has no table yet goes back to waiting (returnOverflow). A table that
+// isn't skipped or a no-show is left as it is.
 export async function restoreTable(tournamentId: number, roundId: number, adminId: number): Promise<void> {
   await prisma.$transaction(async (tx) => {
-    await lockTournament(tx, tournamentId);
-    const t = await tx.tournament.findUnique({where: {tournament_id: tournamentId}, select: {cancelled_at: true}});
-    if (!t) throw new NotFoundError("Turnir ne postoji.");
-    if (t.cancelled_at) throw new InvalidResultError("Turnir je otkazan.");
+    await editableTournament(tx, tournamentId);
     const table = await tx.round.findFirst({
       where: {id: roundId, tournamentRounds: {some: {tournament_id: tournamentId}}},
       select: {id: true, round_number: true, team1_id: true, team2_id: true, attendance: true},
@@ -194,26 +251,57 @@ export async function restoreTable(tournamentId: number, roundId: number, adminI
     if (!table) throw new NotFoundError("Stol ne postoji.");
     if (table.attendance !== "SKIPPED" && table.attendance !== "NO_SHOW") return;
     const now = new Date();
-    const teams = [table.team1_id, table.team2_id];
+    await undoAttendance(tx, tournamentId, table, adminId, now);
+    if (table.round_number === 1) await liftAutoBans(tx, tournamentId, [table.team1_id, table.team2_id], adminId, now);
+    await dropUnpublished(tx, tournamentId);
+    await returnOverflow(tx, tournamentId);
+  }, {timeout: 30_000});
+}
 
-    // a no-show's matches were written by the app, never played
-    await tx.match.deleteMany({where: {round_id: table.id}});
-    await tx.round.update({
-      where: {id: table.id},
-      data: {open: true, active: true, team1_wins: 0, team2_wins: 0, attendance: "PRESENT", attendance_team_id: table.team1_id, attendance_by: adminId, attendance_at: now},
-    });
-    await tx.tournamentTeam.updateMany({
-      where: {tournament_id: tournamentId, team_id: {in: teams}, excluded_reason: {in: ["SKIPPED", "NO_SHOW"]}, excluded_kolo: table.round_number ?? 0},
-      data: {excluded_at: null, excluded_kolo: null, excluded_reason: null, active: true, status: "REGISTERED"},
-    });
+// Uredi ishod: the admin's own result of a skipped table or a no-show
+// - TEAM1 / TEAM2: that team wins every match of the table as "Ne, nisu došli" gives it (5:0), the other is out
+// - SKIPPED: no result, both teams out
+export type TableOutcome = "TEAM1" | "TEAM2" | "SKIPPED";
+
+// Uredi ishod (admin or the organizer whose tournament it is): a skipped table or a no-show gets the result the admin
+// picks, as if the table had been closed so: the matches, who is out of the tournament and, in Kolo 1, whose sign-ups
+// are banned follow it (a team that is no longer at fault is back in and its ban lifted; one that now is gets out, its
+// earlier ban back in force). A next Kolo's draft not published yet is made again. The result it already has changes
+// nothing.
+export async function setTableOutcome(tournamentId: number, roundId: number, outcome: TableOutcome, adminId: number): Promise<void> {
+  const changed = await prisma.$transaction(async (tx) => {
+    await editableTournament(tx, tournamentId);
+    const table = await tx.round.findFirst({where: {id: roundId, tournamentRounds: {some: {tournament_id: tournamentId}}}, select: tableSelect});
+    if (!table) throw new NotFoundError("Stol ne postoji.");
+    if (table.attendance !== "SKIPPED" && table.attendance !== "NO_SHOW") throw new InvalidResultError("Ishod se bira samo preskočenom stolu ili stolu s nedolaskom.");
+    const winner = outcome === "TEAM1" ? table.team1_id : outcome === "TEAM2" ? table.team2_id : null;
+    if (winner == null ? table.attendance === "SKIPPED" : table.attendance === "NO_SHOW" && table.attendance_team_id === winner) return false;
+
+    const now = new Date();
+    await undoAttendance(tx, tournamentId, table, adminId, now);
+    const fresh = await tx.round.findUniqueOrThrow({where: {id: roundId}, select: tableSelect});
+    if (winner == null) await applySkip(tx, fresh, now, adminId);
+    else await applyNoShow(tx, fresh, winner, adminId, now);
+
+    // Kolo 1's bans follow the new result: the winner's is lifted, a team now out has its ban (the one it had, if any)
     if (table.round_number === 1) {
-      const bans = await tx.signupBan.findMany({where: {tournament_id: tournamentId, team_id: {in: teams}, created_by: null, lifted_at: null}, select: {id: true}});
-      const ids = bans.map((b) => b.id);
-      if (ids.length > 0) {
-        await tx.signupBan.updateMany({where: {OR: [{id: {in: ids}}, {via_ban_id: {in: ids}}], lifted_at: null}, data: {lifted_at: now, lifted_by: adminId}});
+      const t = table.tournamentRounds[0].tournament;
+      const out = winner == null ? [table.team1_id, table.team2_id] : [winner === table.team1_id ? table.team2_id : table.team1_id];
+      if (winner != null) await liftAutoBans(tx, tournamentId, [winner], adminId, now);
+      for (const team of out) {
+        const banned = await tx.signupBan.count({where: {tournament_id: tournamentId, team_id: team, created_by: null, lifted_at: null}});
+        if (banned > 0) continue;
+        const lifted = await tx.signupBan.findFirst({where: {tournament_id: tournamentId, team_id: team, created_by: null}, orderBy: {id: "desc"}, select: {id: true}});
+        if (lifted) {
+          await tx.signupBan.updateMany({where: {OR: [{id: lifted.id}, {via_ban_id: lifted.id}]}, data: {lifted_at: null, lifted_by: null}});
+        } else {
+          await autoBanTeam(tx, team, t, banUntil());
+        }
       }
     }
-    const drafts = await tx.round.findMany({where: {tournamentRounds: {some: {tournament_id: tournamentId}}, status: {not: "PUBLISHED"}}, select: {id: true}});
-    await dropTables(tx, drafts.map((d) => d.id));
+    await dropUnpublished(tx, tournamentId);
+    await returnOverflow(tx, tournamentId);
+    return true;
   }, {timeout: 30_000});
+  if (changed) await afterTableClosed(roundId);
 }

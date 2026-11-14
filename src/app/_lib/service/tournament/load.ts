@@ -69,6 +69,8 @@ export type LoadedTable = {
   attendance: "PRESENT" | "NO_SHOW" | "SKIPPED" | null;
   attendance_team_id: number | null;
   attendance_at: Date | null;
+  // the result is the admin's (Uredi ishod), not the players' answer or the clock's skip
+  attendance_by_admin: boolean;
 };
 
 export type Snapshot = {
@@ -151,6 +153,7 @@ export async function loadSnapshots(ids: number[], viewer: Viewer | null, db: Db
         game_minutes: true,
         attendance: true,
         attendance_team_id: true,
+        attendance_by: true,
         attendance_at: true,
         tournamentRounds: {select: {tournament_id: true}},
         matches: {select: {player_pair1_score: true, player_pair2_score: true, time_expired: true, end_time: true}, orderBy: {id: "asc"}},
@@ -199,6 +202,14 @@ export async function loadSnapshots(ids: number[], viewer: Viewer | null, db: Db
       const ownRounds = rounds.filter(
         (r) => r.tournamentRounds.some((tr) => tr.tournament_id === tournament.tournament_id) && (admin || r.status === "PUBLISHED")
       );
+      // a skip is the clock's and a no-show a player's of the answering team; anyone else who closed it is the admin
+      const byAdmin = (r: {attendance: string | null; attendance_by: number | null; attendance_team_id: number | null}) => {
+        if (r.attendance_by == null) return false;
+        if (r.attendance === "SKIPPED") return true;
+        if (r.attendance !== "NO_SHOW") return false;
+        const team = own.find((e) => e.team_id === r.attendance_team_id);
+        return !team?.team.teamPlayers.some((tp) => tp.player.id === r.attendance_by);
+      };
       const tables: LoadedTable[] = ownRounds.map((r) => ({
         id: r.id,
         kolo: r.round_number ?? 0,
@@ -223,6 +234,7 @@ export async function loadSnapshots(ids: number[], viewer: Viewer | null, db: Db
         attendance: r.attendance,
         attendance_team_id: r.attendance_team_id,
         attendance_at: r.attendance_at,
+        attendance_by_admin: byAdmin(r),
       }));
 
       const teams = new Map<number, {name: string; photo_url: string | null}>();

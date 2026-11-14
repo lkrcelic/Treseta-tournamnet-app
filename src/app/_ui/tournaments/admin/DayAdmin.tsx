@@ -1,6 +1,6 @@
 "use client";
 
-import {restoreTableAPI, setTeamDayAPI} from "@/app/_fetchers/tournament";
+import {restoreTableAPI, setTableOutcomeAPI, setTeamDayAPI} from "@/app/_fetchers/tournament";
 import {AdminTournament, EntryExclusion, KoloView, TournamentEntryView} from "@/app/_interfaces/tournament";
 import {clockLabel} from "@/app/_lib/gameTime";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
@@ -8,6 +8,7 @@ import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {buttonBase, ConfirmSheet, ellipsis, Spinner, SwitchTrack} from "@/app/_ui/sp";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import HourglassTopRoundedIcon from "@mui/icons-material/HourglassTopRounded";
 import HowToRegRoundedIcon from "@mui/icons-material/HowToRegRounded";
 import PersonOffRoundedIcon from "@mui/icons-material/PersonOffRounded";
@@ -264,9 +265,12 @@ export function StateChip({label, kind, skipAt}: {label: string; kind: string; s
 }
 
 // The Kolo's tables whose day went other than a plain game (Upit, Nedolazak, Vrijeme isteklo, Preskočen), each with its
-// line and a link to the table (the admin scorepad corrects the result). A skipped table and a no-show have Vrati stol.
+// line and a link to the table (the admin scorepad corrects the result). A skipped table and a no-show have Vrati stol
+// and Uredi ishod.
 export function TableStates({t, kolo, onChanged}: {t: AdminTournament; kolo: KoloView; onChanged: (t: AdminTournament) => void}) {
   const [restoring, setRestoring] = useState<KoloView["tables"][number] | null>(null);
+  const [editing, setEditing] = useState<KoloView["tables"][number] | null>(null);
+  const [outcome, setOutcome] = useState<Outcome>("SKIPPED");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const restore = async () => {
@@ -278,6 +282,23 @@ export function TableStates({t, kolo, onChanged}: {t: AdminTournament; kolo: Kol
       setRestoring(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Stol nije vraćen.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const saveOutcome = async () => {
+    if (!editing) return;
+    if (outcome === outcomeOf(editing)) {
+      setEditing(null);
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      onChanged(await setTableOutcomeAPI(t.id, editing.id, outcome));
+      setEditing(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ishod nije spremljen.");
     } finally {
       setBusy(false);
     }
@@ -313,7 +334,21 @@ export function TableStates({t, kolo, onChanged}: {t: AdminTournament; kolo: Kol
               <ChevronRightRoundedIcon aria-hidden sx={{fontSize: 24, color: color.navy, flex: "none"}} />
             </Box>
             {(x.state!.kind === "skipped" || x.state!.kind === "no_show") && (
-              <Box sx={{display: "flex", p: "0 10px 10px 8px"}}>
+              <Box sx={{display: "flex", flexWrap: "wrap", gap: "4px", p: "0 10px 10px 8px"}}>
+                <Box
+                  component="button"
+                  type="button"
+                  aria-label={`Uredi ishod Stola ${x.table_number}`}
+                  onClick={() => {
+                    setError(null);
+                    setOutcome(outcomeOf(x));
+                    setEditing(x);
+                  }}
+                  sx={{...textButton, display: "flex", alignItems: "center", gap: "4px", "& svg": {fontSize: 18}}}
+                >
+                  <EditRoundedIcon aria-hidden />
+                  Uredi ishod
+                </Box>
                 <Box
                   component="button"
                   type="button"
@@ -347,7 +382,89 @@ export function TableStates({t, kolo, onChanged}: {t: AdminTournament; kolo: Kol
         busy={busy}
         error={restoring ? error : null}
       />
+      <ConfirmSheet
+        open={editing != null}
+        onClose={() => setEditing(null)}
+        onConfirm={saveOutcome}
+        title={editing ? `Ishod Stola ${editing.table_number}` : ""}
+        text={editing ? outcomeText(editing, outcome, kolo.number) : ""}
+        extra={editing ? <OutcomePicker table={editing} value={outcome} current={outcomeOf(editing)} onChange={setOutcome} disabled={busy} /> : null}
+        action="Spremi ishod"
+        icon={<EditRoundedIcon />}
+        danger={false}
+        busy={busy}
+        error={editing ? error : null}
+      />
       <Box sx={{px: "4px", fontSize: 13, lineHeight: 1.4, color: color.muted}}>Ispravak rezultata odmah mijenja poredak i rejting, i nakon kraja turnira.</Box>
+    </Box>
+  );
+}
+
+type Outcome = "TEAM1" | "TEAM2" | "SKIPPED";
+type KoloTableRow = KoloView["tables"][number];
+
+// The result a skipped table or a no-show has now
+const outcomeOf = (x: KoloTableRow): Outcome => (x.state?.kind === "skipped" ? "SKIPPED" : x.team1_wins >= x.team2_wins ? "TEAM1" : "TEAM2");
+
+function outcomeText(x: KoloTableRow, o: Outcome, koloNumber: number): string {
+  const ban = koloNumber === 1;
+  if (o === "SKIPPED") {
+    return `Meč se ne boduje, ${x.team1.team_name} i ${x.team2.team_name} su isključeni iz turnira${ban ? " i dobivaju zabranu prijava" : ""}.`;
+  }
+  const [win, lose] = o === "TEAM1" ? [x.team1, x.team2] : [x.team2, x.team1];
+  return `${win.team_name} dobivaju svaku partiju stola 5 : 0 i ostaju u turniru${ban ? " bez zabrane prijava" : ""}. ${lose.team_name} su isključeni${ban ? " i dobivaju zabranu prijava" : ""}. Neobjavljena skica sljedećeg kola slaže se ponovo.`;
+}
+
+// Uredi ishod's choices: either team's win, or nobody's (Preskočen)
+function OutcomePicker({table, value, current, onChange, disabled}: {table: KoloTableRow; value: Outcome; current: Outcome; onChange: (o: Outcome) => void; disabled: boolean}) {
+  const options: {value: Outcome; label: string}[] = [
+    {value: "TEAM1", label: `Pobjeda: ${table.team1.team_name}`},
+    {value: "TEAM2", label: `Pobjeda: ${table.team2.team_name}`},
+    {value: "SKIPPED", label: "Nitko · preskočen"},
+  ];
+  return (
+    <Box role="radiogroup" aria-label="Ishod stola" sx={{flex: "none", display: "flex", flexDirection: "column", gap: "8px"}}>
+      {options.map((o) => {
+        const on = o.value === value;
+        return (
+          <Box
+            key={o.value}
+            component="button"
+            type="button"
+            role="radio"
+            aria-checked={on}
+            aria-label={o.label}
+            disabled={disabled}
+            onClick={() => onChange(o.value)}
+            sx={{
+              ...buttonBase,
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              minHeight: 52,
+              px: "14px",
+              borderRadius: "14px",
+              border: `1.5px solid ${on ? color.navy : color.borderControl}`,
+              background: on ? tint.navy[10] : color.white,
+              color: color.ink,
+              fontSize: 15,
+              fontWeight: on ? 700 : 600,
+              textAlign: "left",
+              "& svg": {fontSize: 22, color: on ? color.navy : color.muted, flex: "none"},
+            }}
+          >
+            {on ? <CheckCircleRoundedIcon aria-hidden /> : <RadioButtonUncheckedRoundedIcon aria-hidden />}
+            <Box component="span" sx={{flex: 1, minWidth: 0, ...ellipsis}}>
+              {o.label}
+            </Box>
+            {o.value === current && (
+              <Box component="span" sx={{flex: "none", fontSize: 12.5, fontWeight: 700, color: color.muted}}>
+                sada
+              </Box>
+            )}
+          </Box>
+        );
+      })}
     </Box>
   );
 }

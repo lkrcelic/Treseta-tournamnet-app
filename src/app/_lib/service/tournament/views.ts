@@ -233,6 +233,7 @@ function koloTable(s: Snapshot, t: LoadedTable, now: Date): KoloTable {
       started: tableStarted(t),
       attendance: t.attendance,
       attendance_at: t.attendance_at,
+      attendance_by_admin: t.attendance_by_admin,
       answered_by: name(t.attendance_team_id),
       other: name(other),
       matches: t.matches,
