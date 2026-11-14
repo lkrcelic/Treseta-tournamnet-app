@@ -25,10 +25,11 @@ import React, {useCallback, useEffect, useRef, useState} from "react";
 import {NO_SHOW_SCORE} from "@/app/_lib/tournamentDay";
 
 // Nedolazak za stol on the players' phones (Claude Design "Nedolazak za stol" N2–N4, N7). On a tournament day the app
-// asks the server, on every screen, whether the player's table is waiting for an answer: 3 minutes after the Kolo went
+// asks the server, on every screen, whether the player's table is waiting for an answer: 4 minutes after the Kolo went
 // out with no game started, "Jesu li … za stolom?" covers the app and can't be closed (no X, no Back; it is there again
-// after a reload) until someone of the table answers; the buttons work from 5 minutes. Da, tu su opens the game; Ne,
-// nisu došli asks once more what happens, then the table is won as a Slobodna runda is (NO_SHOW_SCORE). A skipped match (8 minutes, no answer) is
+// after a reload) until someone of the table answers; Da, tu su works at once, Ne, nisu došli from 6 minutes (a team
+// walking to its table is still in time). Da, tu su opens the game; Ne,
+// nisu došli asks once more what happens, then the table is won as a Slobodna runda is (NO_SHOW_SCORE). A skipped match (10 minutes, no answer) is
 // told once (Razumijem). The server decides every time; the phone only counts down. Never on the login pages.
 
 const SEEN_KEY = "bela.skippedSeen";
@@ -264,27 +265,25 @@ function Question({p, serverNow, busy, error, onPresent, onAbsent}: {p: Attentio
         ]}
       />
       <Box sx={{flex: 1, minHeight: 8}} />
+      {error && <ErrorNote>{error}</ErrorNote>}
+      <PrimaryButton
+        icon={<GroupsRoundedIcon />}
+        onClick={onPresent}
+        disabled={busy != null}
+        loading={busy === "PRESENT"}
+        sx={button}
+      >
+        Da, tu su · započni igru
+      </PrimaryButton>
       {locked && (
         <Box sx={{display: "flex", alignItems: "center", gap: "12px", p: "12px 14px", borderRadius: "16px", background: color.white, border: `1px solid ${color.line}`}}>
           <LockClockRoundedIcon aria-hidden sx={{fontSize: 24, color: color.ink2}} />
-          <Box sx={{flex: 1, fontSize: 14.5, lineHeight: 1.4, color: color.ink}}>Odgovor je moguć od {clockOf(p.unlock_at)}. Pričekajte protivnika.</Box>
+          <Box sx={{flex: 1, fontSize: 14.5, lineHeight: 1.4, color: color.ink}}>„Ne, nisu došli” je moguće od {clockOf(p.unlock_at)}. Pričekajte protivnika.</Box>
           <Box component="span" role="timer" sx={{px: "10px", py: "6px", borderRadius: "10px", background: color.navy, color: color.white, fontFamily: font.display, fontSize: 18, fontWeight: 800}}>
             {clockLabel(toUnlock)}
           </Box>
         </Box>
       )}
-      {error && <ErrorNote>{error}</ErrorNote>}
-      <PrimaryButton
-        icon={<GroupsRoundedIcon />}
-        onClick={onPresent}
-        disabled={locked || busy != null}
-        loading={busy === "PRESENT"}
-        bg={locked ? color.lineFill : color.navy}
-        ink={locked ? color.muted : color.white}
-        sx={{...button, ...(locked && {opacity: 1, boxShadow: "none"})}}
-      >
-        Da, tu su · započni igru
-      </PrimaryButton>
       <OutlineButton
         tone={locked ? color.muted : color.red}
         onClick={onAbsent}

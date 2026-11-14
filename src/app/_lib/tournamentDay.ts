@@ -1,8 +1,8 @@
 // A tournament's day. Potvrda dolaska: a team confirms it has come (Tu smo) from Okupljanje until Početak; at the start
 // time the teams that didn't become inactive (still signed up) and the confirmed teams of the waiting list come in, in
 // waiting-list order, as long as there are fewer active teams than the limit. Nedolazak za stol: a published table where
-// no game has started gets the question "Jesu li … za stolom?" 3 minutes after its Kolo went out, it can be answered
-// from 5 minutes, and at 8 minutes the match is skipped. All times are the server's. Framework free so it can be unit
+// no game has started gets the question "Jesu li … za stolom?" 4 minutes after its Kolo went out, Da, tu su
+// works at once and Ne, nisu došli from 6 minutes, and at 10 minutes the match is skipped. All times are the server's. Framework free so it can be unit
 // tested.
 import {leagueDateString, leagueMoment, leagueNightString} from "@/app/_lib/dates";
 import {BYE_MATCH_POINTS} from "@/app/_lib/game/scoring";
@@ -76,11 +76,11 @@ export function hasRoom(entries: DayEntry[], maxTeams: number | null): boolean {
 
 // ---------- Nedolazak za stol ----------
 
-// The question comes early because the team that is at the table waits for it, and the two minutes before the answer
+// The question comes early because the team that is at the table waits for it, and the two minutes before Ne, nisu došli
 // are the whole buffer against an impatient answer: a team walking to its table is still in time (DECISIONS #89)
-export const NO_SHOW_ASK_MS = 3 * 60_000;
-export const NO_SHOW_UNLOCK_MS = 5 * 60_000;
-export const NO_SHOW_SKIP_MS = 8 * 60_000;
+export const NO_SHOW_ASK_MS = 4 * 60_000;
+export const NO_SHOW_UNLOCK_MS = 6 * 60_000;
+export const NO_SHOW_SKIP_MS = 10 * 60_000;
 
 export type NoShowTimes = {ask: Date; unlock: Date; skip: Date};
 
@@ -90,7 +90,7 @@ export function noShowTimes(publishedAt: Date): NoShowTimes {
   return {ask: at(NO_SHOW_ASK_MS), unlock: at(NO_SHOW_UNLOCK_MS), skip: at(NO_SHOW_SKIP_MS)};
 }
 
-// waiting: before the question; asking: the question is up, its buttons locked; answerable: Da / Ne work; due: no
+// waiting: before the question; asking: the question is up, only Da works; answerable: Da / Ne work; due: no
 // answer in time, the match is skipped
 export type NoShowStep = "waiting" | "asking" | "answerable" | "due";
 

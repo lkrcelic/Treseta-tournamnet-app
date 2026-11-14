@@ -13,10 +13,10 @@ import {lockTournament} from "./lock";
 import {afterTableClosed, dropTables} from "./kola";
 
 // Nedolazak za stol: a published table of today's tournament where no game has started is asked "Jesu li … za
-// stolom?" 3 minutes after its Kolo went out; the answer works from 5 minutes. Da, tu su: the question is gone and they
+// stolom?" 4 minutes after its Kolo went out; Da, tu su works at once, Ne, nisu došli from 6 minutes. Da, tu su: the question is gone and they
 // play. Ne, nisu došli: the answering team wins every match of the table as a Slobodna runda is won (5:0) and the
 // other team is out of the rest
-// of the tournament. With no game and no answer at 8 minutes the match is skipped (not scored) and both teams are
+// of the tournament. With no game and no answer at 10 minutes the match is skipped (not scored) and both teams are
 // out. In Kolo 1 the team that didn't come (both, for a skipped match) also gets a ban on sign-ups: it had confirmed
 // arrival. The first answer counts for the whole table. Neither kind of table is rated.
 
@@ -108,7 +108,7 @@ async function applyNoShow(tx: Tx, table: Table, answeringTeam: number, by: numb
   await fillPlaces(tx, t.tournament_id, t.max_teams);
 }
 
-// The skip at 8 minutes: closed without a result, both teams out (and banned after Kolo 1). by: the admin whose
+// The skip at 10 minutes: closed without a result, both teams out (and banned after Kolo 1). by: the admin whose
 // result it is (Uredi ishod); null for the clock's skip
 async function applySkip(tx: Tx, table: Table, now: Date, by: number | null = null) {
   const t = table.tournamentRounds[0].tournament;
@@ -120,7 +120,7 @@ async function applySkip(tx: Tx, table: Table, now: Date, by: number | null = nu
   await fillPlaces(tx, t.tournament_id, t.max_teams);
 }
 
-// Skips the tournament's tables whose 8 minutes are over (the clock). Answers with the tables it closed.
+// Skips the tournament's tables whose 10 minutes are over (the clock). Answers with the tables it closed.
 export async function skipDueTables(tournamentId: number, now = new Date()): Promise<number[]> {
   const today = tournamentDays(now);
   const candidates = await prisma.round.findMany({
@@ -162,7 +162,10 @@ export async function answerAttendance(roundId: number, viewer: Viewer, answer: 
     if (!awaitingPlay(table, today)) throw new InvalidResultError("Za ovaj stol se više ne pita.");
     const times = noShowTimes(table.published_at!);
     const step = noShowStep(table.published_at!, now);
-    if (step === "waiting" || step === "asking") throw new InvalidResultError(`Odgovor je moguć od ${leagueClock(times.unlock)}.`);
+    // Da, tu su works as soon as the question is up; Ne, nisu došli only from the unlock (a team walking to its table
+    // is still in time)
+    if (step === "waiting") throw new InvalidResultError(`Odgovor je moguć od ${leagueClock(times.ask)}.`);
+    if (step === "asking" && answer === "NO_SHOW") throw new InvalidResultError(`„Ne, nisu došli” je moguće od ${leagueClock(times.unlock)}.`);
     if (step === "due") {
       await applySkip(tx, table, now);
       return "SKIPPED" as const;

@@ -28,7 +28,7 @@ before(async () => {
     teams.push(team.team_id);
     await prisma.tournamentTeam.create({data: {tournament_id: tournamentId, team_id: team.team_id, arrived_at: new Date()}});
   }
-  // the Kolo went out six minutes ago, so the answer is open (3 minutes to ask, answerable from 5, skipped at 8)
+  // the Kolo went out seven minutes ago, so both answers are open (asked at 4, Ne, nisu došli from 6, skipped at 10)
   const round = await prisma.round.create({
     data: {
       team1_id: teams[0],
@@ -36,7 +36,7 @@ before(async () => {
       round_number: 1,
       round_date: leagueNight(),
       status: "PUBLISHED",
-      published_at: new Date(Date.now() - 6 * 60_000),
+      published_at: new Date(Date.now() - 7 * 60_000),
       matches_per_round: 2,
       tournamentRounds: {create: {tournament_id: tournamentId}},
     },
@@ -119,7 +119,7 @@ test("Vrati stol after a skip: both teams are back and the table is live again",
       round_number: 2,
       round_date: leagueNight(),
       status: "PUBLISHED",
-      published_at: new Date(Date.now() - 9 * 60_000),
+      published_at: new Date(Date.now() - 11 * 60_000),
       matches_per_round: 2,
       tournamentRounds: {create: {tournament_id: tournamentId}},
     },
@@ -133,4 +133,23 @@ test("Vrati stol after a skip: both teams are back and the table is live again",
   assert.deepEqual([round.open, round.attendance], [true, "PRESENT"]);
   assert.equal(await prisma.tournamentTeam.count({where: {tournament_id: tournamentId, excluded_at: {not: null}}}), 0);
   assert.deepEqual(await skipDueTables(tournamentId), []);
+});
+
+test("between 4 and 6 minutes only Da, tu su works", async () => {
+  const early = await prisma.round.create({
+    data: {
+      team1_id: teams[0],
+      team2_id: teams[1],
+      round_number: 3,
+      round_date: leagueNight(),
+      status: "PUBLISHED",
+      published_at: new Date(Date.now() - 5 * 60_000),
+      matches_per_round: 2,
+      tournamentRounds: {create: {tournament_id: tournamentId}},
+    },
+  });
+  await assert.rejects(answerAttendance(early.id, {id: players[0], player_role: "PLAYER"}, "NO_SHOW"), /Ne, nisu došli” je moguće od/);
+  assert.equal(await answerAttendance(early.id, {id: players[0], player_role: "PLAYER"}, "PRESENT"), "PRESENT");
+  const round = await prisma.round.findUniqueOrThrow({where: {id: early.id}});
+  assert.deepEqual([round.open, round.attendance], [true, "PRESENT"]);
 });

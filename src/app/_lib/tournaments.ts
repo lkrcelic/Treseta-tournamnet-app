@@ -234,7 +234,7 @@ export type TableResult = {
   started: boolean;
   // team1's points minus team2's, over the matches played
   diff: number;
-  // false for a skipped table (Nedolazak za stol: nobody started or answered in 8 minutes): it isn't counted
+  // false for a skipped table (Nedolazak za stol: nobody started or answered in 10 minutes): it isn't counted
   scored: boolean;
   // the matches the table plays (Partija po kolu, 2 or 1): a match is worth a point, so a table won is worth that many
   matches: number;
