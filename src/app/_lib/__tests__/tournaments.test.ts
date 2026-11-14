@@ -559,3 +559,33 @@ test("a played Kolo whose tables don't say when they closed shows no timer", () 
   assert.deepEqual(koloTimes([{published_at: at("19:00"), open: false, closed_at: null}]), {started_at: null, ended_at: null});
   assert.deepEqual(koloTimes([{published_at: at("19:00"), open: false, closed_at: at("18:30")}]), {started_at: null, ended_at: null});
 });
+
+test("Uživo and Nadolazeći: the lists behind Početna's rows and their pages", async () => {
+  const {liveTournaments, upcomingTournaments, liveProgressLabel, liveDayLabel, monthLabel} = await import("@/app/_lib/tournaments");
+  type T = {id: number; phase: "upcoming" | "active" | "finished" | "cancelled"; date: string; me: {status: "REGISTERED" | "WAITING"} | null};
+  const today = "2026-11-13";
+  const list: T[] = [
+    {id: 1, phase: "active", date: "2026-11-12", me: null},
+    {id: 2, phase: "active", date: today, me: null},
+    {id: 3, phase: "active", date: "2026-11-12", me: {status: "WAITING"}},
+    {id: 4, phase: "active", date: "2026-11-12", me: {status: "REGISTERED"}},
+    {id: 5, phase: "finished", date: today, me: null},
+    {id: 6, phase: "upcoming", date: "2026-11-30", me: null},
+    {id: 7, phase: "upcoming", date: "2026-11-22", me: null},
+    {id: 8, phase: "upcoming", date: "2026-11-22", me: {status: "REGISTERED"}},
+    // its day passed without Kolo 1: not coming up any more
+    {id: 9, phase: "upcoming", date: "2026-11-10", me: null},
+    {id: 10, phase: "cancelled", date: "2026-11-29", me: null},
+  ];
+  // every one being played, whoever looks: the viewer's own first (playing, waiting), then the latest day
+  assert.deepEqual(liveTournaments(list).map((t) => t.id), [4, 3, 2, 1]);
+  // coming up: the soonest first, the viewer's first on the same day
+  assert.deepEqual(upcomingTournaments(list, today).map((t) => t.id), [8, 7, 6]);
+  assert.equal(liveProgressLabel({live_kolo: 3, completed_kolos: 2, rounds: 7}), "Kolo 3 od 7");
+  assert.equal(liveProgressLabel({live_kolo: null, completed_kolos: 2, rounds: 7}), "Nakon 2 od 7 kola");
+  assert.equal(liveDayLabel(today, today), "Danas");
+  assert.equal(liveDayLabel("2026-11-12", today), "Jučer");
+  assert.equal(liveDayLabel("2026-11-08", today), "08.11.2026");
+  assert.equal(monthLabel("2026-11-22", today), "Studeni");
+  assert.equal(monthLabel("2027-01-09", today), "Siječanj 2027");
+});

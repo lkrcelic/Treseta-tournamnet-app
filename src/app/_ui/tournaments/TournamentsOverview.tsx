@@ -7,19 +7,18 @@ import useStartGame from "@/app/_hooks/useStartGame";
 import {useTournaments} from "@/app/_hooks/useTournaments";
 import {TournamentCard} from "@/app/_interfaces/tournament";
 import {leagueDateString} from "@/app/_lib/dates";
-import {isComingUp} from "@/app/_lib/tournaments";
-import {color} from "@/app/_styles/tokens";
+import {isComingUp, liveTournaments, upcomingTournaments} from "@/app/_lib/tournaments";
 import {BurzaHomeCard, NextNightPlaceholder} from "@/app/_ui/home/HomeCards";
 import {StartCard} from "@/app/_ui/home/StartCard";
-import {ErrorNote} from "@/app/_ui/sp";
+import {ErrorNote, SectionLabel} from "@/app/_ui/sp";
 import {Box} from "@mui/material";
 import React, {useState} from "react";
 import {ArrivalAction, LeaveRow} from "./DayParts";
-import {FinishedRow, NextTournamentCard, NoTournamentCard, ResultsButton, TodayCard, UpcomingCard} from "./PlayerParts";
+import {FinishedRow, LiveRow, NextTournamentCard, NoTournamentCard, ResultsButton, TodayCard, UpcomingRow} from "./PlayerParts";
 
 // Početna · Turniri (Claude Design "Natjecanja" S2–S4), also /turniri on its own: the card on top (the player's table
-// on the day, else the next tournament: the one they signed up for when two are on the same day), Burza igrača,
-// Nadolazeći turniri with Prijavi se, and Završeni turniri.
+// on the day, else the next tournament: the one they signed up for when two are on the same day), Burza igrača, then
+// three rows that each open their list on its own page: Uživo, Nadolazeći turniri and Završeni turniri.
 
 // The tournament the card on top shows: one being played that the viewer is in, else the soonest coming up (the
 // viewer's first on the same day; one whose day passed without starting is left out, isComingUp)
@@ -40,7 +39,9 @@ export default function TournamentsOverview({withBurza = false}: {withBurza?: bo
   const {posts} = useBurza();
   const list = tournaments ?? [];
   const main = mainTournament(list);
-  const upcoming = list.filter((t) => isComingUp(t, leagueDateString()) && t.id !== main?.id).sort((a, b) => a.date.localeCompare(b.date));
+  // every one, for anyone: the rows open /turniri/uzivo and /turniri/nadolazeci, the card on top's one included
+  const live = liveTournaments(list);
+  const upcoming = upcomingTournaments(list, leagueDateString());
   const finished = list.filter((t) => t.phase === "finished").sort((a, b) => b.date.localeCompare(a.date));
   const liveOfTable = openTable ? list.find((t) => t.id === openTable.tournamentId) : undefined;
   // Tu smo and Ipak otkazujemo on the card itself (Potvrda dolaska C2, C3)
@@ -94,18 +95,9 @@ export default function TournamentsOverview({withBurza = false}: {withBurza?: bo
       {arrivalError && <ErrorNote>{arrivalError}</ErrorNote>}
       {game.error && <ErrorNote>{game.error}</ErrorNote>}
       {withBurza && <BurzaHomeCard posts={posts} />}
-      {upcoming.length > 0 && (
-        <Box component="section" aria-label="Nadolazeći turniri" sx={{display: "flex", flexDirection: "column", gap: "8px", pt: "4px"}}>
-          <Box component="h2" sx={{m: 0, px: "4px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.muted}}>
-            Nadolazeći turniri
-          </Box>
-          <Box component="ul" sx={{listStyle: "none", m: 0, p: 0, display: "flex", flexDirection: "column", gap: "10px"}}>
-            {upcoming.map((t) => (
-              <UpcomingCard key={t.id} t={t} />
-            ))}
-          </Box>
-        </Box>
-      )}
+      {live.length + upcoming.length + finished.length > 0 && <SectionLabel sx={{mt: "6px", mb: "-2px"}}>Raspored</SectionLabel>}
+      <LiveRow live={live} />
+      <UpcomingRow upcoming={upcoming} />
       <FinishedRow finished={finished} />
     </>
   );

@@ -5,11 +5,11 @@ export function isPublicBurzaPath(path: string): boolean {
   return /^\/burza(\/\d+)?\/?$/.test(path);
 }
 
-// The tournaments: the list, the finished ones, a tournament's page, its standings and its teams (/turniri,
-// /turniri/zavrseni, /turniri/7, /turniri/7/poredak, /turniri/7/ekipe); signing up, a table and the admin's pages need a
-// login
+// The tournaments: the list, the ones being played, coming up and finished, a tournament's page, its standings and its
+// teams (/turniri, /turniri/uzivo, /turniri/nadolazeci, /turniri/zavrseni, /turniri/7, /turniri/7/poredak,
+// /turniri/7/ekipe); signing up, a table and the admin's pages need a login
 export function isPublicTournamentPath(path: string): boolean {
-  return /^\/turniri(\/zavrseni|\/\d+(\/poredak|\/ekipe)?)?\/?$/.test(path);
+  return /^\/turniri(\/uzivo|\/nadolazeci|\/zavrseni|\/\d+(\/poredak|\/ekipe)?)?\/?$/.test(path);
 }
 
 // Pages that work without logging in (the client's session check doesn't send these to /login): Prijava,

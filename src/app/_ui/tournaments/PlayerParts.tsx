@@ -3,7 +3,7 @@
 import {MyMatch, MyResult, TournamentCard, TournamentDetail, TournamentEntryView, TournamentPrizeView, TournamentWinner} from "@/app/_interfaces/tournament";
 import useAuthStore from "@/app/_store/authStore";
 import {isSafeUrl, nightLabel} from "@/app/_lib/nights";
-import {daysUntilLabel, feeLabel, formatLabel, prizeSummary, rulesLabel} from "@/app/_lib/tournaments";
+import {daysUntilLabel, feeLabel, formatLabel, liveProgressLabel, prizeSummary, rulesLabel} from "@/app/_lib/tournaments";
 import {teamInitial} from "@/app/_lib/ui/profiles";
 import {formatChange} from "@/app/_lib/ui/ratings";
 import {count, NOUN, plural} from "@/app/_lib/ui/text";
@@ -29,6 +29,7 @@ import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
 import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
 import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
+import SensorsRoundedIcon from "@mui/icons-material/SensorsRounded";
 import SentimentSatisfiedRoundedIcon from "@mui/icons-material/SentimentSatisfiedRounded";
 import {Box, SxProps, Theme} from "@mui/material";
 import React, {useState} from "react";
@@ -716,30 +717,54 @@ export function UpcomingCard({t}: {t: TournamentCard}) {
   );
 }
 
-// Završeni turniri ›: the latest one and the viewer's place in it, and how many there are
-export function FinishedRow({finished}: {finished: TournamentCard[]}) {
-  if (finished.length === 0) return null;
-  const last = finished[0];
-  const sub = [last.name, last.my_place ? `vi ${last.my_place}.` : last.winner ? `pobjednik ${last.winner.team_name}` : null].filter(Boolean).join(" · ");
+// A row of Početna · Turniri that opens a list of tournaments on its own page (Uživo, Nadolazeći, Završeni): the icon,
+// the title, one line about the first of them, how many there are. live: the red of a tournament being played.
+function ListRow({href, icon, title, sub, total, live = false}: {href: string; icon: React.ReactNode; title: string; sub: string; total: number; live?: boolean}) {
   return (
     <Box
       component={TransitionLink}
-      href="/turniri/zavrseni"
-      sx={{...buttonBase, flex: "none", minHeight: 64, display: "flex", alignItems: "center", gap: "12px", px: "16px", py: "10px", borderRadius: "20px", background: color.white, color: color.ink, textDecoration: "none", boxShadow: shadow.card}}
+      href={href}
+      sx={{...buttonBase, flex: "none", minHeight: 64, display: "flex", alignItems: "center", gap: "12px", px: "16px", py: "10px", borderRadius: "20px", background: color.white, color: color.ink, textDecoration: "none", boxShadow: shadow.card, "& > svg:first-of-type": {fontSize: 24, color: live ? color.red : color.navy}}}
     >
-      <HistoryRoundedIcon aria-hidden sx={{fontSize: 24, color: color.navy}} />
-      <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "1px"}}>
-        <Box component="span" sx={{fontSize: 16, fontWeight: 700}}>
-          Završeni turniri
+      {icon}
+      <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "1px", textAlign: "left"}}>
+        <Box component="span" sx={{display: "flex", alignItems: "center", gap: "7px", fontSize: 16, fontWeight: 700}}>
+          {title}
+          {live && <LiveDot size={7} />}
         </Box>
         <Box component="span" sx={{fontSize: 13, color: color.muted, ...ellipsis}}>
           {sub}
         </Box>
       </Box>
-      <Box component="span" sx={{flex: "none", minWidth: 26, height: 26, px: "7px", boxSizing: "border-box", borderRadius: "13px", background: color.lineFill, fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center"}}>
-        {finished.length}
+      <Box
+        component="span"
+        sx={{flex: "none", minWidth: 26, height: 26, px: "7px", boxSizing: "border-box", borderRadius: "13px", background: live ? tint.red[10] : color.lineFill, color: live ? color.red : color.ink, fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center"}}
+      >
+        {total}
       </Box>
       <ChevronRightRoundedIcon aria-hidden sx={{fontSize: 26, color: color.navy}} />
     </Box>
   );
+}
+
+// Uživo ›: the tournaments being played (liveTournaments: the viewer's first), the first one and its Kolo
+export function LiveRow({live}: {live: TournamentCard[]}) {
+  if (live.length === 0) return null;
+  const first = live[0];
+  return <ListRow href="/turniri/uzivo" icon={<SensorsRoundedIcon aria-hidden />} title="Uživo" sub={`${first.name} · ${liveProgressLabel(first)}`} total={live.length} live />;
+}
+
+// Nadolazeći turniri ›: the soonest one coming up (upcomingTournaments) and how many there are
+export function UpcomingRow({upcoming}: {upcoming: TournamentCard[]}) {
+  if (upcoming.length === 0) return null;
+  const first = upcoming[0];
+  return <ListRow href="/turniri/nadolazeci" icon={<EventRoundedIcon aria-hidden />} title="Nadolazeći turniri" sub={`${nightLabel(first.date)} · ${first.name}`} total={upcoming.length} />;
+}
+
+// Završeni turniri ›: the latest one and the viewer's place in it, and how many there are
+export function FinishedRow({finished}: {finished: TournamentCard[]}) {
+  if (finished.length === 0) return null;
+  const last = finished[0];
+  const sub = [last.name, last.my_place ? `vi ${last.my_place}.` : last.winner ? `pobjednik ${last.winner.team_name}` : null].filter(Boolean).join(" · ");
+  return <ListRow href="/turniri/zavrseni" icon={<HistoryRoundedIcon aria-hidden />} title="Završeni turniri" sub={sub} total={finished.length} />;
 }

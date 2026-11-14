@@ -27,6 +27,46 @@ export function isComingUp(t: {phase: TournamentPhase; date: string}, today: str
   return t.phase === "upcoming" && t.date >= today;
 }
 
+type Listed = {phase: TournamentPhase; date: string; me: {status: "REGISTERED" | "WAITING"} | null};
+
+// Uživo (Početna's row and /turniri/uzivo): every tournament being played, for anyone, not only its players. The
+// viewer's own first (playing, then waiting), then the latest day first.
+export function liveTournaments<T extends Listed>(list: T[]): T[] {
+  const mine = (t: T) => (t.me?.status === "REGISTERED" ? 0 : t.me ? 1 : 2);
+  return list.filter((t) => t.phase === "active").sort((a, b) => mine(a) - mine(b) || b.date.localeCompare(a.date));
+}
+
+// Nadolazeći turniri (Početna's row and /turniri/nadolazeci): every one still coming up (isComingUp), the soonest first,
+// the viewer's first on the same day
+export function upcomingTournaments<T extends Listed>(list: T[], today: string): T[] {
+  return list.filter((t) => isComingUp(t, today)).sort((a, b) => a.date.localeCompare(b.date) || Number(!!b.me) - Number(!!a.me));
+}
+
+// How far a tournament being played has got: "Kolo 3 od 7" while a Kolo is played, "Nakon 2 od 7 kola" between Kolos
+export function liveProgressLabel(t: {live_kolo: number | null; completed_kolos: number; rounds: number}): string {
+  return t.live_kolo ? `Kolo ${t.live_kolo} od ${t.rounds}` : `Nakon ${t.completed_kolos} od ${count(t.rounds, NOUN.kolo)}`;
+}
+
+const MONTHS = ["Siječanj", "Veljača", "Ožujak", "Travanj", "Svibanj", "Lipanj", "Srpanj", "Kolovoz", "Rujan", "Listopad", "Studeni", "Prosinac"];
+
+// The group heading on /turniri/uzivo: "Danas", "Jučer", else the date ("08.11.2026"). today: YYYY-MM-DD in league time.
+export function liveDayLabel(date: string, today: string): string {
+  const days = Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${date}T00:00:00Z`)) / 86_400_000);
+  if (days === 0) return "Danas";
+  if (days === 1) return "Jučer";
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(date);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : date;
+}
+
+// The group heading on /turniri/nadolazeci: the month ("Studeni"), with the year when it isn't this year
+// ("Siječanj 2027"). today: YYYY-MM-DD in league time.
+export function monthLabel(date: string, today: string): string {
+  const m = /^(\d{4})-(\d{2})/.exec(date);
+  if (!m) return date;
+  const month = MONTHS[Number(m[2]) - 1] ?? date;
+  return m[1] === today.slice(0, 4) ? month : `${month} ${m[1]}`;
+}
+
 // The Kolos played to the end ("Nakon 2 od 9 kola")
 export function completedKolos(kolos: KoloSummary[]): number {
   return kolos.filter((k) => k.published && kolosDone(k)).length;
