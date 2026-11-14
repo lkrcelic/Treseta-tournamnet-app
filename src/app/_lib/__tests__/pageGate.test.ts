@@ -73,6 +73,8 @@ test("the open paths need no login, every other page does", () => {
     "/burza",
     "/burza/12",
     "/turniri",
+    "/turniri/uzivo",
+    "/turniri/nadolazeci",
     "/turniri/zavrseni",
     "/turniri/7",
     "/turniri/7/poredak",
