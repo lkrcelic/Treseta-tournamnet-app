@@ -1,3 +1,4 @@
+import {slotField} from "@/app/_interfaces/location";
 import {NextRequest, NextResponse} from "next/server";
 import {z} from "zod";
 import {requireAdmin} from "@/app/_lib/service/auth/requireUser";
@@ -10,6 +11,8 @@ const NewTableValidation = z.object({
   round_number: z.number().int().positive(),
   team1_id: z.number().int(),
   team2_id: z.number().int(),
+  // the place of a two-place night whose round it is
+  location_slot: slotField,
 });
 
 // Adds a table to a round of a night
@@ -18,7 +21,7 @@ export async function POST(request: NextRequest, {params}: {params: {leagueId: s
   if (auth.response) return auth.response;
   try {
     const t = NewTableValidation.parse(await request.json());
-    const id = await addTable(Number(params.leagueId), new Date(t.date), t.round_number, t.team1_id, t.team2_id);
+    const id = await addTable(Number(params.leagueId), new Date(t.date), t.round_number, t.team1_id, t.team2_id, t.location_slot ?? null);
     return NextResponse.json({id}, {status: STATUS.Created});
   } catch (error) {
     return errorResponse(error, "Stol nije dodan.");

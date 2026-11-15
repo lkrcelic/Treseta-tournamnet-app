@@ -1,5 +1,6 @@
 "use client";
 
+import {QuietCard} from "@/app/_ui/home/TonightCards";
 import {MyMatch, MyResult, TournamentCard, TournamentDetail, TournamentEntryView, TournamentPrizeView, TournamentWinner} from "@/app/_interfaces/tournament";
 import useAuthStore from "@/app/_store/authStore";
 import {isSafeUrl, nightLabel} from "@/app/_lib/nights";
@@ -648,12 +649,8 @@ function todayLine(t: TournamentCard): string {
 
 // No tournament coming: what the Turniri tab says instead of the card
 export function NoTournamentCard() {
-  return (
-    <Box sx={{flex: "none", minHeight: 160, boxSizing: "border-box", borderRadius: "24px", background: color.lineFill, border: `1.5px dashed ${tint.navy[22]}`, p: "20px 22px", display: "flex", flexDirection: "column", justifyContent: "center", gap: "6px"}}>
-      <Box sx={{...eyebrowSx, color: color.muted}}>Nema nadolazećih turnira</Box>
-      <Box sx={{fontSize: 14, lineHeight: 1.45, color: color.muted}}>Kad se objavi novi turnir, ovdje se možeš prijaviti.</Box>
-    </Box>
-  );
+  // the white card of Liga's Nema zakazane večeri (Claude Design 01 A, Turniri card 14)
+  return <QuietCard title="Nema nadolazećih turnira" text="Kad se objavi novi turnir, ovdje se možeš prijaviti." icon={<EmojiEventsRoundedIcon />} />;
 }
 
 // A tournament coming up (S2–S4, D1): the date tile, its name, time and place; under it the players

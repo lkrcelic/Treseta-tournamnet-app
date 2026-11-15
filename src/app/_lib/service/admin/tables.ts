@@ -14,9 +14,11 @@ import {can} from "@/app/_lib/auth/permissions";
 import {canManageTournament, NOT_YOUR_TOURNAMENT} from "@/app/_lib/auth/ownership";
 import {ForbiddenError} from "@/app/_lib/auth/forbidden";
 import type {Viewer} from "@/app/_lib/players/privacy";
+import {isSlot, Slot} from "@/app/_lib/locations";
 
-// Admin edits of a night's tables (a "round number" of a league on a date is a set of tables, one Round row each), and
-// of a tournament's Kolo (its tables with that round number). A table whose teams change loses what was played at it;
+// Admin edits of a night's tables (a "round number" of a league on a date is a set of tables, one Round row each, at
+// one place of a two-place night: both places share the night's Kolo numbers, so Kartaš's Kolo 7 and Lanterna's
+// Kolo 7 are two rounds), and of a tournament's Kolo (its tables with that round number). A table whose teams change loses what was played at it;
 // standings and, when a counted result changed, ratings are recalculated in the same transaction.
 
 type Tx = Prisma.TransactionClient;
@@ -27,6 +29,7 @@ type TableRound = {
   open: boolean;
   round_number: number | null;
   round_date: Date | null;
+  location_slot: number | null;
   table_number: number | null;
   status: RoundStatus;
   published_at: Date | null;
@@ -54,6 +57,7 @@ const tableSelect = {
   open: true,
   round_number: true,
   round_date: true,
+  location_slot: true,
   table_number: true,
   status: true,
   published_at: true,
@@ -113,12 +117,18 @@ async function loadTable(tx: Tx, roundId: number): Promise<{table: TableRound; c
   return {table, competition};
 }
 
-// The other tables of the same round number on the same night; in a tournament, of the same Kolo
-function sameRound(tx: Tx, c: Competition, t: {round_number: number | null; round_date: Date | null}) {
+// The other tables of the same round number on the same night, at the same place (location_slot left out: at both
+// places of the night, as the Kola tab deletes a Kolo); in a tournament, of the same Kolo
+function sameRound(tx: Tx, c: Competition, t: {round_number: number | null; round_date: Date | null; location_slot?: number | null}) {
   return tx.round.findMany({
     where:
       c.kind === "league"
-        ? {leagueRounds: {some: {league_id: c.id}}, round_number: t.round_number, round_date: t.round_date}
+        ? {
+            leagueRounds: {some: {league_id: c.id}},
+            round_number: t.round_number,
+            round_date: t.round_date,
+            ...(t.location_slot === undefined ? {} : {location_slot: t.location_slot}),
+          }
         : {tournamentRounds: {some: {tournament_id: c.id}}, round_number: t.round_number},
     select: tableSelect,
     orderBy: [{table_number: "asc"}, {id: "asc"}],
@@ -219,21 +229,22 @@ export async function removeTable(roundId: number): Promise<Competition> {
   }, {timeout: 30000});
 }
 
-// Adds a table to a round that exists on that night; its teams must not be playing in that round yet (the bye can be
-// at several tables). A team seated with the bye wins the table 2:0 at once, and a published round counts it in the
-// standings. The table is published (or not) as the round's other tables are.
-export async function addTable(leagueId: number, roundDate: Date, roundNumber: number, team1Id: number, team2Id: number): Promise<number> {
-  return addCompetitionTable({kind: "league", id: leagueId}, roundDate, roundNumber, team1Id, team2Id);
+// Adds a table to a round that exists on that night (at that place of a two-place night: slot); its teams must not be
+// playing in that round yet (the bye can be at several tables). A team seated with the bye wins the table 2:0 at
+// once, and a published round counts it in the standings. The table is published (or not) as the round's other
+// tables are, and numbered among them.
+export async function addTable(leagueId: number, roundDate: Date, roundNumber: number, team1Id: number, team2Id: number, slot: Slot | null = null): Promise<number> {
+  return addCompetitionTable({kind: "league", id: leagueId}, roundDate, roundNumber, team1Id, team2Id, slot);
 }
 
 // The same for a league's night or a tournament's Kolo (roundDate: a tournament's date, which every Kolo has). A new
 // table of a tournament plays as many matches as its Kolo's other tables.
-export async function addCompetitionTable(c: Competition, roundDate: Date, roundNumber: number, team1Id: number, team2Id: number): Promise<number> {
+export async function addCompetitionTable(c: Competition, roundDate: Date, roundNumber: number, team1Id: number, team2Id: number, slot: Slot | null = null): Promise<number> {
   if (team1Id === team2Id) throw new InvalidResultError("Ekipa ne može igrati sama protiv sebe.");
   return prisma.$transaction(async (tx) => {
     await lockCompetition(tx, c);
     await assertTeams(tx, c, [team1Id, team2Id]);
-    const tables = await sameRound(tx, c, {round_number: roundNumber, round_date: roundDate});
+    const tables = await sameRound(tx, c, {round_number: roundNumber, round_date: roundDate, ...(c.kind === "league" && {location_slot: slot})});
     if (tables.length === 0) throw new NotFoundError("To kolo ne postoji.");
     const seated = new Set(tables.flatMap((t) => [t.team1_id, t.team2_id]));
     if ([team1Id, team2Id].some((id) => !isByeTeam(id) && seated.has(id))) throw new InvalidResultError("Ekipa već igra u ovom kolu.");
@@ -247,6 +258,7 @@ export async function addCompetitionTable(c: Competition, roundDate: Date, round
       data: {
         round_number: roundNumber,
         round_date: tables[0].round_date ?? roundDate,
+        location_slot: tables[0].location_slot,
         team1_id: team1Id,
         team2_id: team2Id,
         table_number: tableNumber,
@@ -277,6 +289,9 @@ export async function addCompetitionTable(c: Competition, roundDate: Date, round
 
 export type RoundSummary = {
   date: string; // YYYY-MM-DD
+  // the place of a two-place night (1 or 2): each place's Kolo 7 is a row of its own (the Kola tab shows them as one);
+  // null on a one-place night
+  slot: Slot | null;
   // a round not published yet has a number only to keep its tables together: it is shown as Skica + its letter
   roundNumber: number;
   // "A", "B"… until it is published; null once it is
@@ -286,7 +301,7 @@ export type RoundSummary = {
   status: "draft" | "approved" | "played" | "live" | "new";
 };
 
-// The league's rounds (a round number on a night), newest first, with how far they got
+// The league's rounds (a round number on a night, at a place of a two-place night), newest first, with how far they got
 export async function listLeagueRounds(leagueId: number): Promise<RoundSummary[]> {
   const rounds = await prisma.round.findMany({
     where: {leagueRounds: {some: {league_id: leagueId}}, round_number: {not: null}},
@@ -298,19 +313,19 @@ export async function listLeagueRounds(leagueId: number): Promise<RoundSummary[]
   });
   const groups = new Map<string, typeof rounds>();
   for (const r of rounds) {
-    const key = `${r.round_date?.toISOString().slice(0, 10) ?? ""}|${r.round_number}`;
+    const key = `${r.round_date?.toISOString().slice(0, 10) ?? ""}|${r.location_slot ?? 0}|${r.round_number}`;
     groups.set(key, [...(groups.get(key) ?? []), r]);
   }
   const isBye = (r: (typeof rounds)[number]) => isByeTeam(r.team1_id) || isByeTeam(r.team2_id);
-  // the letters of each night's rounds waiting in Skica
+  // the letters of each night's (and place's) rounds waiting in Skica
   const nights = new Map<string, {roundNumber: number; status: RoundStatus; draftOrder: number | null}[]>();
   groups.forEach((tables, key) => {
-    const date = key.split("|")[0];
-    nights.set(date, [...(nights.get(date) ?? []), {roundNumber: tables[0].round_number!, status: roundStatusOf(tables), draftOrder: tables[0].draft_order}]);
+    const place = key.split("|").slice(0, 2).join("|");
+    nights.set(place, [...(nights.get(place) ?? []), {roundNumber: tables[0].round_number!, status: roundStatusOf(tables), draftOrder: tables[0].draft_order}]);
   });
-  const letters = new Map(Array.from(nights, ([date, list]) => [date, draftLetters(list)]));
+  const letters = new Map(Array.from(nights, ([place, list]) => [place, draftLetters(list)]));
   return Array.from(groups, ([key, tables]) => {
-    const [date, n] = key.split("|");
+    const [date, slot, n] = key.split("|");
     const played = tables.filter((t) => !isBye(t));
     const publication = roundStatusOf(tables);
     const status: RoundSummary["status"] = publication === "DRAFT"
@@ -322,16 +337,18 @@ export async function listLeagueRounds(leagueId: number): Promise<RoundSummary[]
           : played.some((t) => !t.open || t.active || t._count.matches > 0 || t._count.ongoingMatches > 0)
             ? "live"
             : "new";
-    return {date, roundNumber: Number(n), letter: letters.get(date)?.get(Number(n)) ?? null, tables: tables.length, status};
-  }).sort((a, b) => b.date.localeCompare(a.date) || b.roundNumber - a.roundNumber);
+    const place = Number(slot);
+    return {date, slot: isSlot(place) ? place : null, roundNumber: Number(n), letter: letters.get(`${date}|${slot}`)?.get(Number(n)) ?? null, tables: tables.length, status};
+  }).sort((a, b) => b.date.localeCompare(a.date) || b.roundNumber - a.roundNumber || (a.slot ?? 0) - (b.slot ?? 0));
 }
 
-// Deletes every table of a round on a night, with what was played at them
-export async function deleteLeagueRound(leagueId: number, roundDate: Date, roundNumber: number): Promise<number> {
+// Deletes every table of a round on a night, with what was played at them: at one place (slot), or at both places of
+// a two-place night (slot left out: the Kola tab's Obriši)
+export async function deleteLeagueRound(leagueId: number, roundDate: Date, roundNumber: number, slot?: Slot | null): Promise<number> {
   return prisma.$transaction(async (tx) => {
     const league: Competition = {kind: "league", id: leagueId};
     await lockCompetition(tx, league);
-    const tables = await sameRound(tx, league, {round_number: roundNumber, round_date: roundDate});
+    const tables = await sameRound(tx, league, {round_number: roundNumber, round_date: roundDate, ...(slot !== undefined && {location_slot: slot})});
     if (tables.length === 0) throw new NotFoundError("To kolo ne postoji.");
     const ids = tables.map((t) => t.id);
     await tx.ongoingMatch.deleteMany({where: {round_id: {in: ids}}});

@@ -3,12 +3,14 @@
 import {OpenTable} from "@/app/_hooks/useOpenTable";
 import {color, font, shadow, teamOnNavy} from "@/app/_styles/tokens";
 import {SmokingMark} from "@/app/_ui/smoking/SmokingParts";
+import {koloLabel} from "@/app/_ui/home/TonightCards";
 import {buttonBase, ellipsis, Spinner, TeamDot} from "@/app/_ui/sp";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import {Box} from "@mui/material";
 
 // Započni igru: the player's table of the open round (table number, the smoking mark, both teams, and the score once
-// a match is running, when it reads Nastavi igru)
+// a match is running, when it reads Nastavi igru). A league's table says which of its place's Kola tonight it is
+// ("Kolo 1/3", LOCATIONS_PLAN.md, decision 20); the place itself isn't on it.
 export function StartCard({table, starting, onStart, errorId}: {table: OpenTable; starting: boolean; onStart: () => void; errorId?: string}) {
   const live = table.score != null;
   return (
@@ -48,9 +50,9 @@ export function StartCard({table, starting, onStart, errorId}: {table: OpenTable
               STOL {table.table ?? "–"}
             </Box>
             {table.smoking && <SmokingMark variant="onNavy" />}
-            {live && (
+            {(live || table.kolo) && (
               <Box component="span" sx={{fontSize: 13, fontWeight: 700, color: color.cream, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums"}}>
-                {table.score![0]} : {table.score![1]}
+                {[table.kolo ? koloLabel(table.kolo) : null, live ? `${table.score![0]} : ${table.score![1]}` : null].filter(Boolean).join(" · ")}
               </Box>
             )}
           </Box>

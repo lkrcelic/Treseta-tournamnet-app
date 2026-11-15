@@ -22,6 +22,8 @@ export type OpenTable = {
   conferences: [Conference | null, Conference | null] | null;
   // the tournament a tournament's table is in; null for a league's
   tournamentId: number | null;
+  // a league's table: which of its place's Kola tonight it is ("Kolo 1/3"); null for a tournament's
+  kolo: [number, number] | null;
 };
 
 // orientation used everywhere: the viewer's team on the left; if they play in neither, team1 stays left
@@ -42,7 +44,7 @@ export default function useOpenTable(scope: OpenScope = "any"): {table: OpenTabl
     let cancelled = false;
     (async () => {
       try {
-        const {roundId, ongoingScore, conferences, tournamentId} = await getOpenRoundByPlayerIdAPI(scope);
+        const {roundId, ongoingScore, conferences, tournamentId, nightKolo} = await getOpenRoundByPlayerIdAPI(scope);
         const round = await getRoundDataAPI(roundId);
         if (cancelled) return;
         const left = myTeamIsTeam1(round, userId);
@@ -60,6 +62,7 @@ export default function useOpenTable(scope: OpenScope = "any"): {table: OpenTabl
           score: ongoingScore ? (left ? ongoingScore : [ongoingScore[1], ongoingScore[0]]) : null,
           conferences: conferences ? (left ? [conf(conferences[0]), conf(conferences[1])] : [conf(conferences[1]), conf(conferences[0])]) : null,
           tournamentId: tournamentId ?? null,
+          kolo: nightKolo ?? null,
         });
       } catch {
         // no open round (404) or offline: no card

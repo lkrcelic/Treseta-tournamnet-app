@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {arrivalEffect, isHere, lastRoundOut, leagueArrivalPhase, leagueArrivalWindow} from "@/app/_lib/leagueArrival";
+import {arrivalEffect, asksAdmin, isHere, lastRoundOut, leagueArrivalPhase, leagueArrivalWindow} from "@/app/_lib/leagueArrival";
 
 // Potvrda dolaska in the league: the window and what each button does
 
@@ -63,4 +63,21 @@ test("once the night's last round is published Tu smo can't bring a team in; a t
   assert.equal(arrivalEffect("started", "confirm", false, false), "arrive");
   assert.equal(arrivalEffect("started", "confirm", true, true), "none");
   assert.equal(arrivalEffect("started", "leave", true, true), "leave");
+});
+
+test("on a night at two places only a team Podjela placed presses Tu smo; the others ask the admin and can still leave", () => {
+  assert.equal(asksAdmin(true, null), true);
+  assert.equal(asksAdmin(true, undefined), true);
+  assert.equal(asksAdmin(true, 1), false);
+  assert.equal(asksAdmin(true, 2), false);
+  // a one-place night has no Podjela: every team presses Tu smo as before
+  assert.equal(asksAdmin(false, null), false);
+
+  assert.equal(arrivalEffect("open", "confirm", false, false, true), "no_place");
+  assert.equal(arrivalEffect("started", "confirm", false, true, true), "no_place");
+  // before the window it is still the admin it waits for
+  assert.equal(arrivalEffect("before", "confirm", false, false, true), "no_place");
+  // a team that came and was taken out of the Podjela since keeps its way out
+  assert.equal(arrivalEffect("started", "leave", true, false, true), "leave");
+  assert.equal(arrivalEffect("over", "confirm", false, false, true), "over");
 });

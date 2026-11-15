@@ -1,5 +1,6 @@
 "use client";
 
+import {Slot} from "@/app/_lib/locations";
 import useConferences from "@/app/_hooks/useConferences";
 import useLeagueTeams from "@/app/_hooks/useLeagueTeams";
 import useNightDraft from "@/app/_hooks/useNightDraft";
@@ -33,7 +34,13 @@ import React, {useEffect, useRef, useState} from "react";
 // B, C… (a round gets its Kolo number when it is published). On the left one round's tables, which Uredi stolove
 // re-pairs as on Dnevni poredak; on the right the list of the night's rounds: the admin approves them one by one or
 // all at once and publishes the approved ones; the rest stay drafts. "Odbaci skicu" deletes the rounds not published
-// yet. Once every round is out, the card says when and opens Dnevni poredak.
+// yet. Once every round is out, the card says when and opens Dnevni poredak. On a two-place night (place) it is that
+// place's Skica (Claude Design 07 A): its rounds only, published at that place; the other place's stay as they are.
+
+// The place of a two-place night whose Skica it is, and the other place's name
+export type DraftPlace = {slot: Slot; name: string; other: string};
+// the server's answer for a place without a round tonight
+const NO_ROUNDS = "Ta večer nema kola.";
 
 const STATUS_LOOK: Record<RoundStatus, {label: string; icon: React.ReactNode; ink: string; bg: string}> = {
   DRAFT: {label: "Skica", icon: <EditCalendarRoundedIcon />, ink: color.muted, bg: color.paper},
@@ -46,17 +53,19 @@ export default function DraftView({
   date,
   onChanged,
   onDiscarded,
+  place = null,
 }: {
   leagueId: number;
   // the night (YYYY-MM-DD)
   date: string;
+  place?: DraftPlace | null;
   // a round's status changed (the Skica and Kola tabs count them)
   onChanged: () => void;
   // the draft is gone: back to Novo kolo
   onDiscarded: () => void;
 }) {
   const router = useTransitionRouter();
-  const {night, error, reload, cur, setCur, busy, actionError, toggleApproval, approveAll, publish, discard} = useNightDraft(leagueId, date, {onChanged, onDiscarded});
+  const {night, error, reload, cur, setCur, busy, actionError, toggleApproval, approveAll, publish, discard} = useNightDraft(leagueId, date, {onChanged, onDiscarded, slot: place?.slot ?? null});
   // the teams' conference dots, as on the night's tables
   const conferences = useConferences(leagueId);
   const [askDiscard, setAskDiscard] = useState(false);
@@ -64,6 +73,8 @@ export default function DraftView({
   const grid = {flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) 380px", [NARROW_DESKTOP]: {gridTemplateColumns: "minmax(0,1fr) 340px"}, gap: "20px"} as const;
 
   if (error && !night) {
+    // the other place has rounds tonight, this one none yet
+    if (place && error === NO_ROUNDS) return <EmptyState>{place.name} večeras još nema kola. Napravi ih na kartici Novo kolo.</EmptyState>;
     return (
       <Box sx={grid}>
         <ErrorNote onRetry={reload}>{error}</ErrorNote>
@@ -95,6 +106,7 @@ export default function DraftView({
       <RoundCard
         leagueId={leagueId}
         date={date}
+        place={place}
         rounds={rounds}
         index={index}
         onPick={setCur}
@@ -136,13 +148,14 @@ export default function DraftView({
           <>
             <Box component="section" aria-labelledby="draft-publish" sx={{flex: "none", background: color.cream, borderRadius: "24px", p: "22px", display: "flex", flexDirection: "column", gap: "14px"}}>
               <StatusTag ink={color.navy} bg={color.white} icon={<VisibilityOffRoundedIcon />}>
-                Skica · nije objavljeno
+                {place ? `Skica · ${place.name} · nije objavljeno` : "Skica · nije objavljeno"}
               </StatusTag>
               <Box component="h2" id="draft-publish" sx={{m: 0, fontFamily: font.display, fontSize: 26, fontWeight: 800, lineHeight: 1.1}}>
                 Odobri kola pa ih objavi
               </Box>
               <Box component="p" sx={{m: 0, fontSize: 15, lineHeight: 1.5, color: color.ink}}>
                 Igrači i Dnevni poredak vide samo objavljena kola. Odobri jedno po jedno ili sva odjednom, pa objavi odobrena. Ostala ostaju u skici.
+                {place && ` Objava vrijedi samo za lokaciju ${place.name}; ${place.other} objavljuje svoja kola posebno.`}
               </Box>
               <Box component="ul" aria-label="Kola ove večeri" sx={{listStyle: "none", m: 0, p: 0, background: color.white, borderRadius: "16px", overflow: "hidden"}}>
                 {rounds.map((r, i) => (
@@ -200,6 +213,7 @@ export default function DraftView({
               onAsk={() => setAskDiscard(true)}
               onCancel={() => setAskDiscard(false)}
               onConfirm={discard}
+              otherPlace={place?.other ?? null}
             />
           </>
         )}
@@ -214,6 +228,7 @@ export default function DraftView({
 function RoundCard({
   leagueId,
   date,
+  place,
   rounds,
   index,
   onPick,
@@ -223,6 +238,7 @@ function RoundCard({
 }: {
   leagueId: number;
   date: string;
+  place: DraftPlace | null;
   rounds: DraftRound[];
   index: number;
   onPick: (i: number) => void;
@@ -235,7 +251,7 @@ function RoundCard({
   const look = STATUS_LOOK[round.status];
   const editable = round.status !== "PUBLISHED";
   const [editing, setEditing] = useState(false);
-  const edits = useTableEdits(editable ? {leagueId, date, roundNumber: round.roundNumber, onChanged: onTablesChanged} : null);
+  const edits = useTableEdits(editable ? {leagueId, date, roundNumber: round.roundNumber, slot: place?.slot ?? null, onChanged: onTablesChanged} : null);
   const {teams} = useLeagueTeams(editing ? leagueId : null);
   const rows = draftTableRows(round, conferenceOf);
   // another round (or this one published) ends the editing
@@ -265,7 +281,7 @@ function RoundCard({
         {/* the round's name stays whole; the switch beside it scrolls instead */}
         <Box sx={{flex: "1 0 130px", minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
           <Box component="span" sx={{fontSize: 13, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.muted, ...ellipsis}}>
-            {weekdayDate(date)}
+            {place ? `${weekdayDate(date)} · ${place.name}` : weekdayDate(date)}
           </Box>
           <Box component="h2" sx={{m: 0, fontFamily: font.display, fontSize: 28, fontWeight: 800, lineHeight: 1.05, ...ellipsis}}>
             {name}
@@ -484,6 +500,7 @@ function DiscardCard({
   onAsk,
   onCancel,
   onConfirm,
+  otherPlace = null,
 }: {
   unpublished: number;
   published: number;
@@ -492,6 +509,8 @@ function DiscardCard({
   onAsk: () => void;
   onCancel: () => void;
   onConfirm: () => void;
+  // a two-place night: the other place, whose Skica stays
+  otherPlace?: string | null;
 }) {
   const small = {...buttonBase, flex: 1, height: 44, borderRadius: "12px", fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", "& svg": {fontSize: 18}} as const;
   const what = `Obrisat će se ${count(unpublished, NOUN.neobjavljenoKolo)} ove večeri.`;
@@ -527,6 +546,7 @@ function DiscardCard({
         <>
           <Box component="p" sx={{m: 0, fontSize: 14, lineHeight: 1.5, color: color.ink2}}>
             {published ? "Odbaci neobjavljena kola i vrati se na Novo kolo. Objavljena kola ostaju." : "Odbaci skicu i vrati se na Novo kolo. Ništa se ne objavljuje."}
+            {otherPlace && ` ${otherPlace} ostaje kakva jest.`}
           </Box>
           <Box
             component="button"

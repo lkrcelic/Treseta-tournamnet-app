@@ -5,6 +5,11 @@ import useLeagueTeams from "@/app/_hooks/useLeagueTeams";
 import useLeagues from "@/app/_hooks/useLeagues";
 import useNavStack from "@/app/_hooks/useNavStack";
 import useNightDraft from "@/app/_hooks/useNightDraft";
+import useLeagueRounds from "@/app/_hooks/useLeagueRounds";
+import useNightPlaces from "@/app/_hooks/useNightPlaces";
+import {Slot} from "@/app/_lib/locations";
+import {PlaceSegment} from "@/app/_ui/league/PlacePicker";
+import {DraftPlace} from "@/app/league/[leagueId]/manage/DraftView";
 import {DraftRound} from "@/app/_interfaces/round";
 import {nightLabel} from "@/app/_lib/nights";
 import {draftCounts, publishedTimeLabel, publishLabel, publishNote, roundName, RoundStatus} from "@/app/_lib/roundStatus";
@@ -16,7 +21,7 @@ import {color, shadow, tint} from "@/app/_styles/tokens";
 import {SmokingMark} from "@/app/_ui/smoking/SmokingParts";
 import {PhoneRoundTables} from "@/app/league/[leagueId]/daily-standings/ui/RoundTables";
 import {PairSheet, useTableEdits} from "@/app/league/[leagueId]/daily-standings/ui/RoundEditing";
-import {buttonBase, ConfirmSheet, ErrorNote, IconCircleButton, LoadingRows, PrimaryButton, Screen, ScrollArea, tabular, TeamLabel, TopBar} from "@/app/_ui/sp";
+import {buttonBase, ConfirmSheet, EmptyState, ErrorNote, IconCircleButton, LoadingRows, PrimaryButton, Screen, ScrollArea, tabular, TeamLabel, TopBar} from "@/app/_ui/sp";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
@@ -42,14 +47,33 @@ const LOOK: Record<RoundStatus, {label: string; icon: React.ReactNode; ink: stri
 // (only approved rounds go out; the rest stay drafts until later). The pencil edits a round not published yet as
 // Dnevni poredak's pencil does (admin-mobile 19–21: Uredi par, Ukloni stol, Dodaj stol, Slobodna runda in the sheet).
 // Odbaci skicu (the bin) deletes the rounds not published yet and goes back to Novo kolo. Once every round is out it
-// says so and opens Dnevni poredak. The rules and calls are the desktop's (useNightDraft).
-export default function DraftPhone({leagueId, date}: {leagueId: number; date: string}) {
+// says so and opens Dnevni poredak. The rules and calls are the desktop's (useNightDraft). On a night played at two
+// places a switch under the title picks the place (Claude Design 07 A): its own Skica, published there only.
+export default function DraftPhone({leagueId, date, initialSlot = null}: {leagueId: number; date: string; initialSlot?: Slot | null}) {
+  const leagueRounds = useLeagueRounds(leagueId);
+  const np = useNightPlaces(leagueId, date, leagueRounds.rounds, initialSlot);
+  const place: DraftPlace | null = np.places ? {slot: np.slot, name: np.places[np.slot - 1].name, other: np.places[2 - np.slot].name} : null;
+  const placeSwitch = np.options && <PlaceSegment options={np.options} value={np.slot} onChange={np.setSlot} label={(o) => np.options!.find((x) => x.slot === o.slot)?.short ?? ""} />;
+  // until the nights are here it isn't known whether the night has two places
+  if (!np.loaded) {
+    return (
+      <Screen fill gap={14}>
+        <LoadingRows rows={8} height={58} />
+      </Screen>
+    );
+  }
+  return <DraftPhoneAt key={place?.slot ?? 0} leagueId={leagueId} date={date} place={place} placeSwitch={placeSwitch} onChanged={leagueRounds.reload} />;
+}
+
+function DraftPhoneAt({leagueId, date, place, placeSwitch, onChanged}: {leagueId: number; date: string; place: DraftPlace | null; placeSwitch: React.ReactNode; onChanged: () => void}) {
   const router = useTransitionRouter();
   const nav = useNavStack("Skica kola", "/");
   const leagues = useLeagues(leagueId);
   const league = leagues.find((l) => l.id === leagueId);
   const d = useNightDraft(leagueId, date, {
-    onDiscarded: () => router.replace(`/league/${leagueId}/manage?view=create`, "back"),
+    onDiscarded: () => router.replace(`/league/${leagueId}/manage?view=create${place ? `&slot=${place.slot}` : ""}`, "back"),
+    onChanged,
+    slot: place?.slot ?? null,
   });
   const [askDiscard, setAskDiscard] = useState(false);
   // the teams' conference dots, as on the desktop's Skica (Treseta)
@@ -66,7 +90,7 @@ export default function DraftPhone({leagueId, date}: {leagueId: number; date: st
   // Uredi stolove: a round not published yet; another round (or this one published) ends it
   const editable = round != null && round.status !== "PUBLISHED";
   const [editing, setEditing] = useState(false);
-  const edits = useTableEdits(editable && round ? {leagueId, date, roundNumber: round.roundNumber, onChanged: d.reload} : null);
+  const edits = useTableEdits(editable && round ? {leagueId, date, roundNumber: round.roundNumber, slot: place?.slot ?? null, onChanged: d.reload} : null);
   const {teams} = useLeagueTeams(editing ? leagueId : null);
   const rows = round ? draftTableRows(round, conferences.of) : [];
   const removeRow = rows.find((r) => r.id === edits.confirmId) ?? null;
@@ -111,8 +135,13 @@ export default function DraftPhone({leagueId, date}: {leagueId: number; date: st
         }
       />
 
+      {placeSwitch}
       {d.error && !night ? (
-        <ErrorNote onRetry={d.reload}>{d.error}</ErrorNote>
+        place && d.error === "Ta večer nema kola." ? (
+          <EmptyState>{place.name} večeras još nema kola. Napravi ih na Novom kolu.</EmptyState>
+        ) : (
+          <ErrorNote onRetry={d.reload}>{d.error}</ErrorNote>
+        )
       ) : !night || !round ? (
         <Box sx={{background: color.white, borderRadius: "22px", overflow: "hidden", boxShadow: shadow.card}}>
           <LoadingRows rows={8} height={58} />
@@ -180,7 +209,7 @@ export default function DraftPhone({leagueId, date}: {leagueId: number; date: st
                 <>
                   <Box sx={{display: "flex", alignItems: "center", gap: "10px", minHeight: 44}}>
                     <Box component="span" role="status" sx={{flex: 1, minWidth: 0, fontSize: 13.5, lineHeight: 1.35, color: color.ink2}}>
-                      {publishNote(counts)}
+                      {place ? `Objava vrijedi samo za lokaciju ${place.name}.` : publishNote(counts)}
                     </Box>
                     {rounds.some((r) => r.status === "DRAFT") && (
                       <Box
@@ -234,7 +263,7 @@ export default function DraftPhone({leagueId, date}: {leagueId: number; date: st
           if (await d.discard()) setAskDiscard(false);
         }}
         title="Odbaciti skicu?"
-        text="Neobjavljena kola se brišu. Objavljena kola ostaju."
+        text={`Neobjavljena kola se brišu. Objavljena kola ostaju.${place ? ` ${place.other} ostaje kakva jest.` : ""}`}
         action="Odbaci"
         icon={<DeleteRoundedIcon />}
         busy={d.busy === "discard"}

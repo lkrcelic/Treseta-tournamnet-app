@@ -224,9 +224,9 @@ The database part (the `Conference` table and `LeagueTeam.conference_id`) is und
 
 | Path (root) | Kind | Treseta's |
 |---|---|---|
-| `prisma/schema.prisma` | Own version | Bela's schema with Treseta's hand tables (`Result`, `OngoingResult`: `team1_game_points`, `team2_game_points`, `custom`, `dosta_side`, and each team's zvanja `team1_zvanja3`, `team1_zvanja4`, `team2_zvanja3`, `team2_zvanja4`) and `Match.winner_side`, without Bela's announcement tables and without `TeamScore.tournament_id` (see Turniri). `Tournament.declarations` and `Round.declarations` are Bela's; `Tournament.match_end`, `Round.match_end` and the `MatchEnd` enum (migration `20261111160000_match_end`) are Treseta's, with `score_threshold`. Bela's changes to the other models are merged in. The datasource also has `directUrl = env("DATABASE_URL_UNPOOLED")`, so migrations use Neon's direct connection (Bela has only `url`). Treseta also has the `Conference` table and `LeagueTeam.conference_id` (see Conferences) |
+| `prisma/schema.prisma` | Own version | Bela's schema with Treseta's hand tables (`Result`, `OngoingResult`: `team1_game_points`, `team2_game_points`, `custom`, `dosta_side`, and each team's zvanja `team1_zvanja3`, `team1_zvanja4`, `team2_zvanja3`, `team2_zvanja4`) and `Match.winner_side`, without Bela's announcement tables and without `TeamScore.tournament_id` (see Turniri). `Tournament.declarations` and `Round.declarations` are Bela's; `Tournament.match_end`, `Round.match_end` and the `MatchEnd` enum (migration `20261111160000_match_end`) are Treseta's, with `score_threshold`. Bela's changes to the other models are merged in. The datasource also has `directUrl = env("DATABASE_URL_UNPOOLED")`, so migrations use Neon's direct connection (Bela has only `url`). Treseta also has the `Conference` table and `LeagueTeam.conference_id` (see Conferences), and Lokacije (see Lokacije): the `Location` table, `location_id` on `League`, `LeagueNight` and `Tournament` where Bela has `location_name`, `location_address` and `location_url`, `LeagueNight.second_location_id`, `LeagueNightTeam`, `Round.location_slot`, and `slot` in `CreateRoundDraft`'s key |
 | `prisma/migrations/**` | Treseta only | This database's history. Bela's migrations are never copied: a Bela schema change gets a Treseta migration with Bela's SQL adapted to this schema, named with a timestamp after the newest migration here. Bela's names can collide with Treseta's: Bela's `20261011120000_league_nights_burza` has the timestamp of Treseta's `20261011120000_match_like_bela`, so it came as `20261011233000_league_nights_burza`, and Bela's `20261014120000_round_status` has the timestamp of Treseta's `20261014120000_s_ovim_dosta`, so it came as `20261014130000_round_status` |
-| `prisma/seed.ts` | Own version | The Treseta seed (users `admin` and `player`, a league of 8 teams in two conferences, playing 16 Thursday nights from five weeks before the last Thursday). Seed data for new Bela tables is added here |
+| `prisma/seed.ts` | Own version | The Treseta seed (users `admin` and `player`, a league of 8 teams in two conferences, playing 16 Thursday nights from five weeks before the last Thursday at Caffe bar Kartaš; Lanterna in Lokacije, and the next night at both places with Sjever at Kartaš, three of Jug at Lanterna and Lavovi not placed). Seed data for new Bela tables is added here, with a place as `location_id` |
 | `prisma/usefulQueries/**` | Own version | Treseta's queries, with `transition_checks.sql`. Bela's aren't copied |
 
 ### Repository files
@@ -234,7 +234,7 @@ The database part (the `Conference` table and `LeagueTeam.conference_id`) is und
 | Path (root) | Kind |
 |---|---|
 | `README.md`, `ProcessFlow.md`, `Task.md`, `.windsurfrules` | Own version |
-| `BELA_SYNC.md`, `TRANSITION_PLAN.md`, `CONFERENCES_PLAN.md`, `.env.example` | Treseta only |
+| `BELA_SYNC.md`, `TRANSITION_PLAN.md`, `CONFERENCES_PLAN.md`, `LOCATIONS_PLAN.md`, `.env.example` | Treseta only |
 | `scripts/previewAdmin.js` | Treseta only: on a Vercel preview, makes `lkrcelic` (password `sifra`) an admin on the preview's Neon branch, and fails the build if that database is production |
 | `public/card.png` | Treseta only, left from the old app and unused |
 
@@ -341,6 +341,66 @@ Bela's head-to-head (`92df912`) reads a tournament's `rankTeams`, which `_lib/le
 | `_ui/home/LeaveParts.tsx` (Treseta only), `_ui/home/LeagueArrival.tsx`, `_ui/home/PhoneHome.tsx` | The league's part of Bela's `_ui/tournaments/DayParts.tsx`: `leaveButton` (Odlazimo, Ipak otkazujemo) and `LeaveRow` (Odlazimo under Započni igru, with `699984e`'s navy look). `LeagueArrival.tsx` and `PhoneHome.tsx` import them from here; Početna's `here` has no `!ban`. A Bela change to these two in `DayParts.tsx` is carried here |
 | `_lib/service/league/arrival.ts`, `_interfaces/leagueArrival.ts`, `_lib/__tests__/leagueArrival.test.ts` | `last_round` (no Tu smo after the night's last round) came without `ban` |
 | `_lib/service/admin/tables.ts` | `lockLeague` is the advisory lock itself (Bela: through `lockCompetition`), and `deleteNightTables` settles by the league's id |
+
+### Lokacije
+
+Places are one shared list, Lokacije (`Location`: a name, an address and a Google Maps link), which leagues, nights
+and tournaments point at (`location_id`), and a league night can be played at two places at once
+(`LeagueNight.second_location_id`). The admin splits the teams between them on Podjela (`LeagueNightTeam`, place 1 or
+2 per team), and each place has its own Tu smo, Novo kolo, Skica and Objavi, tables (`Round.location_slot`) and view of
+Dnevni poredak, while the night's Kolo numbers, the night's table and the season stay one league's. A one-place night
+writes no slot and works as before. The plan and decisions are in [LOCATIONS_PLAN.md](LOCATIONS_PLAN.md).
+
+Bela doesn't need it (Bela's DECISIONS #95, 14 Nov 2026): Bela's league keeps one place per night, as three text fields
+on the league, the night and the tournament (`location_name`, `location_address`, `location_url`), which Treseta has
+dropped (`20261115120000_locations_drop_text`). So it stays Treseta's for good, and unlike Vrati stol or Uredi ishod
+it isn't marked "worth building in Bela too".
+
+A Bela change to places or to a night's rounds comes over like this:
+
+- **A place field comes over as `location_id`.** Where Bela reads `location_name`, `location_address` or
+  `location_url` of a league, a night or a tournament, Treseta reads its `Location` (`LOCATION_SELECT` and
+  `locationOf` in `_lib/nights.ts`; `NightLocation` and `TournamentPlace` carry its `id`). Where Bela writes them,
+  Treseta writes `location_id`, and Bela's text fields for a place (`PlaceFields`) are Treseta's `LocationPicker`. A
+  new Bela field of a place (a note, a phone) is a question for Lokacije, whether it belongs to the `Location` or to
+  the night: the sync stops at it.
+- **Migrations:** a Bela migration on the three columns is carried over by what it means, as above, not as SQL. One
+  that makes `get_league_standings_by_date` again keeps Treseta's third parameter `p_slot` and its `location_slot`
+  filters (`20261114140000_locations_daily_standings`).
+- **The shared files below** are merged around the place code, as for a small edit. Every query of a night's tables
+  stays per place: a (date, round_number) group keys on `location_slot`, and a route that reads or writes a night's
+  rounds takes `?slot=`. When a Bela change can't be merged that way (Bela reworks Novo kolo, Skica, publishing or a
+  night's tables, and it isn't clear where the place goes), the sync stops at that commit, as for Conferences.
+
+New files (Treseta only):
+
+| Treseta | What it holds |
+|---|---|
+| `_interfaces/location.ts`, `_lib/locations.ts`, `_lib/service/location/locations.ts`, `api/locations/route.ts`, `api/locations/[id]/route.ts`, `_fetchers/locations.ts`, `_hooks/useLocations.ts` | Lokacije: a place's fields and checks (`locationIdField`, `slotField`), the list with each place's use, add, change and delete (a place in use isn't deleted: `locationRefused`), and the slots (`Slot`, `slotParam`, `slotQuery`). Podjela's pure parts (`splitByConference`, `swapSlots`, `copyText`) |
+| `lokacije/page.tsx`, `_ui/locations/LocationsDesktop.tsx`, `_ui/locations/LocationsPhone.tsx`, `_ui/locations/LocationForm.tsx`, `_ui/locations/LocationFields.tsx`, `_ui/locations/LocationPicker.tsx` | The Lokacije screen (admin), and the place picker of Nova liga, Podaci, Datumi (with Druga lokacija) and the tournament form, which can add a place |
+| `_interfaces/split.ts`, `_lib/service/league/split.ts`, `api/leagues/[id]/nights/[date]/split/route.ts`, `_fetchers/league/split.ts`, `_hooks/useNightSplit.ts`, `_ui/league/split/SplitDesktop.tsx`, `_ui/league/split/SplitPhone.tsx`, `_ui/league/split/SplitParts.tsx` | Podjela: the next night's split, moving a team (drag, or the menu "… idu na"), Podijeli po konferencijama, Zamijeni lokacije, Kopiraj raspored, and the warning for a team left in a Skica of its old place |
+| `_hooks/useNightPlaces.ts`, `_ui/league/PlacePicker.tsx` | Tonight's places in Novo kolo and Skica: the header's Lokacija menu on the computer, the segment on the phone |
+| `_hooks/useLocationFilter.ts`, `_ui/league/LocationFilter.tsx` | Dnevni poredak's Sve / place choice, kept per league for the session |
+| `_lib/homeCard.ts`, `_ui/home/TonightCards.tsx` | Početna's card on a league night, which one shows (a table, Kraj večeri, a bye or the next table, the night, nothing), and the cards for waiting, Sljedeći stol, Pauza, a quiet night and Nema zakazane večeri |
+| `_lib/__tests__/locations.test.ts`, `_lib/__tests__/db/split.test.ts`, `_lib/__tests__/db/arrivalPlaces.test.ts`, `_lib/__tests__/db/placeRounds.test.ts`, `_lib/__tests__/db/dailyPlaces.test.ts`, `_lib/__tests__/db/homeTonight.test.ts` | Their tests: Podjela's helpers, the shared Kolo numbers, "Kolo 1/3", Početna's card; against Postgres the split, Tu smo per place, two places' Novo kolo, Skica and Objavi, Dnevni poredak per place, Početna's evening |
+| `prisma/migrations/20261114120000_locations`, `prisma/migrations/20261114140000_locations_daily_standings`, `prisma/migrations/20261115120000_locations_drop_text` (root) | The `Location` table, the new columns and keys, and the places written so far made into Lokacije (the same name is one place); Dnevni poredak per place; the text columns dropped |
+
+Shared files with Treseta's place code, by area:
+
+| Area | Files | Treseta's edit |
+|---|---|---|
+| A place on leagues, nights and tournaments | `_lib/nights.ts`, `_interfaces/league.ts`, `_interfaces/tournament.ts`, `_lib/service/league/leagues.ts`, `_lib/service/league/nights.ts`, `_lib/service/tournament/tournaments.ts`, `_lib/service/tournament/load.ts`, `_lib/service/tournament/views.ts`, `_hooks/useLeagues.ts`, `_lib/__tests__/nightTimes.test.ts`, `_lib/__tests__/tournaments.test.ts`, `_lib/__tests__/db/tournamentZvanja.test.ts` | `NightLocation` from the `Location` (`LOCATION_SELECT`, `locationOf`, `secondLocationOf`); the league, a night and a tournament take `location_id` where Bela takes the three texts, and a night `second_location_id` (`secondPlaceError`: it needs a first place and isn't the same one; removing it clears the night's Podjela); `exceptionLabel` "Dvije lokacije", `gatheringLabel` with the second place |
+| The place forms | `_ui/admin/GatheringForm.tsx`, `_ui/gathering/Gathering.tsx`, `league/new/page.tsx`, `_ui/admin/NewLeaguePhone.tsx`, `league/[leagueId]/manage/LeagueDetailsView.tsx`, `league/[leagueId]/manage/DatesView.tsx`, `_ui/admin/LeaguePhone.tsx` (Datumi), `_ui/tournaments/TournamentForm.tsx` | `LocationPicker` where Bela has `PlaceFields` (and no `EMPTY_PLACE`, `PlaceDraft`, `placePayload`); a night's Druga lokacija (Dodaj drugu lokaciju, the picker with ×) and the note that Podjela places the teams; the night form has no Vrati na zadano; `GatheringLine` shows the second place and the team's own ("(vi)") |
+| Početna and Raspored | `_lib/service/league/schedule.ts`, `_interfaces/burza.ts`, `_ui/home/HomeCards.tsx`, `_ui/home/PhoneHome.tsx`, `_ui/home/StartCard.tsx`, `_ui/tournaments/PlayerParts.tsx`, `api/rounds/open/route.ts`, `_fetchers/round/getOpenByPlayerId.ts`, `_hooks/useOpenTable.ts`, `_lib/roundStatus.ts` (`nightKolo`), `raspored/page.tsx` | `MyLeague.secondPlaces`, `slots` and `tonight`; Sljedeća večer's Vaša lokacija, or "X ili Y · Još niste raspoređeni."; Kraj večeri ("Odigrana su sva N kola večeras"); "Kolo 1/3" on the player's table; Početna's card chosen by `homeCard`; Raspored's two places with Vi on the team's; `NoTournamentCard` is a `QuietCard` |
+| Tu smo | `_lib/leagueArrival.ts`, `_interfaces/leagueArrival.ts`, `_lib/service/league/arrival.ts`, `api/leagues/[id]/arrivals/route.ts`, `_fetchers/league/arrival.ts`, `_ui/home/LeagueArrival.tsx`, `_lib/__tests__/leagueArrival.test.ts` | On a two-place night a team Podjela hasn't placed gets Javi se adminu with Tu smo locked, and the server refuses its Tu smo with a 400 (`NO_PLACE_ERROR`, `asksAdmin`, `no_place`); the admin's arrivals and the night's last Kolo are per place (`slot`) |
+| Novo kolo, Skica and Objavi | `_lib/service/round/publication.ts`, `_lib/roundStatus.ts` (`placeLastPublished`), `_lib/service/round/insertPairRounds.ts`, `_lib/service/round/createRoundDraft.ts`, `_lib/service/round/smoking.ts`, `_lib/matching/smokingTables.ts`, `_interfaces/round.ts`, `api/rounds/generate-multiple/route.ts`, `api/leagues/[id]/nights/[date]/draft/route.ts`, `api/leagues/[id]/nights/[date]/approve/route.ts`, `api/leagues/[id]/nights/[date]/publish/route.ts`, `api/leagues/[id]/create-round-draft/route.ts`, `api/leagues/[id]/smoking/route.ts`, `_fetchers/round/publication.ts`, `_fetchers/round/createRoundDraft.ts`, `_fetchers/round/createMultipleRounds.ts`, `_fetchers/league/smoking.ts`, `_hooks/useNightDraft.ts`, `_ui/round/CreateRound.tsx`, `_ui/round/SmokingTables.tsx`, `_ui/admin/CreateRoundPhone.tsx`, `_ui/admin/DraftPhone.tsx`, `league/[leagueId]/manage/DraftView.tsx`, `_lib/__tests__/smokingTables.test.ts` | Everything per place (`location_slot`, `?slot=`): the teams are the place's (`checkPlace` refuses others and a two-place night without a place), each place publishes its own Kola on the night's shared numbers (Kartaš 7, 8, 9 and Lanterna 7, 8), Novo kolo's saved setup is per place (`CreateRoundDraft.slot`), the smoking tables are remembered only on a one-place night; the place in the eyebrow, the button ("Kreiraj kolo · X · N ekipa") and Skica's notes |
+| A night's tables and Kola | `_lib/service/admin/tables.ts`, `_lib/service/admin/hands.ts` (`reopenCheck`), `api/admin/leagues/[leagueId]/tables/route.ts`, `api/admin/leagues/[leagueId]/rounds/route.ts`, `_fetchers/admin/daily.ts`, `league/[leagueId]/daily-standings/ui/RoundEditing.tsx`, `league/[leagueId]/manage/RoundsView.tsx`, `_lib/ui/adminTonight.ts`, `_lib/__tests__/adminTonight.test.ts` | A table keeps its place; Novi stol adds at the round's place; the Kola list merges a published Kolo across places and keeps a Skica row per place (`kolaRows`, the place under the name, "Briše se na obje lokacije"); deleting a Kolo at one place or both; a corrected match's "next Kolo" is its place's |
+| Dnevni poredak | `_lib/service/league/getStandingsByDate.ts`, `api/leagues/[id]/daily-standings/route.ts`, `_fetchers/league/getStandingsByDate.ts`, `_hooks/useStandings.ts`, `league/[leagueId]/daily-standings/page.tsx` | Sve / place (`?slot=`): a place ranks its own teams from 1; the night's tables and Kola by place; no conference filter on a two-place night; the admin's pencil only in a place's view |
+| Upravljanje ligom and Večer | `league/[leagueId]/manage/page.tsx`, `_ui/admin/ManagePhone.tsx`, `_ui/admin/LeaguePhone.tsx`, `_ui/admin/AdminTonight.tsx` | The Podjela tab (grey on a one-place night, with the count of teams without a place); the place in Novo kolo's and Skica's headers; Kola before Ekipe on the computer and the phone (Bela: Ekipe first); the phone's Večer with a box per place (`PlacesCard`) |
+| The app around it | `_lib/auth/permissions.ts`, `_lib/__tests__/permissions.test.ts`, `_ui/sp/DesktopShell.tsx`, `_styles/tokens.ts`, `_ui/sponsors/AdminSponsorParts.tsx` | `location.create` (admin and organizer) and `location.manage` (admin); Lokacije in the menu; `color.gold` and `tint.creamOnNavy[10]`; `SponsorEmpty` takes an `icon` (Lokacije's empty list) |
+
+The database part (`Location`, the `location_id` columns, `LeagueNightTeam`, `Round.location_slot`,
+`CreateRoundDraft.slot`) is under Database.
 
 ### Adding a difference
 

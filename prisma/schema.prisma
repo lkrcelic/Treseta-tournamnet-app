@@ -174,6 +174,8 @@ model Tournament {
   location_name      String?   @db.VarChar(100)
   location_address   String?   @db.VarChar(200)
   location_url       String?   @db.VarChar(500) // a Google Maps share link
+  // where it is played, from Lokacije (replaces location_name/address/url, which go once nothing reads them)
+  location_id        Int?
   // Broj kola (1-20)
   rounds             Int       @default(9)
   // Partija po kolu: the matches a table plays (1 or 2)
@@ -225,8 +227,10 @@ model Tournament {
   canceller        Player?          @relation("TournamentCanceller", fields: [cancelled_by], references: [id], onDelete: SetNull)
   creator          Player?          @relation("TournamentCreator", fields: [created_by], references: [id], onDelete: SetNull)
   signupBans       SignupBan[]
+  location         Location?        @relation(fields: [location_id], references: [location_id], onDelete: Restrict)
 
   @@index([created_by])
+  @@index([location_id])
 }
 
 // Nagrade: what each place gets, in order (place 1 = first)
@@ -260,6 +264,9 @@ model League {
   location_name    String?   @db.VarChar(100)
   location_address String?   @db.VarChar(200)
   location_url     String?   @db.VarChar(500) // a Google Maps share link
+  // the place of its nights, from Lokacije: the first place of every night that has none of its own ("Zadano lige").
+  // Replaces location_name/address/url, which go once nothing reads them.
+  location_id      Int?
   // default "Rounds" in Create Round
   rounds_per_night Int       @default(3)
   // Vrijeme partije: a match's time limit in minutes (5-180), counted from the start of the match
@@ -281,6 +288,9 @@ model League {
   sponsors     LeagueSponsor[]
   sponsorStats SponsorDailyStat[]
   arrivals     LeagueArrival[]
+  location     Location?     @relation("LeagueLocation", fields: [location_id], references: [location_id], onDelete: Restrict)
+
+  @@index([location_id])
 }
 
 // Potvrda dolaska in a league: a team has come to one of the league's nights (Tu smo, pressed by one of its players, or
@@ -338,14 +348,58 @@ model LeagueNight {
   location_name    String? @db.VarChar(100)
   location_address String? @db.VarChar(200)
   location_url     String? @db.VarChar(500)
+  // Liga na dvije lokacije: this night's own first place from Lokacije (null: the league's, as "Zadano lige"), and a
+  // second place played at the same time (null: a one-place night). The text columns above go once nothing reads them.
+  location_id        Int?
+  second_location_id Int?
 
-  league League @relation(fields: [league_id], references: [league_id], onDelete: Cascade)
+  league         League            @relation(fields: [league_id], references: [league_id], onDelete: Cascade)
+  location       Location?         @relation("NightLocation", fields: [location_id], references: [location_id], onDelete: Restrict)
+  secondLocation Location?         @relation("NightSecondLocation", fields: [second_location_id], references: [location_id], onDelete: Restrict)
+  teams          LeagueNightTeam[]
 
   @@id([league_id, night])
+  @@index([location_id])
+  @@index([second_location_id])
+}
+
+// Podjela: the place a team plays at on a night with two places (slot 1: the night's first place, 2: its second).
+// No row: the team isn't assigned (Neraspoređena). Only the admin writes it; a one-place night has no rows. A move
+// during the night counts from the next Kolo; the tables already published stay where they are.
+model LeagueNightTeam {
+  league_id Int
+  night     DateTime @db.Date
+  team_id   Int
+  // 1 or 2 (CHECK in the migration script)
+  slot      Int      @db.SmallInt
+  moved_at  DateTime @default(now())
+
+  leagueNight LeagueNight @relation(fields: [league_id, night], references: [league_id, night], onDelete: Cascade)
+  team        Team        @relation(fields: [team_id], references: [team_id], onDelete: Cascade)
+
+  @@id([league_id, night, team_id])
+  @@index([league_id, night, slot])
+  @@index([team_id])
+}
+
+// A place where league nights and tournaments are played (Admin · Lokacije). Shared by every league and tournament:
+// a change shows wherever it is used, past nights included. A place in use can't be deleted (RESTRICT above).
+model Location {
+  location_id Int      @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  address     String?  @db.VarChar(200)
+  url         String?  @db.VarChar(500) // a Google Maps share link
+  created_at  DateTime @default(now())
+
+  leagues      League[]      @relation("LeagueLocation")
+  nights       LeagueNight[] @relation("NightLocation")
+  secondNights LeagueNight[] @relation("NightSecondLocation")
+  tournaments  Tournament[]
 }
 
 // What an admin has set up on Novo kolo for a league tonight, so it survives a reload, a trip to make a new team and
-// another computer; each admin has their own. One row per admin and league: the next night overwrites it.
+// another computer; each admin has their own. One row per admin, league and place (slot 0: a one-place night, 1 or 2:
+// a place of a two-place night): the next night overwrites it.
 // sitting_out: the teams that don't play, taken when the admin first changes something. A team made inactive later keeps
 // playing, one made active stays out until it is switched on, and a team added to the league later plays.
 model CreateRoundDraft {
@@ -358,12 +412,14 @@ model CreateRoundDraft {
   smoking_on     Boolean
   smoking_tables Int[]    @default([])
   sitting_out    Int[]    @default([])
+  // 0, 1 or 2 (CHECK in the migration script)
+  slot           Int      @default(0) @db.SmallInt
   updated_at     DateTime @default(now()) @updatedAt
 
   player Player @relation(fields: [player_id], references: [id], onDelete: Cascade)
   league League @relation(fields: [league_id], references: [league_id], onDelete: Cascade)
 
-  @@id([player_id, league_id])
+  @@id([player_id, league_id, slot])
   @@index([league_id])
 }
 
@@ -491,6 +547,7 @@ model Team {
   marketPosts     MarketPost[]
   signupBans      SignupBan[]
   leagueArrivals  LeagueArrival[]
+  nightPlaces     LeagueNightTeam[]
 }
 
 model TeamPhoto {
@@ -666,6 +723,9 @@ model Round {
   // DECISIONS #89); null (every other table): its tournament's or its league's. CHECK in the migration script keeps it
   // between GAME_MINUTES_MIN and GAME_MINUTES_MAX.
   game_minutes  Int?
+  // Liga na dvije lokacije: the place of the night this table is at (1: the night's first place, 2: its second);
+  // null on a one-place night and on every table from before. Kola, Skice and table numbers go per place.
+  location_slot Int?  @db.SmallInt
   // a tournament table's answer to "Jesu li … za stolom?" (Nedolazak za stol): who answered (attendance_team_id, one
   // of the two teams; the other one didn't come when it is NO_SHOW), which player and when; SKIPPED has no team. A
   // NO_SHOW or SKIPPED table isn't rated (CHECKs in the migration script)

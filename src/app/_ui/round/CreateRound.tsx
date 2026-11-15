@@ -1,5 +1,6 @@
 "use client";
 
+import {Slot} from "@/app/_lib/locations";
 import {getLeagueArrivalsAPI, setLeagueArrivalsAPI} from "@/app/_fetchers/league/arrival";
 import {createMultipleRoundsAPI, DraftWaitingError, RepeatMatchupsError} from "@/app/_fetchers/round/createMultipleRounds";
 import {getCreateRoundDraftAPI, saveCreateRoundDraftAPI} from "@/app/_fetchers/round/createRoundDraft";
@@ -53,7 +54,10 @@ export type WaitingDraft = {waiting: number; approved: number; onOpen: () => voi
 
 // a save of Novo kolo still on its way, per league: Novo kolo opened again waits for it, so it doesn't show what was
 // there before it
-const savesOnTheWay = new Map<number, Promise<void>>();
+const savesOnTheWay = new Map<string, Promise<void>>();
+
+// Novo kolo for one place of tonight's two-place night (LOCATIONS_PLAN.md): its name and the teams Podjela put there
+export type CreatePlace = {slot: Slot; name: string; teams: ReadonlySet<number>};
 
 // Novo kolo for one league: the options, the smoking tables, the teams present tonight and the create action, laid
 // out by Upravljanje ligom's "Novo kolo" view (the desktop takes its ready parts, the phone's Novo kolo the values). defaultSmokingTables: the ones of the league's last round
@@ -62,15 +66,20 @@ const savesOnTheWay = new Map<number, Promise<void>>();
 // What the admin sets up here is saved for them on the server for tonight (a reload, a trip to make a new team or
 // another computer keeps it); until they change something it is the league's defaults.
 // waiting: tonight's rounds still in Skica, while the create action waits for them; onDraftWaiting: the server said
-// so when the page didn't know yet (the page reloads its rounds and shows `waiting`).
+// so when the page didn't know yet (the page reloads its rounds and shows `waiting`). place: one place of tonight's
+// two-place night (Claude Design 06 A): its teams only, its arrivals, its own saved choice and smoking tables, and the
+// rounds go to its Skica.
 export function useCreateRound(
   leagueId: number,
   teamsData: CreateRoundTeams,
   onCreated: (date: string) => void,
   defaultRounds?: number,
   defaultSmokingTables?: number[],
-  {waiting = null, onDraftWaiting}: {waiting?: WaitingDraft | null; onDraftWaiting?: () => void} = {}
+  {waiting = null, onDraftWaiting, place = null}: {waiting?: WaitingDraft | null; onDraftWaiting?: () => void; place?: CreatePlace | null} = {}
 ) {
+  const slot = place?.slot ?? null;
+  // the admin's saves for this league (and place) go one after another
+  const saveKey = `${leagueId}|${slot ?? 0}`;
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -87,7 +96,10 @@ export function useCreateRound(
   const timer = useRef<number | undefined>(undefined);
   const unsaved = useRef<CreateRoundDraft | null>(null);
 
-  const {teams, error: teamsError, loading, reload} = teamsData;
+  const {teams: leagueTeams, error: teamsError, loading, reload} = teamsData;
+  // at one place of a two-place night: only the teams Podjela put there
+  const placeTeams = place?.teams;
+  const teams = useMemo(() => (placeTeams && leagueTeams ? leagueTeams.filter((t) => placeTeams.has(t.id)) : leagueTeams), [leagueTeams, placeTeams]);
   const inactive = useMemo(() => new Set((teams ?? []).filter((t) => !t.active).map((t) => t.id)), [teams]);
   // the teams' conference dots in the list
   const conferences = useConferences(leagueId);
@@ -109,7 +121,7 @@ export function useCreateRound(
     const load = (first: boolean) => {
       if (!first && (document.visibilityState !== "visible" || !polling.current)) return;
       const version = arrivalsVersion.current;
-      getLeagueArrivalsAPI(leagueId)
+      getLeagueArrivalsAPI(leagueId, slot)
         .then((a) => {
           if (cancelled || version !== arrivalsVersion.current) return;
           polling.current = a.window != null;
@@ -130,7 +142,7 @@ export function useCreateRound(
       window.clearInterval(id);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [leagueId, arrivalsNonce]);
+  }, [leagueId, slot, arrivalsNonce]);
 
   const arrivalNight = arrivals?.window != null;
 
@@ -146,7 +158,7 @@ export function useCreateRound(
     }
     setArrivals({...arrivals, teams: next});
     setArrivalError(null);
-    setLeagueArrivalsAPI(leagueId, ids, here)
+    setLeagueArrivalsAPI(leagueId, ids, here, slot)
       .then((a) => version === arrivalsVersion.current && setArrivals(a))
       .catch((e) => {
         if (version !== arrivalsVersion.current) return;
@@ -158,9 +170,9 @@ export function useCreateRound(
   useEffect(() => {
     let cancelled = false;
     setDraftStatus("loading");
-    (savesOnTheWay.get(leagueId) ?? Promise.resolve())
+    (savesOnTheWay.get(saveKey) ?? Promise.resolve())
       .catch(() => {})
-      .then(() => getCreateRoundDraftAPI(leagueId))
+      .then(() => getCreateRoundDraftAPI(leagueId, slot))
       .then((saved) => {
         if (cancelled) return;
         setDraft(saved);
@@ -172,7 +184,8 @@ export function useCreateRound(
     return () => {
       cancelled = true;
     };
-  }, [leagueId, draftNonce]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saveKey, draftNonce]);
 
   // "Samo unutar konferencija" starts off for every league
   useEffect(() => {
@@ -182,9 +195,9 @@ export function useCreateRound(
   const save = (value: CreateRoundDraft, keepalive = false) => {
     unsaved.current = null;
     // one after another, so an older choice never lands over a newer one; a save while the page closes can't wait
-    const previous = savesOnTheWay.get(leagueId) ?? Promise.resolve();
-    const sending = keepalive ? saveCreateRoundDraftAPI(leagueId, value, true) : previous.catch(() => {}).then(() => saveCreateRoundDraftAPI(leagueId, value));
-    savesOnTheWay.set(leagueId, sending);
+    const previous = savesOnTheWay.get(saveKey) ?? Promise.resolve();
+    const sending = keepalive ? saveCreateRoundDraftAPI(leagueId, value, true, slot) : previous.catch(() => {}).then(() => saveCreateRoundDraftAPI(leagueId, value, false, slot));
+    savesOnTheWay.set(saveKey, sending);
     sending
       // a newer change may be waiting; its own save says how it went
       .then(
@@ -192,7 +205,7 @@ export function useCreateRound(
         () => unsaved.current == null && setSaveError(true)
       )
       .finally(() => {
-        if (savesOnTheWay.get(leagueId) === sending) savesOnTheWay.delete(leagueId);
+        if (savesOnTheWay.get(saveKey) === sending) savesOnTheWay.delete(saveKey);
       });
   };
 
@@ -206,7 +219,7 @@ export function useCreateRound(
     const offLogout = onBeforeLogout(async () => {
       window.clearTimeout(timer.current);
       if (unsaved.current) save(unsaved.current);
-      await savesOnTheWay.get(leagueId);
+      await savesOnTheWay.get(saveKey);
     });
     window.addEventListener("pagehide", flush);
     return () => {
@@ -215,7 +228,7 @@ export function useCreateRound(
       flush();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leagueId]);
+  }, [saveKey]);
 
   // Rounds starts at the league's rounds per night, and the smoking tables as the league's last round creation left them
   const remembered = defaultSmokingTables ?? [];
@@ -284,9 +297,12 @@ export function useCreateRound(
   };
   const outReason = (t: LeagueTeam): OutReason => (arrivalNight ? "absent" : inactive.has(t.id) ? "inactive" : "off");
   // the line over the list on a night with Potvrda dolaska
+  const placeNote = place ? ` Popis su samo ekipe raspoređene na lokaciju ${place.name}.` : "";
   const arrivalNote = arrivals?.window
-    ? `Tu smo od ${leagueClock(new Date(arrivals.window.opens))}: ekipa se uključi sama kad potvrdi dolazak. Ekipu bez mobitela uključi ovdje.`
-    : null;
+    ? `Tu smo od ${leagueClock(new Date(arrivals.window.opens))}: ekipa se uključi sama kad potvrdi dolazak. Ekipu bez mobitela uključi ovdje.${placeNote}`
+    : place
+      ? placeNote.trim()
+      : null;
 
   const create = async ({window = windowSize, allowRepeats = false}: {window?: number; allowRepeats?: boolean} = {}) => {
     if (leagueId == null || playing < 2 || creating || waiting) return;
@@ -295,9 +311,9 @@ export function useCreateRound(
     setRepeats(null);
     try {
       const tables = smokingOn ? smokingTables : [];
-      const {date} = await createMultipleRoundsAPI(leagueId, selected.map((t) => t.id), rounds, window, allowRepeats, tables, hasConferences && withinConferences);
-      // the next Create Round in this session starts with them too
-      updateCachedLeague(leagueId, {smokingTables: tables});
+      const {date} = await createMultipleRoundsAPI(leagueId, selected.map((t) => t.id), rounds, window, allowRepeats, tables, hasConferences && withinConferences, slot);
+      // the next Create Round in this session starts with them too (a place keeps its own in its saved choice)
+      if (!place) updateCachedLeague(leagueId, {smokingTables: tables});
       setCreating(false);
       onCreated(date);
     } catch (e) {
@@ -387,7 +403,7 @@ export function useCreateRound(
   ) : (
     // its shadow would show below the plan, which covers only the view
     <PrimaryButton onClick={() => create()} disabled={playing < 2} loading={creating} sx={showPlan ? {boxShadow: "none"} : undefined}>
-      {creating ? "Kreiram kolo…" : `Kreiraj kolo · ${count(playing, NOUN.ekipa)}`}
+      {creating ? "Kreiram kolo…" : place ? `Kreiraj kolo · ${place.name} · ${count(playing, NOUN.ekipa)}` : `Kreiraj kolo · ${count(playing, NOUN.ekipa)}`}
     </PrimaryButton>
   );
 
@@ -409,7 +425,9 @@ export function useCreateRound(
   ) : null;
 
   const teamState = visible.length === 0 ? (
-    <EmptyState>{teams?.length ? "Nijedna ekipa ne odgovara pretrazi." : "Ova liga još nema ekipa."}</EmptyState>
+    <EmptyState>
+      {teams?.length ? "Nijedna ekipa ne odgovara pretrazi." : place ? `Na lokaciji ${place.name} još nema ekipa. Rasporedi ih na kartici Podjela.` : "Ova liga još nema ekipa."}
+    </EmptyState>
   ) : null;
 
   return {
@@ -460,6 +478,8 @@ export function useCreateRound(
     repeatsDialog,
     teamState,
     conferenceOf: conferences.of,
+    // the place of tonight's two-place night (null: one place)
+    place,
   };
 }
 
@@ -493,9 +513,12 @@ export function CreateRoundView({
   defaultSmokingTables,
   waiting,
   onDraftWaiting,
+  place = null,
 }: {
   leagueId: number;
   teams: CreateRoundTeams;
+  // one place of tonight's two-place night
+  place?: CreatePlace | null;
   // the rounds are drafts on this night (YYYY-MM-DD)
   onCreated: (date: string) => void;
   defaultRounds?: number;
@@ -504,7 +527,7 @@ export function CreateRoundView({
   waiting: WaitingDraft | null;
   onDraftWaiting: () => void;
 }) {
-  const cr = useCreateRound(leagueId, teams, onCreated, defaultRounds, defaultSmokingTables, {waiting, onDraftWaiting});
+  const cr = useCreateRound(leagueId, teams, onCreated, defaultRounds, defaultSmokingTables, {waiting, onDraftWaiting, place});
   if (cr.blocked) {
     return (
       <Card component="section" aria-label="Novo kolo" sx={{flex: 1, minHeight: 0, overflow: "hidden", borderRadius: "24px"}}>
@@ -516,7 +539,7 @@ export function CreateRoundView({
   const hidden = cr.planOpen ? ({inert: ""} as object) : {};
   return (
     <Box sx={{flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "360px minmax(0,1fr)", gap: "20px", position: "relative"}}>
-      {cr.planOpen && <SmokingPlanOverlay leagueId={leagueId} onClose={cr.closePlan} />}
+      {cr.planOpen && <SmokingPlanOverlay leagueId={leagueId} onClose={cr.closePlan} slot={place?.slot ?? null} />}
       <Box {...hidden} sx={{minHeight: 0, display: "flex", flexDirection: "column", gap: "16px"}}>
         {/* the options scroll and the create action stays in view (a big league has a row of table chips per 8 tables) */}
         <Box sx={{flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: "16px", overflowY: "auto"}}>

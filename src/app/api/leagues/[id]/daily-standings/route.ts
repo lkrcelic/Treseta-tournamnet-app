@@ -1,3 +1,4 @@
+import {slotParam} from "@/app/_lib/locations";
 import {requireUser} from "@/app/_lib/service/auth/requireUser";
 import {NextRequest, NextResponse} from "next/server";
 import {STATUS} from "@/app/_lib/statusCodes";
@@ -17,7 +18,8 @@ export async function GET(request: NextRequest, {params}: { params: { id: string
   const currentDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : leagueNightString();
 
   try {
-    const teamScores = await getLeagueStandingsByDate(Number(id), currentDate);
+    // ?slot=1|2: one place of a two-place night
+    const teamScores = await getLeagueStandingsByDate(Number(id), currentDate, slotParam(searchParams.get("slot")));
     // each team's photo for the avatar (the ones this player may see)
     const rows = Array.isArray(teamScores) ? (teamScores as {team_id: number}[]) : [];
     const photos = await teamPhotoUrls(auth.user, rows.map((r) => Number(r.team_id)));

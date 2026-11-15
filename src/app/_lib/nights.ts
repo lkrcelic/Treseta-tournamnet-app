@@ -82,33 +82,46 @@ export function effectiveTime(own: string | null | undefined, leagueTime: string
   return own || leagueTime || null;
 }
 
-// Where a night is played: a place's name, its address and a Google Maps link (both optional)
-export type NightLocation = {name: string; address: string | null; url: string | null};
+// Where a night is played: a place from Lokacije (id), its name, its address and a Google Maps link (both optional)
+export type NightLocation = {id?: number; name: string; address: string | null; url: string | null};
 
-// The location columns of League and LeagueNight
-export type LocationColumns = {location_name: string | null; location_address: string | null; location_url: string | null};
+// A Location row as a league, a night or a tournament selects it (LOCATION_SELECT)
+export type LocationRow = {location_id: number; name: string; address: string | null; url: string | null};
+export const LOCATION_SELECT = {select: {location_id: true, name: true, address: true, url: true}} as const;
 
-// A row's location, or null without a name (a night without a name of its own uses the league's)
-export function locationOf(row: LocationColumns): NightLocation | null {
-  return row.location_name ? {name: row.location_name, address: row.location_address || null, url: row.location_url || null} : null;
+// A place as the screens use it, or null
+export function placeOf(row: LocationRow | null | undefined): NightLocation | null {
+  return row ? {id: row.location_id, name: row.name, address: row.address || null, url: row.url || null} : null;
 }
 
-// Where a night is played: its own location, else the league's, else none
-export function effectiveLocation(night: LocationColumns, league: LocationColumns): NightLocation | null {
+// A league's or a night's own place (its `location`), or null: a night without one of its own uses the league's
+export function locationOf(row: {location?: LocationRow | null}): NightLocation | null {
+  return placeOf(row.location);
+}
+
+// A night's second place (Druga lokacija, its `secondLocation`), or null: a one-place night
+export function secondLocationOf(row: {secondLocation?: LocationRow | null}): NightLocation | null {
+  return placeOf(row.secondLocation);
+}
+
+// Where a night is played: its own place, else the league's, else none
+export function effectiveLocation(night: {location?: LocationRow | null}, league: {location?: LocationRow | null}): NightLocation | null {
   return locationOf(night) ?? locationOf(league);
 }
 
 // Only http(s) links are shown as links (a "javascript:" link would run on a click)
 export const isSafeUrl = (v: string | null | undefined) => !!v && /^https?:\/\//i.test(v.trim());
 
-// "19:30 · Caffe bar Kartaš", "19:30", "Caffe bar Kartaš", or null when there is neither (Datumi, Raspored, Početna)
-export function gatheringLabel(time: string | null | undefined, loc: NightLocation | null | undefined): string | null {
-  return [time, loc?.name].filter(Boolean).join(" · ") || null;
+// "19:30 · Caffe bar Kartaš", "19:30", "Caffe bar Kartaš", or null when there is neither (Datumi, Raspored, Početna);
+// a night at two places names both, "19:30 · Kartaš · Lanterna"
+export function gatheringLabel(time: string | null | undefined, loc: NightLocation | null | undefined, second?: NightLocation | null): string | null {
+  return [time, loc?.name, second?.name].filter(Boolean).join(" · ") || null;
 }
 
-// The mark of a night with its own time or place (Datumi, Raspored): what it says to a screen reader; null for a
-// night that follows the league
-export function exceptionLabel(ownTime: boolean, ownPlace: boolean): string | null {
+// The mark of a night with its own time or place, or with two places (Datumi, Raspored): what it says to a screen
+// reader; null for a night that follows the league
+export function exceptionLabel(ownTime: boolean, ownPlace: boolean, twoPlaces = false): string | null {
+  if (twoPlaces) return ownTime ? "Drugo vrijeme i dvije lokacije" : "Dvije lokacije";
   if (ownTime && ownPlace) return "Drugo vrijeme i mjesto";
   if (ownTime) return "Drugo vrijeme";
   return ownPlace ? "Drugo mjesto" : null;
@@ -118,9 +131,10 @@ export function exceptionLabel(ownTime: boolean, ownPlace: boolean): string | nu
 // change of the league's), and an empty one is the league's
 export const ownTimeOf = (time: string | null | undefined, leagueTime: string | null | undefined) => (time && time !== leagueTime ? time : null);
 
-// Two locations are the same place (null: none)
+// Two locations are the same place (null: none): the same place of Lokacije, or (without ids) the same fields
 export function sameLocation(a: NightLocation | null | undefined, b: NightLocation | null | undefined): boolean {
   if (!a || !b) return !a && !b;
+  if (a.id != null && b.id != null) return a.id === b.id;
   return a.name === b.name && (a.address ?? null) === (b.address ?? null) && (a.url ?? null) === (b.url ?? null);
 }
 

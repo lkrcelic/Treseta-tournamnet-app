@@ -6,7 +6,8 @@ import {GAME_MINUTES_ERROR, GAME_MINUTES_MAX, GAME_MINUTES_MIN} from "@/app/_lib
 import {isValidPhone, phoneInput, PHONE_ERROR} from "@/app/_lib/phone";
 import useAuthStore from "@/app/_store/authStore";
 import {color, font, tint} from "@/app/_styles/tokens";
-import {PlaceDraft, PlaceFields} from "@/app/_ui/admin/GatheringForm";
+import {LocationPicker} from "@/app/_ui/locations/LocationPicker";
+import {NightLocation} from "@/app/_lib/nights";
 import {buttonBase, Field, mergeSx, Segmented, TextField, TextInput, TimeField} from "@/app/_ui/sp";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
@@ -26,7 +27,8 @@ export type TournamentDraft = {
   date: string;
   gathering: string;
   start: string;
-  place: PlaceDraft;
+  // from Lokacije (null: not picked)
+  place: NightLocation | null;
   rounds: string;
   matches: 1 | 2;
   declarations: boolean;
@@ -56,7 +58,7 @@ export const EMPTY_TOURNAMENT: TournamentDraft = {
   date: "",
   gathering: "09:30",
   start: "10:00",
-  place: {name: "", address: "", url: ""},
+  place: null,
   rounds: "9",
   matches: 2,
   declarations: true,
@@ -100,7 +102,7 @@ export function draftOf(t: Source): TournamentDraft {
     date: t.date,
     gathering: t.gathering_time ?? "",
     start: t.start_time ?? "",
-    place: {name: t.location.name ?? "", address: t.location.address ?? "", url: t.location.url ?? ""},
+    place: t.location.id != null && t.location.name ? {id: t.location.id, name: t.location.name, address: t.location.address, url: t.location.url} : null,
     rounds: String(t.rounds),
     matches: t.matches_per_round === 1 ? 1 : 2,
     declarations: t.declarations,
@@ -125,7 +127,7 @@ export function copyOf(t: Source): TournamentDraft {
 const wholeNumber = (v: string) => /^\d+$/.test(v.trim());
 
 export type FormErrors = Partial<
-  Record<"name" | "date" | "gathering" | "start" | "rounds" | "maxTeams" | "fee" | "rulesUrl" | "placeUrl" | "prizes" | "phone" | "gameMinutes", string>
+  Record<"name" | "date" | "gathering" | "start" | "rounds" | "maxTeams" | "fee" | "rulesUrl" | "prizes" | "phone" | "gameMinutes", string>
 >;
 
 export const PHONE_REQUIRED = "Upiši telefon organizatora. Igrači ga zovu ako kasne.";
@@ -142,7 +144,6 @@ export function draftErrors(d: TournamentDraft): FormErrors {
   if (d.maxTeams.trim() && (!wholeNumber(d.maxTeams) || Number(d.maxTeams) < 2)) e.maxTeams = "Najmanje dvije ekipe, ili ostavi prazno.";
   if (!wholeNumber(d.fee || "0") || Number(d.fee || "0") > 999) e.fee = "Kotizacija je od 0 do 999 €.";
   if (d.rulesUrl.trim() && !isSafeUrl(d.rulesUrl)) e.rulesUrl = "Link mora počinjati s https://.";
-  if (d.place.url.trim() && !isSafeUrl(d.place.url)) e.placeUrl = "Link mora počinjati s https://.";
   if (d.prizes.some((p) => !p.prize.trim() && p.description.trim())) e.prizes = "Upiši nagradu za svako mjesto ili makni redak.";
   if (!d.phone.trim()) e.phone = PHONE_REQUIRED;
   else if (!isValidPhone(d.phone)) e.phone = PHONE_ERROR;
@@ -158,9 +159,7 @@ export function draftPayload(d: TournamentDraft): TournamentRequest {
     date: d.date,
     gathering_time: text(d.gathering),
     start_time: text(d.start),
-    location_name: text(d.place.name),
-    location_address: text(d.place.address),
-    location_url: text(d.place.url),
+    location_id: d.place?.id ?? null,
     rounds: Number(d.rounds),
     matches_per_round: d.matches,
     declarations: d.declarations,
@@ -320,12 +319,7 @@ export function TournamentFields({form, locks, compact = false, sx}: {form: Tour
 
       <Box component="hr" sx={rule} />
       <SectionTitle>Mjesto</SectionTitle>
-      <PlaceFields value={d.place} onChange={(p) => set("place", p)} inputSx={input} />
-      {errors.placeUrl && (
-        <Box role="alert" sx={{mt: "-8px", pl: "4px", fontSize: 14, fontWeight: 600, color: color.red}}>
-          {errors.placeUrl}
-        </Box>
-      )}
+      <LocationPicker value={d.place} onChange={(p) => set("place", p)} />
       <Field label="Telefon organizatora *" error={form.touched ? errors.phone : undefined}>
         {(a11y) => (
           <TextInput

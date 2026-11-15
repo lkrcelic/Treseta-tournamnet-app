@@ -2,6 +2,7 @@
 
 import useLeagueRounds from "@/app/_hooks/useLeagueRounds";
 import {isIsoDate} from "@/app/_lib/nights";
+import {slotParam} from "@/app/_lib/locations";
 import {draftNight} from "@/app/_lib/ui/adminTonight";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {EmptyState, ErrorNote, PrimaryButton, Screen, TopBar} from "@/app/_ui/sp";
@@ -11,17 +12,21 @@ import {useParams, useSearchParams} from "next/navigation";
 import CreateRoundPhone from "./CreateRoundPhone";
 import DraftPhone from "./DraftPhone";
 import LeaguePhone, {isLeagueTab} from "./LeaguePhone";
+import SplitPhone from "@/app/_ui/league/split/SplitPhone";
 
-// Upravljanje ligom on the admin's phone: ?view=create is Novo kolo, ?view=draft(&date=) Skica kola, and the league's
-// tabs ?view=teams|rounds|dates|details
+// Upravljanje ligom on the admin's phone: ?view=create is Novo kolo, ?view=draft(&date=) Skica kola, ?view=split
+// Podjela ekipa of the next night, and the league's tabs ?view=teams|rounds|dates|details
 export default function ManagePhone() {
   const params = useParams<{leagueId: string}>();
   const leagueId = Number(params.leagueId);
   const searchParams = useSearchParams();
   const view = searchParams.get("view");
   const date = searchParams.get("date");
-  if (view === "create") return <CreateRoundPhone key={leagueId} leagueId={leagueId} />;
-  if (view === "draft") return date && isIsoDate(date) ? <DraftPhone key={`${leagueId}|${date}`} leagueId={leagueId} date={date} /> : <LatestDraft leagueId={leagueId} />;
+  // the place of a two-place night to start on (Novo kolo → its Skica)
+  const slot = slotParam(searchParams.get("slot"));
+  if (view === "create") return <CreateRoundPhone key={leagueId} leagueId={leagueId} initialSlot={slot} />;
+  if (view === "split") return <SplitPhone key={leagueId} leagueId={leagueId} />;
+  if (view === "draft") return date && isIsoDate(date) ? <DraftPhone key={`${leagueId}|${date}`} leagueId={leagueId} date={date} initialSlot={slot} /> : <LatestDraft leagueId={leagueId} />;
   return <LeaguePhone key={leagueId} leagueId={leagueId} view={isLeagueTab(view) ? view : "teams"} />;
 }
 

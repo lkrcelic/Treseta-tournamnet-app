@@ -51,8 +51,9 @@ export type DailyData = {
   roundNumbers: number[];
 };
 
-// Standings and tables of one night. Refreshes every 30 s without showing the loading state again.
-export function useDailyData(leagueId: MaybeLeague, date: string | null) {
+// Standings and tables of one night. Refreshes every 30 s without showing the loading state again. slot: one place of
+// a two-place night (its teams ranked from 1); the tables are every table of the night, with their place.
+export function useDailyData(leagueId: MaybeLeague, date: string | null, slot: number | null = null) {
   const [data, setData] = useState<DailyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +70,7 @@ export function useDailyData(leagueId: MaybeLeague, date: string | null) {
       }
       try {
         const [standings, rounds] = await Promise.all([
-          getLeagueStandingsByDateAPI(leagueId, date),
+          getLeagueStandingsByDateAPI(leagueId, date, slot),
           getRoundsAPI({round_date: date, league_id: leagueId}),
         ]);
         if (id !== reqId.current) return;
@@ -86,7 +87,7 @@ export function useDailyData(leagueId: MaybeLeague, date: string | null) {
         if (id === reqId.current) setLoading(false);
       }
     },
-    [leagueId, date]
+    [leagueId, date, slot]
   );
 
   useEffect(() => {

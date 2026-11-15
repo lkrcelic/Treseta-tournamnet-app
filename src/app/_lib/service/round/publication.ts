@@ -5,13 +5,15 @@ import {recalcTeamScores} from "@/app/_lib/service/admin/recalc";
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {nightValue} from "@/app/_lib/service/league/nights";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
-import {approvalStatus, draftLetters, NO_DRAFT, NOTHING_APPROVED, PUBLISHED_ROUND, publishNumbers, RoundStatus, roundStatusOf, roundsToApprove, roundsToDiscard, roundsToPublish} from "@/app/_lib/roundStatus";
+import {approvalStatus, draftLetters, NO_DRAFT, NOTHING_APPROVED, placeLastPublished, PUBLISHED_ROUND, publishNumbers, RoundStatus, roundStatusOf, roundsToApprove, roundsToDiscard, roundsToPublish} from "@/app/_lib/roundStatus";
+import {Slot} from "@/app/_lib/locations";
 import {DraftNight, DraftRound} from "@/app/_interfaces/round";
 
 // Upravljanje ligom · Skica: approving, publishing and discarding a night's rounds (the rules are in
 // _lib/roundStatus.ts). A round is a round number on a night, one Round row per table; every change takes the league's
 // lock, as round creation and the admin's table edits do. A round not published yet is Skica A, B, C… and gets its
-// number when it is published.
+// number when it is published. On a night played at two places (LOCATIONS_PLAN.md) each place has its own Skica and
+// publishes on its own: every call takes the place (slot), null on a one-place night.
 
 type Tx = Prisma.TransactionClient;
 
@@ -19,17 +21,19 @@ const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 
 const lockLeague = (tx: Tx, leagueId: number) => tx.$executeRaw`SELECT pg_advisory_xact_lock(${leagueId})`;
 
-// Every table of the league's rounds on a night
-const nightTables = (leagueId: number, date: string) => ({
+// Every table of the league's rounds on a night, at one of its places (slot null: a one-place night)
+const nightTables = (leagueId: number, date: string, slot: Slot | null) => ({
   leagueRounds: {some: {league_id: leagueId}},
   round_date: nightValue(date),
   round_number: {not: null},
+  location_slot: slot,
 });
 
-// A night's rounds in order with their tables and status (the Skica view); null when the league has none that night
-export async function getDraftNight(leagueId: number, date: string): Promise<DraftNight | null> {
+// A night's rounds in order with their tables and status (the Skica view of the place); null when the league has none
+// there that night
+export async function getDraftNight(leagueId: number, date: string, slot: Slot | null = null): Promise<DraftNight | null> {
   const tables = await prisma.round.findMany({
-    where: nightTables(leagueId, date),
+    where: nightTables(leagueId, date, slot),
     orderBy: [{round_number: "asc"}, {table_number: "asc"}, {id: "asc"}],
     select: {
       id: true,
@@ -65,7 +69,7 @@ export async function getDraftNight(leagueId: number, date: string): Promise<Dra
       })),
     };
   });
-  return {date, rounds};
+  return {date, slot, rounds};
 }
 
 export type RoundApproval = {leagueId: number; date: string; roundNumber: number; status: RoundStatus};
@@ -78,12 +82,12 @@ export async function setRoundApproval(roundId: number, approve: boolean): Promi
     if (!link) throw new NotFoundError("Kolo ne postoji.");
     await lockLeague(tx, link.league_id);
     // read after the lock, so a publish or discard that just ran is seen
-    const table = await tx.round.findUnique({where: {id: roundId}, select: {round_number: true, round_date: true}});
+    const table = await tx.round.findUnique({where: {id: roundId}, select: {round_number: true, round_date: true, location_slot: true}});
     if (!table || table.round_number == null || table.round_date == null) throw new NotFoundError("Kolo ne postoji.");
 
     const date = isoDate(table.round_date);
     const tables = await tx.round.findMany({
-      where: {...nightTables(link.league_id, date), round_number: table.round_number},
+      where: {...nightTables(link.league_id, date, table.location_slot as Slot | null), round_number: table.round_number},
       select: {id: true, status: true},
     });
     const next = approvalStatus(roundStatusOf(tables), approve);
@@ -99,10 +103,10 @@ export async function setRoundApproval(roundId: number, approve: boolean): Promi
 // "Odobri sva": every draft round of the night is approved at once (one request, so a phone on a weak connection
 // doesn't stop halfway); approved and published rounds stay. Returns the round numbers approved (none: nothing was
 // left to approve). A night without rounds not published yet is NotFoundError (NO_DRAFT).
-export async function approveNight(leagueId: number, date: string): Promise<{rounds: number[]}> {
+export async function approveNight(leagueId: number, date: string, slot: Slot | null = null): Promise<{rounds: number[]}> {
   return prisma.$transaction(async (tx) => {
     await lockLeague(tx, leagueId);
-    const tables = await tx.round.findMany({where: nightTables(leagueId, date), select: {id: true, round_number: true, status: true}});
+    const tables = await tx.round.findMany({where: nightTables(leagueId, date, slot), select: {id: true, round_number: true, status: true}});
     if (roundsToDiscard(tables).length === 0) throw new NotFoundError(NO_DRAFT);
     const drafts = roundsToApprove(tables);
     if (drafts.length) await tx.round.updateMany({where: {id: {in: drafts.map((t) => t.id)}}, data: {status: "APPROVED"}});
@@ -112,28 +116,27 @@ export async function approveNight(leagueId: number, date: string): Promise<{rou
 
 // "Objavi odobrena kola": the night's approved rounds are published at once; drafts stay drafts. The published ones are
 // numbered after the league's last published round in their letter order, so there is no gap for a draft left out
-// (publishNumbers). A bye table is closed (2:0) as soon as it is created, so its team's season row is counted again
-// now that the round counts. Returns the round numbers published.
-export async function publishNight(leagueId: number, date: string): Promise<{rounds: number[]; publishedAt: string}> {
+// (publishNumbers). At one place of a two-place night they are numbered after the league's last published round
+// before this night, or after the place's own published ones tonight: both places share the night's Kolo numbers
+// (Kartaš 7, 8, 9 and Lanterna 7, 8; placeLastPublished). A bye table is closed (2:0) as soon as it is created, so its
+// team's season row is counted again now that the round counts. Returns the round numbers published.
+export async function publishNight(leagueId: number, date: string, slot: Slot | null = null): Promise<{rounds: number[]; publishedAt: string}> {
   return prisma.$transaction(
     async (tx) => {
       await lockLeague(tx, leagueId);
       const tables = await tx.round.findMany({
-        where: nightTables(leagueId, date),
+        where: nightTables(leagueId, date, slot),
         select: {id: true, round_number: true, status: true, open: true, team1_id: true, team2_id: true, draft_order: true},
       });
       const approved = roundsToPublish(tables);
       if (approved.length === 0) throw new InvalidResultError(NOTHING_APPROVED);
 
-      const last = await tx.round.aggregate({
-        _max: {round_number: true},
-        where: {leagueRounds: {some: {league_id: leagueId}}, ...PUBLISHED_ROUND},
-      });
+      const last = slot == null ? await lastPublished(tx, leagueId) : await placeLast(tx, leagueId, date, slot);
       const waiting = new Map<number, typeof tables>();
       for (const t of roundsToDiscard(tables)) waiting.set(t.round_number!, [...(waiting.get(t.round_number!) ?? []), t]);
       const numbers = publishNumbers(
         Array.from(waiting, ([roundNumber, list]) => ({roundNumber, status: roundStatusOf(list), draftOrder: list[0].draft_order})),
-        last._max.round_number ?? 0
+        last
       );
 
       const now = new Date();
@@ -162,12 +165,12 @@ export async function publishNight(leagueId: number, date: string): Promise<{rou
 // "Odbaci skicu": deletes the night's rounds that aren't published, with what is stored at their tables (a bye table's
 // matches); published rounds stay. Nothing unpublished is counted in the standings, so they don't change. Returns the
 // round numbers deleted and how many tables they had.
-export async function discardDraft(leagueId: number, date: string): Promise<{rounds: number[]; tables: number}> {
+export async function discardDraft(leagueId: number, date: string, slot: Slot | null = null): Promise<{rounds: number[]; tables: number}> {
   return prisma.$transaction(
     async (tx) => {
       await lockLeague(tx, leagueId);
       const tables = roundsToDiscard(
-        await tx.round.findMany({where: nightTables(leagueId, date), select: {id: true, round_number: true, status: true}})
+        await tx.round.findMany({where: nightTables(leagueId, date, slot), select: {id: true, round_number: true, status: true}})
       );
       if (tables.length === 0) throw new NotFoundError(NO_DRAFT);
 
@@ -179,6 +182,23 @@ export async function discardDraft(leagueId: number, date: string): Promise<{rou
     },
     {timeout: 30000}
   );
+}
+
+// The league's last published round number (0: none yet)
+async function lastPublished(tx: Tx, leagueId: number): Promise<number> {
+  const last = await tx.round.aggregate({_max: {round_number: true}, where: {leagueRounds: {some: {league_id: leagueId}}, ...PUBLISHED_ROUND}});
+  return last._max.round_number ?? 0;
+}
+
+// What a place of a two-place night numbers its next published Kolo after: the league's last published round before
+// the night, or the place's own last one tonight
+async function placeLast(tx: Tx, leagueId: number, date: string, slot: Slot): Promise<number> {
+  const night = nightValue(date);
+  const [before, tonight] = await Promise.all([
+    tx.round.aggregate({_max: {round_number: true}, where: {leagueRounds: {some: {league_id: leagueId}}, ...PUBLISHED_ROUND, round_date: {lt: night}}}),
+    tx.round.findMany({where: {...nightTables(leagueId, date, slot), ...PUBLISHED_ROUND}, select: {round_number: true}}),
+  ]);
+  return placeLastPublished(before._max.round_number ?? 0, tonight.map((t) => t.round_number!));
 }
 
 function roundNumbers(tables: {round_number: number | null}[]): number[] {

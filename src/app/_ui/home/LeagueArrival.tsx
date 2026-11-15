@@ -2,7 +2,7 @@
 
 import {leagueArrivalAPI} from "@/app/_fetchers/league/arrival";
 import {MyLeagueArrival} from "@/app/_interfaces/leagueArrival";
-import {LeagueArrivalAction, leagueArrivalPhase} from "@/app/_lib/leagueArrival";
+import {asksAdmin, LeagueArrivalAction, leagueArrivalPhase} from "@/app/_lib/leagueArrival";
 import {leagueClock} from "@/app/_lib/dates";
 import {color, tint} from "@/app/_styles/tokens";
 import {leaveButton} from "@/app/_ui/home/LeaveParts";
@@ -11,16 +11,19 @@ import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import HowToRegRoundedIcon from "@mui/icons-material/HowToRegRounded";
 import LockClockRoundedIcon from "@mui/icons-material/LockClockRounded";
+import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import PersonOffRoundedIcon from "@mui/icons-material/PersonOffRounded";
 import RadioButtonUncheckedRoundedIcon from "@mui/icons-material/RadioButtonUncheckedRounded";
+import SupportAgentRoundedIcon from "@mui/icons-material/SupportAgentRounded";
 import {Box} from "@mui/material";
 import React, {useEffect, useState} from "react";
 
 // Potvrda dolaska on Početna · Večeras (DECISIONS #73), the tournament's block (Claude Design "Potvrda dolaska" C1–C3)
 // in the league's navy card: before the window the button waits; then Tu smo; a team that is here sees who confirmed
 // and Ipak otkazujemo (Odlazimo once the night has started); one that left or never came can still jump in for the next
-// kolo. Every message is the plural of the team ("Tu smo").
+// kolo. Every message is the plural of the team ("Tu smo"). On a night played at two places a team that Podjela hasn't
+// put at either sees Javi se adminu with Tu smo locked (Claude Design 01 A, card 11) until the admin places it.
 
 const eyebrowSx = {fontSize: 12.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase"} as const;
 
@@ -97,9 +100,9 @@ export function LeagueArrival({leagueId, teamId, initial, onChanged}: {leagueId:
     </Box>
   );
   const line = (text: React.ReactNode) => <Box sx={{fontSize: 14, lineHeight: 1.45, color: color.cream}}>{text}</Box>;
-  const tuSmo = (label: string, disabled = false) => (
+  const tuSmo = (label: string, disabled = false, icon: React.ReactNode = <HowToRegRoundedIcon aria-hidden />) => (
     <Box component="button" type="button" disabled={disabled || busy != null} onClick={() => act("confirm")} sx={lightButton}>
-      {busy === "confirm" ? <Spinner size={18} /> : <HowToRegRoundedIcon aria-hidden />}
+      {busy === "confirm" ? <Spinner size={18} /> : icon}
       {label}
     </Box>
   );
@@ -108,6 +111,16 @@ export function LeagueArrival({leagueId, teamId, initial, onChanged}: {leagueId:
       {error}
     </Box>
   );
+
+  if (asksAdmin(card.two_places, card.slot)) {
+    return (
+      <Box component="section" aria-label="Potvrda dolaska" sx={{...box, background: tint.creamOnNavy[10], boxShadow: `inset 0 0 0 1.5px ${tint.creamOnNavy[45]}`}}>
+        {head(<SupportAgentRoundedIcon aria-hidden />, "Javi se adminu")}
+        {line("Večeras se igra na dvije lokacije, a vaša ekipa još nije raspoređena. Kad vas organizator rasporedi, ovdje se pojave lokacija i gumb Tu smo.")}
+        {tuSmo("Tu smo", true, <LockRoundedIcon aria-hidden />)}
+      </Box>
+    );
+  }
 
   if (here) {
     return (

@@ -152,7 +152,7 @@ export function cardView(s: Snapshot, viewer: Viewer | null): TournamentCard {
     date: isoDay(t.date),
     gathering_time: t.gathering_time,
     start_time: t.start_time,
-    location: {name: t.location_name, address: t.location_address, url: t.location_url},
+    location: {id: t.location?.location_id ?? null, name: t.location?.name ?? null, address: t.location?.address || null, url: t.location?.url || null},
     rounds: t.rounds,
     matches_per_round: t.matches_per_round,
     declarations: t.declarations,

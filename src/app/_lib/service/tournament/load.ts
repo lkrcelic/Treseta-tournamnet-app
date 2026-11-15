@@ -1,5 +1,6 @@
 import {Prisma, Tournament, TournamentPrize} from "@prisma/client";
 import {prisma} from "@/app/_lib/prisma";
+import {LOCATION_SELECT, LocationRow} from "@/app/_lib/nights";
 import {isByeTeam} from "@/app/_lib/bye";
 import {visibleRounds} from "@/app/_lib/roundStatus";
 import {Viewer} from "@/app/_lib/players/privacy";
@@ -74,7 +75,7 @@ export type LoadedTable = {
 };
 
 export type Snapshot = {
-  tournament: Tournament & {prizes: TournamentPrize[]; canceller: {first_name: string; last_name: string} | null};
+  tournament: Tournament & {prizes: TournamentPrize[]; canceller: {first_name: string; last_name: string} | null; location: LocationRow | null};
   entries: LoadedEntry[];
   tables: LoadedTable[];
   // names and photos of the teams at the tables (the bye's too), whether they are entered or not
@@ -115,7 +116,7 @@ export async function loadSnapshots(ids: number[], viewer: Viewer | null, db: Db
   const [tournaments, entries, rounds] = await Promise.all([
     db.tournament.findMany({
       where: {tournament_id: {in: ids}},
-      include: {prizes: {orderBy: {place: "asc"}}, canceller: {select: {first_name: true, last_name: true}}},
+      include: {prizes: {orderBy: {place: "asc"}}, canceller: {select: {first_name: true, last_name: true}}, location: LOCATION_SELECT},
     }),
     db.tournamentTeam.findMany({
       where: {tournament_id: {in: ids}},

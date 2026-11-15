@@ -8,6 +8,9 @@ import useLeagues from "@/app/_hooks/useLeagues";
 import useMyTeams from "@/app/_hooks/useMyTeams";
 import useConferences from "@/app/_hooks/useConferences";
 import useConferenceFilter from "@/app/_hooks/useConferenceFilter";
+import useLeagueNights from "@/app/_hooks/useLeagueNights";
+import useLocationFilter from "@/app/_hooks/useLocationFilter";
+import {LocationFilter} from "@/app/_ui/league/LocationFilter";
 import useNavStack from "@/app/_hooks/useNavStack";
 import useOpenTable, {OpenTable} from "@/app/_hooks/useOpenTable";
 import useStartGame from "@/app/_hooks/useStartGame";
@@ -100,34 +103,50 @@ export default function DailyStandings() {
   const teamQuery = highlightTeamId != null ? `&team=${highlightTeamId}` : "";
   const goDate = (d: string | null) => d && router.router.replace(`/league/${leagueId}/daily-standings?date=${d}${teamQuery}`);
 
-  const daily = useDailyData(leagueId, date || null);
+  // a night played at two places: Sve, or one place's teams and tables (LOCATIONS_PLAN.md, decision 17)
+  const leagueNights = useLeagueNights(leagueId);
+  const nightPlaces = useMemo(() => {
+    const n = leagueNights.nights?.find((x) => x.date === date);
+    return n?.place && n.second_location ? ([n.place.name, n.second_location.name] as const) : null;
+  }, [leagueNights.nights, date]);
+  const [pickedPlace, setPlace] = useLocationFilter(leagueId);
+  const place = nightPlaces ? pickedPlace : null;
+  const daily = useDailyData(leagueId, date || null, place);
   // tonight's night lasts until 06:00, so a night that runs past midnight is still "večeras" with no medals yet
   const today = leagueNightString();
   const isToday = date === today;
 
   // the league's conferences: the dots, and the conference picked for the night's table (null: every team). The round
-  // tabs always show every table.
+  // tabs always show every table. A two-place night has the place switch instead.
   const conferences = useConferences(leagueId);
-  const [conf, setConf] = useConferenceFilter(leagueId, conferences.conferences);
+  const [confPicked, setConf] = useConferenceFilter(leagueId, conferences.conferences);
+  const conf = nightPlaces ? null : confPicked;
   const confName = conferences.conferences.find((c) => c.id === conf)?.name;
   const allStandings = useMemo(
     () => toStandingsRows(daily.data?.standings, {myTeamNames, highlightTeamId, conferenceOf: conferences.of}),
     [daily.data, myTeamNames, highlightTeamId, conferences]
   );
   const standings = useMemo(() => inConference(allStandings, conf), [allStandings, conf]);
-  const roundNumbers = daily.data?.roundNumbers ?? [];
-  const roundsLive = (n: number) => (daily.data?.rounds ?? []).some((r) => r.round_number === n && r.active);
+  // the night's tables at the place picked (every table in Sve); a place's Kola are its own numbers
+  const nightTables = useMemo(() => (daily.data?.rounds ?? []).filter((r) => place == null || r.location_slot === place), [daily.data, place]);
+  const roundNumbers = useMemo(
+    () => (place == null ? (daily.data?.roundNumbers ?? []) : Array.from(new Set(nightTables.map((r) => r.round_number))).sort((a, b) => a - b)),
+    [daily.data, place, nightTables]
+  );
+  const roundsLive = (n: number) => nightTables.some((r) => r.round_number === n && r.active);
 
   // tab 0 is the night's table, then one tab per round; the desktop opens on the round being played,
   // or on ?round= (coming back from a table's scorepad); opened for a team, on the night's table where it is highlighted
   const roundParam = Number(searchParams.get("round")) || 0;
   const tabFixed = roundParam > 0 || highlightTeamId != null;
-  const [tab, setTab] = useState(roundParam);
+  const [tabPicked, setTab] = useState(roundParam);
   const [tabTouched, setTabTouched] = useState(tabFixed);
   useEffect(() => {
     setTab(roundParam);
     setTabTouched(tabFixed);
   }, [date, leagueId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // a Kolo the place picked hasn't played shows the night's table
+  const tab = tabPicked > 0 && daily.data && !roundNumbers.includes(tabPicked) ? 0 : tabPicked;
   useEffect(() => {
     if (!isDesktop || tabTouched || !daily.data) return;
     const live = [...roundNumbers].reverse().find((n) => roundsLive(n));
@@ -145,8 +164,30 @@ export default function DailyStandings() {
   const fromTeam = highlightTeamId != null && signedIn && !adminPhone;
   const tabs: TabItem<number>[] = [{key: 0, label: "Tablica okupljanja"}, ...roundNumbers.map((n) => ({key: n, label: `Kolo ${n}`, live: roundsLive(n)}))];
   const roundRows = useMemo(
-    () => toTableRows((daily.data?.rounds ?? []).filter((r) => r.round_number === tab), myTeamNames, conferences.of),
-    [daily.data, tab, myTeamNames, conferences]
+    () => toTableRows(nightTables.filter((r) => r.round_number === tab), myTeamNames, conferences.of),
+    [nightTables, tab, myTeamNames, conferences]
+  );
+  // Sve on a two-place night: the Kolo's tables under each place, each from Stol 1 (09 A)
+  const placeSections = useMemo(
+    () =>
+      nightPlaces && place == null
+        ? ([1, 2] as const)
+            .map((slot) => ({title: nightPlaces[slot - 1], rows: toTableRows(nightTables.filter((r) => r.round_number === tab && r.location_slot === slot), myTeamNames, conferences.of)}))
+            .filter((sec) => sec.rows.length > 0)
+        : null,
+    [nightPlaces, place, nightTables, tab, myTeamNames, conferences]
+  );
+  // the place picked, after a Kolo's name ("Kolo 7 · Kartaš")
+  const placeName = place != null && nightPlaces ? nightPlaces[place - 1] : null;
+  // a table's edits know its place; in Sve on a two-place night the tables are edited from their place's view
+  const editable = !nightPlaces || place != null;
+  const placeSwitch = nightPlaces && !loadErrorOf(datesError, daily.error) && (
+    <LocationFilter
+      places={nightPlaces}
+      value={place}
+      onChange={setPlace}
+      note={tab === 0 && daily.data ? (place == null ? `${count(daily.data.standings.length, NOUN.ekipa)} · 2 lokacije` : count(daily.data.standings.length, NOUN.ekipa)) : null}
+    />
   );
 
   // the league's sponsors slide along the bottom of a round's tab on the admin's computer (the bar's screen); never on
@@ -174,7 +215,7 @@ export default function DailyStandings() {
     scrollIntoMiddle(row, box, pinned?.offsetHeight ?? 0);
   }, [highlightTeamId, leagueId, date, isDesktop, tab, standings, scroller]);
 
-  const phoneEdit = usePhoneEdit(adminPhone ? {leagueId, date: date || "", roundNumber: tab, onChanged: daily.refresh} : null, tab);
+  const phoneEdit = usePhoneEdit(adminPhone && editable ? {leagueId, date: date || "", roundNumber: tab, slot: place, onChanged: daily.refresh} : null, tab);
   const removeRow = roundRows.find((r) => r.id === phoneEdit.edits.confirmId) ?? null;
 
   const arrows = (
@@ -205,7 +246,8 @@ export default function DailyStandings() {
         footer={isAdmin && tab > 0 && sponsors?.length ? <LiveRoundSponsors leagueId={leagueId} sponsors={sponsors} /> : undefined}
       >
         <Box {...tabPanelProps("daily", tab)} sx={{flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: "20px"}}>
-          {tab === 0 && !loadError && !noNights && <ConferenceFilter conferences={conferences.conferences} value={conf} onChange={setConf} sx={{flex: "none"}} />}
+          {placeSwitch}
+          {tab === 0 && !nightPlaces && !loadError && !noNights && <ConferenceFilter conferences={conferences.conferences} value={conf} onChange={setConf} sx={{flex: "none"}} />}
           {loadError ? (
             <ErrorNote onRetry={datesError ? reloadDates : daily.reload}>{loadError}</ErrorNote>
           ) : noNights ? (
@@ -217,12 +259,14 @@ export default function DailyStandings() {
               <LoadingRows rows={10} height={56} />
             </Card>
           ) : tab === 0 ? (
-            <DesktopNightTable rows={standings} date={confName ? `${dateTitle} · ${confName}` : dateTitle} scroller={scroller} />
+            <DesktopNightTable rows={standings} date={confName ? `${dateTitle} · ${confName}` : placeName ? `${dateTitle} · ${placeName}` : dateTitle} scroller={scroller} />
+          ) : placeSections ? (
+            <DesktopRoundSections title={`Kolo ${tab}`} sections={placeSections} tableHref={isAdmin ? (t) => `/league/${leagueId}/daily-standings/table/${t.id}` : undefined} />
           ) : (
             <DesktopRound
-              title={`Kolo ${tab}`}
+              title={placeName ? `Kolo ${tab} · ${placeName}` : `Kolo ${tab}`}
               rows={roundRows}
-              admin={isAdmin ? {leagueId, date: date || "", roundNumber: tab, onChanged: daily.refresh} : null}
+              admin={isAdmin ? {leagueId, date: date || "", roundNumber: tab, slot: place, onChanged: daily.refresh} : null}
               conferenceOf={conferences.of}
             />
           )}
@@ -245,7 +289,7 @@ export default function DailyStandings() {
           onBack={nav.back}
           refreshedAt={daily.data}
           onRefresh={daily.refresh}
-          editing={tab > 0 ? phoneEdit.editing : null}
+          editing={tab > 0 && editable ? phoneEdit.editing : null}
           onEdit={phoneEdit.toggle}
         />
       )}
@@ -259,8 +303,9 @@ export default function DailyStandings() {
         </Box>
         {arrows}
       </Box>
+      {placeSwitch}
       {tabs.length > 1 && <PillTabs items={tabs} value={tab} onChange={pickTab} label="Prikaz" idPrefix="daily" />}
-      {tab === 0 && !loadError && !noNights && <ConferenceFilter conferences={conferences.conferences} value={conf} onChange={setConf} sx={{flex: "none"}} />}
+      {tab === 0 && !nightPlaces && !loadError && !noNights && <ConferenceFilter conferences={conferences.conferences} value={conf} onChange={setConf} sx={{flex: "none"}} />}
 
       <Box {...tabPanelProps("daily", tab)} sx={{flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: "14px"}}>
         {loadError ? (
@@ -285,22 +330,33 @@ export default function DailyStandings() {
           <ScrollArea ref={roundScroller.ref} bleed sx={{gap: "10px"}}>
             {phoneEdit.edits.actionError && <ErrorNote>{phoneEdit.edits.actionError}</ErrorNote>}
             {game.error && <ErrorNote>{game.error}</ErrorNote>}
-            <PhoneRoundTables
-              title={adminPhone ? `Kolo ${tab} · ${count(roundRows.length, NOUN.stol)}` : `Kolo ${tab}`}
-              rows={roundRows}
-              tableTarget={signedIn ? (t) => phoneTableTarget(t, {leagueId, adminPhone, openTable, startGame: game.start}) : undefined}
-              teamHref={signedIn ? (id) => `/teams/${id}` : undefined}
-              fresh={phoneEdit.editing ? phoneEdit.edits.freshTable : null}
-              edit={
-                adminPhone && phoneEdit.editing
-                  ? {
-                      onPair: (t) => phoneEdit.edits.setPair({kind: "edit", row: t}),
-                      onRemove: (t) => phoneEdit.edits.setConfirmId(t.id),
-                      onAdd: () => phoneEdit.edits.setPair({kind: "new", tableNumber: roundRows.reduce((m, r) => Math.max(m, r.table), 0) + 1}),
-                    }
-                  : undefined
-              }
-            />
+            {placeSections?.map((sec) => (
+              <PhoneRoundTables
+                key={sec.title}
+                title={`Kolo ${tab} · ${sec.title}`}
+                rows={sec.rows}
+                tableTarget={signedIn ? (t) => phoneTableTarget(t, {leagueId, adminPhone, openTable, startGame: game.start}) : undefined}
+                teamHref={signedIn ? (id) => `/teams/${id}` : undefined}
+              />
+            ))}
+            {!placeSections && (
+              <PhoneRoundTables
+                title={`Kolo ${tab}${placeName ? ` · ${placeName}` : ""}${adminPhone ? ` · ${count(roundRows.length, NOUN.stol)}` : ""}`}
+                rows={roundRows}
+                tableTarget={signedIn ? (t) => phoneTableTarget(t, {leagueId, adminPhone, openTable, startGame: game.start}) : undefined}
+                teamHref={signedIn ? (id) => `/teams/${id}` : undefined}
+                fresh={phoneEdit.editing ? phoneEdit.edits.freshTable : null}
+                edit={
+                  adminPhone && phoneEdit.editing
+                    ? {
+                        onPair: (t) => phoneEdit.edits.setPair({kind: "edit", row: t}),
+                        onRemove: (t) => phoneEdit.edits.setConfirmId(t.id),
+                        onAdd: () => phoneEdit.edits.setPair({kind: "new", tableNumber: roundRows.reduce((m, r) => Math.max(m, r.table), 0) + 1}),
+                      }
+                    : undefined
+                }
+              />
+            )}
           </ScrollArea>
         )}
       </Box>
@@ -622,4 +678,54 @@ function phoneTableTarget(
     return {cue: t.started ? "Nastavi igru" : "Započni igru", onClick: startGame};
   }
   return {href: `/league/${leagueId}/daily-standings/table/${t.id}`};
+}
+
+// the first error of the page's two loads, if any
+function loadErrorOf(...errors: (string | null)[]): string | null {
+  return errors.find((e) => e != null) ?? null;
+}
+
+// Desktop round view in Sve on a two-place night (Claude Design 09 A): the Kolo's tables under each place, each place's
+// tables from Stol 1, in one or two columns. Its tables are edited from their place's view, where Novi stol knows the
+// place; a click on a table still opens its scorepad (tableHref, the admin's).
+function DesktopRoundSections({title, sections, tableHref}: {title: string; sections: {title: string; rows: TableRow[]}[]; tableHref?: (t: TableRow) => string}) {
+  const all = sections.flatMap((sec) => sec.rows);
+  return (
+    <Box sx={{flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: "12px"}}>
+      <Box sx={{flex: "none", display: "flex", alignItems: "baseline", gap: "14px"}}>
+        <Box component="h2" sx={{m: 0, fontFamily: font.display, fontSize: 26, fontWeight: 800, whiteSpace: "nowrap"}}>
+          {title}
+        </Box>
+        <Box sx={{fontSize: 16, color: color.ink2, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap"}}>
+          {count(all.length, NOUN.stol)} · {liveCount(all)} uživo
+        </Box>
+      </Box>
+      <Card sx={{flex: 1, minHeight: 0, overflowY: "auto", scrollbarGutter: "stable", borderRadius: "22px"}}>
+        {sections.map((sec) => {
+          const cols = sec.rows.length > 4 ? 2 : 1;
+          return (
+            <Box component="section" key={sec.title} aria-label={`${title} · ${sec.title}`}>
+              <Box sx={{display: "flex", alignItems: "baseline", gap: "8px", p: "12px 18px", background: color.paper2, borderBottom: `1px solid ${color.divider}`}}>
+                <Box component="h3" sx={{m: 0, fontSize: 15, fontWeight: 800, color: color.ink}}>
+                  {sec.title}
+                </Box>
+                <Box component="span" sx={{fontSize: 13.5, color: color.muted}}>
+                  · {count(sec.rows.length, NOUN.stol)} · {liveCount(sec.rows)} uživo
+                </Box>
+              </Box>
+              <Box sx={{display: "grid", gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))`, columnGap: "16px"}}>
+                {splitColumns(sec.rows, cols).map((col, i) => (
+                  <Box key={i} component="ul" sx={{listStyle: "none", m: 0, p: 0}}>
+                    {col.map((t) => (
+                      <DesktopTableRow key={t.id} t={t} dense={false} href={tableHref && !t.bye ? tableHref(t) : undefined} />
+                    ))}
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          );
+        })}
+      </Card>
+    </Box>
+  );
 }

@@ -1,6 +1,7 @@
 import {z} from "zod";
 import {isIsoDate, isSafeUrl, isStartTime} from "@/app/_lib/nights";
 import {DATE_FORMAT_ERROR, LOCATION_URL_ERROR} from "@/app/_interfaces/league";
+import {locationIdField} from "@/app/_interfaces/location";
 import type {TournamentPhase} from "@/app/_lib/tournaments";
 import type {ArrivalPhase} from "@/app/_lib/tournamentDay";
 import type {TableState} from "@/app/_lib/tableState";
@@ -20,7 +21,6 @@ export const ROUNDS_ERROR = "Turnir ima od 1 do 20 kola.";
 export const FEE_ERROR = "Kotizacija je od 0 do 999 €.";
 
 const time = z.string({invalid_type_error: TIME_ERROR}).refine(isStartTime, TIME_ERROR).nullable();
-const text = (max: number, message: string) => z.string().trim().max(max, message).nullable();
 const url = z
   .string()
   .trim()
@@ -39,9 +39,8 @@ export const TournamentRequestValidation = z.object({
   date: z.string({required_error: TOURNAMENT_DATE_REQUIRED}).refine(isIsoDate, DATE_FORMAT_ERROR),
   gathering_time: time,
   start_time: time,
-  location_name: text(100, "Ime mjesta može imati najviše 100 znakova."),
-  location_address: text(200, "Adresa može imati najviše 200 znakova."),
-  location_url: url,
+  // where it is played, from Lokacije (null: not set yet)
+  location_id: locationIdField.optional().default(null),
   rounds: z.number().int().min(1, ROUNDS_ERROR).max(20, ROUNDS_ERROR),
   matches_per_round: z.union([z.literal(1), z.literal(2)]),
   // Zvanja: false = "bez zvanja", no zvanja at its tables. Left out (a form opened before zvanja came back): with
@@ -72,9 +71,7 @@ export type TournamentRequest = {
   date: string;
   gathering_time: string | null;
   start_time: string | null;
-  location_name: string | null;
-  location_address: string | null;
-  location_url: string | null;
+  location_id: number | null;
   rounds: number;
   matches_per_round: 1 | 2;
   declarations: boolean;
@@ -108,7 +105,8 @@ export const KoloTableValidation = z.object({team1_id: z.number().int(), team2_i
 
 // ---------- answers ----------
 
-export type TournamentPlace = {name: string | null; address: string | null; url: string | null};
+// the place from Lokacije (id null and the rest null: not set)
+export type TournamentPlace = {id: number | null; name: string | null; address: string | null; url: string | null};
 
 // A player as a tournament's lists show them (the username only for an admin: they are private)
 // username: public (#88), so every viewer gets it

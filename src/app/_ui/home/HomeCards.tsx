@@ -3,13 +3,15 @@
 import {BurzaPost, MyLeague, MySchedule} from "@/app/_interfaces/burza";
 import {gatheringLabel, isSafeUrl, nextNightIndex, NightLocation, nightLabel, nightTimeLabel} from "@/app/_lib/nights";
 import {adCount, namesAndMore, teamsAsking, teamsLooking} from "@/app/_lib/ui/burza";
-import {leagueArrivalPhase} from "@/app/_lib/leagueArrival";
+import {asksAdmin, leagueArrivalPhase} from "@/app/_lib/leagueArrival";
 import {initials} from "@/app/_lib/ui/text";
 import {TransitionLink} from "@/app/_lib/viewTransitions";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {mapLinkProps} from "@/app/_ui/gathering/Gathering";
 import {buttonBase, ellipsis, InitialsAvatar} from "@/app/_ui/sp";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import EmojiEventsRoundedIcon from "@mui/icons-material/EmojiEventsRounded";
 import EventRoundedIcon from "@mui/icons-material/EventRounded";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import MapRoundedIcon from "@mui/icons-material/MapRounded";
@@ -34,22 +36,44 @@ export function nextNight(schedule: MySchedule | null): {league: MyLeague; night
 
 // Where the night gathers, on the navy card: a pin, "19:30 · Caffe bar Kartaš", the address, and Karta when the place
 // has a link (it opens Google Maps in a new tab or the Maps app)
-// gathering: Okupljanje, "HH:MM", said under the time and place with the address
-export function GatheringRow({time, gathering, place}: {time: string | null | undefined; gathering?: string | null; place: NightLocation}) {
-  const sub = [gathering ? `Okupljanje od ${gathering}` : null, place.address].filter(Boolean).join(" · ");
-  const map = place.url && isSafeUrl(place.url) ? place.url : null;
-  return (
+// gathering: Okupljanje, "HH:MM", said under the time and place with the address. stacked: the address on its own line
+// (Početna · Liga). label: over the row, "Vaša lokacija" on a two-place night. orPlace: a two-place night whose team
+// Podjela hasn't placed yet: "19:30 · Kartaš ili Lanterna" and "Još niste raspoređeni.", without a map.
+export function GatheringRow({
+  time,
+  gathering,
+  place,
+  stacked = false,
+  label,
+  orPlace = null,
+}: {
+  time: string | null | undefined;
+  gathering?: string | null;
+  place: NightLocation;
+  stacked?: boolean;
+  label?: string;
+  orPlace?: NightLocation | null;
+}) {
+  const okupljanje = gathering ? `Okupljanje od ${gathering}` : null;
+  const lines = orPlace
+    ? [okupljanje, "Još niste raspoređeni."]
+    : stacked
+      ? [okupljanje, place.address]
+      : [[okupljanje, place.address].filter(Boolean).join(" · ")];
+  const title = orPlace ? `${gatheringLabel(time, place)} ili ${orPlace.name}` : gatheringLabel(time, place);
+  const map = !orPlace && place.url && isSafeUrl(place.url) ? place.url : null;
+  const row = (
     <Box sx={{display: "flex", alignItems: "center", gap: "10px", p: "10px 10px 10px 12px", borderRadius: "14px", background: tint.creamOnNavy[16]}}>
       <PlaceRoundedIcon aria-hidden sx={{flex: "none", fontSize: 22, color: color.cream}} />
       <Box sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "1px"}}>
         <Box component="span" sx={{fontSize: 15, fontWeight: 700, lineHeight: 1.3, overflowWrap: "anywhere"}}>
-          {gatheringLabel(time, place)}
+          {title}
         </Box>
-        {sub && (
-          <Box component="span" sx={{fontSize: 13, lineHeight: 1.3, color: color.cream, overflowWrap: "anywhere"}}>
-            {sub}
+        {lines.filter(Boolean).map((line) => (
+          <Box key={line} component="span" sx={{fontSize: 13, lineHeight: 1.3, color: color.cream, overflowWrap: "anywhere"}}>
+            {line}
           </Box>
-        )}
+        ))}
       </Box>
       {map && (
         <Box
@@ -64,21 +88,56 @@ export function GatheringRow({time, gathering, place}: {time: string | null | un
       )}
     </Box>
   );
+  if (!label) return row;
+  return (
+    <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
+      <Box component="span" sx={{fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.cream}}>
+        {label}
+      </Box>
+      {row}
+    </Box>
+  );
 }
 
 // Sljedeća večer: the team, its players, where and when it gathers, and the night (opening Raspored); Nađi zamjenu
 // opens the substitute form until Tu smo opens (then the night is under way and the button goes). Tonight it holds
 // Potvrda dolaska (Tu smo) when the night has a start time; onArrivalChanged: a button there changed it (the schedule is asked again).
-export function NextNightCard({league, night, today, onArrivalChanged}: {league: MyLeague; night: string; today: string; onArrivalChanged?: () => void}) {
+// On a two-place night (Claude Design 01 A) the row is the team's own place under "Vaša lokacija", or both places and
+// "Još niste raspoređeni." before Podjela; tonight a team without a place sees Javi se adminu instead of the row.
+// end: Kraj večeri (card 16), the place's last Kolo is played: its box in place of the place, Tu smo and Nađi zamjenu.
+export function NextNightCard({
+  league,
+  night,
+  today,
+  onArrivalChanged,
+  end = null,
+}: {
+  league: MyLeague;
+  night: string;
+  today: string;
+  onArrivalChanged?: () => void;
+  end?: {kola: number; next: string | null} | null;
+}) {
   const tonight = night === today;
-  const arrival = league.arrival?.night === night ? league.arrival : null;
+  const arrival = end ? null : league.arrival?.night === night ? league.arrival : null;
   const now = useNow();
-  const findSub = !arrival || leagueArrivalPhase(arrival, now) === "before";
+  const findSub = !end && (!arrival || leagueArrivalPhase(arrival, now) === "before");
   const time = league.times[night];
   const gathering = league.gatherings?.[night];
-  const place = league.places?.[night];
+  const first = league.places?.[night];
+  const second = league.secondPlaces?.[night];
+  const slot = league.slots?.[night];
+  const twoPlaces = first != null && second != null;
+  // the team's place (on a two-place night only once Podjela put it there)
+  const place = twoPlaces ? (slot ? (slot === 1 ? first : second) : null) : first;
+  const unplaced = twoPlaces && !slot && !(arrival && asksAdmin(arrival.two_places, arrival.slot));
+  const row = end ? null : place ? (
+    <GatheringRow time={time} gathering={gathering} place={place} stacked label={twoPlaces ? "Vaša lokacija" : undefined} />
+  ) : unplaced ? (
+    <GatheringRow time={time} gathering={gathering} place={first!} orPlace={second} stacked />
+  ) : null;
   // "sri 14. 10. · 19:00", or only the date when the night has no start time; with a place, the time is in its row
-  const when = place ? nightLabel(night) : nightTimeLabel(night, time);
+  const when = row ? nightLabel(night) : nightTimeLabel(night, time);
   return (
     <Box
       component="section"
@@ -115,8 +174,9 @@ export function NextNightCard({league, night, today, onArrivalChanged}: {league:
           </Box>
         ))}
       </Box>
-      {place && <GatheringRow time={time} gathering={gathering} place={place} />}
+      {row}
       {arrival && <LeagueArrival leagueId={league.league_id} teamId={league.team_id} initial={arrival} onChanged={onArrivalChanged} />}
+      {end && <EndOfNight leagueId={league.league_id} night={night} kola={end.kola} next={end.next} />}
       {findSub && (
         <Box
           component={TransitionLink}
@@ -144,6 +204,36 @@ export function NextNightCard({league, night, today, onArrivalChanged}: {league:
           Nađi zamjenu
         </Box>
       )}
+    </Box>
+  );
+}
+
+// Kraj večeri (card 16): every Kolo of the team's place is played; the next night, and the night's Dnevni poredak
+function EndOfNight({leagueId, night, kola, next}: {leagueId: number; night: string; kola: number; next: string | null}) {
+  return (
+    <Box component="section" aria-label="Kraj večeri" sx={{display: "flex", flexDirection: "column", gap: "10px", p: "14px", borderRadius: "18px", background: tint.creamOnNavy[16]}}>
+      <Box component="h3" sx={{m: 0, display: "flex", alignItems: "center", gap: "6px", fontSize: 12.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.cream, "& svg": {fontSize: 18}}}>
+        <CheckCircleRoundedIcon aria-hidden />
+        Kraj večeri
+      </Box>
+      <Box sx={{fontSize: 14, lineHeight: 1.45, color: color.cream}}>
+        {kola === 1 ? "Odigrano je jedino kolo večeras." : kola < 5 ? `Odigrana su sva ${kola} kola večeras.` : `Odigrano je svih ${kola} kola večeras.`} Hvala na igri!
+        {next && (
+          <>
+            <br />
+            {/* the date ends in its own full stop ("čet 26. 11.") */}
+            Sljedeća večer je {nightLabel(next)}
+          </>
+        )}
+      </Box>
+      <Box
+        component={TransitionLink}
+        href={`/league/${leagueId}/daily-standings?date=${night}`}
+        sx={{...buttonBase, height: 50, borderRadius: "16px", background: color.white, color: color.navy, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontSize: 16, fontWeight: 700, textDecoration: "none", "& svg": {fontSize: 22}}}
+      >
+        <EmojiEventsRoundedIcon aria-hidden />
+        Dnevni poredak
+      </Box>
     </Box>
   );
 }

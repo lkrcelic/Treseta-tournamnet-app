@@ -1,6 +1,7 @@
 // prisma/seed.ts
 // Local data for `npm run dev:reset`: the users `admin` and `player` (password `sifra`), the bye team, one league
-// with 8 teams of two in two conferences, and a tournament of today that six of those teams have signed up for.
+// with 8 teams of two in two conferences whose next night is at two places (Kartaš and Lanterna), and a tournament of
+// today that six of those teams have signed up for.
 
 import {PrismaClient} from "@prisma/client";
 
@@ -93,9 +94,15 @@ async function main() {
   const today = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
   const lastThursday = today.getTime() - ((today.getUTCDay() + 3) % 7) * DAY;
   const nights = Array.from({length: 16}, (_, i) => new Date(lastThursday + (i - 5) * 7 * DAY));
+  // Lokacije: the league plays at Kartaš; Lanterna is there for a night on two places (LOCATIONS_PLAN.md)
+  const kartas = await prisma.location.create({
+    data: {name: "Caffe bar Kartaš", address: "Ilica 128, Zagreb", url: "https://maps.app.goo.gl/kartas"},
+  });
+  const lanterna = await prisma.location.create({data: {name: "Lanterna", address: "Savska cesta 52, Zagreb"}});
   const league = await prisma.league.create({
     data: {
       league_name: "Trešeta liga 2026",
+      location_id: kartas.location_id,
       season: "2026",
       start_date: nights[0],
       end_date: nights[nights.length - 1],
@@ -128,6 +135,17 @@ async function main() {
     await prisma.$executeRaw`CALL update_team_score(${team.team_id}, ${league.league_id})`;
   }
 
+  // The next night (today when today is a Thursday) is played at Kartaš and Lanterna. Podjela: Sjever at Kartaš
+  // (player's team among them), three of Jug at Lanterna, Lavovi not assigned yet (their players see "Javi se adminu")
+  const nextNight = nights.find((night) => night.getTime() >= today.getTime())!;
+  await prisma.leagueNight.update({
+    where: {league_id_night: {league_id: league.league_id, night: nextNight}},
+    data: {second_location_id: lanterna.location_id},
+  });
+  await prisma.leagueNightTeam.createMany({
+    data: teams.slice(0, 7).map((t, i) => ({league_id: league.league_id, night: nextNight, team_id: t.team_id, slot: i < 4 ? 1 : 2})),
+  });
+
   // Okupljanje and Početak of the seeded tournament: half an hour and an hour from now, so Potvrda dolaska is open
   // while the seed is being used; late in the evening they stay on this side of midnight (23:15 and 23:45)
   const hhmm = (minutesOfDay: number) => `${String(Math.floor(minutesOfDay / 60)).padStart(2, "0")}:${String(minutesOfDay % 60).padStart(2, "0")}`;
@@ -145,8 +163,7 @@ async function main() {
       // half an hour from now and an hour from now, so Potvrda dolaska is open while the seed is being used
       gathering_time: gatheringTime,
       start_time: startTime,
-      location_name: "Caffe bar Kartaš",
-      location_address: "Ilica 128, Zagreb",
+      location_id: kartas.location_id,
       rounds: 5,
       matches_per_round: 2,
       entry_fee: 10,

@@ -15,7 +15,9 @@ import EmojiEventsRoundedIcon from "@mui/icons-material/EmojiEventsRounded";
 import {Box} from "@mui/material";
 import React, {useMemo, useState} from "react";
 import {adminCardSx, DayPicker, PhoneStepper} from "./AdminParts";
-import {EMPTY_PLACE, PlaceDraft, PlaceFields, placePayload, timesError, TimesFields} from "./GatheringForm";
+import {timesError, TimesFields} from "./GatheringForm";
+import {LocationPicker} from "@/app/_ui/locations/LocationPicker";
+import {NightLocation} from "@/app/_lib/nights";
 import {GAME_MINUTES_DEFAULT, GAME_MINUTES_MAX, GAME_MINUTES_MIN} from "@/app/_lib/gameTime";
 
 // Nova liga on the admin's phone (admin-mobile 13, 13b): the name, season, dates, play day and the rounds per night,
@@ -34,7 +36,7 @@ export default function NewLeaguePhone() {
   const [startTime, setStartTime] = useState("");
   const [gatheringTime, setGatheringTime] = useState("");
   const timeError = timesError(gatheringTime, startTime);
-  const [place, setPlace] = useState<PlaceDraft>(EMPTY_PLACE);
+  const [place, setPlace] = useState<NightLocation | null>(null);
   const [rounds, setRounds] = useState(3);
   const [minutes, setMinutes] = useState(GAME_MINUTES_DEFAULT);
   const [removed, setRemoved] = useState<string[]>([]);
@@ -66,7 +68,7 @@ export default function NewLeaguePhone() {
         play_day: playDay,
         start_time: startTime || null,
         gathering_time: gatheringTime || null,
-        ...placePayload(place),
+        location_id: place?.id ?? null,
         rounds_per_night: rounds,
         game_minutes: minutes,
         team_ids: [],
@@ -183,7 +185,7 @@ export default function NewLeaguePhone() {
         <SectionLabel id="nl-gathering">Okupljanje</SectionLabel>
         <Box role="group" aria-labelledby="nl-gathering" sx={{...adminCardSx, gap: "14px"}}>
           <TimesFields gathering={gatheringTime} start={startTime} onGathering={setGatheringTime} onStart={setStartTime} error={timeError} inputSx={inputSx} />
-          <PlaceFields value={place} onChange={setPlace} inputSx={inputSx} />
+          <LocationPicker value={place} onChange={setPlace} />
         </Box>
       </ScrollArea>
       <Box sx={{flex: "none", display: "flex", flexDirection: "column", gap: "10px"}}>

@@ -197,6 +197,7 @@ async function reopenCheck(tx: Tx, match: FinishedMatchRow, extensions: number):
     select: {
       round_number: true,
       round_date: true,
+      location_slot: true,
       status: true,
       attendance: true,
       leagueRounds: {select: {league_id: true}},
@@ -214,7 +215,8 @@ async function reopenCheck(tx: Tx, match: FinishedMatchRow, extensions: number):
   const nextKolo = await tx.round.count({
     where: {
       round_number: {gt: round.round_number ?? 0},
-      OR: [{leagueRounds: {some: {league_id: {in: leagues}}}}, {tournamentRounds: {some: {tournament_id: {in: tournaments}}}}],
+      // at a place of a two-place night, that place's next Kolo (the other place goes at its own pace)
+      OR: [{leagueRounds: {some: {league_id: {in: leagues}}}, ...(round.location_slot != null && {location_slot: round.location_slot})}, {tournamentRounds: {some: {tournament_id: {in: tournaments}}}}],
     },
   });
   if (nextKolo > 0) return {why: "Sljedeće kolo je već složeno"};

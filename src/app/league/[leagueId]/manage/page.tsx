@@ -49,7 +49,16 @@ import RoundsView from "./RoundsView";
 import useLeagueRounds from "@/app/_hooks/useLeagueRounds";
 import DraftView from "./DraftView";
 import {draftNight, DraftNightTab} from "@/app/_lib/ui/adminTonight";
-import {isIsoDate} from "@/app/_lib/nights";
+import {isIsoDate, nextNightIndex} from "@/app/_lib/nights";
+import useNightSplit from "@/app/_hooks/useNightSplit";
+import SplitDesktop from "@/app/_ui/league/split/SplitDesktop";
+import CallSplitRoundedIcon from "@mui/icons-material/CallSplitRounded";
+import {Slot, SLOTS} from "@/app/_lib/locations";
+import {kolaRows, placeStatus} from "@/app/_lib/ui/adminTonight";
+import {PlaceMenuButton, PlaceOption} from "@/app/_ui/league/PlacePicker";
+import {CreatePlace} from "@/app/_ui/round/CreateRound";
+import {DraftPlace} from "./DraftView";
+import {placesOfNights} from "./RoundsView";
 import {leagueNightString} from "@/app/_lib/dates";
 import EditCalendarRoundedIcon from "@mui/icons-material/EditCalendarRounded";
 import TaskAltRoundedIcon from "@mui/icons-material/TaskAltRounded";
@@ -67,8 +76,8 @@ import {ReactNode, useCallback, useEffect, useMemo, useRef, useState} from "reac
 import useManagePhone from "@/app/_hooks/useManagePhone";
 
 type Filter = "all" | "active" | "inactive";
-type View = "draft" | "create" | "teams" | "rounds" | "dates" | "details" | "sponsors";
-const VIEWS: View[] = ["draft", "create", "teams", "rounds", "dates", "details", "sponsors"];
+type View = "draft" | "create" | "split" | "teams" | "rounds" | "dates" | "details" | "sponsors";
+const VIEWS: View[] = ["draft", "create", "split", "teams", "rounds", "dates", "details", "sponsors"];
 type Row = {id: number; name: string; players: string[]; played: number | null; active: boolean; conferenceId: number | null};
 // the conference filter of the team list: every team, one conference's (its id), or the teams without one
 const ALL_CONFERENCES = 0;
@@ -122,16 +131,44 @@ function ManageLeagueDesktop() {
   const dateParam = searchParams.get("date");
   const [shownNight, setShownNight] = useState<string | null>(dateParam && isIsoDate(dateParam) ? dateParam : null);
   const firstLeague = useRef(leagueId);
+  // the place of a two-place night Novo kolo and Skica are about (the header's place picker)
+  const [place, setPlace] = useState<Slot>(1);
   useEffect(() => {
     if (leagueId === firstLeague.current) return;
     firstLeague.current = leagueId;
     setShownNight(null);
+    setPlace(1);
   }, [leagueId]);
   const draft = draftNight(leagueRounds.rounds, shownNight);
-  // tonight's rounds still in Skica: Novo kolo creates new ones once they are published or discarded
   const tonight = leagueNightString();
-  const tonightDraft = draftNight((leagueRounds.rounds ?? []).filter((r) => r.date === tonight), tonight);
   const leagueNights = useLeagueNights(leagueId);
+  // Podjela edits the next night (tonight first) and opens only when that night has two places
+  const nightList = leagueNights.nights ?? [];
+  const splitNight = nightList[nextNightIndex(nightList.map((n) => n.date), tonight)] ?? null;
+  const splitOpen = splitNight != null && splitNight.second_location != null;
+  const nightSplit = useNightSplit(leagueId, splitOpen ? splitNight.date : null);
+  // a night's two places (null: one place)
+  const placesAt = (date: string | null | undefined) => {
+    const n = nightList.find((x) => x.date === date);
+    return n?.place && n.second_location ? ([n.place, n.second_location] as const) : null;
+  };
+  const tonightPlaces = placesAt(tonight);
+  const draftPlaces = draft ? placesAt(draft.date) : null;
+  // tonight's rounds still in Skica (at the place picked): Novo kolo creates new ones once they are published or discarded
+  const tonightDraft = draftNight((leagueRounds.rounds ?? []).filter((r) => r.date === tonight), tonight, tonightPlaces ? place : null);
+  // the place picker's places: how many teams each has (Podjela) and how its Kola go
+  const placeOptions = (date: string, places: NonNullable<ReturnType<typeof placesAt>>): PlaceOption[] =>
+    SLOTS.map((slot) => {
+      const teams = date === splitNight?.date && nightSplit.split ? nightSplit.split.teams.filter((t) => t.slot === slot).length : null;
+      const st = placeStatus(leagueRounds.rounds ?? [], date, slot);
+      return {slot, name: places[slot - 1].name, sub: [teams != null ? count(teams, NOUN.ekipa) : null, st.text].filter(Boolean).join(" · "), live: st.live};
+    });
+  // Novo kolo at the place picked: the teams Podjela put there (loading until the Podjela is here)
+  const tonightSplit = tonightPlaces && splitNight?.date === tonight ? nightSplit.split : null;
+  const createPlace: CreatePlace | null = tonightPlaces
+    ? {slot: place, name: tonightPlaces[place - 1].name, teams: new Set((tonightSplit?.teams ?? []).filter((t) => t.slot === place).map((t) => t.team_id))}
+    : null;
+  const draftPlace: DraftPlace | null = draftPlaces ? {slot: place, name: draftPlaces[place - 1].name, other: draftPlaces[2 - place].name} : null;
   // the count on the Sponzori tab
   const leagueSponsors = useLeagueSponsors(leagueId);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
@@ -188,7 +225,12 @@ function ManageLeagueDesktop() {
   const leagueName = leagues.find((l) => l.id === leagueId)?.name ?? "";
   // Skica without a night to show (none waiting, or the rounds list didn't load) is Novo kolo; it shows a loading
   // card while the list is on its way
-  const shown: View = view === "draft" && !draft && (leagueRounds.rounds != null || leagueRounds.error) ? "create" : view;
+  // Podjela of a night with one place is closed: Novo kolo instead (once the nights are known)
+  const shown: View =
+    (view === "draft" && !draft && (leagueRounds.rounds != null || leagueRounds.error)) || (view === "split" && leagueNights.nights != null && !splitOpen) ? "create" : view;
+  // the place picker beside the league's, on Novo kolo (tonight) and Skica (its night) of a two-place night
+  const pickerDate = shown === "create" ? tonight : shown === "draft" ? (draft?.date ?? null) : null;
+  const pickerPlaces = pickerDate ? placesAt(pickerDate) : null;
 
   // optimistic, like the Active switch
   const setConference = async (r: Row, conferenceId: number | null) => {
@@ -387,22 +429,31 @@ function ManageLeagueDesktop() {
       active="manageLeague"
       eyebrow="Admin"
       title="Upravljanje ligom"
-      right={<LeagueMenuButton leagues={leagues} value={leagueId} onChange={(id) => router.router.push(`/league/${id}/manage?view=${view}`)} />}
+      right={
+        <Box sx={{display: "flex", alignItems: "center", gap: "10px", minWidth: 0}}>
+          {pickerDate && pickerPlaces && (
+            <PlaceMenuButton date={pickerDate} options={placeOptions(pickerDate, pickerPlaces)} value={place} onChange={setPlace} onSplit={splitOpen ? () => setView("split") : undefined} />
+          )}
+          <LeagueMenuButton leagues={leagues} value={leagueId} onChange={(id) => router.router.push(`/league/${id}/manage?view=${view}`)} />
+        </Box>
+      }
     >
       <ViewSwitch
         view={shown}
         onChange={setView}
         draft={draft}
         teams={rows.length}
-        rounds={leagueRounds.rounds?.length ?? null}
+        rounds={leagueRounds.rounds ? kolaRows(leagueRounds.rounds).length : null}
         nights={leagueNights.nights?.length ?? null}
         sponsors={leagueSponsors?.length ?? null}
+        split={splitOpen ? nightSplit.unassigned : null}
       />
       {shown === "draft" && draft ? (
         <DraftView
-          key={`${leagueId}|${draft.date}`}
+          key={`${leagueId}|${draft.date}|${draftPlace?.slot ?? 0}`}
           leagueId={leagueId}
           date={draft.date}
+          place={draftPlace}
           onChanged={leagueRounds.reload}
           onDiscarded={() => {
             setShownNight(null);
@@ -416,10 +467,11 @@ function ManageLeagueDesktop() {
         </Card>
       ) : shown === "create" ? (
         <CreateRoundView
-          key={leagueId}
+          key={`${leagueId}|${createPlace?.slot ?? 0}`}
           leagueId={leagueId}
-          // the teams of Ekipe, so one added there is here at once
-          teams={{teams, error, loading, reload}}
+          // the teams of Ekipe, so one added there is here at once (at a place, once its Podjela is here)
+          teams={createPlace && !tonightSplit ? {teams: null, error: nightSplit.error, loading: true, reload: nightSplit.reload} : {teams, error, loading, reload}}
+          place={createPlace}
           onCreated={(date) => {
             // Skica waits for the list with the new rounds (a loading card), instead of showing the old one
             leagueRounds.setRounds(null);
@@ -443,10 +495,12 @@ function ManageLeagueDesktop() {
           }
           onDraftWaiting={leagueRounds.reload}
         />
+      ) : shown === "split" ? (
+        <SplitDesktop key={`${leagueId}|${splitNight?.date}`} data={nightSplit} />
       ) : shown === "details" ? (
         <LeagueDetailsView key={leagueId} leagueId={leagueId} leagues={leagues} aside={conferencesCard} />
       ) : shown === "rounds" ? (
-        <RoundsView leagueId={leagueId} data={leagueRounds} />
+        <RoundsView leagueId={leagueId} data={leagueRounds} placesOf={placesOfNights(leagueNights.nights)} />
       ) : shown === "dates" ? (
         <DatesView leagueId={leagueId} defaults={gatheringDefaults(leagues.find((l) => l.id === leagueId))} data={leagueNights} onRoundsGone={leagueRounds.reload} />
       ) : shown === "sponsors" ? (
@@ -718,6 +772,7 @@ function ViewSwitch({
   rounds,
   nights,
   sponsors,
+  split,
 }: {
   view: View;
   onChange: (v: View) => void;
@@ -726,8 +781,10 @@ function ViewSwitch({
   rounds: number | null;
   nights: number | null;
   sponsors: number | null;
+  // Podjela's teams without a place; null: the next night has one place, so the tab is grey and doesn't open
+  split: number | null;
 }) {
-  const items: {key: View; label: string; icon: ReactNode; count: number | null}[] = [
+  const items: {key: View; label: string; icon: ReactNode; count: number | null; alert?: boolean; off?: string}[] = [
     ...(draft
       ? [
           draft.waiting > 0
@@ -736,8 +793,12 @@ function ViewSwitch({
         ]
       : []),
     {key: "create", label: "Novo kolo", icon: <AddCircleRoundedIcon />, count: null},
-    {key: "teams", label: "Ekipe", icon: <GroupsRoundedIcon />, count: teams},
+    split == null
+      ? {key: "split", label: "Podjela", icon: <CallSplitRoundedIcon />, count: null, off: "Sljedeća večer ima jednu lokaciju. Drugu dodaješ u Datumima."}
+      : {key: "split", label: "Podjela", icon: <CallSplitRoundedIcon />, count: split, alert: split > 0},
+    // Kola before Ekipe (LOCATIONS_PLAN.md, decision 16)
     {key: "rounds", label: "Kola", icon: <ViewListRoundedIcon />, count: rounds},
+    {key: "teams", label: "Ekipe", icon: <GroupsRoundedIcon />, count: teams},
     {key: "dates", label: "Datumi", icon: <CalendarMonthRoundedIcon />, count: nights},
     {key: "details", label: "Podaci", icon: <TuneRoundedIcon />, count: null},
     {key: "sponsors", label: "Sponzori", icon: <HandshakeRoundedIcon />, count: sponsors},
@@ -753,14 +814,17 @@ function ViewSwitch({
             type="button"
             role="tab"
             aria-selected={on}
-            onClick={() => onChange(it.key)}
+            aria-disabled={it.off ? true : undefined}
+            title={it.off}
+            onClick={() => !it.off && onChange(it.key)}
             sx={{
               ...buttonBase,
               height: 42,
               px: "18px",
               borderRadius: "12px",
               background: on ? color.navy : "transparent",
-              color: on ? color.white : color.ink,
+              color: on ? color.white : it.off ? color.faint : color.ink,
+              ...(it.off && {cursor: "default"}),
               display: "flex",
               alignItems: "center",
               gap: "8px",
@@ -772,11 +836,16 @@ function ViewSwitch({
           >
             {it.icon}
             {it.label}
-            {it.count != null && (
-              <Box component="span" sx={{fontSize: 12, fontWeight: 700, color: on ? color.cream : color.faint}}>
-                {it.count}
-              </Box>
-            )}
+            {it.count != null &&
+              (it.alert ? (
+                <Box component="span" sx={{height: 18, px: "6px", borderRadius: "9px", display: "inline-flex", alignItems: "center", background: color.gold, color: color.ink, fontSize: 11, fontWeight: 800}}>
+                  {it.count}
+                </Box>
+              ) : (
+                <Box component="span" sx={{fontSize: 12, fontWeight: 700, color: on ? color.cream : color.faint}}>
+                  {it.count}
+                </Box>
+              ))}
           </Box>
         );
       })}

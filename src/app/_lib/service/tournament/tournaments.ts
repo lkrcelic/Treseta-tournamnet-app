@@ -1,5 +1,6 @@
 import {Prisma} from "@prisma/client";
 import {prisma} from "@/app/_lib/prisma";
+import {locationRefused} from "@/app/_lib/service/location/locations";
 import {Viewer} from "@/app/_lib/players/privacy";
 import {displayName} from "@/app/_lib/players/names";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
@@ -37,9 +38,7 @@ function fields(r: TournamentRequest) {
     date: dateValue(r.date),
     gathering_time: blankToNull(r.gathering_time),
     start_time: blankToNull(r.start_time),
-    location_name: blankToNull(r.location_name),
-    location_address: blankToNull(r.location_address),
-    location_url: blankToNull(r.location_url),
+    location_id: r.location_id ?? null,
     rounds: r.rounds,
     matches_per_round: r.matches_per_round,
     declarations: r.declarations,
@@ -71,7 +70,7 @@ export async function createTournament(request: TournamentRequest, createdBy: nu
     const t = await tx.tournament.create({data: {...fields(request), created_by: createdBy}, select: {tournament_id: true}});
     await savePrizes(tx, t.tournament_id, request.prizes);
     return t.tournament_id;
-  });
+  }).catch(locationRefused);
 }
 
 // The tables of a Kolo not published yet (a draft), deleted with what hangs on them (a bye table's matches). above: only
@@ -135,7 +134,7 @@ export async function updateTournament(id: number, request: TournamentRequest): 
       if (!t.started_at && !t.arrival_closed_at) await applyLimit(tx, id, next.max_teams);
       else await fillPlaces(tx, id, next.max_teams);
     }
-  });
+  }).catch(locationRefused);
 }
 
 // Puts the entries right for the limit (rebalance)

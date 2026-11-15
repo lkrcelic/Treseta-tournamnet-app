@@ -25,6 +25,7 @@ import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import HandshakeRoundedIcon from "@mui/icons-material/HandshakeRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import PersonSearchRoundedIcon from "@mui/icons-material/PersonSearchRounded";
+import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import {Box, Drawer, SxProps, Theme} from "@mui/material";
@@ -58,6 +59,7 @@ export type NavKey =
   | "teams"
   | "players"
   | "sponsors"
+  | "locations"
   | "profile";
 
 // Desktop page frame: menu button + eyebrow/title header, right-hand controls, content filling the viewport. Without a
@@ -194,6 +196,7 @@ const NAV: NavItem[] = [
   {key: "teams", label: "Ekipe", icon: <GroupsRoundedIcon />, href: "/teams", cap: "team.edit"},
   {key: "players", label: "Igrači", icon: <PersonRoundedIcon />, href: "/players", cap: "player.directory"},
   {key: "sponsors", label: "Sponzori", icon: <HandshakeRoundedIcon />, href: "/sponzori", cap: "sponsor.manage"},
+  {key: "locations", label: "Lokacije", icon: <PlaceRoundedIcon />, href: "/lokacije", cap: "location.manage"},
   {key: "profile", label: "Moj profil", icon: <AccountCircleRoundedIcon />, href: "/profile", head: "Račun"},
 ];
 

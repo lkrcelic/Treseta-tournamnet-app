@@ -7,10 +7,14 @@ import useMySchedule from "@/app/_hooks/useMySchedule";
 import useOpenTable from "@/app/_hooks/useOpenTable";
 import useStartGame from "@/app/_hooks/useStartGame";
 import {currentLeagueHref} from "@/app/_lib/league";
-import {color, font, shadow, tint} from "@/app/_styles/tokens";
+import {color, shadow} from "@/app/_styles/tokens";
 import {Brand} from "@/app/_ui/auth/AuthFrame";
 import {BurzaHomeCard, HomeTile, NextNightCard, NextNightPlaceholder, nextNight} from "@/app/_ui/home/HomeCards";
 import {StartCard} from "@/app/_ui/home/StartCard";
+import {ByeCard, NextTableCard, NoNightCard} from "@/app/_ui/home/TonightCards";
+import {homeCard} from "@/app/_lib/homeCard";
+import {MyLeague} from "@/app/_interfaces/burza";
+import {NightLocation} from "@/app/_lib/nights";
 import {useNow} from "@/app/_ui/home/LeagueArrival";
 import {LeaveRow} from "@/app/_ui/home/LeaveParts";
 import {leagueArrivalAPI} from "@/app/_fetchers/league/arrival";
@@ -25,7 +29,6 @@ import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import EventRoundedIcon from "@mui/icons-material/EventRounded";
 import EmojiEventsRoundedIcon from "@mui/icons-material/EmojiEventsRounded";
 import LeaderboardRoundedIcon from "@mui/icons-material/LeaderboardRounded";
-import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import {Box} from "@mui/material";
 import {TransitionLink, useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {useMyRating} from "@/app/_hooks/useRatings";
@@ -192,6 +195,35 @@ function LeagueHome() {
   const now = useNow();
   // the team at the table tonight that is here (Tu smo): Odlazimo under Započni igru
   const here = schedule?.leagues.find((l) => l.arrival?.night === schedule.today && l.arrival.arrival?.here && leagueArrivalPhase(l.arrival, now) !== "over");
+  // which card is on top (LOCATIONS_PLAN.md, decisions 20–21): the table, Kraj večeri, Pauza, Sljedeći stol, the
+  // night's card or Nema zakazane večeri. The team's evening counts while its night is the day's (until midnight).
+  const evening = next && next.league.tonight?.night === next.night ? next.league.tonight : null;
+  const arrival = next && next.league.arrival?.night === next.night ? next.league.arrival : null;
+  const card = homeCard({
+    openTable: openTable != null,
+    tonight: evening
+      ? {
+          // without Potvrda dolaska (no start time) the night is on once its place has a Kolo, and every team is here
+          started: arrival ? leagueArrivalPhase(arrival, now) === "started" : evening.kola > 0,
+          here: arrival ? arrival.arrival?.here === true : true,
+          lastTable: evening.lastTable && {kolo: evening.lastTable.kolo, bye: evening.lastTable.bye},
+          lastKoloOut: evening.lastKoloOut,
+        }
+      : null,
+    nextNight: next != null,
+  });
+  // the team's place on a two-place night (Pauza says where the number of teams is odd)
+  const placeName = next?.league.secondPlaces[next.night] ? placeOfTeam(next.league, next.night)?.name ?? null : null;
+  const leave = here && (
+    <LeaveRow
+      title="Odlazite?"
+      text="Ekipa ne ulazi u iduće novo kolo. Kola koja su već objavljena ostaju kakva jesu."
+      onLeave={async () => {
+        await leagueArrivalAPI(here.league_id, here.team_id, "leave");
+        reloadSchedule();
+      }}
+    />
+  );
 
   return (
     <>
@@ -200,25 +232,28 @@ function LeagueHome() {
       {openTable ? (
         <>
           <StartCard table={openTable} starting={starting} onStart={start} errorId={error ? "start-error" : undefined} />
-          {here && (
-            <LeaveRow
-              title="Odlazite?"
-              text="Ekipa ne ulazi u iduće novo kolo. Kola koja su već objavljena ostaju kakva jesu."
-              onLeave={async () => {
-                await leagueArrivalAPI(here.league_id, here.team_id, "leave");
-                reloadSchedule();
-              }}
-            />
-          )}
+          {leave}
         </>
       ) : openTableLoading ? (
         <Box sx={{flex: "none", borderRadius: "24px", viewTransitionName: "table"}}>
           <NextNightPlaceholder />
         </Box>
+      ) : next && evening && card === "end" ? (
+        <NextNightCard league={next.league} night={next.night} today={schedule!.today} end={{kola: evening.kola, next: next.league.nights.find((n) => n > next.night) ?? null}} />
+      ) : next && evening?.lastTable && card === "bye" ? (
+        <>
+          <ByeCard kolo={evening.lastTable.kolo} place={placeName} />
+          {leave}
+        </>
+      ) : next && evening?.lastTable && card === "next" ? (
+        <>
+          <NextTableCard league={next.league} last={evening.lastTable} />
+          {leave}
+        </>
       ) : next ? (
         <NextNightCard league={next.league} night={next.night} today={schedule!.today} onArrivalChanged={reloadSchedule} />
       ) : schedule || scheduleError ? (
-        <NoRoundCard />
+        <NoNightCard />
       ) : (
         <NextNightPlaceholder />
       )}
@@ -257,42 +292,10 @@ function RatingChip({rating}: {rating: number}) {
   );
 }
 
-// No open round for the player: the game can't start until an admin creates the round
-function NoRoundCard() {
-  return (
-    <Box
-      aria-disabled="true"
-      sx={{
-        height: 200,
-        flex: "none",
-        boxSizing: "border-box",
-        borderRadius: "24px",
-        background: color.lineFill,
-        border: `1.5px dashed ${tint.navy[22]}`,
-        color: color.faint,
-        p: "20px 20px 22px 22px",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        cursor: "not-allowed",
-      }}
-    >
-      <Box sx={{display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px"}}>
-        <Box sx={{display: "flex", flexDirection: "column", gap: "6px", minWidth: 0}}>
-          <Box sx={{fontSize: 13, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: color.muted}}>Nema otvorene runde</Box>
-          <Box sx={{fontSize: 14, lineHeight: 1.4, color: color.muted, textWrap: "pretty"}}>Igra se otvara kad admin pokrene rundu.</Box>
-        </Box>
-        <Box
-          component="span"
-          aria-hidden
-          sx={{width: 52, height: 52, flex: "none", borderRadius: "50%", background: tint.navy[10], color: color.faint, display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 28}}}
-        >
-          <LockRoundedIcon />
-        </Box>
-      </Box>
-      <Box component="span" sx={{fontFamily: font.display, fontSize: 42, fontWeight: 800, letterSpacing: "-.02em", lineHeight: 1}}>
-        Započni igru
-      </Box>
-    </Box>
-  );
+// The team's place on a night: on a two-place night the one Podjela put it at (null before that), else the night's
+function placeOfTeam(league: MyLeague, night: string): NightLocation | null {
+  const second = league.secondPlaces[night];
+  if (!second) return league.places[night] ?? null;
+  const slot = league.slots[night];
+  return slot === 2 ? second : slot === 1 ? (league.places[night] ?? null) : null;
 }

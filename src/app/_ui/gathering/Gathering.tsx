@@ -27,14 +27,16 @@ export function ExceptionMark({label, size = 20}: {label: string | null; size?: 
   );
 }
 
-// "19:30 · Caffe bar Kartaš" under a night's date (its Početak and place), with "!" when the night has its own time
-// (Početak or Okupljanje: ownGathering) or place. A night's own Početak or place is bold and darker and the league's
+// "19:30 · Caffe bar Kartaš" under a night's date (its Početak and place; "19:30 · Kartaš · Lanterna" at two places),
+// with "!" when the night has its own time (Početak or Okupljanje: ownGathering) or place, or two places. A night's own Početak or place is bold and darker and the league's
 // is muted (Datumi); `plain` keeps both muted and marks the night
 // with `mark` (Raspored, which knows only that the night differs). It stays on one line, cut with "…", unless `wrap`
 // (Raspored, where the player needs the whole place). Nothing when the night has neither.
 export function GatheringLine({
   time,
   place,
+  second = null,
+  mine = null,
   ownTime = false,
   ownGathering = false,
   ownPlace = false,
@@ -46,6 +48,10 @@ export function GatheringLine({
 }: {
   time: string | null | undefined;
   place: NightLocation | null | undefined;
+  // the night's second place (Druga lokacija): its own, so marked like an own place
+  second?: NightLocation | null;
+  // on a two-place night the viewer's team's place, "(vi)" after it (Raspored)
+  mine?: 1 | 2 | null;
   ownTime?: boolean;
   ownGathering?: boolean;
   ownPlace?: boolean;
@@ -55,7 +61,7 @@ export function GatheringLine({
   size?: number;
   sx?: SxProps<Theme>;
 }) {
-  if (!time && !place) return null;
+  if (!time && !place && !second) return null;
   const part = (own: boolean) => (own && !plain ? {fontWeight: 700, color: color.ink} : {fontWeight: 400, color: color.muted});
   return (
     <Box component="span" sx={mergeSx({display: "flex", alignItems: "center", gap: "6px", minWidth: 0, fontSize: size, lineHeight: 1.3}, sx)}>
@@ -72,10 +78,20 @@ export function GatheringLine({
         {place && (
           <Box component="span" sx={part(ownPlace)}>
             {place.name}
+            {second && mine === 1 && " (vi)"}
           </Box>
         )}
+        {second && (
+          <>
+            {(time || place) && " · "}
+            <Box component="span" sx={part(true)}>
+              {second.name}
+              {mine === 2 && " (vi)"}
+            </Box>
+          </>
+        )}
       </Box>
-      <ExceptionMark label={plain ? (mark ?? null) : exceptionLabel(ownTime || ownGathering, ownPlace)} size={size < 13 ? 18 : 20} />
+      <ExceptionMark label={plain ? (mark ?? null) : exceptionLabel(ownTime || ownGathering, ownPlace, second != null)} size={size < 13 ? 18 : 20} />
     </Box>
   );
 }

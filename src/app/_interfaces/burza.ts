@@ -1,5 +1,6 @@
 import {DATE_FORMAT_ERROR} from "@/app/_interfaces/league";
 import {MyLeagueArrival} from "@/app/_interfaces/leagueArrival";
+import {Slot} from "@/app/_lib/locations";
 import {isIsoDate, NightLocation} from "@/app/_lib/nights";
 import {isValidPhone, PHONE_ERROR} from "@/app/_lib/phone";
 import {z} from "zod";
@@ -125,10 +126,30 @@ export type MyLeague = {
   gatherings: Record<string, string>;
   // where each night is played (its own place or the league's); a night without a place isn't in it
   places: Record<string, NightLocation>;
-  // the nights with their own Početak, Okupljanje or place (Raspored marks them)
+  // the second place of each night played at two places (Druga lokacija); a one-place night isn't in it
+  secondPlaces: Record<string, NightLocation>;
+  // the team's place on each night played at two places (1: places[night], 2: secondPlaces[night]); a night where
+  // Podjela hasn't placed it yet, or a one-place night, isn't in it
+  slots: Record<string, Slot>;
+  // the nights with their own Početak, Okupljanje or place, or a second place (Raspored marks them)
   ownPlace: string[];
   // Potvrda dolaska tonight (Tu smo on Početna · Večeras); absent when the league doesn't play tonight with a start time
   arrival?: MyLeagueArrival;
+  // the team's evening so far at its place, for Početna's cards (Sljedeći stol, Pauza, Kraj večeri); absent when the
+  // league doesn't play tonight (until 06:00 the evening's night)
+  tonight?: MyLeagueTonight;
+};
+
+// The team's evening at its place (LOCATIONS_PLAN.md, decision 21): its latest closed table of the published Kola, a
+// bye included, which of the place's Kola that was ("Kolo 2/3": k of the place's published Kola tonight), and whether
+// the place has published its last Kolo of the night (the league's Kola po večeri)
+export type MyLeagueTonight = {
+  night: string;
+  // opponent: null for a bye (opponentId: the bye's team then); score: the team's wins first
+  lastTable: {table: number | null; kolo: [number, number]; opponent: string | null; opponentId: number; score: [number, number]; bye: boolean} | null;
+  lastKoloOut: boolean;
+  // how many Kola the place has published tonight
+  kola: number;
 };
 
 export type MySchedule = {today: string; leagues: MyLeague[]};

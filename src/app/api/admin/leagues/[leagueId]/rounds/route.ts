@@ -1,3 +1,4 @@
+import {slotParam} from "@/app/_lib/locations";
 import {NextRequest, NextResponse} from "next/server";
 import {z} from "zod";
 import {requireAdmin} from "@/app/_lib/service/auth/requireUser";
@@ -29,7 +30,7 @@ const RoundKeyValidation = z.object({
   round_number: z.coerce.number().int().positive(),
 });
 
-// Deletes a round of a night: ?date=YYYY-MM-DD&round_number=N
+// Deletes a round of a night: ?date=YYYY-MM-DD&round_number=N, at both places of a two-place night unless &slot=1|2
 export async function DELETE(request: NextRequest, {params}: Params) {
   const auth = await requireAdmin(request);
   if (auth.response) return auth.response;
@@ -38,7 +39,8 @@ export async function DELETE(request: NextRequest, {params}: Params) {
   try {
     const sp = request.nextUrl.searchParams;
     const {date, round_number} = RoundKeyValidation.parse({date: sp.get("date"), round_number: sp.get("round_number")});
-    const tables = await deleteLeagueRound(leagueId, new Date(date), round_number);
+    const slot = sp.get("slot");
+    const tables = await deleteLeagueRound(leagueId, new Date(date), round_number, slot == null ? undefined : slotParam(slot));
     return NextResponse.json({tables}, {status: STATUS.OK});
   } catch (error) {
     return errorResponse(error, "Kolo nije obrisano.");

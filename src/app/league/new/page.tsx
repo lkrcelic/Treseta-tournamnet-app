@@ -2,7 +2,9 @@
 
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import NewLeaguePhone from "@/app/_ui/admin/NewLeaguePhone";
-import {EMPTY_PLACE, PlaceDraft, PlaceFields, placePayload, timesError, TimesFields} from "@/app/_ui/admin/GatheringForm";
+import {timesError, TimesFields} from "@/app/_ui/admin/GatheringForm";
+import {LocationPicker} from "@/app/_ui/locations/LocationPicker";
+import {NightLocation} from "@/app/_lib/nights";
 import {TeamExtendedResponse} from "@/app/_interfaces/team";
 import {isByeTeam} from "@/app/_lib/bye";
 import {count, matchesQuery, NOUN} from "@/app/_lib/ui/text";
@@ -67,7 +69,7 @@ function CreateLeagueDesktop() {
   const [gatheringTime, setGatheringTime] = useState("");
   const timeError = timesError(gatheringTime, startTime);
   // where they are played, optional too
-  const [place, setPlace] = useState<PlaceDraft>(EMPTY_PLACE);
+  const [place, setPlace] = useState<NightLocation | null>(null);
   const [roundsPerNight, setRoundsPerNight] = useState(3);
   const [gameMinutes, setGameMinutes] = useState(GAME_MINUTES_DEFAULT);
   // the nights filled in from the dates and the play day, minus the removed ones, plus the added ones
@@ -151,7 +153,7 @@ function CreateLeagueDesktop() {
         play_day: playDay,
         start_time: startTime || null,
         gathering_time: gatheringTime || null,
-        ...placePayload(place),
+        location_id: place?.id ?? null,
         rounds_per_night: roundsPerNight,
         game_minutes: gameMinutes,
         team_ids: Array.from(selected),
@@ -175,7 +177,7 @@ function CreateLeagueDesktop() {
         conferences: conferences.length > 0,
       });
       setName("");
-      setPlace(EMPTY_PLACE);
+      setPlace(null);
       setSelected(new Set());
       setWithConferences(false);
       setConferenceDrafts(startingDrafts());
@@ -422,7 +424,7 @@ function CreateLeagueDesktop() {
           error={timeError}
           inputSx={{height: 52, borderRadius: "14px", fontSize: 16}}
         />
-        <PlaceFields value={place} onChange={setPlace} inputSx={{height: 52, borderRadius: "14px", fontSize: 16}} />
+        <LocationPicker value={place} onChange={setPlace} />
       </Box>
       {submitError && <ErrorNote>{submitError}</ErrorNote>}
       {created && (

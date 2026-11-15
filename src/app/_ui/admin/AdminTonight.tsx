@@ -7,9 +7,16 @@ import useLeagues, {useSelectedLeagueId} from "@/app/_hooks/useLeagues";
 import {useDailyData} from "@/app/_hooks/useStandings";
 import {leagueNightString} from "@/app/_lib/dates";
 import {nightLabel, nightLabelLong, nightsLeftLabel} from "@/app/_lib/nights";
-import {draftNight, tonightEyebrow, tonightState, TonightState, waitingLabel} from "@/app/_lib/ui/adminTonight";
+import {draftNight, PlaceTonight, placesTonight, tonightEyebrow, tonightState, TonightState, waitingLabel} from "@/app/_lib/ui/adminTonight";
+import useNightSplit from "@/app/_hooks/useNightSplit";
+import useLocationFilter from "@/app/_hooks/useLocationFilter";
+import {getLeagueArrivalsAPI} from "@/app/_fetchers/league/arrival";
+import {LeagueArrivals} from "@/app/_interfaces/leagueArrival";
+import {Slot} from "@/app/_lib/locations";
+import CallSplitRoundedIcon from "@mui/icons-material/CallSplitRounded";
+import WarningRoundedIcon from "@mui/icons-material/WarningRounded";
 import {toTableRows, TableRow} from "@/app/_lib/ui/tables";
-import {count, NOUN} from "@/app/_lib/ui/text";
+import {count, NOUN, plural} from "@/app/_lib/ui/text";
 import {TransitionLink, useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import LeagueNotes from "@/app/_ui/round/LeagueNotes";
@@ -31,7 +38,8 @@ const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.g
 // Večer lige (admin-mobile 01): the admin's home on the phone while the league plays. The league is picked in the
 // eyebrow (and holds for every admin screen), "Prikaz igrača" switches to the app players see. The navy card shows
 // how tonight is going, the cream one which night's rounds wait to be published, then the four ways on, the tables
-// still playing and the league's notes.
+// still playing and the league's notes. Tonight at two places (Claude Design 11 A) the navy card has a box per place,
+// each going at its own pace, the teams Podjela hasn't placed yet, and Podjela ekipa next to Novo kolo.
 export default function AdminTonight() {
   const router = useTransitionRouter();
   const setView = useAdminViewStore((s) => s.setView);
@@ -50,10 +58,10 @@ export default function AdminTonight() {
     if (daily.data) setRefreshedAt(hhmm(new Date()));
   }, [daily.data]);
 
-  const rows: (TableRow & {round: number})[] = useMemo(() => {
+  const rows: (TableRow & {round: number; slot: number | null})[] = useMemo(() => {
     const rounds = daily.data?.rounds ?? [];
-    const roundOf = new Map(rounds.map((r) => [r.id, r.round_number]));
-    return toTableRows(rounds).map((t) => ({...t, round: roundOf.get(t.id) ?? 0}));
+    const of = new Map(rounds.map((r) => [r.id, r]));
+    return toTableRows(rounds).map((t) => ({...t, round: of.get(t.id)?.round_number ?? 0, slot: of.get(t.id)?.location_slot ?? null}));
   }, [daily.data]);
   // tonight's rounds, unpublished ones too, for "Kolo 2 od 3"
   const roundsTonight = new Set((leagueRounds.rounds ?? []).filter((r) => r.date === tonight).map((r) => r.roundNumber)).size;
@@ -63,6 +71,25 @@ export default function AdminTonight() {
   const tonightNight = nights?.find((n) => n.date === tonight) ?? null;
   const nextNight = nights?.find((n) => n.date >= tonight) ?? null;
   const time = tonightNight?.time ?? null;
+  // tonight at two places: each place's state, its teams (Podjela) and how many of them are here
+  const placeNames = tonightNight?.place && tonightNight.second_location ? ([tonightNight.place.name, tonightNight.second_location.name] as const) : null;
+  const split = useNightSplit(leagueId ?? 0, placeNames && leagueId != null ? tonight : null);
+  const [arrivals, setArrivals] = useState<LeagueArrivals | null>(null);
+  useEffect(() => {
+    if (!placeNames || leagueId == null) return;
+    let cancelled = false;
+    getLeagueArrivalsAPI(leagueId)
+      .then((a) => !cancelled && setArrivals(a))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [leagueId, placeNames != null, daily.data]); // eslint-disable-line react-hooks/exhaustive-deps
+  const places = placeNames ? placesTonight(rows, leagueRounds.rounds ?? [], tonight) : null;
+  const placeTeams = (slot: Slot) => (split.split ? split.split.teams.filter((t) => t.slot === slot) : null);
+  const placeHere = (slot: Slot) => (arrivals?.window ? (placeTeams(slot)?.filter((t) => arrivals.teams[t.team_id]?.here).length ?? null) : null);
+  // Dnevni poredak opened on a place shows that place (its own memory, Sve | place | place)
+  const [, setDailyPlace] = useLocationFilter(leagueId ?? 0);
 
   if (leagueId === null) {
     return (
@@ -82,13 +109,17 @@ export default function AdminTonight() {
   const base = leagueId != null ? `/league/${leagueId}` : null;
   const current = state.kind === "playing" ? rows.filter((t) => t.round === state.round) : [];
   const playingTeams = current.reduce((n, t) => n + (t.bye ? 1 : 2), 0);
-  const sub =
-    state.kind === "none"
+  const sub = placeNames
+    ? [nightLabelLong(tonight), time, league?.teamCount != null ? count(league.teamCount, NOUN.ekipa) : null, "2 lokacije"]
+    : state.kind === "none"
       ? nextNight
         ? [nightLabelLong(nextNight.date), nextNight.time, league?.teamCount != null ? count(league.teamCount, NOUN.ekipa) : null]
         : [nightsLeftLabel(0)]
       : [nightLabelLong(tonight), state.kind === "playing" ? count(playingTeams, NOUN.ekipa) : null, state.kind === "playing" ? count(state.tables, NOUN.stol) : null];
-  const stillPlaying = current.filter((t) => !t.done);
+  // the tables still playing: of the round being played, or at two places of each place's round
+  const stillPlaying = places
+    ? rows.filter((t) => !t.done && places.some((p) => p.slot === t.slot && p.state.kind === "playing" && p.state.round === t.round))
+    : current.filter((t) => !t.done);
 
   const refresh = () => {
     daily.refresh();
@@ -149,6 +180,22 @@ export default function AdminTonight() {
         <Box sx={{height: 196, flex: "none", borderRadius: "24px", background: color.navy, display: "flex", alignItems: "center", justifyContent: "center"}}>
           <Spinner tone="white" label="Učitavanje" />
         </Box>
+      ) : places && placeNames && base ? (
+        <PlacesCard
+          places={places}
+          names={placeNames}
+          time={time}
+          teams={(slot) => placeTeams(slot)?.length ?? null}
+          here={placeHere}
+          unassigned={split.unassigned}
+          onCreate={(slot) => router.push(`${base}/manage?view=create&slot=${slot}`)}
+          onDraft={(slot) => router.push(`${base}/manage?view=draft&date=${tonight}&slot=${slot}`)}
+          onDaily={(slot) => {
+            setDailyPlace(slot);
+            router.push(`${base}/daily-standings`);
+          }}
+          onSplit={() => router.push(`${base}/manage?view=split`)}
+        />
       ) : (
         <NightCard
           state={state}
@@ -162,7 +209,7 @@ export default function AdminTonight() {
         />
       )}
 
-      {waiting && base && !(state.kind === "none" && waiting.date === tonight) && (
+      {waiting && base && !(state.kind === "none" && waiting.date === tonight) && !(places && waiting.date === tonight) && (
         <Box
           component={TransitionLink}
           href={`${base}/manage?view=draft&date=${waiting.date}`}
@@ -225,12 +272,12 @@ export default function AdminTonight() {
             </IconCircleButton>
           </Box>
           <Box component="ul" sx={{listStyle: "none", m: 0, p: 0, background: color.white, borderRadius: "22px", overflow: "hidden", boxShadow: shadow.card}}>
-            {stillPlaying.map((t, i) => (
+            {[...stillPlaying].sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0) || a.table - b.table).map((t, i) => (
               <Box component="li" key={t.id} sx={{borderTop: i ? `1px solid ${color.line}` : "none"}}>
                 <Box
                   component={TransitionLink}
                   href={`${base}/daily-standings/table/${t.id}`}
-                  aria-label={`Stol ${t.table}: ${t.teamA} – ${t.teamB}${t.live ? `, ${t.pointsA} : ${t.pointsB}` : ""}`}
+                  aria-label={`Stol ${t.table}${placeNames && t.slot != null ? ` (${placeNames[t.slot - 1]})` : ""}: ${t.teamA} – ${t.teamB}${t.live ? `, ${t.pointsA} : ${t.pointsB}` : ""}`}
                   sx={{
                     ...buttonBase,
                     width: "100%",
@@ -250,6 +297,12 @@ export default function AdminTonight() {
                     {t.table}
                   </Box>
                   <Box component="span" aria-hidden sx={{flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px", fontSize: 15, fontWeight: 600}}>
+                    {/* tables are numbered at each place: the place says which Stol 1 */}
+                    {placeNames && t.slot != null && (
+                      <Box component="span" sx={{fontSize: 12, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: color.muted, ...ellipsis}}>
+                        {placeNames[t.slot - 1]}
+                      </Box>
+                    )}
                     <Box component="span" sx={ellipsis}>
                       {t.teamA}
                     </Box>
@@ -402,6 +455,160 @@ function NightCard({
         {action.icon}
         {action.label}
       </Box>
+    </Box>
+  );
+}
+
+// The navy card tonight at two places (Claude Design 11 A): a box per place going at its own pace (its teams and how
+// many are here, its Skica waiting, its Kolo being played or its night played) with its own way on, the teams without a
+// place (they see Javi se adminu; a link to Podjela), and before any Kolo Podjela ekipa next to Novo kolo
+function PlacesCard({
+  places,
+  names,
+  time,
+  teams,
+  here,
+  unassigned,
+  onCreate,
+  onDraft,
+  onDaily,
+  onSplit,
+}: {
+  places: PlaceTonight[];
+  names: readonly [string, string];
+  time: string | null;
+  teams: (slot: Slot) => number | null;
+  // how many of the place's teams pressed Tu smo (null: no Potvrda dolaska tonight)
+  here: (slot: Slot) => number | null;
+  unassigned: number;
+  onCreate: (slot: Slot) => void;
+  onDraft: (slot: Slot) => void;
+  onDaily: (slot: Slot) => void;
+  onSplit: () => void;
+}) {
+  const fresh = places.every((p) => p.state.kind === "none" && p.waiting === 0);
+  const cb = (filled: boolean) =>
+    ({
+      ...buttonBase,
+      height: 44,
+      borderRadius: "13px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: "7px",
+      px: "12px",
+      fontSize: 15,
+      fontWeight: 600,
+      whiteSpace: "nowrap",
+      background: filled ? color.cream : "transparent",
+      color: filled ? color.navy : color.cream,
+      boxShadow: filled ? "none" : `inset 0 0 0 1.5px ${color.cream}`,
+      "& svg": {fontSize: 20},
+      "&:active": {transform: "scale(.98)"},
+    }) as const;
+  return (
+    <Box component="section" aria-label="Večeras" sx={{flex: "none", borderRadius: "24px", background: color.navy, color: color.white, p: "16px 18px 18px", display: "flex", flexDirection: "column", gap: "10px"}}>
+      <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px"}}>
+        <Box component="span" sx={{fontSize: 12.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: color.cream}}>
+          Večeras
+        </Box>
+        {time && (
+          <Box component="span" sx={{fontSize: 13, color: color.cream}}>
+            od {time}
+          </Box>
+        )}
+      </Box>
+      {fresh && (
+        <Box component="span" sx={{fontFamily: font.display, fontSize: 26, fontWeight: 800, lineHeight: 1.05}}>
+          Kola još nisu kreirana
+        </Box>
+      )}
+      {places.map((p) => {
+        const name = names[p.slot - 1];
+        const st = p.state;
+        const n = teams(p.slot);
+        const tu = here(p.slot);
+        const teamsLine = [n != null ? count(n, NOUN.ekipa) : null, tu != null ? `${tu} tu` : null].filter(Boolean).join(" · ");
+        const status =
+          p.waiting > 0
+            ? "kola čekaju objavu"
+            : st.kind === "playing"
+              ? `kolo ${p.kolo?.[0] ?? st.round} od ${p.kolo?.[1] ?? st.rounds} · ${st.started ? "u tijeku" : "nije počelo"}`
+              : st.kind === "finished"
+                ? "večer je odigrana"
+                : teamsLine;
+        return (
+          <Box key={p.slot} component="section" aria-label={name} sx={{borderRadius: "16px", background: tint.creamOnNavy[16], p: "11px 12px", display: "flex", flexDirection: "column", gap: "8px"}}>
+            <Box sx={{display: "flex", alignItems: "baseline", gap: "8px"}}>
+              <Box component="h3" sx={{m: 0, flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, ...ellipsis}}>
+                {name}
+              </Box>
+              <Box component="span" sx={{flex: "none", fontSize: 12.5, fontWeight: 600, color: color.cream}}>
+                {status}
+              </Box>
+            </Box>
+            {p.waiting > 0 ? (
+              <>
+                <Box component="span" sx={{fontSize: 13.5, color: color.cream}}>
+                  {waitingLabel(p.waiting, p.approved)}
+                </Box>
+                <Box component="button" type="button" onClick={() => onDraft(p.slot)} sx={{...cb(true), height: 40, fontSize: 14.5}}>
+                  <EditCalendarRoundedIcon aria-hidden />
+                  Skica kola · {name}
+                </Box>
+              </>
+            ) : st.kind === "playing" || st.kind === "finished" ? (
+              <>
+                <Box sx={{display: "flex", alignItems: "baseline", gap: "8px"}}>
+                  <Box component="span" sx={{fontFamily: font.display, fontSize: 30, fontWeight: 800, lineHeight: 1, ...tabular}}>
+                    {st.kind === "playing" ? `${st.done} / ${st.tables}` : `${p.kola} / ${p.kola}`}
+                  </Box>
+                  <Box component="span" sx={{fontSize: 13.5, color: color.cream}}>
+                    {st.kind === "finished" ? "kola odigrano" : st.done === 1 ? "stol završen" : "stolova završeno"}
+                  </Box>
+                </Box>
+                <Box sx={{height: 7, borderRadius: "4px", background: tint.creamOnNavy[24], overflow: "hidden"}}>
+                  <Box sx={{height: "100%", width: `${st.kind === "playing" ? Math.round((st.done / Math.max(st.tables, 1)) * 100) : 100}%`, borderRadius: "4px", background: color.cream}} />
+                </Box>
+                <Box component="button" type="button" onClick={() => onDaily(p.slot)} sx={{...cb(false), height: 40, fontSize: 14.5}}>
+                  <CalendarMonthRoundedIcon aria-hidden />
+                  Dnevni poredak · {name}
+                </Box>
+              </>
+            ) : (
+              !fresh && (
+                <Box component="button" type="button" onClick={() => onCreate(p.slot)} sx={{...cb(true), height: 40, fontSize: 14.5}}>
+                  <AddCircleRoundedIcon aria-hidden />
+                  Novo kolo · {name}
+                </Box>
+              )
+            )}
+          </Box>
+        );
+      })}
+      {unassigned > 0 && (
+        <Box
+          component="button"
+          type="button"
+          onClick={onSplit}
+          sx={{...buttonBase, display: "flex", alignItems: "center", gap: "8px", minHeight: 32, fontSize: 13.5, fontWeight: 600, color: color.white, textAlign: "left", "& svg": {fontSize: 18, color: color.gold, flex: "none"}}}
+        >
+          <WarningRoundedIcon aria-hidden />
+          {count(unassigned, NOUN.ekipa)} bez lokacije {plural(unassigned, "vidi", "vide", "vidi")} „Javi se adminu”
+        </Box>
+      )}
+      {fresh && (
+        <Box sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "8px"}}>
+          <Box component="button" type="button" onClick={onSplit} sx={cb(false)}>
+            <CallSplitRoundedIcon aria-hidden />
+            Podjela ekipa
+          </Box>
+          <Box component="button" type="button" onClick={() => onCreate(1)} sx={cb(true)}>
+            <AddCircleRoundedIcon aria-hidden />
+            Novo kolo
+          </Box>
+        </Box>
+      )}
     </Box>
   );
 }

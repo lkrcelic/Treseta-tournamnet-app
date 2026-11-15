@@ -1,5 +1,7 @@
 import {MATCH_ENDS} from "@/app/_lib/game/scoring";
 import {TeamExtendedResponseValidation} from "@/app/_interfaces/team";
+import {Slot} from "@/app/_lib/locations";
+import {slotField} from "@/app/_interfaces/location";
 import {z} from "zod";
 import {OngoingMatchExtendedResponseValidation} from "./match";
 import {SmokingTablesValidation} from "./smoking";
@@ -25,6 +27,8 @@ export const RoundResponseValidation = z.object({
   table_number: z.number().int().optional(),
   // smoking is allowed at the table
   smoking_table: z.boolean().optional(),
+  // the place of a two-place night the table is at (1 or 2; null on a one-place night), numbered from Stol 1 there
+  location_slot: z.number().int().nullable().optional(),
 });
 
 export const RoundExtendedResponseValidation = RoundResponseValidation.extend({
@@ -44,6 +48,8 @@ export const RoundCreateRequestValidation = z.object({
   smoking_tables: SmokingTablesValidation.optional(),
   // pair every conference on its own, so teams only meet teams of their conference (off by default)
   withinConferences: z.boolean().optional(),
+  // the place of tonight's two-place night the rounds are for (its teams only); null or left out on a one-place night
+  location_slot: slotField,
 });
 
 // the error code of a round creation that would have some teams meet twice today
@@ -74,6 +80,7 @@ export type DraftRound = {
   tables: DraftTable[];
 };
 
-export type DraftNight = {date: string; rounds: DraftRound[]};
+// slot: the place of a two-place night whose Skica it is (null: a one-place night)
+export type DraftNight = {date: string; slot: Slot | null; rounds: DraftRound[]};
 export type RoundResponse = z.infer<typeof RoundResponseValidation>;
 export type RoundExtendedResponse = z.infer<typeof RoundExtendedResponseValidation>;

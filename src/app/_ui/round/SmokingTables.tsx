@@ -1,6 +1,7 @@
 "use client";
 
 import {getSmokingPlanAPI} from "@/app/_fetchers/league/smoking";
+import {Slot} from "@/app/_lib/locations";
 import {SmokingPlan, SmokingPlanSide, SmokingPlanTeam} from "@/app/_interfaces/smoking";
 import {missedTitle, planHeading, roundDotLabel, shareTitle, smokersLabel} from "@/app/_lib/ui/smoking";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
@@ -131,15 +132,16 @@ export function SmokingTablesCard({
   );
 }
 
-// The plan, fetched each time the overlay opens (the rounds may have been created in between)
-function useSmokingPlan(leagueId: number) {
+// The plan, fetched each time the overlay opens (the rounds may have been created in between); slot: tonight's rounds at
+// that place of a two-place night
+function useSmokingPlan(leagueId: number, slot: Slot | null) {
   const [plan, setPlan] = useState<SmokingPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [nonce, setNonce] = useState(0);
   useEffect(() => {
     let cancelled = false;
     setError(null);
-    getSmokingPlanAPI(leagueId)
+    getSmokingPlanAPI(leagueId, slot)
       .then((p) => {
         if (!cancelled) setPlan(p);
       })
@@ -149,7 +151,7 @@ function useSmokingPlan(leagueId: number) {
     return () => {
       cancelled = true;
     };
-  }, [leagueId, nonce]);
+  }, [leagueId, slot, nonce]);
   return {plan, error, reload: () => setNonce((n) => n + 1)};
 }
 
@@ -346,8 +348,8 @@ function RotationHeading() {
 }
 
 // Desktop: over the Novo kolo view (the design's "Pušački raspored · večeras")
-export function SmokingPlanOverlay({leagueId, onClose}: {leagueId: number; onClose: () => void}) {
-  const {plan, error, reload} = useSmokingPlan(leagueId);
+export function SmokingPlanOverlay({leagueId, onClose, slot = null}: {leagueId: number; onClose: () => void; slot?: Slot | null}) {
+  const {plan, error, reload} = useSmokingPlan(leagueId, slot);
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
   const onCloseRef = useRef(onClose);

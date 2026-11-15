@@ -54,6 +54,22 @@ export function publishNumbers(
   return new Map([...approved, ...drafts].map((r, i) => [r.roundNumber, lastPublished + 1 + i]));
 }
 
+// The number publishNumbers counts on from at one place of a two-place night (LOCATIONS_PLAN.md, decision 14). Both
+// places share the night's Kolo numbers: each starts after the league's last published round before this night, so
+// Kartaš plays 7, 8, 9 and Lanterna 7, 8; a place that has published some already goes on after its own.
+export function placeLastPublished(beforeNight: number, publishedTonightAtPlace: readonly number[]): number {
+  return Math.max(beforeNight, ...publishedTonightAtPlace);
+}
+
+// "Kolo 1/3" on the player's table (Započni igru, Nastavi igru, Sljedeći stol): which of the place's published Kola
+// tonight it is, out of how many there are so far (a Kolo the admin adds later makes it 1/4). Null when the round
+// isn't among them.
+export function nightKolo(roundNumber: number, publishedTonightAtPlace: readonly number[]): [number, number] | null {
+  const numbers = Array.from(new Set(publishedTonightAtPlace)).sort((a, b) => a - b);
+  const i = numbers.indexOf(roundNumber);
+  return i < 0 ? null : [i + 1, numbers.length];
+}
+
 // The status "Odobri" (approve) or taking it back (approve = false) gives a round: a draft becomes approved and an
 // approved round a draft again; asking twice changes nothing. A published round can't go back.
 export function approvalStatus(current: RoundStatus, approve: boolean): {status: RoundStatus} | {error: string} {

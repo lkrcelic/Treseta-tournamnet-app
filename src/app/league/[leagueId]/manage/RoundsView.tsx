@@ -3,6 +3,7 @@
 import {deleteLeagueRoundAPI, LeagueRoundSummary} from "@/app/_fetchers/admin/daily";
 import useLeagueRounds from "@/app/_hooks/useLeagueRounds";
 import {roundName} from "@/app/_lib/roundStatus";
+import {inKolaRow, kolaRows} from "@/app/_lib/ui/adminTonight";
 import {count, displayDate, NOUN} from "@/app/_lib/ui/text";
 import {color, font, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, EmptyState, ErrorNote, InfoNote, LoadingRows} from "@/app/_ui/sp";
@@ -14,10 +15,36 @@ import {Box} from "@mui/material";
 import React, {useCallback, useEffect, useRef, useState} from "react";
 
 // Upravljanje ligom · Kola: every round of the league per night, and deleting one. A delete waits a few seconds so it
-// can be undone; it is sent right away when another round is deleted or the page is left.
+// can be undone; it is sent right away when another round is deleted or the page is left. On a two-place night a
+// published Kolo is one row for both places and is deleted at both; a Skica is its place's row (kolaRows).
 
 const UNDO_MS = 8000;
-const keyOf = (r: LeagueRoundSummary) => `${r.date}|${r.roundNumber}`;
+const keyOf = (r: LeagueRoundSummary) => `${r.date}|${r.slot ?? 0}|${r.roundNumber}|${r.letter ?? ""}`;
+// the server's order: newest night and Kolo first, the first place before the second
+const serverOrder = (a: LeagueRoundSummary, b: LeagueRoundSummary) => b.date.localeCompare(a.date) || b.roundNumber - a.roundNumber || (a.slot ?? 0) - (b.slot ?? 0);
+
+// The places of a two-place night by its date (null: one place), for the rows' names and the question
+export type PlacesOf = (date: string) => [string, string] | null;
+
+// The places of the league's two-place nights, from its nights (Datumi)
+export function placesOfNights(nights: {date: string; place: {name: string} | null; second_location: {name: string} | null}[] | null | undefined): PlacesOf {
+  return (date) => {
+    const n = nights?.find((x) => x.date === date);
+    return n?.place && n.second_location ? [n.place.name, n.second_location.name] : null;
+  };
+}
+
+// "Skica A · Kartaš" for a place's own row on a two-place night, else the round's name
+export function kolaRowName(r: LeagueRoundSummary, placesOf?: PlacesOf): string {
+  const places = r.slot != null ? placesOf?.(r.date) : null;
+  return places ? `${roundName(r)} · ${places[r.slot! - 1]}` : roundName(r);
+}
+
+// What else Obriši takes away on a two-place night: the Kolo at both places
+export function bothPlacesNote(r: LeagueRoundSummary, placesOf?: PlacesOf): string {
+  const places = r.slot == null ? placesOf?.(r.date) : null;
+  return places ? ` Briše se na obje lokacije: ${places[0]} i ${places[1]}.` : "";
+}
 // "kolo 3", or "skicu A" for a round not published yet (Obrisati …?)
 const roundObject = (r: LeagueRoundSummary) => (r.letter ? `skicu ${r.letter}` : `kolo ${r.roundNumber}`);
 
@@ -37,10 +64,12 @@ function warning(r: LeagueRoundSummary): string {
   return `Uklonit će se ${count(r.tables, NOUN.stol)} i svi upisani rezultati. Poredak i rejting se ponovno izračunaju.`;
 }
 
-type Pending = {round: LeagueRoundSummary; index: number; timer: number};
+// removed: the server's rounds the row stands for (both places' Kolo), put back on Poništi
+type Pending = {round: LeagueRoundSummary; removed: LeagueRoundSummary[]; timer: number};
 
-export default function RoundsView({leagueId, data}: {leagueId: number; data: ReturnType<typeof useLeagueRounds>}) {
-  const {rounds, setRounds, error, reload} = data;
+export default function RoundsView({leagueId, data, placesOf}: {leagueId: number; data: ReturnType<typeof useLeagueRounds>; placesOf?: PlacesOf}) {
+  const {rounds: all, setRounds, error, reload} = data;
+  const rounds = all ? kolaRows(all) : null;
   const [confirm, setConfirm] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -51,15 +80,10 @@ export default function RoundsView({leagueId, data}: {leagueId: number; data: Re
     async (p: Pending, keepalive = false) => {
       window.clearTimeout(p.timer);
       try {
-        await deleteLeagueRoundAPI(leagueId, p.round.date, p.round.roundNumber, keepalive);
+        await deleteLeagueRoundAPI(leagueId, p.round.date, p.round.roundNumber, keepalive, p.round.slot);
       } catch (e) {
         // put it back where it was
-        setRounds((prev) => {
-          if (!prev || prev.some((r) => keyOf(r) === keyOf(p.round))) return prev;
-          const next = [...prev];
-          next.splice(Math.min(p.index, next.length), 0, p.round);
-          return next;
-        });
+        setRounds((prev) => (prev ? [...prev.filter((r) => !p.removed.includes(r)), ...p.removed].sort(serverOrder) : prev));
         setActionError(e instanceof Error ? e.message : "Kolo nije obrisano.");
       }
     },
@@ -80,13 +104,13 @@ export default function RoundsView({leagueId, data}: {leagueId: number; data: Re
   }, [send]);
 
   const remove = (r: LeagueRoundSummary) => {
-    if (!rounds) return;
+    if (!all) return;
     setActionError(null);
     if (pending) send(pending);
-    const index = rounds.findIndex((x) => keyOf(x) === keyOf(r));
-    setRounds(rounds.filter((x) => keyOf(x) !== keyOf(r)));
+    const removed = all.filter((x) => inKolaRow(r, x));
+    setRounds(all.filter((x) => !removed.includes(x)));
     setConfirm(null);
-    const p: Pending = {round: r, index, timer: 0};
+    const p: Pending = {round: r, removed, timer: 0};
     p.timer = window.setTimeout(() => {
       setPending((cur) => (cur === p ? null : cur));
       send(p);
@@ -97,11 +121,7 @@ export default function RoundsView({leagueId, data}: {leagueId: number; data: Re
   const undo = () => {
     if (!pending) return;
     window.clearTimeout(pending.timer);
-    setRounds((prev) => {
-      const next = [...(prev ?? [])];
-      next.splice(Math.min(pending.index, next.length), 0, pending.round);
-      return next;
-    });
+    setRounds((prev) => [...(prev ?? []), ...pending.removed].sort(serverOrder));
     setPending(null);
   };
 
@@ -141,8 +161,15 @@ export default function RoundsView({leagueId, data}: {leagueId: number; data: Re
               return (
                 <Box component="li" key={k} sx={{display: "flex", flexDirection: "column", borderBottom: `1px solid ${color.divider}`, background: asking ? tint.red[6] : "transparent", transition: "background 160ms ease"}}>
                   <Box sx={{height: 60, display: "grid", gridTemplateColumns: grid, gap: "12px", alignItems: "center", pl: "20px", pr: "12px", fontVariantNumeric: "tabular-nums"}}>
-                    <Box component="span" sx={{fontFamily: font.display, fontSize: 20, fontWeight: 800}}>
-                      {roundName(r)}
+                    <Box component="span" sx={{minWidth: 0, display: "flex", flexDirection: "column"}}>
+                      <Box component="span" sx={{fontFamily: font.display, fontSize: 20, fontWeight: 800}}>
+                        {roundName(r)}
+                      </Box>
+                      {r.slot != null && placesOf?.(r.date) && (
+                        <Box component="span" sx={{fontSize: 12.5, color: color.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
+                          {placesOf(r.date)![r.slot - 1]}
+                        </Box>
+                      )}
                     </Box>
                     <Box component="span" sx={{fontSize: 15, color: color.ink2}}>
                       {displayDate(r.date)}
@@ -181,6 +208,7 @@ export default function RoundsView({leagueId, data}: {leagueId: number; data: Re
                         </Box>
                         <Box component="span" sx={{fontSize: 13, color: color.ink2}}>
                           {warning(r)}
+                          {bothPlacesNote(r, placesOf)}
                         </Box>
                       </Box>
                       <Box component="button" type="button" onClick={() => setConfirm(null)} sx={{...small, border: `1.5px solid ${tint.navy[25]}`, color: color.navy}}>
@@ -203,7 +231,7 @@ export default function RoundsView({leagueId, data}: {leagueId: number; data: Re
           <Card sx={{borderRadius: "24px", p: "16px 18px", display: "flex", alignItems: "center", gap: "12px", "& > svg": {fontSize: 24, color: color.green}}}>
             <CheckCircleRoundedIcon />
             <Box component="span" sx={{flex: 1, fontSize: 14, fontWeight: 600}}>
-              {roundName(pending.round)} · {displayDate(pending.round.date)} {pending.round.letter ? "obrisana" : "obrisano"}
+              {kolaRowName(pending.round, placesOf)} · {displayDate(pending.round.date)} {pending.round.letter ? "obrisana" : "obrisano"}
             </Box>
             <Box component="button" type="button" onClick={undo} sx={{...buttonBase, height: 40, px: "14px", borderRadius: "10px", background: color.paper, color: color.navy, fontSize: 14, fontWeight: 700}}>
               Poništi

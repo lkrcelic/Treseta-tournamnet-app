@@ -45,9 +45,12 @@ test("an organizer may make tournaments and run their own, and nothing of the le
     "team.edit",
     "player.directory",
     "player.contact",
+    // the tournament form picks a place from Lokacije and can add one; changing and deleting places is the admin's
+    "location.create",
   ];
   assert.deepEqual(capabilitiesOf(organizer), may);
-  // what the role must not grow into by accident: the whole list minus the six above
+  assert.equal(can(organizer, "location.manage"), false);
+  // what the role must not grow into by accident: the whole list minus the seven above
   for (const cap of ALL_CAPABILITIES) {
     if (!may.includes(cap)) assert.equal(can(organizer, cap), false, cap);
   }

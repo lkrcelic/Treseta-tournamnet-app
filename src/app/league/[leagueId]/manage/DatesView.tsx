@@ -2,6 +2,7 @@
 
 import {addLeagueNightAPI, removeLeagueNightAPI, updateLeagueNightAPI} from "@/app/_fetchers/league/nights";
 import useLeagueNights from "@/app/_hooks/useLeagueNights";
+import {cachedLocation} from "@/app/_hooks/useLocations";
 import {updateCachedLeague} from "@/app/_hooks/useLeagues";
 import {LeagueNightAdd, LeagueNightRow, LeagueNightUpdate, NIGHT_TAKEN} from "@/app/_interfaces/league";
 import {leagueDateString} from "@/app/_lib/dates";
@@ -117,9 +118,11 @@ export function useLeagueDates(leagueId: number, defaults: GatheringDefaults, da
       await addLeagueNightAPI(leagueId, night);
       const start_time = night.start_time ?? null;
       const gathering_time = night.gathering_time ?? null;
-      const location = night.location ? {name: night.location.name, address: night.location.address ?? null, url: night.location.url ?? null} : null;
+      // the places picked in the form, from the loaded Lokacije
+      const location = cachedLocation(night.location_id);
+      const second_location = cachedLocation(night.second_location_id);
       // its time, gathering and place are worked out again in list, from the league's current defaults
-      const row = {date: night.date, played: false, rounds: 0, start_time, time: null, gathering_time, gathering: null, location, place: null};
+      const row = {date: night.date, played: false, rounds: 0, start_time, time: null, gathering_time, gathering: null, location, place: null, second_location};
       setNights((prev) => [...(prev ?? []), row].sort(byDate));
       return true;
     } catch (err) {
@@ -177,7 +180,13 @@ export function useLeagueDates(leagueId: number, defaults: GatheringDefaults, da
       const night = await updateLeagueNightAPI(leagueId, date, change);
       setNights(
         (prev) =>
-          prev?.map((n) => (n.date === date ? {...n, date: night.date, start_time: night.start_time, gathering_time: night.gathering_time, location: night.location} : n)).sort(byDate) ?? prev
+          prev
+            ?.map((n) =>
+              n.date === date
+                ? {...n, date: night.date, start_time: night.start_time, gathering_time: night.gathering_time, location: night.location, second_location: night.second_location}
+                : n
+            )
+            .sort(byDate) ?? prev
       );
       setMovedTo(night.date === date ? null : night.date);
       return night.date;
@@ -353,7 +362,14 @@ export default function DatesView({
                     >
                       {nightLabelLong(n.date)}
                     </Box>
-                    <GatheringLine time={n.time} place={n.place} ownTime={n.start_time != null} ownGathering={n.gathering_time != null} ownPlace={n.location != null} />
+                    <GatheringLine
+                      time={n.time}
+                      place={n.place}
+                      second={n.second_location}
+                      ownTime={n.start_time != null}
+                      ownGathering={n.gathering_time != null}
+                      ownPlace={n.location != null}
+                    />
                   </Box>
                   <Box component="span" sx={{justifySelf: "start", height: 26, display: "flex", alignItems: "center", px: "10px", borderRadius: "9px", background: PILL[status].bg, color: PILL[status].ink, fontSize: 12.5, fontWeight: 700}}>
                     {NIGHT_STATUS_LABEL[status]}
@@ -388,7 +404,7 @@ export default function DatesView({
             <NightGatheringForm
               key="new"
               isNew
-              night={{date: ld.suggestedDate, start_time: null, gathering_time: null, location: null}}
+              night={{date: ld.suggestedDate, start_time: null, gathering_time: null, location: null, second_location: null}}
               onCancel={() => setCreating(false)}
               today={today}
               taken={ld.taken}
@@ -397,7 +413,13 @@ export default function DatesView({
               leaguePlace={defaults.location}
               settingsTab="Podaci"
               onSave={async (night) => {
-                const added = await ld.add({date: night.date!, start_time: night.start_time, gathering_time: night.gathering_time, location: night.location});
+                const added = await ld.add({
+                  date: night.date!,
+                  start_time: night.start_time,
+                  gathering_time: night.gathering_time,
+                  location_id: night.location_id,
+                  second_location_id: night.second_location_id,
+                });
                 // the new night opens in Uredi večer
                 if (added) pick(night.date!);
                 return added;

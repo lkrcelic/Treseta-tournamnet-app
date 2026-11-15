@@ -15,7 +15,8 @@ import {isPlaying} from "@/app/_lib/createRoundDraft";
 import {leagueNightString} from "@/app/_lib/dates";
 import {exceptionLabel, gatheringLabel, NIGHT_STATUS_LABEL, NightStatus, nightLabel, nightsLeftLabel, nightStatus, playedNightRemovalText} from "@/app/_lib/nights";
 import {count, matchesQuery, NOUN} from "@/app/_lib/ui/text";
-import {roundName} from "@/app/_lib/roundStatus";
+import {inKolaRow, kolaRows} from "@/app/_lib/ui/adminTonight";
+import {bothPlacesNote, kolaRowName, placesOfNights} from "@/app/league/[leagueId]/manage/RoundsView";
 import {replaceAddress, TransitionLink, useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {
@@ -64,16 +65,17 @@ import {LeagueSponsorsPhone} from "@/app/_ui/sponsors/LeagueSponsors";
 import {GAME_MINUTES_MAX, GAME_MINUTES_MIN} from "@/app/_lib/gameTime";
 
 type Tab = "teams" | "rounds" | "dates" | "details" | "sponsors";
+// Kola before Ekipe (LOCATIONS_PLAN.md, decision 16), as on the computer
 const TABS: {key: Tab; label: string}[] = [
-  {key: "teams", label: "Ekipe"},
   {key: "rounds", label: "Kola"},
+  {key: "teams", label: "Ekipe"},
   {key: "dates", label: "Datumi"},
   {key: "details", label: "Postavke"},
   {key: "sponsors", label: "Sponzori"},
 ];
 export const isLeagueTab = (v: string | null): v is Tab => TABS.some((t) => t.key === v);
 
-// Upravljanje ligom on the admin's phone (admin-mobile 05, 08–12): Novo kolo first, then the league's teams, rounds,
+// Upravljanje ligom on the admin's phone (admin-mobile 05, 08–12): Novo kolo first, then the league's rounds, teams,
 // nights, settings and sponsors. The tab is in the address (?view=), so Back and a reload keep it. Every rule and call is the
 // desktop's; a delete is asked in a sheet.
 export default function LeaguePhone({leagueId, view}: {leagueId: number; view: Tab}) {
@@ -341,7 +343,12 @@ const ROUND_LOOK: Record<LeagueRoundSummary["status"], {label: string; ink: stri
 };
 
 function RoundsTab({leagueId}: {leagueId: number}) {
-  const {rounds, setRounds, error, reload} = useLeagueRounds(leagueId);
+  const {rounds: all, setRounds, error, reload} = useLeagueRounds(leagueId);
+  // the place names of a two-place night's rows
+  const {nights: leagueNights} = useLeagueNights(leagueId);
+  const placesOf = useMemo(() => placesOfNights(leagueNights), [leagueNights]);
+  // a published Kolo of a two-place night is one row for both places (kolaRows)
+  const rounds = useMemo(() => (all ? kolaRows(all) : null), [all]);
   const tonight = useMemo(() => leagueNightString(), []);
   const [asking, setAsking] = useState<LeagueRoundSummary | null>(null);
   const [busy, setBusy] = useState(false);
@@ -359,8 +366,8 @@ function RoundsTab({leagueId}: {leagueId: number}) {
     setBusy(true);
     setActionError(null);
     try {
-      await deleteLeagueRoundAPI(leagueId, asking.date, asking.roundNumber);
-      setRounds((prev) => prev?.filter((r) => !(r.date === asking.date && r.roundNumber === asking.roundNumber)) ?? prev);
+      await deleteLeagueRoundAPI(leagueId, asking.date, asking.roundNumber, false, asking.slot);
+      setRounds((prev) => prev?.filter((r) => !inKolaRow(asking, r)) ?? prev);
       setAsking(null);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Kolo nije obrisano.");
@@ -399,10 +406,10 @@ function RoundsTab({leagueId}: {leagueId: number}) {
               {n.list.map((r, i) => {
                 const look = ROUND_LOOK[r.status];
                 return (
-                  <Box component="li" key={r.roundNumber} sx={{minHeight: 60, display: "flex", alignItems: "center", gap: "10px", pl: "16px", pr: "6px", borderTop: i ? `1px solid ${color.line}` : "none"}}>
+                  <Box component="li" key={`${r.slot ?? 0}|${r.roundNumber}|${r.letter ?? ""}`} sx={{minHeight: 60, display: "flex", alignItems: "center", gap: "10px", pl: "16px", pr: "6px", borderTop: i ? `1px solid ${color.line}` : "none"}}>
                     <Box component="span" sx={{flex: 1, minWidth: 0, display: "flex", alignItems: "baseline", gap: "8px"}}>
                       <Box component="span" sx={{fontSize: 16, fontWeight: 600}}>
-                        {roundName(r)}
+                        {kolaRowName(r, placesOf)}
                       </Box>
                       <Box component="span" sx={{fontSize: 13, color: color.muted, ...tabular}}>
                         {count(r.tables, NOUN.stol)}
@@ -437,7 +444,7 @@ function RoundsTab({leagueId}: {leagueId: number}) {
         title={asking?.letter ? "Obrisati skicu?" : "Obrisati kolo?"}
         text={
           asking
-            ? `${roundName(asking)} (${nightLabel(asking.date)}) ${played ? "i svi upisani rezultati tog kola se brišu" : `i ${count(asking.tables, NOUN.stol)} se brišu`}. Ovo se ne može poništiti.`
+            ? `${kolaRowName(asking, placesOf)} (${nightLabel(asking.date)}) ${played ? "i svi upisani rezultati tog kola se brišu" : `i ${count(asking.tables, NOUN.stol)} se brišu`}.${bothPlacesNote(asking, placesOf)} Ovo se ne može poništiti.`
             : ""
         }
         action={asking?.letter ? "Obriši skicu" : "Obriši kolo"}
@@ -527,9 +534,9 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
             const isNext = i === ld.nextIndex;
             const status = nightStatus(n.date, isNext, ld.today, n.played);
             const future = n.date >= ld.today;
-            const gathering = gatheringLabel(n.time, n.place);
+            const gathering = gatheringLabel(n.time, n.place, n.second_location);
             const ownTime = n.start_time != null || n.gathering_time != null;
-            const own = exceptionLabel(ownTime, n.location != null);
+            const own = exceptionLabel(ownTime, n.location != null, n.second_location != null);
             return (
               <Box component="li" key={n.date} sx={{borderTop: i ? `1px solid ${color.line}` : "none"}}>
                 {/* every night opens: one still to be played in Uredi večer, the others to see them or take them out */}
@@ -565,7 +572,15 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
                     <Box component="span" sx={{fontSize: 16, fontWeight: isNext ? 700 : 600, color: future ? color.ink : color.muted}}>
                       {nightLabel(n.date)}
                     </Box>
-                    <GatheringLine time={n.time} place={n.place} ownTime={n.start_time != null} ownGathering={n.gathering_time != null} ownPlace={n.location != null} size={12.5} />
+                    <GatheringLine
+                      time={n.time}
+                      place={n.place}
+                      second={n.second_location}
+                      ownTime={n.start_time != null}
+                      ownGathering={n.gathering_time != null}
+                      ownPlace={n.location != null}
+                      size={12.5}
+                    />
                   </Box>
                   <Box component="span" sx={{flex: "none", height: 26, display: "flex", alignItems: "center", px: "9px", borderRadius: "8px", background: NIGHT_PILL[status].bg, color: NIGHT_PILL[status].ink, fontSize: 13, fontWeight: 700}}>
                     {NIGHT_STATUS_LABEL[status]}
@@ -583,7 +598,7 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
           <NightGatheringForm
             key="new"
             isNew
-            night={{date: ld.suggestedDate, start_time: null, gathering_time: null, location: null}}
+            night={{date: ld.suggestedDate, start_time: null, gathering_time: null, location: null, second_location: null}}
             onCancel={() => setCreating(false)}
             today={ld.today}
             taken={ld.taken}
@@ -591,8 +606,15 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
             leagueGathering={defaults.gathering ?? null}
             leaguePlace={defaults.location}
             settingsTab="Postavke"
+            splitHint="Ekipe raspoređuješ u Podjeli ekipa (Večer lige)."
             onSave={async (night) => {
-              const added = await ld.add({date: night.date!, start_time: night.start_time, gathering_time: night.gathering_time, location: night.location});
+              const added = await ld.add({
+                date: night.date!,
+                start_time: night.start_time,
+                gathering_time: night.gathering_time,
+                location_id: night.location_id,
+                second_location_id: night.second_location_id,
+              });
               if (added) setCreating(false);
               return added;
             }}
@@ -622,6 +644,7 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
             leagueGathering={defaults.gathering ?? null}
             leaguePlace={defaults.location}
             settingsTab="Postavke"
+            splitHint="Ekipe raspoređuješ u Podjeli ekipa (Večer lige)."
             onSave={async (change) => {
               const date = await ld.update(opened.date, change);
               // a moved night stays open under its new date

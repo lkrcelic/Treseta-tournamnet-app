@@ -1,5 +1,6 @@
 "use client";
 
+import {Slot} from "@/app/_lib/locations";
 import {addTableAPI, removeTableAPI, setTablePairAPI} from "@/app/_fetchers/admin/daily";
 import {LeagueTeam} from "@/app/_hooks/useLeagueTeams";
 import {BYE_LABEL, BYE_TEAM_ID, isByeTeam} from "@/app/_lib/bye";
@@ -113,9 +114,9 @@ export function ConfirmRemove({t, busy, onCancel, onConfirm}: {t: TableRow; busy
   );
 }
 
-// Where a round's tables are edited (a night of a league), and what to reload after a change. addTable: how Novi stol
-// adds a table where it isn't a league's night (a tournament's Kolo)
-export type RoundAdmin = {leagueId: number; date: string; roundNumber: number; onChanged: () => void; addTable?: (team1Id: number, team2Id: number) => Promise<unknown>};
+// Where a round's tables are edited (a night of a league, at a place of a two-place night: slot), and what to reload
+// after a change. addTable: how Novi stol adds a table where it isn't a league's night (a tournament's Kolo)
+export type RoundAdmin = {leagueId: number; date: string; roundNumber: number; slot?: Slot | null; onChanged: () => void; addTable?: (team1Id: number, team2Id: number) => Promise<unknown>};
 
 // The edit actions of a round's tables, for the desktop's edit mode and the admin's phone: the pair being edited (or
 // the new table), the table asked to be removed, and the calls. freshTable: the number of the table added last.
@@ -144,7 +145,7 @@ export function useTableEdits(admin: RoundAdmin | null) {
     if (pair.kind === "edit") await setTablePairAPI(pair.row.id, team1Id, team2Id);
     else {
       if (admin.addTable) await admin.addTable(team1Id, team2Id);
-      else await addTableAPI(admin.leagueId, admin.date, admin.roundNumber, team1Id, team2Id);
+      else await addTableAPI(admin.leagueId, admin.date, admin.roundNumber, team1Id, team2Id, admin.slot ?? null);
       setFreshTable(pair.tableNumber);
     }
     setPair(null);

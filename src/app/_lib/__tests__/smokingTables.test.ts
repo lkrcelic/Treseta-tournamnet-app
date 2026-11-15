@@ -192,6 +192,17 @@ test("records skip the bye, rounds where the team had no smoker, and later night
   assert.equal(r.get(4), undefined);
 });
 
+test("at a two-place night each place's Kolo 7 is a round of its own for the fair shares", () => {
+  // both places play Kolo 7 tonight: Kartaš (slot 1) has the smoking table, Lanterna none
+  const s = {1: 1, 5: 1};
+  const at = (slot: number, list: SmokingRound[]) => list.map((t) => ({...t, slot}));
+  const rounds = [...at(1, tables("2026-10-15", 7, s, "1-2*", "3-4")), ...at(2, tables("2026-10-15", 7, s, "5-6", "7-8"))];
+  const r = smokingRecords(rounds, "2026-10-15");
+  // team 1 had the two seats of Kartaš's smoking table to itself; Lanterna had no smoking table, so team 5 had no share
+  assert.deepEqual(r.get(1), {smokingRounds: 1, fairShare: 1, missedNights: 0, tonight: 1});
+  assert.equal(r.get(5), undefined);
+});
+
 // deterministic pseudo random numbers
 const rng = (seed: number) => () => {
   seed = (seed * 1103515245 + 12345) % 2147483648;

@@ -42,12 +42,13 @@ export function DashedAction({icon, children, onClick}: {icon: React.ReactNode; 
   );
 }
 
-// "Još nema sponzora", "Liga još nema sponzora": the handshake in a cream circle, a title, a line and the action
-export function SponsorEmpty({title, text, children, sx}: {title: string; text: string; children?: React.ReactNode; sx?: SxProps<Theme>}) {
+// "Još nema sponzora", "Liga još nema sponzora": the handshake in a cream circle, a title, a line and the action (icon:
+// another one, Lokacije's place)
+export function SponsorEmpty({title, text, icon = <HandshakeOutlinedIcon />, children, sx}: {title: string; text: string; icon?: React.ReactNode; children?: React.ReactNode; sx?: SxProps<Theme>}) {
   return (
     <Box sx={[{display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", textAlign: "center"}, ...(Array.isArray(sx) ? sx : sx ? [sx] : [])]}>
       <Box component="span" aria-hidden sx={{width: 56, height: 56, borderRadius: "50%", background: color.cream, color: color.navy, display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 30}}}>
-        <HandshakeOutlinedIcon />
+        {icon}
       </Box>
       <Box component="h2" sx={{m: 0, fontFamily: font.display, fontSize: 22, fontWeight: 800, lineHeight: 1.15}}>
         {title}

@@ -1,5 +1,6 @@
 import {apiFetch, responseErrorMessage} from "@/app/_fetchers/errorMessage";
 import {AdminHand, HandKind, TablePad} from "@/app/_interfaces/adminHand";
+import {Slot, slotQuery} from "@/app/_lib/locations";
 
 // Admin edits of the Daily tables and their results (see /api/admin)
 
@@ -34,8 +35,9 @@ export const setTablePairAPI = (roundId: number, team1Id: number, team2Id: numbe
 
 export const removeTableAPI = (roundId: number) => send(`/api/admin/tables/${roundId}`, "DELETE", undefined, "Stol nije uklonjen.");
 
-export const addTableAPI = (leagueId: number, date: string, roundNumber: number, team1Id: number, team2Id: number) =>
-  send(`/api/admin/leagues/${leagueId}/tables`, "POST", {date, round_number: roundNumber, team1_id: team1Id, team2_id: team2Id}, "Stol nije dodan.");
+// slot: the place of a two-place night whose round it is
+export const addTableAPI = (leagueId: number, date: string, roundNumber: number, team1Id: number, team2Id: number, slot: Slot | null = null) =>
+  send(`/api/admin/leagues/${leagueId}/tables`, "POST", {date, round_number: roundNumber, team1_id: team1Id, team2_id: team2Id, location_slot: slot}, "Stol nije dodan.");
 
 export type HandTarget = {kind: "ongoing"} | {kind: "finished"; matchId: number};
 
@@ -54,14 +56,16 @@ export const deleteHandAPI = (kind: HandKind, resultId: number, allowNoWinner = 
 export const finishTableMatchAPI = (roundId: number) => send(`/api/admin/tables/${roundId}/finish`, "POST", undefined, "Meč nije završen.");
 
 // status: how far a published round got; a round not published yet is "draft" or "approved" (Upravljanje ligom · Skica)
-// and has a letter (Skica A) instead of a number to show
-export type LeagueRoundSummary = {date: string; roundNumber: number; letter: string | null; tables: number; status: "draft" | "approved" | "played" | "live" | "new"};
+// and has a letter (Skica A) instead of a number to show. slot: its place on a two-place night (each place's Kolo 7 is
+// a row; the Kola tab shows them as one), null on a one-place night.
+export type LeagueRoundSummary = {date: string; slot: Slot | null; roundNumber: number; letter: string | null; tables: number; status: "draft" | "approved" | "played" | "live" | "new"};
 
 export const getLeagueRoundsAPI = (leagueId: number): Promise<LeagueRoundSummary[]> =>
   send(`/api/admin/leagues/${leagueId}/rounds`, "GET", undefined, "Kola se nisu učitala.");
 
-// keepalive: a delete waiting for its undo window still goes out when the page is closed
-export async function deleteLeagueRoundAPI(leagueId: number, date: string, roundNumber: number, keepalive = false) {
-  const response = await apiFetch(`/api/admin/leagues/${leagueId}/rounds?date=${date}&round_number=${roundNumber}`, {method: "DELETE", keepalive});
+// keepalive: a delete waiting for its undo window still goes out when the page is closed. slot: only that place's
+// round (a Skica); left out, the Kolo goes at both places of a two-place night.
+export async function deleteLeagueRoundAPI(leagueId: number, date: string, roundNumber: number, keepalive = false, slot: Slot | null = null) {
+  const response = await apiFetch(`/api/admin/leagues/${leagueId}/rounds?date=${date}&round_number=${roundNumber}${slotQuery(slot, "&")}`, {method: "DELETE", keepalive});
   if (!response.ok) throw new Error(await responseErrorMessage(response, "Kolo nije obrisano."));
 }

@@ -11,8 +11,12 @@ import {
   MOVE_TO_PAST_ERROR,
   NIGHT_TAKEN,
   PAST_NIGHT_ERROR,
+  SECOND_PLACE_NO_FIRST,
+  SECOND_PLACE_SAME,
+  secondPlaceError,
   START_TIME_ERROR,
 } from "../../_interfaces/league";
+import {LOCATION_NOT_FOUND, LocationCreateValidation, LocationUpdateValidation} from "../../_interfaces/location";
 import {leagueDateString} from "../dates";
 import {
   effectiveLocation,
@@ -79,18 +83,17 @@ test("the server takes an optional HH:MM start time for the league and its night
 
 // Where a league night is played (Okupljanje: Nova liga, Podaci, Datumi, Raspored, Početna)
 
-const NO_PLACE = {location_name: null, location_address: null, location_url: null};
-const KARTAS = {location_name: "Caffe bar Kartaš", location_address: "Ilica 128, Zagreb", location_url: "https://maps.app.goo.gl/abc"};
+const NO_PLACE = {location: null};
+const KARTAS = {location: {location_id: 1, name: "Caffe bar Kartaš", address: "Ilica 128, Zagreb", url: "https://maps.app.goo.gl/abc"}};
 
 test("a night is played at its own place, else the league's, else nowhere", () => {
-  const own = {location_name: "Klub Adut", location_address: null, location_url: null};
-  // its own place takes all three fields from the night, even without an address or a link
-  assert.deepEqual(effectiveLocation(own, KARTAS), {name: "Klub Adut", address: null, url: null});
-  assert.deepEqual(effectiveLocation(NO_PLACE, KARTAS), {name: "Caffe bar Kartaš", address: "Ilica 128, Zagreb", url: "https://maps.app.goo.gl/abc"});
-  // a night's address without a name isn't a place of its own
-  assert.deepEqual(effectiveLocation({...NO_PLACE, location_address: "Negdje 1"}, KARTAS)?.address, "Ilica 128, Zagreb");
+  const own = {location: {location_id: 2, name: "Klub Adut", address: null, url: null}};
+  // its own place is the night's, even without an address or a link
+  assert.deepEqual(effectiveLocation(own, KARTAS), {id: 2, name: "Klub Adut", address: null, url: null});
+  assert.deepEqual(effectiveLocation(NO_PLACE, KARTAS), {id: 1, name: "Caffe bar Kartaš", address: "Ilica 128, Zagreb", url: "https://maps.app.goo.gl/abc"});
   assert.equal(effectiveLocation(NO_PLACE, NO_PLACE), null);
-  assert.equal(effectiveLocation(NO_PLACE, {...NO_PLACE, location_address: "Ilica 128"}), null);
+  // an empty address or link reads as none
+  assert.deepEqual(effectiveLocation({location: {location_id: 3, name: "Lanterna", address: "", url: ""}}, KARTAS), {id: 3, name: "Lanterna", address: null, url: null});
 });
 
 test("the gathering label gives the time and the place, either one, or nothing", () => {
@@ -99,6 +102,9 @@ test("the gathering label gives the time and the place, either one, or nothing",
   assert.equal(gatheringLabel("19:30", null), "19:30");
   assert.equal(gatheringLabel(null, place), "Caffe bar Kartaš");
   assert.equal(gatheringLabel(null, null), null);
+  // a night at two places names both
+  assert.equal(gatheringLabel("19:30", {name: "Kartaš", address: null, url: null}, {name: "Lanterna", address: null, url: null}), "19:30 · Kartaš · Lanterna");
+  assert.equal(gatheringLabel(null, place, null), "Caffe bar Kartaš");
 });
 
 test("only http(s) links are shown as links", () => {
@@ -111,34 +117,45 @@ test("only http(s) links are shown as links", () => {
   assert.equal(isSafeUrl(null), false);
 });
 
-test("the server takes an optional league location; the link has to be http(s)", () => {
-  const created = LeagueCreateRequestValidation.parse({league_name: "Jesen", ...KARTAS});
-  assert.equal(created.location_name, "Caffe bar Kartaš");
-  assert.equal(created.location_url, "https://maps.app.goo.gl/abc");
-  assert.equal(LeagueCreateRequestValidation.parse({league_name: "Jesen"}).location_name, undefined);
-  // trimmed; the service saves an empty one as null
-  assert.equal(LeagueCreateRequestValidation.parse({league_name: "Jesen", location_name: "  ", location_url: ""}).location_name, "");
-  assert.equal(message(LeagueCreateRequestValidation.safeParse({league_name: "Jesen", location_url: "javascript:alert(1)"})), LOCATION_URL_ERROR);
-  assert.equal(message(LeagueCreateRequestValidation.safeParse({league_name: "Jesen", location_name: "x".repeat(101)})), "Ime mjesta može imati najviše 100 znakova.");
-
-  assert.deepEqual(LeagueUpdateRequestValidation.parse({location_name: null, location_address: null, location_url: null}), {
-    location_name: null,
-    location_address: null,
-    location_url: null,
-  });
-  assert.equal(LeagueUpdateRequestValidation.parse({location_address: " Ilica 128 "}).location_address, "Ilica 128");
-  assert.equal(message(LeagueUpdateRequestValidation.safeParse({location_url: "javascript:alert(1)"})), LOCATION_URL_ERROR);
+test("the server takes an optional league place from Lokacije, by its id", () => {
+  assert.equal(LeagueCreateRequestValidation.parse({league_name: "Jesen", location_id: 3}).location_id, 3);
+  assert.equal(LeagueCreateRequestValidation.parse({league_name: "Jesen"}).location_id, undefined);
+  assert.equal(LeagueUpdateRequestValidation.parse({location_id: null}).location_id, null);
+  assert.equal(message(LeagueCreateRequestValidation.safeParse({league_name: "Jesen", location_id: 0})), LOCATION_NOT_FOUND);
+  assert.equal(message(LeagueUpdateRequestValidation.safeParse({location_id: "Kartaš"})), LOCATION_NOT_FOUND);
 });
 
-test("a night's own place: with a time, alone, or null for the league's; it needs a name", () => {
-  const place = {name: "Klub Adut", address: "Vlaška 5", url: "https://maps.app.goo.gl/x"};
-  assert.deepEqual(LeagueNightUpdateRequestValidation.parse({location: place}), {location: place});
+test("a place of Lokacije needs a name; its link has to be http(s)", () => {
+  assert.deepEqual(LocationCreateValidation.parse({name: " Kartaš ", address: " Ilica 128 ", url: ""}), {name: "Kartaš", address: "Ilica 128", url: ""});
+  assert.equal(message(LocationCreateValidation.safeParse({name: "  "})), LOCATION_NAME_REQUIRED);
+  assert.equal(message(LocationCreateValidation.safeParse({name: "Adut", url: "javascript:alert(1)"})), LOCATION_URL_ERROR);
+  assert.equal(message(LocationCreateValidation.safeParse({name: "x".repeat(101)})), "Ime mjesta može imati najviše 100 znakova.");
+  assert.equal(LocationUpdateValidation.parse({address: null}).address, null);
+  assert.equal(message(LocationUpdateValidation.safeParse({})), "Nema promjene.");
+});
+
+test("a night's own place: with a time, alone, or null for the league's", () => {
+  assert.deepEqual(LeagueNightUpdateRequestValidation.parse({location_id: 2}), {location_id: 2});
   assert.deepEqual(LeagueNightUpdateRequestValidation.parse({start_time: "20:00"}), {start_time: "20:00"});
-  assert.deepEqual(LeagueNightUpdateRequestValidation.parse({start_time: null, location: null}), {start_time: null, location: null});
-  assert.deepEqual(LeagueNightUpdateRequestValidation.parse({location: {name: "Klub Adut"}}).location, {name: "Klub Adut"});
-  assert.equal(message(LeagueNightUpdateRequestValidation.safeParse({location: {name: ""}})), LOCATION_NAME_REQUIRED);
-  assert.equal(message(LeagueNightUpdateRequestValidation.safeParse({location: {name: "  "}})), LOCATION_NAME_REQUIRED);
-  assert.equal(message(LeagueNightUpdateRequestValidation.safeParse({location: {name: "Adut", url: "javascript:alert(1)"}})), LOCATION_URL_ERROR);
+  assert.deepEqual(LeagueNightUpdateRequestValidation.parse({start_time: null, location_id: null}), {start_time: null, location_id: null});
+  assert.equal(message(LeagueNightUpdateRequestValidation.safeParse({location_id: -1})), LOCATION_NOT_FOUND);
+});
+
+test("a night's second place: by its id, null for one place, alone it is a change", () => {
+  assert.deepEqual(LeagueNightUpdateRequestValidation.parse({second_location_id: 4}), {second_location_id: 4});
+  assert.deepEqual(LeagueNightUpdateRequestValidation.parse({second_location_id: null}), {second_location_id: null});
+  assert.equal(message(LeagueNightUpdateRequestValidation.safeParse({second_location_id: 0})), LOCATION_NOT_FOUND);
+  assert.equal(LeagueNightAddRequestValidation.parse({date: "2026-11-19", location_id: 1, second_location_id: 2}).second_location_id, 2);
+  assert.equal(LeagueNightAddRequestValidation.parse({date: "2026-11-19"}).second_location_id, undefined);
+});
+
+test("a second place needs a first one and can't be the same place", () => {
+  assert.equal(secondPlaceError(1, null), null);
+  assert.equal(secondPlaceError(null, null), null);
+  assert.equal(secondPlaceError(1, 2), null);
+  assert.equal(secondPlaceError(null, 2), SECOND_PLACE_NO_FIRST);
+  assert.equal(secondPlaceError(undefined, 2), SECOND_PLACE_NO_FIRST);
+  assert.equal(secondPlaceError(2, 2), SECOND_PLACE_SAME);
 });
 
 test("a night's Okupljanje: with Početak or alone, null for the league's, HH:MM", () => {
@@ -158,21 +175,40 @@ test("a night moves to a new date, alone or with its time and place", () => {
 
 const FUTURE = "2099-01-06";
 
+// the places of Lokacije the stand-in knows
+const PLACES: Record<number, {location_id: number; name: string; address: string | null; url: string | null}> = {
+  1: KARTAS.location,
+  2: {location_id: 2, name: "Klub Adut", address: null, url: null},
+  3: {location_id: 3, name: "Lanterna", address: "Savska cesta 52", url: null},
+};
+
 // updateLeagueNight against a stand-in for the database: prisma.ts takes the client from global.prisma. nights: the
-// league's nights, so a night counts when it is one of them.
+// league's nights, so a night counts when it is one of them; saved: the places the night has now (its own first one
+// and its second one).
 type Update = {where: unknown; data: Record<string, unknown>};
 type CountArgs = {where: {night?: Date}};
-function fakeDb(rounds: number, nights: string[] = [FUTURE]) {
+type FindArgs = {where: {league_id_night: {night: Date}}};
+function fakeDb(rounds: number, nights: string[] = [FUTURE], saved: {location_id: number | null; second_location_id: number | null} = {location_id: null, second_location_id: null}) {
   const updates: Update[] = [];
   const moved: Update[] = [];
   const created: Record<string, unknown>[] = [];
+  // the Podjela rows taken away (deleteMany)
+  const splitGone: unknown[] = [];
   const league = {start_time: "19:30", gathering_time: "19:00", ...KARTAS};
+  const has = (night: Date | undefined) => !!night && nights.includes(night.toISOString().slice(0, 10));
   const db = {
     leagueNight: {
-      count: async (args: CountArgs) => (args.where.night && nights.includes(args.where.night.toISOString().slice(0, 10)) ? 1 : 0),
+      count: async (args: CountArgs) => (has(args.where.night) ? 1 : 0),
+      findUnique: async (args: FindArgs) => (has(args.where.league_id_night.night) ? {...saved, league: {location_id: KARTAS.location.location_id}} : null),
       update: async (args: Update) => {
         updates.push(args);
-        const row = {start_time: null, ...NO_PLACE, ...args.data};
+        const {location_id, second_location_id, ...rest} = args.data as {location_id?: number | null; second_location_id?: number | null};
+        const row = {
+          start_time: null,
+          ...rest,
+          location: location_id == null ? null : PLACES[location_id],
+          secondLocation: second_location_id == null ? null : PLACES[second_location_id],
+        };
         return {...row, league};
       },
       create: async (args: {data: Record<string, unknown>}) => {
@@ -187,8 +223,15 @@ function fakeDb(rounds: number, nights: string[] = [FUTURE]) {
         return {count: 1};
       },
     },
+    leagueNightTeam: {
+      deleteMany: async (args: unknown) => {
+        splitGone.push(args);
+        return {count: 3};
+      },
+    },
+    league: {findUnique: async () => ({location_id: KARTAS.location.location_id})},
   };
-  return {db, updates, moved, created};
+  return {db, updates, moved, created, splitGone};
 }
 
 // The service module reads global.prisma once, on its first import, so every test goes through this one stand-in
@@ -197,11 +240,14 @@ let current: Db;
 const shared = {
   leagueNight: {
     count: (args: CountArgs) => current.leagueNight.count(args),
+    findUnique: (args: FindArgs) => current.leagueNight.findUnique(args),
     update: (args: Update) => current.leagueNight.update(args),
     create: (args: {data: Record<string, unknown>}) => current.leagueNight.create(args),
   },
   round: {count: () => current.round.count()},
   marketPost: {updateMany: (args: Update) => current.marketPost.updateMany(args)},
+  leagueNightTeam: {deleteMany: (args: unknown) => current.leagueNightTeam.deleteMany(args)},
+  league: {findUnique: () => current.league.findUnique()},
   $executeRaw: async () => 0,
   $transaction: <T,>(run: (tx: typeof shared) => Promise<T>) => run(shared),
 };
@@ -222,7 +268,7 @@ test("a night that has passed or has rounds keeps its time and place", async () 
   const {db: played, updates} = fakeDb(2);
   await withDb(played, async () => {
     const {updateLeagueNight} = await import("../service/league/nights");
-    await assert.rejects(updateLeagueNight(1, FUTURE, {location: null}), {message: PAST_NIGHT_ERROR});
+    await assert.rejects(updateLeagueNight(1, FUTURE, {location_id: null}), {message: PAST_NIGHT_ERROR});
     assert.equal(updates.length, 0);
   });
   const yesterday = new Date(Date.parse(`${leagueDateString()}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
@@ -233,19 +279,19 @@ test("a night that has passed or has rounds keeps its time and place", async () 
   });
 });
 
-test("a null location clears all three fields of the night; a left-out one isn't touched", async () => {
+test("a null place goes back to the league's; a left-out one isn't touched", async () => {
   const {db, updates} = fakeDb(0);
   await withDb(db, async () => {
     const {updateLeagueNight} = await import("../service/league/nights");
-    const back = await updateLeagueNight(1, FUTURE, {location: null});
-    assert.deepEqual(updates[0].data, {start_time: undefined, location_name: null, location_address: null, location_url: null});
+    const back = await updateLeagueNight(1, FUTURE, {location_id: null});
+    assert.deepEqual(updates[0].data, {start_time: undefined, location_id: null});
     assert.equal(back?.location, null);
-    assert.deepEqual(back?.place, {name: "Caffe bar Kartaš", address: "Ilica 128, Zagreb", url: "https://maps.app.goo.gl/abc"});
+    assert.deepEqual(back?.place, {id: 1, name: "Caffe bar Kartaš", address: "Ilica 128, Zagreb", url: "https://maps.app.goo.gl/abc"});
     assert.equal(back?.time, "19:30");
 
-    const own = await updateLeagueNight(1, FUTURE, {start_time: "20:00", location: {name: " Klub Adut ", address: "", url: null}});
-    assert.deepEqual(updates[1].data, {start_time: "20:00", location_name: "Klub Adut", location_address: null, location_url: null});
-    assert.deepEqual(own?.place, {name: "Klub Adut", address: null, url: null});
+    const own = await updateLeagueNight(1, FUTURE, {start_time: "20:00", location_id: 2});
+    assert.deepEqual(updates[1].data, {start_time: "20:00", location_id: 2});
+    assert.deepEqual(own?.place, {id: 2, name: "Klub Adut", address: null, url: null});
     assert.equal(own?.time, "20:00");
 
     await updateLeagueNight(1, FUTURE, {start_time: null});
@@ -279,7 +325,7 @@ test("a night moves to a free date from today on, and its Burza ads go with it",
     assert.deepEqual(moved[0], {where: {league_id: 1, night: new Date(`${FUTURE}T00:00:00.000Z`)}, data: {night: new Date(`${LATER}T00:00:00.000Z`)}});
 
     // the same date is no move: nothing else changes, and no ad is touched
-    await updateLeagueNight(1, FUTURE, {date: FUTURE, location: null});
+    await updateLeagueNight(1, FUTURE, {date: FUTURE, location_id: null});
     assert.equal("night" in updates[1].data, false);
     assert.equal(moved.length, 1);
   });
@@ -294,22 +340,21 @@ test("a night moves to a free date from today on, and its Burza ads go with it",
 });
 
 test("Dodaj večer adds a night with its own time and place, or the league's", async () => {
-  assert.deepEqual(LeagueNightAddRequestValidation.parse({date: "2026-11-05", location: {name: "Klub Adut"}}).location, {name: "Klub Adut"});
-  assert.equal(LeagueNightAddRequestValidation.parse({date: "2026-11-05", location: null}).location, null);
-  assert.equal(message(LeagueNightAddRequestValidation.safeParse({date: "2026-11-05", location: {name: " "}})), LOCATION_NAME_REQUIRED);
+  assert.equal(LeagueNightAddRequestValidation.parse({date: "2026-11-05", location_id: 2}).location_id, 2);
+  assert.equal(LeagueNightAddRequestValidation.parse({date: "2026-11-05", location_id: null}).location_id, null);
+  assert.equal(message(LeagueNightAddRequestValidation.safeParse({date: "2026-11-05", location_id: 1.5})), LOCATION_NOT_FOUND);
 
   const {db, created} = fakeDb(0, []);
   await withDb(db, async () => {
     const {addLeagueNight} = await import("../service/league/nights");
-    await addLeagueNight(1, {date: "2026-11-05", start_time: "20:00", gathering_time: "19:30", location: {name: " Klub Adut ", address: "Vlaška 5", url: null}});
+    await addLeagueNight(1, {date: "2026-11-05", start_time: "20:00", gathering_time: "19:30", location_id: 2});
     assert.deepEqual(created[0], {
       league_id: 1,
       night: new Date("2026-11-05T00:00:00.000Z"),
       start_time: "20:00",
       gathering_time: "19:30",
-      location_name: "Klub Adut",
-      location_address: "Vlaška 5",
-      location_url: null,
+      location_id: 2,
+      second_location_id: null,
     });
     await addLeagueNight(1, {date: "2026-11-12"});
     assert.deepEqual(created[1], {
@@ -317,10 +362,47 @@ test("Dodaj večer adds a night with its own time and place, or the league's", a
       night: new Date("2026-11-12T00:00:00.000Z"),
       start_time: null,
       gathering_time: null,
-      location_name: null,
-      location_address: null,
-      location_url: null,
+      location_id: null,
+      second_location_id: null,
     });
+
+    // a second place: the league's is the first one, so Lanterna is fine and Kartaš isn't
+    await addLeagueNight(1, {date: "2026-11-19", second_location_id: 3});
+    assert.equal(created[2].second_location_id, 3);
+    await assert.rejects(addLeagueNight(1, {date: "2026-11-26", second_location_id: 1}), {message: SECOND_PLACE_SAME});
+    assert.equal(created.length, 3);
+  });
+});
+
+test("Uredi večer adds a second place, refuses the first one again, and taking it away ends the Podjela", async () => {
+  const {db, updates, splitGone} = fakeDb(0);
+  await withDb(db, async () => {
+    const {updateLeagueNight} = await import("../service/league/nights");
+    // the night is at the league's Kartaš: Lanterna is its second place
+    const two = await updateLeagueNight(1, FUTURE, {second_location_id: 3});
+    assert.deepEqual(updates[0].data, {start_time: undefined, second_location_id: 3});
+    assert.deepEqual(two?.second_location, {id: 3, name: "Lanterna", address: "Savska cesta 52", url: null});
+    assert.equal(two?.place?.name, "Caffe bar Kartaš");
+    // Kartaš can't be both
+    await assert.rejects(updateLeagueNight(1, FUTURE, {second_location_id: 1}), {message: SECOND_PLACE_SAME});
+    // nothing was split on a one-place night, so nothing goes
+    assert.equal(splitGone.length, 0);
+  });
+
+  // the night is at Klub Adut and Lanterna, split
+  const {db: split, updates: saved, splitGone: gone} = fakeDb(0, [FUTURE], {location_id: 2, second_location_id: 3});
+  await withDb(split, async () => {
+    const {updateLeagueNight} = await import("../service/league/nights");
+    // its first place can't become Lanterna while Lanterna is the second
+    await assert.rejects(updateLeagueNight(1, FUTURE, {location_id: 3}), {message: SECOND_PLACE_SAME});
+    // the first place swaps to Kartaš: the second stays and so does the Podjela
+    await updateLeagueNight(1, FUTURE, {location_id: 1});
+    assert.equal(gone.length, 0);
+    // × on Druga lokacija: one place again, without its Podjela
+    const one = await updateLeagueNight(1, FUTURE, {second_location_id: null});
+    assert.equal(one?.second_location, null);
+    assert.deepEqual(gone, [{where: {league_id: 1, night: new Date(`${FUTURE}T00:00:00.000Z`)}}]);
+    assert.equal(saved.length, 2);
   });
 });
 
@@ -348,6 +430,10 @@ test("a night with its own time or place is marked, and says which", () => {
   assert.equal(exceptionLabel(true, false), "Drugo vrijeme");
   assert.equal(exceptionLabel(false, true), "Drugo mjesto");
   assert.equal(exceptionLabel(false, false), null);
+  // a second place is the night's own too
+  assert.equal(exceptionLabel(false, false, true), "Dvije lokacije");
+  assert.equal(exceptionLabel(false, true, true), "Dvije lokacije");
+  assert.equal(exceptionLabel(true, false, true), "Drugo vrijeme i dvije lokacije");
 });
 
 test("a night's own time equal to the league's isn't kept; places compare by all three fields", () => {
@@ -360,4 +446,7 @@ test("a night's own time equal to the league's isn't kept; places compare by all
   assert.equal(sameLocation(a, {...a, address: "Vlaška 5"}), false);
   assert.equal(sameLocation(null, null), true);
   assert.equal(sameLocation(a, null), false);
+  // places of Lokacije compare by id: an edited place is still the same one
+  assert.equal(sameLocation({id: 4, ...a}, {id: 4, ...a, address: "Vlaška 5"}), true);
+  assert.equal(sameLocation({id: 4, ...a}, {id: 5, ...a}), false);
 });

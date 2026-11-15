@@ -159,6 +159,8 @@ export function fairShares(seats: number, weights: number[]): number[] {
 export type SmokingRound = {
   date: string; // YYYY-MM-DD
   roundNumber: number | null;
+  // the place of a two-place night (1 or 2): its Kolo 7 is a round of its own, apart from the other place's Kolo 7
+  slot?: number | null;
   team1Id: number;
   team2Id: number;
   team1Smokers: number;
@@ -181,7 +183,7 @@ export function smokingRecords(rounds: SmokingRound[], today: string): Map<numbe
   const groups = new Map<string, SmokingRound[]>();
   for (const r of rounds) {
     if (r.date > today || isByeTeam(r.team1Id) || isByeTeam(r.team2Id)) continue;
-    const key = `${r.date}|${r.roundNumber}`;
+    const key = `${r.date}|${r.slot ?? 0}|${r.roundNumber}`;
     groups.set(key, [...(groups.get(key) ?? []), r]);
   }
 

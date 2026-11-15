@@ -7,15 +7,18 @@ import useNavStack from "@/app/_hooks/useNavStack";
 import {MAX_ROUNDS, MAX_WINDOW} from "@/app/_lib/createRoundDraft";
 import {leagueNightString} from "@/app/_lib/dates";
 import {draftNight} from "@/app/_lib/ui/adminTonight";
+import useNightPlaces from "@/app/_hooks/useNightPlaces";
+import {Slot} from "@/app/_lib/locations";
+import {PlaceSegment} from "@/app/_ui/league/PlacePicker";
 import {nightLabel} from "@/app/_lib/nights";
 import {count, NOUN, plural} from "@/app/_lib/ui/text";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, font, tint} from "@/app/_styles/tokens";
-import {DraftWaitingNote, OUT_LABEL, TeamChipBadge, useCreateRound} from "@/app/_ui/round/CreateRound";
+import {CreatePlace, DraftWaitingNote, OUT_LABEL, TeamChipBadge, useCreateRound} from "@/app/_ui/round/CreateRound";
 import LeagueNotes from "@/app/_ui/round/LeagueNotes";
 import {SmokingTablesCard} from "@/app/_ui/round/SmokingTables";
 import {adminCardSx, adminLabelSx, PhoneStepper} from "./AdminParts";
-import {BottomSheet, buttonBase, EmptyState, ErrorNote, PrimaryButton, Screen, ScrollArea, SearchInput, Segmented, SolidButton, SwitchRow, tabular, TopBar} from "@/app/_ui/sp";
+import {BottomSheet, buttonBase, EmptyState, ErrorNote, LoadingRows, PrimaryButton, Screen, ScrollArea, SearchInput, Segmented, SolidButton, SwitchRow, tabular, TopBar} from "@/app/_ui/sp";
 import AddCircleRoundedIcon from "@mui/icons-material/AddCircleRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import {Box} from "@mui/material";
@@ -28,29 +31,63 @@ const labelSx = adminLabelSx;
 // sheet), the smoking tables and the league's notes, then Kreiraj. The choices are the desktop's (useCreateRound),
 // saved for the admin on the server for tonight. The rounds are created as drafts and Skica kola opens. While tonight's
 // rounds still wait in Skica, Kreiraj waits too: a note with Otvori skicu is in its place.
-export default function CreateRoundPhone({leagueId}: {leagueId: number}) {
+// On a night played at two places a switch under the title picks the place (Claude Design 06 A): its teams, its own
+// choices and its Skica; each place has its own screen state (keyed by the place).
+export default function CreateRoundPhone({leagueId, initialSlot = null}: {leagueId: number; initialSlot?: Slot | null}) {
+  const tonight = useMemo(() => leagueNightString(), []);
+  const leagueRounds = useLeagueRounds(leagueId);
+  const np = useNightPlaces(leagueId, tonight, leagueRounds.rounds, initialSlot);
+  // until the nights are here it isn't known whether tonight has two places (nor whose choice to load)
+  if (!np.loaded) {
+    return (
+      <Screen fill gap={14}>
+        <Box sx={{...cardSx, p: 0, overflow: "hidden"}}>
+          <LoadingRows rows={8} height={56} />
+        </Box>
+      </Screen>
+    );
+  }
+  return <CreateRoundAt key={np.places ? np.slot : 0} leagueId={leagueId} tonight={tonight} leagueRounds={leagueRounds} np={np} />;
+}
+
+function CreateRoundAt({
+  leagueId,
+  tonight,
+  leagueRounds,
+  np,
+}: {
+  leagueId: number;
+  tonight: string;
+  leagueRounds: ReturnType<typeof useLeagueRounds>;
+  np: ReturnType<typeof useNightPlaces>;
+}) {
   const router = useTransitionRouter();
   const nav = useNavStack("Novo kolo", `/league/${leagueId}/manage?view=teams`);
   const leagues = useLeagues(leagueId);
   const league = leagues.find((l) => l.id === leagueId);
-  const teams = useLeagueTeams(leagueId);
-  const tonight = useMemo(() => leagueNightString(), []);
+  const leagueTeams = useLeagueTeams(leagueId);
   const [sheet, setSheet] = useState(false);
-  const leagueRounds = useLeagueRounds(leagueId);
-  const tonightDraft = draftNight((leagueRounds.rounds ?? []).filter((r) => r.date === tonight), tonight);
+  // the place picked on a two-place night: its teams once its Podjela is here
+  const place: CreatePlace | null = np.places
+    ? {slot: np.slot, name: np.places[np.slot - 1].name, teams: new Set((np.split?.teams ?? []).filter((t) => t.slot === np.slot).map((t) => t.team_id))}
+    : null;
+  const teams = !np.loaded || (place && !np.split) ? {teams: null, error: np.error ?? np.splitError, loading: true, reload: np.split ? leagueTeams.reload : np.reloadSplit} : leagueTeams;
+  const slotQs = place ? `&slot=${place.slot}` : "";
+  const tonightDraft = draftNight((leagueRounds.rounds ?? []).filter((r) => r.date === tonight), tonight, place?.slot ?? null);
   const cr = useCreateRound(
     leagueId,
     teams,
     // the next page is Skica kola, in Novo kolo's place: Back from it goes to Upravljanje ligom
-    (date) => router.replace(`/league/${leagueId}/manage?view=draft&date=${date}`),
+    (date) => router.replace(`/league/${leagueId}/manage?view=draft&date=${date}${slotQs}`),
     league?.roundsPerNight,
     league?.smokingTables,
     {
       waiting:
         tonightDraft && tonightDraft.waiting > 0
-          ? {waiting: tonightDraft.waiting, approved: tonightDraft.approved, onOpen: () => router.push(`/league/${leagueId}/manage?view=draft&date=${tonight}`)}
+          ? {waiting: tonightDraft.waiting, approved: tonightDraft.approved, onOpen: () => router.push(`/league/${leagueId}/manage?view=draft&date=${tonight}${slotQs}`)}
           : null,
       onDraftWaiting: leagueRounds.reload,
+      place,
     }
   );
 
@@ -60,6 +97,7 @@ export default function CreateRoundPhone({leagueId}: {leagueId: number}) {
   return (
     <Screen fill gap={14}>
       <TopBar onBack={nav.back} eyebrow={`${league?.name ?? "Liga"} · ${nightLabel(tonight)}`} title="Novo kolo" />
+      {np.options && <PlaceSegment options={np.options} value={np.slot} onChange={np.setSlot} label={(o) => String(np.options!.find((x) => x.slot === o.slot)?.teams ?? "")} />}
       {cr.blocked ? (
         <Box sx={{...cardSx, p: 0, overflow: "hidden"}}>{cr.blocked}</Box>
       ) : (
@@ -106,7 +144,7 @@ export default function CreateRoundPhone({leagueId}: {leagueId: number}) {
                     {cr.playing} / {all.length}
                   </Box>
                   <Box component="span" sx={{fontSize: 15, color: color.ink2, lineHeight: 1.2, whiteSpace: "nowrap"}}>
-                    {plural(cr.playing, "ekipa igra", "ekipe igraju", "ekipa igra")} večeras
+                    {plural(cr.playing, "ekipa igra", "ekipe igraju", "ekipa igra")} večeras{place && ` · ${place.name}`}
                   </Box>
                 </Box>
                 <Box

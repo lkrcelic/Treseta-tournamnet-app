@@ -3,12 +3,17 @@
 import {approveNightAPI, discardDraftAPI, getDraftNightAPI, publishNightAPI, setRoundApprovalAPI} from "@/app/_fetchers/round/publication";
 import {DraftNight, DraftRound} from "@/app/_interfaces/round";
 import {RoundStatus} from "@/app/_lib/roundStatus";
+import {Slot} from "@/app/_lib/locations";
 import {useEffect, useRef, useState} from "react";
 
 // Skica of one night (Upravljanje ligom · Skica on the desktop, Skica kola on the phone): its rounds, the one shown,
 // and approving, publishing and discarding them. onChanged: a round's status changed (the counts elsewhere reload);
-// onDiscarded: the draft is gone.
-export default function useNightDraft(leagueId: number, date: string, {onChanged, onDiscarded}: {onChanged?: () => void; onDiscarded?: () => void} = {}) {
+// onDiscarded: the draft is gone. slot: one place's Skica on a two-place night (null: a one-place night).
+export default function useNightDraft(
+  leagueId: number,
+  date: string,
+  {onChanged, onDiscarded, slot = null}: {onChanged?: () => void; onDiscarded?: () => void; slot?: Slot | null} = {}
+) {
   const [night, setNight] = useState<DraftNight | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [nonce, setNonce] = useState(0);
@@ -20,7 +25,7 @@ export default function useNightDraft(leagueId: number, date: string, {onChanged
   useEffect(() => {
     let cancelled = false;
     setError(null);
-    getDraftNightAPI(leagueId, date)
+    getDraftNightAPI(leagueId, date, slot)
       .then((n) => {
         if (!cancelled) setNight(n);
       })
@@ -30,7 +35,7 @@ export default function useNightDraft(leagueId: number, date: string, {onChanged
     return () => {
       cancelled = true;
     };
-  }, [leagueId, date, nonce]);
+  }, [leagueId, date, slot, nonce]);
   const reload = () => setNonce((n) => n + 1);
 
   // it opens on the first round still waiting (on the first one when every round is out)
@@ -76,7 +81,7 @@ export default function useNightDraft(leagueId: number, date: string, {onChanged
     setActionError(null);
     setStatuses((r) => (r.status === "DRAFT" ? "APPROVED" : r.status));
     try {
-      await approveNightAPI(leagueId, date);
+      await approveNightAPI(leagueId, date, slot);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Kola nisu odobrena.");
       reload();
@@ -88,7 +93,7 @@ export default function useNightDraft(leagueId: number, date: string, {onChanged
     setBusy("publish");
     setActionError(null);
     try {
-      await publishNightAPI(leagueId, date);
+      await publishNightAPI(leagueId, date, slot);
       reload();
       onChanged?.();
     } catch (e) {
@@ -103,7 +108,7 @@ export default function useNightDraft(leagueId: number, date: string, {onChanged
     setBusy("discard");
     setActionError(null);
     try {
-      await discardDraftAPI(leagueId, date);
+      await discardDraftAPI(leagueId, date, slot);
       setBusy(null);
       onDiscarded?.();
       return true;

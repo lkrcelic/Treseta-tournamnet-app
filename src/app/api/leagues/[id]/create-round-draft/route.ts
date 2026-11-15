@@ -1,3 +1,4 @@
+import {slotParam} from "@/app/_lib/locations";
 import {errorResponse} from "@/app/_lib/apiErrors";
 import {CreateRoundDraft, CreateRoundDraftValidation} from "@/app/_lib/createRoundDraft";
 import {isDbId} from "@/app/_lib/helpers/query/dbId";
@@ -10,7 +11,7 @@ import {NextRequest, NextResponse} from "next/server";
 const leagueNotFound = () => NextResponse.json({error: "Liga ne postoji."}, {status: STATUS.NotFound});
 
 // The logged-in admin's Novo kolo for the league tonight ({draft: null} when they haven't changed anything tonight);
-// every admin has their own
+// every admin has their own, and one per place of a two-place night (?slot=1|2)
 export async function GET(request: NextRequest, {params}: {params: {id: string}}) {
   const auth = await requireAdmin(request);
   if (auth.response) return auth.response;
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest, {params}: {params: {id: string}}
   // an id the database can't hold (also a malformed one) doesn't exist either
   if (!isDbId(leagueId)) return leagueNotFound();
   try {
-    return NextResponse.json({draft: await getCreateRoundDraft(auth.user.id, leagueId)}, {status: STATUS.OK});
+    return NextResponse.json({draft: await getCreateRoundDraft(auth.user.id, leagueId, new Date(), slotParam(request.nextUrl.searchParams.get("slot")) ?? 0)}, {status: STATUS.OK});
   } catch (error) {
     return errorResponse(error, "Odabir za novo kolo se nije učitao.");
   }
@@ -33,7 +34,7 @@ export async function PUT(request: NextRequest, {params}: {params: {id: string}}
   if (!isDbId(leagueId)) return leagueNotFound();
   try {
     const draft = CreateRoundDraftValidation.parse(await request.json()) as CreateRoundDraft;
-    if (!(await saveCreateRoundDraft(auth.user.id, leagueId, draft))) return leagueNotFound();
+    if (!(await saveCreateRoundDraft(auth.user.id, leagueId, draft, new Date(), slotParam(request.nextUrl.searchParams.get("slot")) ?? 0))) return leagueNotFound();
     return NextResponse.json({draft}, {status: STATUS.OK});
   } catch (error) {
     return errorResponse(error, "Odabir za novo kolo nije spremljen.");

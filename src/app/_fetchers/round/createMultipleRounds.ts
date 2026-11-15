@@ -1,5 +1,6 @@
 import {REPEAT_MATCHUPS, RoundCreateRequest} from "@/app/_interfaces/round";
 import {DRAFT_WAITING} from "@/app/_lib/roundStatus";
+import {Slot} from "@/app/_lib/locations";
 import {apiFetch, responseErrorMessage} from "@/app/_fetchers/errorMessage";
 
 // The rounds weren't created because some teams would meet twice today; repeats are their names, pair by pair
@@ -21,6 +22,8 @@ export async function createMultipleRoundsAPI(
   // the tables where smoking is allowed tonight (empty: none)
   smokingTables?: number[],
   withinConferences?: boolean,
+  // the place of tonight's two-place night (null: one place)
+  slot: Slot | null = null,
 ): Promise<{roundNumber: number; date: string}> {
   const response = await apiFetch("/api/rounds/generate-multiple", {
     method: "POST",
@@ -33,6 +36,7 @@ export async function createMultipleRoundsAPI(
       allowRepeats,
       smoking_tables: smokingTables,
       withinConferences,
+      location_slot: slot,
     } as RoundCreateRequest),
   });
   if (response.status === 409) {

@@ -1,3 +1,4 @@
+import {slotParam} from "@/app/_lib/locations";
 import {NextRequest, NextResponse} from "next/server";
 import {DATE_FORMAT_ERROR} from "@/app/_interfaces/league";
 import {errorResponse} from "@/app/_lib/apiErrors";
@@ -13,7 +14,8 @@ type Params = {params: {id: string; date: string}};
 const leagueNotFound = () => NextResponse.json({error: "Liga ne postoji."}, {status: STATUS.NotFound});
 const badDate = () => NextResponse.json({error: DATE_FORMAT_ERROR}, {status: STATUS.BadRequest});
 
-// The night's rounds with their tables and status, published or not (Upravljanje ligom · Skica; admin)
+// The night's rounds with their tables and status, published or not (Upravljanje ligom · Skica; admin); ?slot=1|2:
+// those at that place of a two-place night
 export async function GET(request: NextRequest, {params}: Params) {
   const auth = await requireAdmin(request);
   if (auth.response) return auth.response;
@@ -22,7 +24,7 @@ export async function GET(request: NextRequest, {params}: Params) {
   if (!isIsoDate(params.date)) return badDate();
 
   try {
-    const night = await getDraftNight(leagueId, params.date);
+    const night = await getDraftNight(leagueId, params.date, slotParam(request.nextUrl.searchParams.get("slot")));
     if (!night) return NextResponse.json({error: "Ta večer nema kola."}, {status: STATUS.NotFound});
     return NextResponse.json(night, {status: STATUS.OK});
   } catch (error) {
@@ -31,7 +33,7 @@ export async function GET(request: NextRequest, {params}: Params) {
 }
 
 // "Odbaci skicu": deletes the night's rounds that aren't published (drafts and approved ones); published rounds stay
-// (admin)
+// (admin). ?slot=1|2: only that place's Skica; the other place's stays.
 export async function DELETE(request: NextRequest, {params}: Params) {
   const auth = await requireAdmin(request);
   if (auth.response) return auth.response;
@@ -40,7 +42,7 @@ export async function DELETE(request: NextRequest, {params}: Params) {
   if (!isIsoDate(params.date)) return badDate();
 
   try {
-    return NextResponse.json(await discardDraft(leagueId, params.date), {status: STATUS.OK});
+    return NextResponse.json(await discardDraft(leagueId, params.date, slotParam(request.nextUrl.searchParams.get("slot"))), {status: STATUS.OK});
   } catch (error) {
     return errorResponse(error, "Skica nije odbačena.");
   }

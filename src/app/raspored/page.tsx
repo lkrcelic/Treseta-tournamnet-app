@@ -1,5 +1,6 @@
 "use client";
 
+import {Slot} from "@/app/_lib/locations";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useLeagueNights from "@/app/_hooks/useLeagueNights";
 import useLeagues, {useSelectedLeagueId} from "@/app/_hooks/useLeagues";
@@ -45,6 +46,10 @@ type Shown = {
   gatherings: Record<string, string>;
   // where each night gathers (a night without a place isn't in it)
   places: Record<string, NightLocation>;
+  // a two-place night's second place, and the team's place there (1 or 2; not in it before Podjela). A viewer without
+  // a team sees no place on a two-place night (LOCATIONS_PLAN.md, decision 19).
+  secondPlaces: Record<string, NightLocation>;
+  slots: Record<string, Slot>;
   // the nights with their own time or place (marked with "!")
   own: Set<string>;
   // the team's next night can get a substitute
@@ -104,6 +109,8 @@ export default function RasporedPage() {
       times: current.times,
       gatherings: current.gatherings ?? {},
       places: current.places ?? {},
+      secondPlaces: current.secondPlaces ?? {},
+      slots: current.slots ?? {},
       own: new Set(current.ownPlace ?? []),
       canAsk: current.active,
     };
@@ -117,7 +124,10 @@ export default function RasporedPage() {
       played: new Set(other.nights.filter((n) => n.played).map((n) => n.date)),
       times: Object.fromEntries(other.nights.flatMap((n) => (n.time ? [[n.date, n.time]] : []))),
       gatherings: Object.fromEntries(other.nights.flatMap((n) => (n.gathering ? [[n.date, n.gathering]] : []))),
-      places: Object.fromEntries(other.nights.flatMap((n) => (n.place ? [[n.date, n.place]] : []))),
+      // a two-place night shows no place to a viewer without a team there
+      places: Object.fromEntries(other.nights.flatMap((n) => (n.place && !n.second_location ? [[n.date, n.place]] : []))),
+      secondPlaces: {},
+      slots: {},
       own: new Set(other.nights.filter((n) => n.start_time || n.gathering_time || n.location).map((n) => n.date)),
       canAsk: false,
     };
@@ -199,10 +209,16 @@ export default function RasporedPage() {
   );
 }
 
-// "19:30 · Caffe bar Kartaš ↗" on the navy card: a link to Google Maps when the place has one, else only the text
-function PlacePill({time, place}: {time: string | undefined; place: NightLocation}) {
+// "19:30 · Caffe bar Kartaš ↗" on the navy card: a link to Google Maps when the place has one, else only the text. me:
+// the team's own place of a two-place night, white with "Vi" (Claude Design 02 A).
+function PlacePill({time, place, me = false}: {time: string | undefined; place: NightLocation; me?: boolean}) {
   const map = place.url && isSafeUrl(place.url) ? place.url : null;
   const label = gatheringLabel(time, place);
+  const vi = me && (
+    <Box component="span" aria-label="vaša lokacija" sx={{height: 20, px: "7px", borderRadius: "6px", background: color.navy, color: color.white, fontSize: 11, display: "flex", alignItems: "center", flex: "none"}}>
+      Vi
+    </Box>
+  );
   const sx = {
     alignSelf: "flex-start",
     maxWidth: "100%",
@@ -215,8 +231,8 @@ function PlacePill({time, place}: {time: string | undefined; place: NightLocatio
     px: "12px",
     py: "6px",
     borderRadius: "18px",
-    background: tint.creamOnNavy[16],
-    color: color.white,
+    background: me ? color.white : tint.creamOnNavy[16],
+    color: me ? color.navy : color.white,
     fontSize: 13.5,
     fontWeight: 700,
     lineHeight: 1.3,
@@ -224,14 +240,16 @@ function PlacePill({time, place}: {time: string | undefined; place: NightLocatio
     "& svg": {fontSize: 18, color: color.cream, flex: "none"},
   } as const;
   return map ? (
-    <Box component="a" {...mapLinkProps(map)} aria-label={`${label}, otvori kartu`} sx={{...buttonBase, ...sx, "&:hover": {background: tint.creamOnNavy[24]}}}>
+    <Box component="a" {...mapLinkProps(map)} aria-label={`${label}${me ? ", vaša lokacija" : ""}, otvori kartu`} sx={{...buttonBase, ...sx, "&:hover": {background: me ? color.paper : tint.creamOnNavy[24]}, ...(me && {"& svg": {fontSize: 18, color: color.navy, flex: "none"}})}}>
       <PlaceRoundedIcon aria-hidden />
       <span>{label} ↗</span>
+      {vi}
     </Box>
   ) : (
-    <Box component="span" sx={sx}>
+    <Box component="span" sx={{...sx, ...(me && {"& svg": {fontSize: 18, color: color.navy, flex: "none"}})}}>
       <PlaceRoundedIcon aria-hidden />
       <span>{label}</span>
+      {vi}
     </Box>
   );
 }
@@ -267,7 +285,21 @@ function Schedule({shown, today, desktop}: {shown: Shown; today: string; desktop
         <Box component="span" sx={{fontSize: 14, color: color.cream}}>
           {nightsLeftLabel(left)}
         </Box>
-        {shown.places[cardNight] && <PlacePill time={shown.times[cardNight]} place={shown.places[cardNight]} />}
+        {shown.places[cardNight] && shown.secondPlaces[cardNight] ? (
+          <>
+            {!shown.slots[cardNight] && (
+              <Box component="span" sx={{fontSize: 14, color: color.cream}}>
+                Još niste raspoređeni.
+              </Box>
+            )}
+            <Box sx={{display: "flex", flexWrap: "wrap", gap: "0 8px"}}>
+              <PlacePill time={shown.times[cardNight]} place={shown.places[cardNight]} me={shown.slots[cardNight] === 1} />
+              <PlacePill time={undefined} place={shown.secondPlaces[cardNight]} me={shown.slots[cardNight] === 2} />
+            </Box>
+          </>
+        ) : (
+          shown.places[cardNight] && <PlacePill time={shown.times[cardNight]} place={shown.places[cardNight]} />
+        )}
       </Box>
       <EventRoundedIcon aria-hidden sx={{fontSize: 34, color: color.cream}} />
     </Box>
@@ -306,6 +338,10 @@ function Schedule({shown, today, desktop}: {shown: Shown; today: string; desktop
             const pill = rasporedPill(night, isNext, i === shown.nights.length - 1, today, shown.played.has(night));
             const past = night < today;
             const place = shown.places[night];
+            const second = shown.secondPlaces[night] ?? null;
+            const slot = shown.slots[night] ?? null;
+            // the map of the team's place (the first place before Podjela)
+            const mapPlace = second && slot === 2 ? second : place;
             const own = shown.own.has(night);
             return (
               <Box
@@ -322,7 +358,16 @@ function Schedule({shown, today, desktop}: {shown: Shown; today: string; desktop
                     {dateLabel(night)}
                   </Box>
                   {place ? (
-                    <GatheringLine time={shown.times[night]} place={place} plain wrap mark={own ? "Drugo vrijeme ili mjesto" : null} size={12.5} />
+                    <GatheringLine
+                      time={shown.times[night]}
+                      place={place}
+                      second={second}
+                      mine={slot}
+                      plain
+                      wrap
+                      mark={own ? (second ? "Dvije lokacije" : "Drugo vrijeme ili mjesto") : null}
+                      size={12.5}
+                    />
                   ) : null}
                 </Box>
                 {pill && (
@@ -344,7 +389,7 @@ function Schedule({shown, today, desktop}: {shown: Shown; today: string; desktop
                     {RASPORED_PILL[pill]}
                   </Box>
                 )}
-                {!past && <MapButton place={place} label={`Karta: ${place?.name ?? ""}, ${nightLabel(night)}`} />}
+                {!past && <MapButton place={mapPlace} label={`Karta: ${mapPlace?.name ?? ""}, ${nightLabel(night)}`} />}
               </Box>
             );
           })

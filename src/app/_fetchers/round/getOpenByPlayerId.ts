@@ -18,6 +18,8 @@ export async function getOpenRoundByPlayerIdAPI(
   ongoingScore: [number, number] | null;
   conferences: [ConferenceRow | null, ConferenceRow | null] | null;
   tournamentId: number | null;
+  // a league's table: which of its place's Kola tonight it is, [k, n] ("Kolo 1/3"); null for a tournament's
+  nightKolo?: [number, number] | null;
 }> {
   const response = await apiFetch(scope === "any" ? `/api/rounds/open` : `/api/rounds/open?scope=${scope}`);
 

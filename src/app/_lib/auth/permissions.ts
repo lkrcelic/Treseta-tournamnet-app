@@ -30,6 +30,9 @@ export type Capability =
   | "ban.manage.all"
   | "league.manage"
   | "sponsor.manage"
+  // Lokacije: pick a place and add a new one (Novi turnir, Podaci lige), and change or delete any place
+  | "location.create"
+  | "location.manage"
   | "burza.moderate"
   | "rating.manage";
 
@@ -51,6 +54,8 @@ const ALL_CAPABILITIES: readonly Capability[] = [
   "ban.manage.all",
   "league.manage",
   "sponsor.manage",
+  "location.create",
+  "location.manage",
   "burza.moderate",
   "rating.manage",
 ];
@@ -65,6 +70,8 @@ const BY_ROLE: Record<Role, readonly Capability[]> = {
     "team.edit",
     "player.directory",
     "player.contact",
+    // the tournament form picks a place from Lokacije and can add one; changing and deleting places stays the admin's
+    "location.create",
     // not "ban.manage.own": Zabrana prijava is league wide (the API takes no tournament), so a ban stays the admin's
     // until it can be tied to one tournament
   ],

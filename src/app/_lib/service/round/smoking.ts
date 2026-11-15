@@ -7,6 +7,7 @@ import {SmokingPlan, SmokingPlanSide, SmokingPlanTeam} from "@/app/_interfaces/s
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {draftLetters, roundName, roundStatusOf} from "@/app/_lib/roundStatus";
 import {teamSmokers} from "@/app/_lib/service/team/smokers";
+import {Slot} from "@/app/_lib/locations";
 
 // Smoking tables on the database side: the league's season as the rotation reads it, and the plan admins see in
 // Create Round
@@ -26,6 +27,7 @@ const roundSelect = {
   smoking_table: true,
   status: true,
   draft_order: true,
+  location_slot: true,
 } as const;
 
 type RoundRow = Prisma.RoundGetPayload<{select: typeof roundSelect}>;
@@ -33,6 +35,7 @@ type RoundRow = Prisma.RoundGetPayload<{select: typeof roundSelect}>;
 const toSmokingRound = (r: RoundRow): SmokingRound => ({
   date: isoDate(r.round_date!),
   roundNumber: r.round_number,
+  slot: r.location_slot,
   team1Id: r.team1_id,
   team2Id: r.team2_id,
   team1Smokers: r.team1_smokers,
@@ -55,8 +58,9 @@ export async function smokingSetup(leagueId: number, tables: number[], smokers: 
   return {tables, smokers, records: smokingRecords(rounds.map(toSmokingRound), today)};
 }
 
-// Tonight's smoking tables round by round, and every smoking team's rotation this season (admin)
-export async function smokingPlan(leagueId: number): Promise<SmokingPlan> {
+// Tonight's smoking tables round by round, and every smoking team's rotation this season (admin). slot: at one place
+// of a two-place night, that place's rounds tonight (the rotation is the season's, both places counted).
+export async function smokingPlan(leagueId: number, slot: Slot | null = null): Promise<SmokingPlan> {
   const league = await prisma.league.findUnique({
     where: {league_id: leagueId},
     select: {
@@ -72,7 +76,7 @@ export async function smokingPlan(leagueId: number): Promise<SmokingPlan> {
   const records = smokingRecords(rounds.map(toSmokingRound), today);
   const names = new Map(teams.map((t) => [t.team_id, t.team_name]));
 
-  const tonight = rounds.filter((r) => isoDate(r.round_date!) === today && r.round_number != null);
+  const tonight = rounds.filter((r) => isoDate(r.round_date!) === today && r.round_number != null && (slot == null || r.location_slot === slot));
   const roundNumbers = Array.from(new Set(tonight.map((r) => r.round_number!))).sort((a, b) => a - b);
   // a round still waiting in Skica is called by its letter
   const letters = draftLetters(

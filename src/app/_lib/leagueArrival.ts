@@ -49,15 +49,21 @@ export const lastRoundOut = (publishedRounds: number, roundsPerNight: number): b
 // A team is here: it came (a row) and hasn't left since
 export const isHere = (a: {left_at: Moment | null} | null | undefined): boolean => a != null && a.left_at == null;
 
+// A team waits for the admin (Javi se adminu) on a night played at two places until Podjela puts it at one of them
+// (slot null: not assigned); on a one-place night every team of the league can press Tu smo, as before
+export const asksAdmin = (twoPlaces: boolean, slot: number | null | undefined): boolean => twoPlaces && slot == null;
+
 // What a team's own button does: confirm is Tu smo (arrive, or nothing for a team already here); leave is Ipak
 // otkazujemo before the start (withdraw: as if it never confirmed) and Odlazimo after it (leave: it is out of the next
-// Novo kolo). not_open and over: the button doesn't work now.
+// Novo kolo). not_open and over: the button doesn't work now. no_place: the night has two places and the team isn't
+// at either yet (Javi se adminu); it can still leave.
 export type LeagueArrivalAction = "confirm" | "leave";
-export type LeagueArrivalEffect = "arrive" | "withdraw" | "leave" | "none" | "not_open" | "over" | "last_round";
+export type LeagueArrivalEffect = "arrive" | "withdraw" | "leave" | "none" | "not_open" | "over" | "last_round" | "no_place";
 
-export function arrivalEffect(phase: LeagueArrivalPhase, action: LeagueArrivalAction, here: boolean, lastRound = false): LeagueArrivalEffect {
+export function arrivalEffect(phase: LeagueArrivalPhase, action: LeagueArrivalAction, here: boolean, lastRound = false, noPlace = false): LeagueArrivalEffect {
   if (phase === "over") return "over";
   if (action === "confirm") {
+    if (noPlace) return "no_place";
     if (phase === "before") return "not_open";
     if (here) return "none";
     return lastRound ? "last_round" : "arrive";
