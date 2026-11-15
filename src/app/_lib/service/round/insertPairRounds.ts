@@ -137,7 +137,8 @@ async function insertRounds(
 }
 
 /**
- * Create the automatic matches of a bye round: the real team wins every match BYE_MATCH_POINTS:0 (5:0). night: the
+ * Create the automatic matches of a bye round: the real team wins every match BYE_MATCH_POINTS:0 (5:0) and is its
+ * winner (winner_side), as with a no-show's matches, since a null winner_side reads as a match nobody won. night: the
  * round's night, the matches' date; matches: how many the table plays (a league's two, a tournament's one or two)
  */
 // threshold: the points the table's matches are played to (a tournament's Igra se do; 41 in a league)
@@ -150,6 +151,7 @@ export async function createByeMatches(tx: Prisma.TransactionClient, roundId: nu
         round_id: roundId,
         player_pair1_score: isByeTeam1 ? 0 : BYE_MATCH_POINTS,
         player_pair2_score: isByeTeam1 ? BYE_MATCH_POINTS : 0,
+        winner_side: isByeTeam1 ? 2 : 1,
         score_threshold: threshold,
         match_date: night,
       },
