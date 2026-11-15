@@ -12,7 +12,9 @@ npm run dev:reset       # migrates, seeds the users admin / player (password: si
 ```
 
 - `npm run dev` applies new migrations and starts the app, keeping the data.
-- `npm test` runs the unit tests (`src/app/_lib/__tests__`).
+- `npm test` runs the unit tests (`src/app/_lib/__tests__`), and `npm run test:db:local` the db tests on a fresh
+  database in a local podman Postgres. Which test goes with a change: `CLAUDE.md` and the skill `testovi`; how the
+  tests run every night: [ORKESTRACIJA_AGENATA.md](ORKESTRACIJA_AGENATA.md).
 - `npm run ratings:replay` recomputes every player's rating (dry run; add `-- --apply` to write).
 
 ## Shared code with the Bela app
@@ -20,6 +22,6 @@ npm run dev:reset       # migrates, seeds the users admin / player (password: si
 Most of the code is the Bela app's (`../Bela-Treseta-Tournamnet-app`, "Piatnik Bela Liga"), with Treseta's game rules:
 11 points a hand (or a custom hand), matches to 41 (51, 61 … after a tie), "s ovim dosta", two matches a round.
 
-The Bela app is primary. A scheduled Claude Code task brings its new commits here every night at 04:00, onto the branch
+The Bela app is primary. A scheduled Claude Code task brings its new commits here every night at 05:00, onto the branch
 `bela-sync`, and keeps what Treseta does differently. [BELA_SYNC.md](BELA_SYNC.md) has the Bela commit it has
 reached, how to take a night's sync, and the full list of differences. A new difference goes there too.

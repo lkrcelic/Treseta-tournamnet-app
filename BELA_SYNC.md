@@ -99,6 +99,21 @@ still to come.
   three privacy steps and the Rola picker — and `ORGANIZER` and `Tournament.created_by` with it. Nothing of it waits
   any more, and the Bela commits that build on it come over as usual.
 
+**Bela's test and routine flow was brought over by hand on 15 Nov 2026**, from Bela's `development` at `1ac528b`,
+before Bela deployed it (see [ORKESTRACIJA_AGENATA.md](ORKESTRACIJA_AGENATA.md)). What the sync does with those
+commits when Bela's `master` reaches them:
+- `16198f5` (tests with every commit): `.githooks/pre-commit` and `scripts/test-db-local.sh` are here word for word,
+  so they apply to the same end state or come up empty; the hook is already enabled in this checkout. The skill
+  `testovi`, the agent `e2e-reviewer` and `CLAUDE.md` conflict or differ: keep Treseta's (Repository files, Small
+  edit) and carry in only what Bela changed in them after `1ac528b`. `package.json`'s `test:db:local` is here.
+  `ORKESTRACIJA_AGENATA.md`, `E2E_PLAN.md` and `UNIT_PLAN.md` are Treseta's own versions.
+- `2f3d6e6`, `02a2b26`, `5dfd2bc`, `fb3b3d2`, `1ac528b` (Bela's routines and plans): not copied; Treseta's
+  `rutine/` and plans are its own.
+- `9642282` (the E2E data generator): `e2e/seed/**` and `package.json`'s `seed:e2e` and `seed:verify` are not
+  copied until Treseta has its own generator ([E2E_PLAN.md](E2E_PLAN.md)); its `.gitignore` line comes over.
+- `c9b8d6b` (Bela's old documents to `docs/arhiva/`): not copied, Treseta archived its own the same day; its comment
+  change in `_lib/googleAuth.ts` comes over.
+
 ## Differences from Bela
 
 Each difference is one of four kinds, and the nightly sync treats a Bela change to it by its kind:
@@ -165,8 +180,10 @@ custom hand at such a table). The admin's screens keep Ručni unos (Custom) for 
 | `_lib/service/admin/recalc.ts` | `RATINGS_FROM` = 1 Aug 2025, so the whole Treseta history is rated (Bela: 7 Oct 2025) |
 | `_lib/rating/glicko2.ts` | One comment: "for teams of two" (Bela: "for Bela teams of two") |
 | `next.config.mjs` (root) | Redirects the old `/match/:id` to `/` |
-| `package.json`, `package-lock.json` (root) | The name `treseta-tournament-app`, and `build` runs `node scripts/previewAdmin.js` after the migrations. On a lock file conflict, take Bela's lock file and put the two names back |
-| `.gitignore` (root) | Also ignores `.env`, `/backups/` and `/.claude/` |
+| `package.json`, `package-lock.json` (root) | The name `treseta-tournament-app`, and `build` runs `node scripts/previewAdmin.js` after the migrations; without Bela's `seed:e2e` and `seed:verify` (Not copied). On a lock file conflict, take Bela's lock file and put the two names back |
+| `.gitignore` (root) | Also ignores `.env` and `/backups/` |
+| `.claude/skills/testovi/SKILL.md` (root) | Treseta's tests: a paragraph on shared code (tested in Bela) and Treseta's own (tested here, listed in this file); Treseta's hand entry and rules (Custom, Kaput, "s ovim dosta", zvanja 3 and 4; 11, 41, "na prolaz"); examples `5102b331` and Bela's #74 (Bela: `1bb39ea`, #74); db model `db/timeLimit.test.ts` and `createResult` (Bela: `doubleHand`, `createBelaResult`); rules of play from `_lib/game/scoring.ts` and `helpers/handEntry.ts` until Treseta has a generator; expectations from this file and Bela's DECISIONS; an issue for shared code goes to Bela, and no routine labels; the nightly run is `treseta-e2e-nightly` |
+| `.claude/agents/e2e-reviewer.md` (root) | The range example `master..bela-sync`, the nightly run instead of the release review, intent from this file, and a step 5: Treseta's own code has its test here, and shared code changed here directly is a finding |
 
 ### Branding
 
@@ -186,7 +203,7 @@ the apps have separate origins.
 A league can split its teams into conferences, each with a name and a color. The color is a dot before the team's
 name, and Daily's night table and League standings get a view per conference. Create Round can pair every conference
 on its own ("Only within conferences"). Bela doesn't have conferences for now. The plan and decisions are in
-[CONFERENCES_PLAN.md](CONFERENCES_PLAN.md).
+[docs/arhiva/CONFERENCES_PLAN.md](docs/arhiva/CONFERENCES_PLAN.md).
 
 Conferences are a core part of Treseta and stay as they are. A Bela change is merged around them and never changes
 what they do, how they look or what they say; when it can't be (Bela reworks a screen or a flow they live in, and it
@@ -233,8 +250,13 @@ The database part (the `Conference` table and `LeagueTeam.conference_id`) is und
 
 | Path (root) | Kind |
 |---|---|
-| `README.md`, `ProcessFlow.md`, `Task.md`, `.windsurfrules` | Own version |
-| `BELA_SYNC.md`, `TRANSITION_PLAN.md`, `CONFERENCES_PLAN.md`, `LOCATIONS_PLAN.md`, `.env.example` | Treseta only |
+| `README.md`, `.windsurfrules` | Own version |
+| `CLAUDE.md` | Own version: Bela is primary, then Bela's Tests and Supported layouts sections word for word (a Bela change to those two comes over) |
+| `ORKESTRACIJA_AGENATA.md`, `UNIT_PLAN.md`, `E2E_PLAN.md` | Own version: Treseta's plans, built on Bela's. A Bela change to its plans is carried in only when it changes how Treseta tests (the skill, the hook, the suite, the generator) |
+| `.claude/skills/testovi/SKILL.md`, `.claude/agents/e2e-reviewer.md` | Small edit (below) |
+| `rutine/` | Treseta only: `README.md` and `treseta-e2e-nightly.md`, the prompt of Treseta's nightly test run. Bela's `rutine/` is Not copied, so a Bela change to its `rutine/README.md` is dropped here |
+| `docs/arhiva/` | Treseta only: `TRANSITION_PLAN.md`, `CONFERENCES_PLAN.md`, `TOURNAMENTS_PLAN.md`, `ZVANJA_PLAN.md`, `ProcessFlow.md` and `Task.md`, moved there on 15 Nov 2026 as Bela did with its own; Bela's `docs/arhiva/` is Not copied |
+| `BELA_SYNC.md`, `LOCATIONS_PLAN.md`, `.env.example` | Treseta only |
 | `scripts/previewAdmin.js` | Treseta only: on a Vercel preview, makes `lkrcelic` (password `sifra`) an admin on the preview's Neon branch, and fails the build if that database is production |
 | `public/card.png` | Treseta only, left from the old app and unused |
 
@@ -242,9 +264,13 @@ The database part (the `Conference` table and `LeagueTeam.conference_id`) is und
 
 - `public/bell.webp`, Bela's bell (see Branding).
 - `.env` (Bela tracks it; here it is ignored), `next-env.d.ts` (ignored here), `.idea/`, `bela-tournament-app.zip`,
-  `tmp-file.ts`, `skills-lock.json`, `backups/`, `.claude/`.
+  `tmp-file.ts`, `skills-lock.json`, `backups/`, and `.claude/` except the skill `testovi` and `.claude/agents/`.
 - Bela's documents: `PLAN.md`, `DECISIONS.md`, `BACKEND_REVIEW.md`, `REFINEMENTS.md`, `TEST_REPORT.md`, `BLOCKERS.md`,
-  `RATING_INTEGRATION.md`, `CLAUDE.md`, and any other Markdown file Bela adds at its root.
+  `RATING_INTEGRATION.md`, `docs/arhiva/**`, `rutine/**` (Bela's routine prompts), and any other Markdown file Bela
+  adds at its root. `CLAUDE.md`, `ORKESTRACIJA_AGENATA.md`, `E2E_PLAN.md` and `UNIT_PLAN.md` have Treseta's own
+  versions (Repository files).
+- Bela's E2E data generator, `e2e/seed/**`, and `package.json`'s `seed:e2e` and `seed:verify`: it plays Bela's game,
+  so it doesn't even compile here. Not copied until Treseta has its own ([E2E_PLAN.md](E2E_PLAN.md)).
 - Bela's database files: `prisma/migrations/**` (see Database), `prisma/seedHelpers.ts`, `prisma/usefulQueries/**`.
 - Bela's game: `_lib/bela/`, `_interfaces/belaResult.ts`, `_interfaces/belaPlayerAnnouncement.ts`, `_store/bela/`,
   `_fetchers/ongoingBelaResult/`, `_lib/service/ongoingBelaResult/`, `api/ongoing-bela-result/`, and the hand entry's
@@ -417,7 +443,7 @@ The nightly sync adds a row when it brings something over or stops.
 
 | Date | Bela commits | Result |
 |---|---|---|
-| 11 Oct 2026 | up to `4bf68ad` | The transition ([TRANSITION_PLAN.md](TRANSITION_PLAN.md)) |
+| 11 Oct 2026 | up to `4bf68ad` | The transition ([docs/arhiva/TRANSITION_PLAN.md](docs/arhiva/TRANSITION_PLAN.md)) |
 | 13 Oct 2026 | none | Stopped before the first commit: the run started in its own worktree and couldn't write to `.claude/worktrees/bela-sync` |
 | 14 Oct 2026 | `4bf68ad..e39abc1` (45) | 41 came over, 3 skipped (decision logs, Burza test data), the Frankfurt merge already here; 7 migrations, untested |
 | 16 Oct 2026 | `b9afd0e..07a790f` (14) | Bela's history was rewritten (`e39abc1` is now `b9afd0e`, same tree). All 14 came over: the admin's phone screens, with Treseta's hands on TablePhone and the conference switch and dots on the phone; 2 migrations (`create_round_draft`, `night_location`) |
@@ -435,7 +461,7 @@ The nightly sync adds a row when it brings something over or stops.
 | 31 Oct 2026 | `6c84c4b..bed3e29` (6 of 27) | Stopped at `de2001c` (league Tu smo also makes the sign-up bans keep teams from league nights, not decided). The 6 before it skipped: the cron clock backup (tournaments and Vrijeme partije), `CHANGELOG.md` twice, Kolo drafts and Automatska kola (tournaments, with migration `tournament_auto_publish`), `DECISIONS.md`; no migration |
 | 1 Nov 2026 | `bed3e29..92df912` (2 of 25) | Stopped at `3b85bfa` (Gost i poziv: a guest's Početna is built on the tournaments, Turniri · Liga, PlayerFrame and TournamentsOverview, and the league's season table needs a login; not decided). 2 came over: league Tu smo without the bans (1 migration, `20261031180000_league_arrival`, Bela's SQL), and the standings' head-to-head with `rankTeams` carried into `_lib/leagueOrder.ts` |
 | 10 Nov 2026 | tournament files from `d2a0b98` | **Turniri brought over by hand** (not a nightly run): the schema and 3 migrations, the organizer role, Vrijeme partije (45 min, +5 a raised target), the tournament logic, 21 routes and 31 screens. Treseta's rules kept: 41 with "s ovim dosta", a no-show scored as a bye (5 : 0), no zvanja, no `TeamScore.tournament_id`. Otključaj partiju and Gost i poziv still out |
-| 11 Nov 2026 | none (Treseta's own) | **Zvanja** (ZVANJA_PLAN.md, branch `zvanja`): 3 and 4 per team per hand, Bela's Zvanja step and admin steps with Treseta's values and check, and Bela's tournament switch `declarations` brought back. The files above lose their "without zvanja" difference; Bela's `_lib/bela/declarations.ts` isn't copied |
+| 11 Nov 2026 | none (Treseta's own) | **Zvanja** (docs/arhiva/ZVANJA_PLAN.md, branch `zvanja`): 3 and 4 per team per hand, Bela's Zvanja step and admin steps with Treseta's values and check, and Bela's tournament switch `declarations` brought back. The files above lose their "without zvanja" difference; Bela's `_lib/bela/declarations.ts` isn't copied |
 | 7 Nov 2026 | `92df912..a0686e1` (42) | Run by hand after the nightly stop at `3b85bfa`: Gost i poziv decided not copied for now. 19 came over (6 adapted by hand): Registracija s Googleom (without `?next=`), Datumi (Uredi večer moves a night, Obriši večer i kola, Dodaj večer, the phone sheet), Okupljanje (1 migration, `20261101120000_league_gathering_time`, Bela's SQL), Nađi zamjenu until Tu smo opens, Dnevni poredak lists arrived teams, Odlazimo and Ipak otkazujemo as buttons and under Započni igru (`LeaveParts.tsx`), the round-close tests and the finished-match guard on Treseta's hands, Natrag na kolo after a reload, Igrači A–Ž / Najnoviji, the sign-up checks and limit, no Tu smo after the last round, the phone's Back closing sheets, the bold Tu smo note. 23 skipped: Gost i poziv (4), tournaments (14; the Burza test part of `726b292` came separately), Vrijeme partije, `CHANGELOG.md` (2), `CLAUDE.md`, and `699984e` (its look came with `LeaveRow`) |
 | 8 Nov 2026 | `a0686e1..88425c3` (9 of 22) | Stopped at `28d19f2` (Organizator: a tournament role on a new role→capability foundation across about 80 shared files, with a migration; not decided). 4 came over: the admin's no-winner warning (Meč ostaje bez pobjednika?, Spremi / Obriši svejedno) on Treseta's `winner_side` and hands, Raspored scrolling on Android (twice; Bela's mistaken revert of the warning left out), Vidljivost slike behind the photo. 5 skipped: `CHANGELOG.md` (4) and Bela's restore `ba7fb02` (already here); no migration |
 | 11 Nov 2026 | `a0686e1..88425c3` (merged) | The four commits the 8 Nov run left on `bela-sync` were rebased onto the tournaments and merged into `master`. Five conflicts, each resolved by keeping both sides: the no-winner warning keeps the organizer's `refuseUnlessMyHand` and takes Bela's `allow_no_winner`, Vidljivost slike keeps the `team.moderate` guard, and the sync state took `88425c3`. The Organizator question the run parked is answered: the tournaments brought the whole role→capability foundation on 10 Nov. Unit tests (552), `tsc`, ESLint and `next build` pass; the `db/` tests were not run, since the repo's generated Prisma client belongs to the `zvanja` branch being built in parallel |

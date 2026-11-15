@@ -8,6 +8,8 @@
 
 # testing
 /coverage
+# routine reports (rutine/README.md, Report), local only
+/reports/
 
 # next.js
 .next
@@ -51,6 +53,10 @@ tmp-file.ts
 # production dumps and the production connection string (users' password hashes, credentials)
 /backups/
 
-# Claude's local settings and worktrees (the nightly Bela sync runs in one, BELA_SYNC.md)
-/.claude/
+# .claude stays local (settings, worktrees), except the shared test skill and agents (skill testovi, agent e2e-reviewer)
+/.claude/*
+!/.claude/agents/
+!/.claude/skills/
+/.claude/skills/*
+!/.claude/skills/testovi/
 skills-lock.json

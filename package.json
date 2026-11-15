@@ -16,6 +16,7 @@
     "ages:report": "cross-env TS_NODE_PROJECT=tsconfig.test.json TS_NODE_TRANSPILE_ONLY=1 node -r ts-node/register -r tsconfig-paths/register scripts/ageReport.ts",
     "test": "cross-env TS_NODE_PROJECT=tsconfig.test.json TS_NODE_TRANSPILE_ONLY=1 node --test -r ts-node/register -r tsconfig-paths/register src/app/_lib/__tests__/*.test.ts",
     "test:db": "cross-env TS_NODE_PROJECT=tsconfig.test.json TS_NODE_TRANSPILE_ONLY=1 node --test --test-concurrency=1 -r ts-node/register -r tsconfig-paths/register src/app/_lib/__tests__/db/*.test.ts",
+    "test:db:local": "sh scripts/test-db-local.sh",
     "postinstall": "npm rebuild argon2 --build-from-source"
   },
   "dependencies": {

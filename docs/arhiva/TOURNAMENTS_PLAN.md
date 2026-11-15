@@ -5,7 +5,7 @@ to `a0686e1`).
 
 Treseta gets Bela's one-day tournaments. This reverses the decisions of 26 Oct 2026 (no tournaments), 30 Oct 2026 (no
 Vrijeme partije, bans stay with the tournaments) and the part of 7 Nov 2026 that kept the organizer role out —
-[BELA_SYNC.md · Bela's tournaments](BELA_SYNC.md#belas-tournaments) is replaced by this file and, once the work lands,
+[BELA_SYNC.md · Bela's tournaments](../../BELA_SYNC.md#belas-tournaments) is replaced by this file and, once the work lands,
 deleted.
 
 A tournament is one day, not a season: an admin or an organizer makes it with a date, Okupljanje and Početak, a place,
@@ -267,7 +267,7 @@ nothing about it may change except Vrijeme partije.
 
 ## What this does to the sync
 
-[BELA_SYNC.md](BELA_SYNC.md)'s whole **Bela's tournaments** section goes, along with the tournament rows of the
+[BELA_SYNC.md](../../BELA_SYNC.md)'s whole **Bela's tournaments** section goes, along with the tournament rows of the
 shared-file tables, the Vrijeme partije and Zabrana prijava bullets, and the `api/cron/tick` line under what isn't
 copied. What stays a difference is Bela's game (zvanja, štiglja, the trump caller, 1001), the hand tables, Treseta's
 Conferences, Gost i poziv for now, and the three decisions above that differ in a constant: 45 minutes, the five

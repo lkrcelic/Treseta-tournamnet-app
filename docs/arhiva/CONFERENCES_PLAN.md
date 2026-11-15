@@ -63,7 +63,7 @@ none). The scoreboard, the lineup step and the admin table scorepad keep green a
 the two sides of the board.
 
 **D6. The Bela app.** *Decided:* Bela doesn't get conferences for now. They are listed under Differences from Bela in
-[BELA_SYNC.md](BELA_SYNC.md): the new files as Treseta only, and the 28 shared files with conference code, around
+[BELA_SYNC.md](../../BELA_SYNC.md): the new files as Treseta only, and the 28 shared files with conference code, around
 which the nightly sync merges a Bela change.
 
 **D7. Branch.** *Decided:* a new branch from `feat/scorepad`. It merges after the cutover (Phase 6 of

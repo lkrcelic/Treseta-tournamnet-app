@@ -1,0 +1,25 @@
+#!/bin/sh
+# Unit tests before every commit (skill testovi), on exactly what is being committed: the staged files are
+# exported to a temporary folder, so other sessions' unstaged edits in a shared folder neither fail nor pass the
+# commit. A commit that touches no code, tests or packages skips them.
+# Enable once per clone: git config core.hooksPath .githooks
+git diff --cached --name-only --diff-filter=ACMRD \
+  | grep -qE '^(src/|prisma/|e2e/|scripts/|package(-lock)?\.json$|tsconfig[^/]*\.json$)' || exit 0
+
+ROOT=$(git rev-parse --show-toplevel)
+if [ ! -d "$ROOT/node_modules" ]; then
+  echo "pre-commit: no node_modules in $ROOT. Link them from the main checkout or run npm ci, then commit again." >&2
+  exit 1
+fi
+
+SNAP=$(mktemp -d "${TMPDIR:-/tmp}/bela-precommit.XXXXXX")
+trap 'rm -rf "$SNAP"' EXIT INT TERM
+git checkout-index --all --prefix="$SNAP/"
+ln -s "$ROOT/node_modules" "$SNAP/node_modules"
+
+if ! out=$(cd "$SNAP" && npm test 2>&1); then
+  fails=$(echo "$out" | sed -n '/failing tests:/,$p')
+  if [ -n "$fails" ]; then echo "$fails" | head -40 >&2; else echo "$out" | tail -25 >&2; fi
+  echo "pre-commit: npm test failed on the staged files, commit stopped. Fix the code or the test (skill testovi)." >&2
+  exit 1
+fi
