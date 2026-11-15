@@ -261,7 +261,9 @@ export async function seedTodayTournaments(ctx: Ctx, people: People, pool: TeamP
   reserve(adminTeam);
 
   // --- live: started an hour ago, Kolo 1 played, Kolo 2 in every table state
-  const startedAt = zagrebTime(ctx, new Date(ctx.now.getTime() - 70 * 60_000));
+  // in the first 70 minutes after midnight that hour was yesterday: then it started at midnight, so its sign-ups close
+  // all the same (Kolo 1 needs them closed)
+  const startedAt = zagrebTime(ctx, new Date(ctx.now.getTime() - 70 * 60_000)) ?? "00:00";
   const live = await createTournament(
     tournamentRequest({
       name: "Subotnji turnir uživo",
@@ -277,8 +279,8 @@ export async function seedTodayTournaments(ctx: Ctx, people: People, pool: TeamP
   );
   const liveTeams: Team[] = [adminTeam, ...pick(9, "live")];
   await enter(ctx, pool, live, liveTeams);
-  for (const team of liveTeams.slice(0, startedAt ? 9 : 10)) await adminSetArrival(live, team.team_id, true);
-  if (startedAt) await prisma.$transaction((tx) => closeArrival(tx, live, ctx.now));
+  for (const team of liveTeams.slice(0, 9)) await adminSetArrival(live, team.team_id, true);
+  await prisma.$transaction((tx) => closeArrival(tx, live, ctx.now));
   await makeKoloDraft(live);
   await publishKolo(live, 1);
   const kolo = async (n: number) =>
