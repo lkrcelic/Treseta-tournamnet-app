@@ -109,8 +109,8 @@ commits when Bela's `master` reaches them:
   `ORKESTRACIJA_AGENATA.md`, `E2E_PLAN.md` and `UNIT_PLAN.md` are Treseta's own versions.
 - `2f3d6e6`, `02a2b26`, `5dfd2bc`, `fb3b3d2`, `1ac528b` (Bela's routines and plans): not copied; Treseta's
   `rutine/` and plans are its own.
-- `9642282` (the E2E data generator): `e2e/seed/**` and `package.json`'s `seed:e2e` and `seed:verify` are not
-  copied until Treseta has its own generator ([E2E_PLAN.md](E2E_PLAN.md)); its `.gitignore` line comes over.
+- `9642282` (the E2E data generator) and Bela's suite base (`6971500`, on Bela's local `e2e-suite`): Treseta has its
+  own versions since 15 Nov 2026 (Repository files); `package.json`'s scripts and `.gitignore` lines are here.
 - `c9b8d6b` (Bela's old documents to `docs/arhiva/`): not copied, Treseta archived its own the same day; its comment
   change in `_lib/googleAuth.ts` comes over.
 
@@ -180,7 +180,7 @@ custom hand at such a table). The admin's screens keep Ručni unos (Custom) for 
 | `_lib/service/admin/recalc.ts` | `RATINGS_FROM` = 1 Aug 2025, so the whole Treseta history is rated (Bela: 7 Oct 2025) |
 | `_lib/rating/glicko2.ts` | One comment: "for teams of two" (Bela: "for Bela teams of two") |
 | `next.config.mjs` (root) | Redirects the old `/match/:id` to `/` |
-| `package.json`, `package-lock.json` (root) | The name `treseta-tournament-app`, and `build` runs `node scripts/previewAdmin.js` after the migrations; without Bela's `seed:e2e` and `seed:verify` (Not copied). On a lock file conflict, take Bela's lock file and put the two names back |
+| `package.json`, `package-lock.json` (root) | The name `treseta-tournament-app`, and `build` runs `node scripts/previewAdmin.js` after the migrations. On a lock file conflict, take Bela's lock file and put the two names back |
 | `.gitignore` (root) | Also ignores `.env` and `/backups/` |
 | `.claude/skills/testovi/SKILL.md` (root) | Treseta's tests: a paragraph on shared code (tested in Bela) and Treseta's own (tested here, listed in this file); Treseta's hand entry and rules (Custom, Kaput, "s ovim dosta", zvanja 3 and 4; 11, 41, "na prolaz"); examples `5102b331` and Bela's #74 (Bela: `1bb39ea`, #74); db model `db/timeLimit.test.ts` and `createResult` (Bela: `doubleHand`, `createBelaResult`); rules of play from `_lib/game/scoring.ts` and `helpers/handEntry.ts` until Treseta has a generator; expectations from this file and Bela's DECISIONS; an issue for shared code goes to Bela, and no routine labels; the nightly run is `treseta-e2e-nightly` |
 | `.claude/agents/e2e-reviewer.md` (root) | The range example `master..bela-sync`, the nightly run instead of the release review, intent from this file, and a step 5: Treseta's own code has its test here, and shared code changed here directly is a finding |
@@ -257,6 +257,11 @@ The database part (the `Conference` table and `LeagueTeam.conference_id`) is und
 | `rutine/` | Treseta only: `README.md` and `treseta-e2e-nightly.md`, the prompt of Treseta's nightly test run. Bela's `rutine/` is Not copied, so a Bela change to its `rutine/README.md` is dropped here |
 | `docs/arhiva/` | Treseta only: `TRANSITION_PLAN.md`, `CONFERENCES_PLAN.md`, `TOURNAMENTS_PLAN.md`, `ZVANJA_PLAN.md`, `ProcessFlow.md` and `Task.md`, moved there on 15 Nov 2026 as Bela did with its own; Bela's `docs/arhiva/` is Not copied |
 | `BELA_SYNC.md`, `LOCATIONS_PLAN.md`, `.env.example` | Treseta only |
+| `e2e/seed/play.ts`, `e2e/seed/live.ts`, `e2e/seed/verify.ts` | Own version: the generator plays and checks Treseta's game (11 points, Kaput, zvanja 3 and 4, Custom and "s ovim dosta", 41/51, "na prolaz", bye and no-show 5 : 0, table wins by `winner_side`). A Bela change that isn't about Bela's game (a new scenario field, a faster write) is carried in |
+| `e2e/seed/scenarios/places.ts`, `e2e/local/env.e2e`, `e2e/sekcije/K.md`, `e2e/sekcije/L.md` | Treseta only: the places (Lokacije) the leagues and tournaments point at; the suite's made-up env (Treseta doesn't track `.env`); the conferences and places sections |
+| `e2e/seed/context.ts`, `e2e/seed/index.ts`, `e2e/seed/scenarios/*.ts` | Small edit: places in the catalog and made first; Treseta's league names, 45 minutes, `location_id`, `NO_SHOW_SCORE`, `BYE_MATCH_POINTS`, wins by `winner_side`, `score_threshold` and `match_end` on tournaments, and the "na prolaz" tournament where Bela has the one with hidden sign-ups (Treseta has no `hide_entries`) |
+| `e2e/local/app.sh`, `e2e/helpers/fixtures.ts`, `e2e/playwright.config.ts` | Small edit: databases `treseta_e2e_<id>` and ports 4000+ (Bela's are 3900+, so both suites run at once), the sections K and L, the env from `e2e/local/env.e2e`; the install sheet kept away with `navigator.standalone` (Treseta has no install snooze) |
+| `E2E_SUITE_PLAN.md`, `e2e/sekcije/README.md`, `e2e/sekcije/C*.md`, `e2e/FLOWS.md` | Own version: Bela's plan and briefs with Treseta's game, ports and sections |
 | `scripts/previewAdmin.js` | Treseta only: on a Vercel preview, makes `lkrcelic` (password `sifra`) an admin on the preview's Neon branch, and fails the build if that database is production |
 | `public/card.png` | Treseta only, left from the old app and unused |
 
@@ -269,8 +274,8 @@ The database part (the `Conference` table and `LeagueTeam.conference_id`) is und
   `RATING_INTEGRATION.md`, `docs/arhiva/**`, `rutine/**` (Bela's routine prompts), and any other Markdown file Bela
   adds at its root. `CLAUDE.md`, `ORKESTRACIJA_AGENATA.md`, `E2E_PLAN.md` and `UNIT_PLAN.md` have Treseta's own
   versions (Repository files).
-- Bela's E2E data generator, `e2e/seed/**`, and `package.json`'s `seed:e2e` and `seed:verify`: it plays Bela's game,
-  so it doesn't even compile here. Not copied until Treseta has its own ([E2E_PLAN.md](E2E_PLAN.md)).
+- Bela's E2E files have Treseta's versions since 15 Nov 2026 (branch `e2e-suite`, [E2E_SUITE_PLAN.md](E2E_SUITE_PLAN.md)):
+  see Repository files. A Bela change to them is carried in by their kind there.
 - Bela's database files: `prisma/migrations/**` (see Database), `prisma/seedHelpers.ts`, `prisma/usefulQueries/**`.
 - Bela's game: `_lib/bela/`, `_interfaces/belaResult.ts`, `_interfaces/belaPlayerAnnouncement.ts`, `_store/bela/`,
   `_fetchers/ongoingBelaResult/`, `_lib/service/ongoingBelaResult/`, `api/ongoing-bela-result/`, and the hand entry's

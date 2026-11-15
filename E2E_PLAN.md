@@ -36,8 +36,8 @@ Nedolazak, Vrati stol), C6 (prijava u aplikaciju), C7 (organizator), C8 (Burza) 
 - **Belin generator sync ne prenosi** dok Treseta nema svoj (`BELA_SYNC.md`, Not copied): Belin `play.ts` uvozi
   Belino bodovanje, pa se u Treseti ne bi ni preveo, a `next build` provjerava i `e2e/`. S njim ostaju vani i
   skripte `seed:e2e` i `seed:verify` u `package.json`.
-- Kad Bela složi suite (njene faze 1–4), jedna sesija u Treseti napravi Tresetin generator kao Own version
-  Belinog. Od tada sync nosi zajedničke testove kako jesu, a Tresetini dijelovi iz tablice gore ostaju Own version.
+- 15.11. Treseta je napravila svoj generator odmah, iz Belinog (`6971500`), i piše suite usporedo s Belom
+  ([`E2E_SUITE_PLAN.md`](E2E_SUITE_PLAN.md)), umjesto da čeka. Od tada sync nosi zajedničke testove kako jesu, a Tresetini dijelovi iz tablice gore ostaju Own version.
 - Promjena toka u Tresetinom kodu do tada nosi unit ili db test, uz "no E2E yet" u commit poruci (skill).
 
 ## 5. Faze
@@ -45,8 +45,8 @@ Nedolazak, Vrati stol), C6 (prijava u aplikaciju), C7 (organizator), C8 (Burza) 
 | Faza | Što | Gotovo kad |
 | --- | --- | --- |
 | TE0 | noćni run: unit, db, lint, `tsc` na `master`u i `bela-sync`u (15.11.) | prvo jutro s izvještajem |
-| TE1 | Belin suite gotov (Beline faze 1–4) | u Beli |
-| TE2 | Tresetin generator: `e2e/seed/` kao Own version, `seed:e2e` i `seed:verify` u `package.json` | `seed:verify` zelen na Tresetinom svijetu |
+| TE1 | Belin suite gotov (Beline faze 1–4); Treseta ga piše usporedo, istim planom ([`E2E_SUITE_PLAN.md`](E2E_SUITE_PLAN.md)) | u Beli |
+| TE2 | ~~Tresetin generator: `e2e/seed/` kao Own version, `seed:e2e` i `seed:verify` u `package.json`~~ (15.11., grana `e2e-suite`, [`E2E_SUITE_PLAN.md`](E2E_SUITE_PLAN.md)) | `seed:verify` zelen na Tresetinom svijetu |
 | TE3 | Tresetini testovi upisa igre (C1, C2, C4, C5) i Tresetin `e2e/FLOWS.md` | svaki prolazi `--repeat-each=5` |
 | TE4 | noćni run vrti cijeli suite (`run.sh`), sync nosi Beline testove | prva noć s Playwrightom |
 
@@ -54,4 +54,5 @@ Nedolazak, Vrati stol), C6 (prijava u aplikaciju), C7 (organizator), C8 (Burza) 
 
 - **Kako Treseta dobiva generator:** kopija Belinog s Tresetinom igrom, ili Belin generator koji igru uzima iz
   jednog modula, pa Treseta zamijeni samo taj modul (kao `_lib/game/scoring.ts` zamjenjuje `_lib/bela/scoring.ts`)?
-  Prijedlog: drugo, jer je manje razlika za sync. Odlučiti kad Bela složi suite.
+  Prijedlog: drugo, jer je manje razlika za sync. **15.11.:** za sada prvo, kopija s Tresetinom igrom (`play.ts`,
+  `live.ts`, `verify.ts`); drugo ostaje opcija kad Bela mijenja generator.

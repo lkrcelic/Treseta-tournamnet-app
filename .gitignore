@@ -10,6 +10,10 @@
 /coverage
 # routine reports (rutine/README.md, Report), local only
 /reports/
+# the E2E seed's manifest (ids of the generated world), written by every npm run seed:e2e
+/e2e/seed/out/
+# the suite's per-section servers, manifests, reports and traces (e2e/local/app.sh)
+/e2e/local/run/
 
 # next.js
 .next

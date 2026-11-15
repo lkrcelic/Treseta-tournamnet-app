@@ -1,0 +1,14 @@
+{
+  // The suite and the generator, type-checked on their own (npm run typecheck:e2e): the app's tsconfig leaves e2e/
+  // out, so next build doesn't check test code against the app's old target.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "noEmit": true,
+    "incremental": false
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["local/run"]
+}

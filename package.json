@@ -17,6 +17,10 @@
     "test": "cross-env TS_NODE_PROJECT=tsconfig.test.json TS_NODE_TRANSPILE_ONLY=1 node --test -r ts-node/register -r tsconfig-paths/register src/app/_lib/__tests__/*.test.ts",
     "test:db": "cross-env TS_NODE_PROJECT=tsconfig.test.json TS_NODE_TRANSPILE_ONLY=1 node --test --test-concurrency=1 -r ts-node/register -r tsconfig-paths/register src/app/_lib/__tests__/db/*.test.ts",
     "test:db:local": "sh scripts/test-db-local.sh",
+    "seed:e2e": "cross-env TS_NODE_PROJECT=tsconfig.test.json TS_NODE_TRANSPILE_ONLY=1 node -r ts-node/register -r tsconfig-paths/register e2e/seed/index.ts",
+    "seed:verify": "cross-env TS_NODE_PROJECT=tsconfig.test.json TS_NODE_TRANSPILE_ONLY=1 node -r ts-node/register -r tsconfig-paths/register e2e/seed/verify.ts",
+    "e2e": "playwright test -c e2e",
+    "typecheck:e2e": "tsc -p e2e --noEmit",
     "postinstall": "npm rebuild argon2 --build-from-source"
   },
   "dependencies": {
@@ -38,6 +42,7 @@
     "zustand": "^5.0.0-rc.2"
   },
   "devDependencies": {
+    "@playwright/test": "1.65.1",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
