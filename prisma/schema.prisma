@@ -171,10 +171,7 @@ model Tournament {
   // "HH:MM" (CHECK constraints in the migration script); Okupljanje and Početak, both optional
   gathering_time     String?   @db.VarChar(5)
   start_time         String?   @db.VarChar(5)
-  location_name      String?   @db.VarChar(100)
-  location_address   String?   @db.VarChar(200)
-  location_url       String?   @db.VarChar(500) // a Google Maps share link
-  // where it is played, from Lokacije (replaces location_name/address/url, which go once nothing reads them)
+  // where it is played, from Lokacije
   location_id        Int?
   // Broj kola (1-20)
   rounds             Int       @default(9)
@@ -260,12 +257,8 @@ model League {
   start_time       String?   @db.VarChar(5)
   // when its nights start gathering (Okupljanje), "HH:MM" like start_time; optional, a night's own wins over it
   gathering_time   String?   @db.VarChar(5)
-  // where its nights are played; all optional. A night's own location wins over this one.
-  location_name    String?   @db.VarChar(100)
-  location_address String?   @db.VarChar(200)
-  location_url     String?   @db.VarChar(500) // a Google Maps share link
-  // the place of its nights, from Lokacije: the first place of every night that has none of its own ("Zadano lige").
-  // Replaces location_name/address/url, which go once nothing reads them.
+  // the place of its nights, from Lokacije (optional): the first place of every night that has none of its own
+  // ("Zadano lige")
   location_id      Int?
   // default "Rounds" in Create Round
   rounds_per_night Int       @default(3)
@@ -343,13 +336,8 @@ model LeagueNight {
   start_time String?  @db.VarChar(5)
   // this night's own Okupljanje, when it differs from the league's gathering_time (null: the league's)
   gathering_time String? @db.VarChar(5)
-  // this night's own location when it is played somewhere else (null location_name: the league's; address and link
-  // are then null too)
-  location_name    String? @db.VarChar(100)
-  location_address String? @db.VarChar(200)
-  location_url     String? @db.VarChar(500)
-  // Liga na dvije lokacije: this night's own first place from Lokacije (null: the league's, as "Zadano lige"), and a
-  // second place played at the same time (null: a one-place night). The text columns above go once nothing reads them.
+  // Liga na dvije lokacije: this night's own first place from Lokacije, when it is played somewhere else (null: the
+  // league's, as "Zadano lige"), and a second place played at the same time (null: a one-place night)
   location_id        Int?
   second_location_id Int?
 
