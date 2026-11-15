@@ -16,7 +16,7 @@ You write one section of the Treseta Playwright suite. Your section file (`e2e/s
 ## How tests are written here
 
 - Use the fixtures from `e2e/helpers/fixtures.ts`: `world` (the manifest's catalog), `as(role or username)` (a page in its own logged-in context, phone-sized by default, opened as from the home screen so the install sheet stays away), `db` (a Prisma client on your database, for setup, time shifts and asserts), `healthy(page)` (no console errors, no 5xx, no horizontal scroll).
-- Find elements by role and Croatian label (`getByRole`, `getByLabel`, `getByText` for plain text). `data-testid` doesn't exist in the app and you can't add it.
+- Find elements by role and Croatian label (`getByRole`, `getByLabel`, `getByText` for plain text). `data-testid` doesn't exist in the app and you can't add it. Every page has Next's empty route announcer with role `alert` (`#__next-route-announcer__`), so a bare `page.getByRole("alert")` breaks strict mode: scope it to a region or add `.filter({hasText: /\S/})`.
 - Wait for outcomes with `expect(...)`; never `waitForTimeout`, never `force: true`.
 - Assert the outcome a person cares about (the hand is in the list, the standing moved, the table closed), and check it in the database too when the screen alone could lie.
 - Expected values come from intent, written before you run the app: the Treseta rules (`BELA_SYNC.md` · Game rules, `src/app/_lib/game/scoring.ts`), Bela's `DECISIONS.md` and `CHANGELOG.md` (`../Bela-Treseta-Tournamnet-app/`) for shared behaviour, the commit messages on `master` for Treseta's own changes, and your section file.
