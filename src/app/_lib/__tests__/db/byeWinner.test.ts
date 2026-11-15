@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import {join} from "node:path";
 import {after, before, test} from "node:test";
 import {prisma} from "@/app/_lib/prisma";
 import {leagueNight} from "@/app/_lib/dates";
@@ -11,9 +13,10 @@ import {makeKoloDraft, publishKolo} from "@/app/_lib/service/tournament/kola";
 import {getTablePad} from "@/app/_lib/service/admin/hands";
 
 // A Slobodna runda's matches have a winner: the real team wins each one 5 : 0 and is its winner_side, on a league
-// night (the bye on either side of the table) and in a tournament's Kolo, as a no-show's matches are. Treseta reads a
-// null winner_side as a match nobody won (the scorepad, the ratings). Run with `npm run test:db` and DATABASE_URL on a
-// throwaway database with the migrations applied. Never point it at production.
+// night (the bye on either side of the table) and in a tournament's Kolo, as a no-show's matches are; the migration
+// 20261115140000_bye_winner_side gives it to the byes written before. Treseta reads a null winner_side as a match
+// nobody won (the scorepad, the ratings). Run with `npm run test:db` and DATABASE_URL on a throwaway database with the
+// migrations applied. Never point it at production.
 
 const tag = `bw${Date.now()}`;
 const tonight = leagueNight();
@@ -89,6 +92,37 @@ test("a league night's bye: the real team wins both matches 5 : 0 and is their w
     // the admin's scorepad names the real team as each match's winner
     assert.deepEqual((await getTablePad(t.id)).matches.map((m) => m.winner), [t.realSide, t.realSide]);
   }
+});
+
+test("the backfill gives a bye written without a winner to its real team, and leaves every other match as it is", async () => {
+  const table = (team1: number, team2: number) =>
+    prisma.round.create({
+      data: {team1_id: team1, team2_id: team2, status: "PUBLISHED", published_at: tonight, open: false, leagueRounds: {create: {league_id: leagueId}}},
+    });
+  const match = (roundId: number, score1: number, score2: number, extra: object = {}) =>
+    prisma.match.create({data: {round_id: roundId, player_pair1_score: score1, player_pair2_score: score2, score_threshold: 41, ...extra}});
+
+  // byes as the app wrote them before the fix, with the bye on either side
+  const byeTwo = await table(teams[0], BYE_TEAM_ID);
+  const byeOne = await table(BYE_TEAM_ID, teams[1]);
+  const old = [await match(byeTwo.id, BYE_MATCH_POINTS, 0), await match(byeTwo.id, BYE_MATCH_POINTS, 0), await match(byeOne.id, 0, BYE_MATCH_POINTS)];
+  // left as they are: a real table's 5 : 0 without hands; at a bye table, a match with hands (one an admin's edit left
+  // without a winner) and one where the real team isn't ahead
+  const real = await table(teams[0], teams[2]);
+  const notBye = await match(real.id, BYE_MATCH_POINTS, 0);
+  const byeOther = await table(teams[2], BYE_TEAM_ID);
+  const played = await match(byeOther.id, 30, 20, {results: {create: {team1_game_points: 30, team2_game_points: 20, custom: true}}});
+  const notAhead = await match(byeOther.id, 0, 0);
+
+  const sql = readFileSync(join(__dirname, "..", "..", "..", "..", "..", "prisma", "migrations", "20261115140000_bye_winner_side", "migration.sql"), "utf8");
+  await prisma.$executeRawUnsafe(sql);
+
+  const winners = async (ids: number[]) =>
+    (await prisma.match.findMany({where: {id: {in: ids}}, orderBy: {id: "asc"}, select: {winner_side: true}})).map((m) => m.winner_side);
+  assert.deepEqual(await winners(old.map((m) => m.id)), [1, 1, 2]);
+  assert.deepEqual(await winners([notBye.id, played.id, notAhead.id]), [null, null, null]);
+  // a second run changes nothing
+  assert.equal(await prisma.$executeRawUnsafe(sql), 0);
 });
 
 test("a tournament Kolo's bye: the real team wins its matches 5 : 0 and is their winner", async () => {
