@@ -385,7 +385,8 @@ A Bela change to places or to a night's rounds comes over like this:
 - **Broj kola is the whole night's** (your call, 17 Nov 2026). A night's `rounds_per_night` (Bela's DECISIONS #94) is
   one number for both places: each place plays that many Kola on the night's shared numbers. Novo kolo at a place
   counts and numbers that place's own published Kola and offers the ones still missing there (`publishedTonight` and
-  `tonightRoundsDefault` take the slot); Tu smo's last round is per place, as before; and the night is over for
+  `tonightRoundsDefault` take the slot); Tu smo's last round and Početna's Kraj večeri (`lastKoloOut` in `_lib/service/league/schedule.ts`) are per
+  place, against the night's number; and the night is over for
   Potvrda dolaska only when every place has finished that many (`nightRounds` in `_lib/service/league/arrival.ts`; a
   place that plays fewer ends the night at 06:00). The night form (`GatheringForm.tsx`) has Broj kola beside Lokacija
   and Druga lokacija, and no Vrati na zadano (Treseta's form dropped it): a Broj kola equal to the league's is the

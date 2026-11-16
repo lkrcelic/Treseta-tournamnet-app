@@ -43,7 +43,7 @@ export async function mySchedule(viewer: Viewer): Promise<MySchedule> {
               gathering_time: true,
               rounds_per_night: true,
               ...LOCATION,
-              nights: {select: {night: true, start_time: true, gathering_time: true, ...LOCATION, secondLocation: LOCATION_SELECT}, orderBy: {night: "asc"}},
+              nights: {select: {night: true, start_time: true, gathering_time: true, rounds_per_night: true, ...LOCATION, secondLocation: LOCATION_SELECT}, orderBy: {night: "asc"}},
             },
           },
         },
@@ -119,8 +119,13 @@ export async function mySchedule(viewer: Viewer): Promise<MySchedule> {
     const arrival = arrivals.get(`${l.league_id}|${l.team_id}`);
     if (arrival) l.arrival = arrival;
   }
-  // the evening so far, for Početna's cards
-  const perNight = new Map(teams.flatMap((t) => t.leagueTeams.map(({league}) => [league.league_id, league.rounds_per_night] as [number, number])));
+  // the evening so far, for Početna's cards; its last Kolo is the night's Broj kola (its own, else the league's Kola po
+  // večeri), at each place of a two-place night
+  const perNight = new Map(
+    teams.flatMap((t) =>
+      t.leagueTeams.map(({league}) => [league.league_id, league.nights.find((n) => isoDate(n.night) === tonight)?.rounds_per_night ?? league.rounds_per_night] as [number, number])
+    )
+  );
   const evenings = await tonightOf(leagues.filter((l) => l.nights.includes(tonight)), tonight, perNight);
   for (const l of leagues) {
     const evening = evenings.get(`${l.league_id}|${l.team_id}`);
