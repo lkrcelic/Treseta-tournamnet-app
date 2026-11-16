@@ -53,7 +53,7 @@ Bugovi aplikacije (testovi su `test.fail` s `// BUG:` dok popravak ne stigne):
 
 | Bug | Gdje | Kod | Stanje |
 | --- | --- | --- | --- |
-| Bye bez pobjednika: `createByeMatches` (`round/insertPairRounds.ts`) piše bye meč bez `winner_side`, a Treseta taj stupac čita kao "meč bez pobjednika" | generator (`seed:verify` `!`), C3 | Tresetin | popravljeno na masteru (`19361b22`, s backfillom); čeka spajanje mastera u `e2e-suite` |
+| Bye bez pobjednika: `createByeMatches` (`round/insertPairRounds.ts`) piše bye meč bez `winner_side`, a Treseta taj stupac čita kao "meč bez pobjednika" | generator (`seed:verify` `!`), C3 | Tresetin | popravljeno na masteru (`6536637b`, `19361b22` s backfillom), spojeno u `e2e-suite` 16.11. |
 | Drugi brzi dodir na Završi meč otvara upis igre (Bela #74) | C1 | zajednički | Belin `e721909`, dolazi sa syncom |
 | Ista igra s dva telefona upiše se dvaput (Bela #57) | C2 | zajednički | Belin `3efe0f4`, na `bela-sync` kao `a03b1ade`; čeka merge na master |
 | Poslije ponoći Početna ispusti večerašnju kartu (Tu smo, Pauza) za sljedeću večer, a Burza večerašnje zamjene broji kao istekle: "danas" po kalendaru (`mySchedule`, `burza.ts`, `BurzaForms`, Moji oglasi) | L, C8 | zajednički | Belin `1f7d51e`, već na `bela-sync` |

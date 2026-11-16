@@ -87,11 +87,7 @@ async function matches() {
   record("meč: rezultat = zbroj igara sa zvanjima", sums);
   record("meč: pobjednik (winner_side) je onaj kojeg daju igre (41 i više, „s ovim dosta”, na prolaz) ili isteklo vrijeme", winners);
   record("meč bez igara je samo bye ili nedolazak (5 : 0)", empty);
-  record(
-    "bye i nedolazak imaju pobjednika (winner_side)",
-    noWinner,
-    "createByeMatches (round/insertPairRounds.ts) writes a bye without winner_side; the migration of 14.10. filled the old ones",
-  );
+  record("bye i nedolazak imaju pobjednika (winner_side)", noWinner);
 }
 
 async function tables() {
@@ -100,9 +96,8 @@ async function tables() {
     WHERE r.open = false AND r.status = 'PUBLISHED' AND r.attendance IS DISTINCT FROM 'SKIPPED'
     GROUP BY r.id
     HAVING count(m.id) <> r.matches_per_round
-        OR r.team1_wins <> count(m.id) FILTER (WHERE coalesce(m.winner_side, CASE WHEN m.player_pair1_score > m.player_pair2_score THEN 1 ELSE 2 END) = 1)
-        OR r.team2_wins <> count(m.id) FILTER (WHERE coalesce(m.winner_side, CASE WHEN m.player_pair1_score > m.player_pair2_score THEN 1 ELSE 2 END) = 2)`;
-  // (a bye without winner_side counts by its points: that bug has its own rule above)
+        OR r.team1_wins <> count(m.id) FILTER (WHERE m.winner_side = 1)
+        OR r.team2_wins <> count(m.id) FILTER (WHERE m.winner_side = 2)`;
   record("zatvoren stol: broj mečeva = partija po kolu, pobjede = mečevi koje je dobio (winner_side)", wins.map((r) => r.id));
 
   const twice = await prisma.$queryRaw<{team: number; round_date: Date; round_number: number}[]>`

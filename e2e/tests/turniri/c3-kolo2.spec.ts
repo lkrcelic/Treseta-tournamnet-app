@@ -97,9 +97,6 @@ test("Kolo 2 pairs the teams by the standings with Slobodna runda for the lowest
 });
 
 test("a bye's match is won by the team that has the bye (winner_side), as a no-show's is", async ({db, own}) => {
-  // BUG: createByeMatches (src/app/_lib/service/round/insertPairRounds.ts, Treseta's small edit) writes a bye's matches
-  // without winner_side, which Treseta reads as a match without a winner (E2E_SUITE_PLAN.md §5, seed:verify's "!")
-  test.fail();
   const teams = await freeTeams(db, 3, {size: 2});
   const id = await own.make({name: "Slobodna runda"}, teams);
   await closeSignUps(own.admin, id);
