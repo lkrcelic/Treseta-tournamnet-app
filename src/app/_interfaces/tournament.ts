@@ -61,6 +61,8 @@ export const TournamentRequestValidation = z.object({
   auto_publish: z.boolean().default(false),
   // Otvorene prijave: ekipe se mogu prijaviti i dok turnir traje, do zadnjeg kola (DECISIONS #88)
   open_signups: z.boolean().default(false),
+  // Sakrij broj prijava: players don't see how many teams signed up, nor which, until Kolo 1 (DECISIONS #93)
+  hide_entries: z.boolean().default(false),
   // Telefon organizatora: required for a new tournament (checked by the service); an old one may stay without
   organizer_phone: z.string().trim().max(30).refine((v) => v === "" || isValidPhone(v), PHONE_ERROR).nullable().default(null),
 });
@@ -84,6 +86,7 @@ export type TournamentRequest = {
   game_minutes: number;
   auto_publish: boolean;
   open_signups: boolean;
+  hide_entries: boolean;
   organizer_phone: string | null;
 };
 
@@ -198,6 +201,11 @@ export type TournamentCard = {
   auto_publish: boolean;
   // Otvorene prijave: teams sign up while the tournament is played, up to its last Kolo (DECISIONS #88)
   open_signups: boolean;
+  // Sakrij broj prijava, as the admin set it (DECISIONS #93)
+  hide_entries: boolean;
+  // this viewer doesn't see the count nor the list now: teams, waiting, players and avatars are 0 / empty and entries
+  // empty, so nothing on the page can tell how full it is (max_teams stays: the limit alone tells nothing)
+  entries_hidden: boolean;
   // whether a team can sign up at this very moment (the switch, the phase and the last Kolo together)
   signups_open_now: boolean;
   day: TournamentDay | null;

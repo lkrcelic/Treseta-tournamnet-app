@@ -99,6 +99,15 @@ export function signUpsOpenNow(t: {phase: TournamentPhase; registrationsOpen: bo
 }
 
 /**
+ * Sakrij broj prijava (DECISIONS #93): whether this viewer is kept from the number of teams signed up and the list of
+ * them. Only before Kolo 1 (from then on the standings list every team anyway), and never for whoever runs the
+ * tournament.
+ */
+export function entriesHidden(t: {hideEntries: boolean; phase: TournamentPhase; manager: boolean}): boolean {
+  return t.hideEntries && !t.manager && t.phase === "upcoming";
+}
+
+/**
  * Whether a team coming in now counts as present, so its entry is written with Tu smo and active and the next Kolo's
  * draft pairs it (DECISIONS #88, your words: "ako su se prijavili podrazumijeva se da su tamo").
  *

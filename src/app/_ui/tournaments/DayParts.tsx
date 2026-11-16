@@ -2,6 +2,8 @@
 
 import {MyEntry, MyLastTable, TournamentCard, TournamentDetail} from "@/app/_interfaces/tournament";
 import {banDay} from "@/app/_lib/bans";
+import {nightLabel} from "@/app/_lib/nights";
+import useAuthStore from "@/app/_store/authStore";
 import {telHref, whatsappHref} from "@/app/_lib/phone";
 import {NO_SHOW_SKIP_MS} from "@/app/_lib/tournamentDay";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
@@ -503,6 +505,78 @@ export function JoinedSheet({open, onClose, t, team}: {open: boolean; onClose: (
         <PrimaryButton onClick={onClose} icon={<ChevronRightRoundedIcon />} sx={{height: 54, fontSize: 16, flexDirection: "row-reverse"}}>
           Na stranicu turnira
         </PrimaryButton>
+      </Box>
+    </BottomSheet>
+  );
+}
+
+// After a sign-up that went on the waiting list (DECISIONS #93): the team's place on the list and what happens next,
+// as JoinedSheet. It says the place, never how many teams are in, so it also serves a tournament with Sakrij broj
+// prijava, where the player learns only here that it is full.
+export function WaitingSheet({open, onClose, onLeave, t, me}: {open: boolean; onClose: () => void; onLeave: () => void; t: TournamentDetail; me: MyEntry}) {
+  const meId = useAuthStore((s) => s.user?.id ?? null);
+  // the viewer first, marked (ti), as the sign-up sheet lists them
+  const players = [...me.players].sort((a, b) => Number(b.id === meId) - Number(a.id === meId)).map((p) => (p.id === meId ? `${p.name} (ti)` : p.name));
+  const steps = [
+    {title: "Sva mjesta su trenutno popunjena", text: "Prijava je primljena, ali ekipa još ne igra."},
+    {title: "Ulazite sami kad se neka ekipa odjavi", text: "Obavijesti nema: provjerite stranicu turnira prije početka."},
+  ];
+  return (
+    <BottomSheet open={open} onClose={onClose} title="Na listi čekanja ste" eyebrow={`${t.name} · ${nightLabel(t.date)}`} closable>
+      <Box sx={{display: "flex", flexDirection: "column", gap: "16px"}}>
+        <Box sx={{display: "flex", alignItems: "center", gap: "16px", p: "16px", borderRadius: "20px", background: color.cream2}}>
+          <Box sx={{flex: "none", width: 72, height: 72, borderRadius: "20px", background: color.navy, color: color.white, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "1px"}}>
+            <Box component="span" sx={{fontFamily: font.display, fontSize: 34, fontWeight: 800, lineHeight: 1}}>
+              {me.position}.
+            </Box>
+            <Box component="span" sx={{...eyebrowSx, fontSize: 10.5, letterSpacing: ".08em", color: color.cream}}>
+              mjesto
+            </Box>
+          </Box>
+          <Box sx={{minWidth: 0, display: "flex", flexDirection: "column", gap: "3px"}}>
+            <Box component="span" sx={{fontSize: 18, fontWeight: 800, overflowWrap: "anywhere"}}>
+              {me.team_name}
+            </Box>
+            <Box component="span" sx={{fontSize: 14, color: color.ink2, overflowWrap: "anywhere"}}>
+              {players.join(" · ")}
+            </Box>
+            <Box component="span" sx={{display: "inline-flex", alignItems: "center", gap: "4px", fontSize: 13.5, fontWeight: 700, color: color.navy, "& svg": {fontSize: 17, color: color.medal[0]}}}>
+              <HourglassTopRoundedIcon aria-hidden />
+              {me.position}. na listi čekanja
+            </Box>
+          </Box>
+        </Box>
+        <Box component="ol" sx={{listStyle: "none", m: 0, p: 0, display: "flex", flexDirection: "column", gap: "12px"}}>
+          {steps.map((s, i) => (
+            <Box component="li" key={s.title} sx={{display: "flex", gap: "12px"}}>
+              <Box aria-hidden sx={{flex: "none", width: 30, height: 30, borderRadius: "50%", background: color.navy, color: color.white, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center"}}>
+                {i + 1}
+              </Box>
+              <Box sx={{display: "flex", flexDirection: "column", gap: "2px"}}>
+                <Box component="span" sx={{fontSize: 15.5, fontWeight: 700}}>
+                  {s.title}
+                </Box>
+                <Box component="span" sx={{fontSize: 14, lineHeight: 1.4, color: color.ink2}}>
+                  {s.text}
+                </Box>
+              </Box>
+            </Box>
+          ))}
+        </Box>
+        <Box sx={{display: "flex", flexDirection: "column", gap: "4px"}}>
+          <PrimaryButton onClick={onClose} sx={{height: 54, fontSize: 16}}>
+            U redu
+          </PrimaryButton>
+          <Box
+            component="button"
+            type="button"
+            onClick={onLeave}
+            sx={{...buttonBase, alignSelf: "center", height: 48, display: "flex", alignItems: "center", gap: "8px", px: "16px", borderRadius: "14px", color: color.red, fontSize: 15, fontWeight: 700, "& svg": {fontSize: 20}}}
+          >
+            <LogoutRoundedIcon aria-hidden />
+            Makni se s liste čekanja
+          </Box>
+        </Box>
       </Box>
     </BottomSheet>
   );

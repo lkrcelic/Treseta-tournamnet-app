@@ -27,6 +27,7 @@ import {
   koloRemovalWarns,
   joinsAsPresent,
   signUpsCloseWithSwitch,
+  entriesHidden,
   signUpsOpenNow,
   removesResults,
   tableWasPlayed,
@@ -497,6 +498,25 @@ test("the tournament form's switch reaches the server: open_signups survives the
   assert.equal(TournamentRequestValidation.parse({...body, score_threshold: 51}).score_threshold, 51);
   assert.equal(TournamentRequestValidation.parse(body).score_threshold, 41);
   assert.equal(TournamentRequestValidation.safeParse({...body, score_threshold: 61}).success, false);
+});
+
+test("Sakrij broj prijava: hidden from players only before Kolo 1, never from whoever runs it, and it reaches the server", () => {
+  assert.equal(entriesHidden({hideEntries: true, phase: "upcoming", manager: false}), true);
+  // the admin and the organizer see every sign-up and the waiting list
+  assert.equal(entriesHidden({hideEntries: true, phase: "upcoming", manager: true}), false);
+  // from Kolo 1 the standings list every team anyway
+  assert.equal(entriesHidden({hideEntries: true, phase: "active", manager: false}), false);
+  assert.equal(entriesHidden({hideEntries: true, phase: "finished", manager: false}), false);
+  assert.equal(entriesHidden({hideEntries: false, phase: "upcoming", manager: false}), false);
+  const body = {
+    name: "Kafić", date: "2026-12-01", gathering_time: null, start_time: null,
+    location_name: null, location_address: null, location_url: null,
+    rounds: 3, matches_per_round: 2, declarations: true, max_teams: 16, entry_fee: 0,
+    rules_url: null, prizes: [], game_minutes: 35, auto_publish: false, open_signups: false, organizer_phone: "0931234567",
+  };
+  assert.equal(TournamentRequestValidation.parse({...body, hide_entries: true}).hide_entries, true);
+  // left out: the count shows, as for every tournament made before this
+  assert.equal(TournamentRequestValidation.parse(body).hide_entries, false);
 });
 
 test("Otvorene prijave: who counts as present, and what switching the setting off does", () => {

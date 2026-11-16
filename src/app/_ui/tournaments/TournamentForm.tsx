@@ -48,6 +48,8 @@ export type TournamentDraft = {
   // Iduća kola: published by themselves (Automatski) or after the admin's Objavi (Ručno)
   autoPublish: boolean;
   openSignups: boolean;
+  // Broj prijava: Skriven = players don't see how many teams signed up (DECISIONS #93)
+  hideEntries: boolean;
 };
 
 // Bela pravila igre v1.5 (Macaklin Social Club), the rules every new tournament starts with
@@ -72,6 +74,7 @@ export const EMPTY_TOURNAMENT: TournamentDraft = {
   gameMinutes: String(GAME_MINUTES_DEFAULT),
   autoPublish: false,
   openSignups: false,
+  hideEntries: false,
 };
 
 type Source = Pick<
@@ -94,6 +97,7 @@ type Source = Pick<
   | "game_minutes"
   | "auto_publish"
   | "open_signups"
+  | "hide_entries"
 >;
 
 export function draftOf(t: Source): TournamentDraft {
@@ -116,6 +120,7 @@ export function draftOf(t: Source): TournamentDraft {
     gameMinutes: String(t.game_minutes),
     autoPublish: t.auto_publish,
     openSignups: t.open_signups,
+    hideEntries: t.hide_entries,
   };
 }
 
@@ -172,6 +177,7 @@ export function draftPayload(d: TournamentDraft): TournamentRequest {
     game_minutes: Number(d.gameMinutes),
     auto_publish: d.autoPublish,
     open_signups: d.openSignups,
+    hide_entries: d.hideEntries,
     organizer_phone: text(d.phone),
   };
 }
@@ -402,6 +408,17 @@ export function TournamentFields({form, locks, compact = false, sx}: {form: Tour
         {d.openSignups
           ? "Ekipe se mogu prijaviti i dok turnir traje, sve do zadnjeg kola. Tko se prijavi usred turnira broji se kao prisutan i igra od idućeg kola, a kad je turnir pun čeka na listi čekanja."
           : "U vrijeme početka prijave se zatvaraju i nitko se više ne može prijaviti."}
+      </Box>
+      <Choice<"vidljiv" | "skriven">
+        label="Broj prijava"
+        value={d.hideEntries ? "skriven" : "vidljiv"}
+        items={[{key: "vidljiv", label: "Vidljiv"}, {key: "skriven", label: "Skriven"}]}
+        onChange={(v) => set("hideEntries", v === "skriven")}
+      />
+      <Box sx={{mt: "-6px", pl: "4px", fontSize: 13, lineHeight: 1.45, color: color.muted}}>
+        {d.hideEntries
+          ? "Do 1. kola igrači ne vide koliko je ekipa prijavljeno ni popis ekipa. Ekipa preko granice saznaje da je na listi čekanja tek kad se prijavi. Ti i organizator vidite sve u Prijavama."
+          : "Igrači vide koliko je ekipa prijavljeno i popis prijavljenih ekipa."}
       </Box>
       <Box>
         <TextField

@@ -141,7 +141,10 @@ function TournamentStrip() {
         ? t.me.status === "WAITING"
           ? `Na listi čekanja · ${t.me.team_name}`
           : `Prijavljeni · ${t.me.team_name}`
-        : `${count(t.teams, NOUN.ekipa)} · ${t.registrations_open ? "prijave otvorene" : "prijave zatvorene"}`;
+        : t.entries_hidden
+          ? // Sakrij broj prijava (DECISIONS #93): no count, only whether there is a limit
+            [t.registrations_open ? "Prijave otvorene" : "Prijave zatvorene", t.max_teams != null && "mjesta ograničena"].filter(Boolean).join(" · ")
+          : `${count(t.teams, NOUN.ekipa)} · ${t.registrations_open ? "prijave otvorene" : "prijave zatvorene"}`;
   return (
     <Box
       component={TransitionLink}

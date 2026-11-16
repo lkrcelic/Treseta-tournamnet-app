@@ -18,7 +18,7 @@ import React, {useEffect, useState} from "react";
 import PlayerFrame from "./PlayerFrame";
 import {EntriesPreview, InfoCard, MyMatchesCard, MyResultCard, PrizesCard, ResultsButton, SignUpCard, TournamentHead, UpcomingCard, WinnersCard} from "./PlayerParts";
 import SignUpSheet from "./SignUpSheet";
-import {ArrivalAction, ArrivalCard, ExcludedCard, JoinedSheet, NoShowWinCard, OrganizerCard} from "./DayParts";
+import {ArrivalAction, ArrivalCard, ExcludedCard, JoinedSheet, NoShowWinCard, OrganizerCard, WaitingSheet} from "./DayParts";
 
 // A tournament's page (Claude Design "Natjecanja" R1–R5, D1–D2, W1, G0; "Potvrda dolaska" P1–P9; "Nedolazak za stol"
 // N5, N6, N8; "Zabrana prijava" ZP1). Before it starts: the navy card of the sign-ups (Prijavi se, or the team signed
@@ -41,6 +41,8 @@ export default function TournamentPage({id}: {id: number}) {
   const [arrivalBusy, setArrivalBusy] = useState<ArrivalAction | null>(null);
   const [arrivalError, setArrivalError] = useState<string | null>(null);
   const [joined, setJoined] = useState<string | null>(null);
+  // a sign-up that went on the waiting list: the sheet with the team's place, once the page has it (DECISIONS #93)
+  const [waitSheet, setWaitSheet] = useState(false);
   const {table: openTable} = useOpenTable("tournament");
   const game = useStartGame({scope: "tournament"});
   const {tournaments} = useTournaments();
@@ -180,14 +182,27 @@ export default function TournamentPage({id}: {id: number}) {
               t={t}
               open={sheet}
               onClose={() => setSheet(false)}
-              onDone={(_status, team) => {
+              onDone={(status, team) => {
                 setSheet(false);
-                if (t.day && team) setJoined(team);
+                if (status === "WAITING") setWaitSheet(true);
+                else if (t.day && team) setJoined(team);
                 reload();
               }}
             />
           )}
           {joined && <JoinedSheet open={joined != null} onClose={() => setJoined(null)} t={t} team={joined} />}
+          {t.me?.status === "WAITING" && (
+            <WaitingSheet
+              open={waitSheet}
+              onClose={() => setWaitSheet(false)}
+              onLeave={() => {
+                setWaitSheet(false);
+                setWithdraw(true);
+              }}
+              t={t}
+              me={t.me}
+            />
+          )}
           {t.me && (
             <ConfirmSheet
               open={withdraw}
