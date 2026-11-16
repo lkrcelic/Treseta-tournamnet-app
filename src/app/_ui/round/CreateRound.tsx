@@ -11,7 +11,7 @@ import {leagueClock} from "@/app/_lib/dates";
 import {CreateRoundDraft, isPlaying, MAX_ROUNDS, MAX_WINDOW, switchTeams} from "@/app/_lib/createRoundDraft";
 import {onBeforeLogout} from "@/app/_utils/beforeLogout";
 import {smokingSummary} from "@/app/_lib/ui/smoking";
-import {waitingLabel} from "@/app/_lib/ui/adminTonight";
+import {newRoundsLabel, publishedLabel, PublishedTonight, waitingLabel} from "@/app/_lib/ui/adminTonight";
 import {count, matchesQuery, NOUN, plural} from "@/app/_lib/ui/text";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, EmptyState, ErrorNote, LoadingRows, OutlineButton, PrimaryButton, SearchInput, SectionLabel, SolidButton, Stepper, SwitchRow, SwitchTrack, TeamLabel} from "@/app/_ui/sp";
@@ -68,14 +68,15 @@ export type CreatePlace = {slot: Slot; name: string; teams: ReadonlySet<number>}
 // waiting: tonight's rounds still in Skica, while the create action waits for them; onDraftWaiting: the server said
 // so when the page didn't know yet (the page reloads its rounds and shows `waiting`). place: one place of tonight's
 // two-place night (Claude Design 06 A): its teams only, its arrivals, its own saved choice and smoking tables, and the
-// rounds go to its Skica.
+// rounds go to its Skica. published: tonight's rounds already published (at that place), so the new ones are extra
+// rounds of the same night (Kolo 4 after Kolo 1–3).
 export function useCreateRound(
   leagueId: number,
   teamsData: CreateRoundTeams,
   onCreated: (date: string) => void,
   defaultRounds?: number,
   defaultSmokingTables?: number[],
-  {waiting = null, onDraftWaiting, place = null}: {waiting?: WaitingDraft | null; onDraftWaiting?: () => void; place?: CreatePlace | null} = {}
+  {waiting = null, onDraftWaiting, place = null, published = null}: {waiting?: WaitingDraft | null; onDraftWaiting?: () => void; place?: CreatePlace | null; published?: PublishedTonight | null} = {}
 ) {
   const slot = place?.slot ?? null;
   // the admin's saves for this league (and place) go one after another
@@ -344,7 +345,7 @@ export function useCreateRound(
   const steppers = (
     <Box sx={{display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "10px"}}>
       <Stepper
-        label="Kola"
+        label={published ? "Još kola" : "Kola"}
         value={rounds}
         onInc={() => change({rounds: Math.min(MAX_ROUNDS, rounds + 1)})}
         onDec={() => change({rounds: Math.max(1, rounds - 1)})}
@@ -403,7 +404,7 @@ export function useCreateRound(
   ) : (
     // its shadow would show below the plan, which covers only the view
     <PrimaryButton onClick={() => create()} disabled={playing < 2} loading={creating} sx={showPlan ? {boxShadow: "none"} : undefined}>
-      {creating ? "Kreiram kolo…" : place ? `Kreiraj kolo · ${place.name} · ${count(playing, NOUN.ekipa)}` : `Kreiraj kolo · ${count(playing, NOUN.ekipa)}`}
+      {creating ? "Kreiram kolo…" : `Kreiraj ${published ? newRoundsLabel(published.next, rounds) : "kolo"}${place ? ` · ${place.name}` : ""} · ${count(playing, NOUN.ekipa)}`}
     </PrimaryButton>
   );
 
@@ -450,6 +451,7 @@ export function useCreateRound(
     creating,
     // tonight's rounds still in Skica: no creating until they are published or discarded
     waiting,
+    published,
     create: () => create(),
     ready: !blocked,
     teams,
@@ -514,6 +516,7 @@ export function CreateRoundView({
   waiting,
   onDraftWaiting,
   place = null,
+  published = null,
 }: {
   leagueId: number;
   teams: CreateRoundTeams;
@@ -526,8 +529,10 @@ export function CreateRoundView({
   // tonight's rounds still in Skica: the create action waits for them
   waiting: WaitingDraft | null;
   onDraftWaiting: () => void;
+  // tonight's rounds already published: the new ones go on after them
+  published?: PublishedTonight | null;
 }) {
-  const cr = useCreateRound(leagueId, teams, onCreated, defaultRounds, defaultSmokingTables, {waiting, onDraftWaiting, place});
+  const cr = useCreateRound(leagueId, teams, onCreated, published ? 1 : defaultRounds, defaultSmokingTables, {waiting, onDraftWaiting, place, published});
   if (cr.blocked) {
     return (
       <Card component="section" aria-label="Novo kolo" sx={{flex: 1, minHeight: 0, overflow: "hidden", borderRadius: "24px"}}>
@@ -543,6 +548,7 @@ export function CreateRoundView({
       <Box {...hidden} sx={{minHeight: 0, display: "flex", flexDirection: "column", gap: "16px"}}>
         {/* the options scroll and the create action stays in view (a big league has a row of table chips per 8 tables) */}
         <Box sx={{flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: "16px", overflowY: "auto"}}>
+          {cr.published && <PublishedNote published={cr.published} />}
           <Box component="section" aria-labelledby="cr-options" sx={{flex: "none", display: "flex", flexDirection: "column", gap: "8px"}}>
             <SectionLabel id="cr-options">Postavke</SectionLabel>
             {cr.steppers}
@@ -593,6 +599,24 @@ export function CreateRoundView({
           </Box>
         )}
       </Card>
+    </Box>
+  );
+}
+
+// Above Novo kolo's options when tonight already has published rounds (the desktop's and the phone's): Kreiraj adds
+// rounds to the same night, numbered after them, rather than starting it
+export function PublishedNote({published}: {published: PublishedTonight}) {
+  return (
+    <Box role="status" sx={{flex: "none", display: "flex", alignItems: "flex-start", gap: "10px", p: "16px", borderRadius: "20px", background: color.cream, "& > svg": {fontSize: 24, color: color.navy, flex: "none"}}}>
+      <EditCalendarRoundedIcon aria-hidden />
+      <Box sx={{display: "flex", flexDirection: "column", gap: "4px", minWidth: 0}}>
+        <Box component="span" sx={{fontSize: 16, fontWeight: 700}}>
+          {publishedLabel(published)}
+        </Box>
+        <Box component="span" sx={{fontSize: 14, lineHeight: 1.45, color: color.ink2}}>
+          Nova kola nastavljaju istu večer od Kola {published.next}.
+        </Box>
+      </Box>
     </Box>
   );
 }

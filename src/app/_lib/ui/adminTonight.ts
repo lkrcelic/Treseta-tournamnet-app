@@ -92,6 +92,29 @@ export function placeStatus(
   return {text: `kolo ${last} odigrano`, short: `kolo ${last}`, live: false};
 }
 
+// Tonight's rounds already published (played, being played or not started yet): how many, how many are being played,
+// and the number the next new round gets (published rounds keep their numbers; Skica's letters don't count). null: none.
+// slot: one place of a two-place night, which numbers its own Kola on the night's shared numbers (Kartaš 7, 8, 9 and
+// Lanterna 7, 8), as draftNight counts its own Skica.
+export type PublishedTonight = {published: number; live: number; next: number};
+
+export function publishedTonight(rounds: (RoundSummary & {roundNumber: number})[] | null, date: string, slot: number | null = null): PublishedTonight | null {
+  const night = (rounds ?? []).filter((r) => r.date === date && !waitingStatus(r.status) && (slot == null || r.slot == null || r.slot === slot));
+  if (night.length === 0) return null;
+  return {published: night.length, live: night.filter((r) => r.status === "live").length, next: Math.max(...night.map((r) => r.roundNumber)) + 1};
+}
+
+// "Večeras su već objavljena 3 kola (1 u tijeku)"
+export function publishedLabel({published, live}: PublishedTonight): string {
+  const verb = plural(published, "je već objavljeno", "su već objavljena", "je već objavljeno");
+  return `Večeras ${verb} ${count(published, NOUN.kolo)}${live > 0 ? ` (${live} u tijeku)` : ""}`;
+}
+
+// The new rounds on the create button: "Kolo 4" or "Kolo 4–6"
+export function newRoundsLabel(next: number, rounds: number): string {
+  return rounds > 1 ? `Kolo ${next}–${next + rounds - 1}` : `Kolo ${next}`;
+}
+
 // "3 kola nisu objavljena · 1 odobreno" (Skica čeka objavu)
 export function waitingLabel(waiting: number, approved: number): string {
   const verb = plural(waiting, "nije objavljeno", "nisu objavljena", "nije objavljeno");

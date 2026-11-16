@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {draftNight, inKolaRow, kolaRows, placesTonight, placeStatus, tonightEyebrow, tonightState, waitingLabel} from "../ui/adminTonight";
+import {draftNight, inKolaRow, kolaRows, newRoundsLabel, placesTonight, placeStatus, publishedLabel, publishedTonight, tonightEyebrow, tonightState, waitingLabel} from "../ui/adminTonight";
 
 const r = (date: string, status: "draft" | "approved" | "played" | "live" | "new") => ({date, status});
 
@@ -119,4 +119,29 @@ test("Večer at two places: each place goes at its own pace", () => {
   assert.deepEqual(lanterna.kolo, [2, 3]);
   assert.deepEqual([lanterna.state.kind, lanterna.state.kind === "playing" && [lanterna.state.done, lanterna.state.tables]], ["playing", [1, 2]]);
   assert.equal(lanterna.waiting, 1);
+});
+
+const n = (date: string, roundNumber: number, status: "draft" | "approved" | "played" | "live" | "new") => ({date, roundNumber, status});
+
+test("Novo kolo counts tonight's published rounds and numbers the new ones after them", () => {
+  const rounds = [n("2026-11-10", 1, "played"), n("2026-11-10", 2, "played"), n("2026-11-10", 3, "live"), n("2026-11-10", 0, "draft"), n("2026-11-03", 5, "played")];
+  assert.deepEqual(publishedTonight(rounds, "2026-11-10"), {published: 3, live: 1, next: 4});
+  // only Skica tonight, or nothing: Novo kolo starts the night
+  assert.equal(publishedTonight([n("2026-11-10", 0, "draft"), n("2026-11-10", 0, "approved")], "2026-11-10"), null);
+  assert.equal(publishedTonight(rounds, "2026-11-17"), null);
+  assert.equal(publishedTonight(null, "2026-11-10"), null);
+  assert.equal(publishedLabel({published: 3, live: 1, next: 4}), "Večeras su već objavljena 3 kola (1 u tijeku)");
+  assert.equal(publishedLabel({published: 1, live: 0, next: 2}), "Večeras je već objavljeno 1 kolo");
+  assert.equal(publishedLabel({published: 5, live: 0, next: 6}), "Večeras je već objavljeno 5 kola");
+  assert.equal(newRoundsLabel(4, 1), "Kolo 4");
+  assert.equal(newRoundsLabel(4, 3), "Kolo 4–6");
+});
+
+test("at a place of a two-place night, Novo kolo counts and numbers that place's own Kola", () => {
+  // the night's Kola go on from Kolo 7: Kartaš (1) has played 7 and 8, Lanterna (2) plays its 7; Kartaš's Skica waits
+  const rounds = [k("2026-11-19", 1, 7, "played"), k("2026-11-19", 1, 8, "played"), k("2026-11-19", 2, 7, "live"), k("2026-11-19", 1, 9, "draft", 2, "A")];
+  assert.deepEqual(publishedTonight(rounds, "2026-11-19", 1), {published: 2, live: 0, next: 9});
+  assert.deepEqual(publishedTonight(rounds, "2026-11-19", 2), {published: 1, live: 1, next: 8});
+  // a place with nothing published yet starts its part of the night
+  assert.equal(publishedTonight([k("2026-11-19", 1, 7, "played")], "2026-11-19", 2), null);
 });
