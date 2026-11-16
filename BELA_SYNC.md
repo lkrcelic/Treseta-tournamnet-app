@@ -97,6 +97,13 @@ commits when Bela's `master` reaches them:
 - `c9b8d6b` (Bela's old documents to `docs/arhiva/`): not copied, Treseta archived its own the same day; its comment
   change in `_lib/googleAuth.ts` comes over.
 
+**Uživo, Nadolazeći and Završeni came by hand on 14 Nov 2026** as Treseta's `8eb3b56` (Bela's `10f5167`), first
+without `entries_hidden` (`7378fda`), which came back with Sakrij broj prijava (Bela's `97c6bed`) when bela-sync was
+rebased on 17 Nov. Bela's `433c54c` (a tournament being played on the top card for everyone) came with only its day-card
+line, since Uživo shows it to everyone. What the sync does with `10f5167` and `0d48380` (the top card as in Treseta):
+they apply to the same end state or come up empty; where they conflict, take Bela's side for `mainTournament` moving
+to `_lib/tournaments.ts`, which picks the same tournament as Treseta's `TournamentsOverview.tsx` does now.
+
 ## Differences from Bela
 
 Each difference is one of four kinds, and the nightly sync treats a Bela change to it by its kind:
@@ -375,6 +382,14 @@ A Bela change to places or to a night's rounds comes over like this:
 - **Migrations:** a Bela migration on the three columns is carried over by what it means, as above, not as SQL. One
   that makes `get_league_standings_by_date` again keeps Treseta's third parameter `p_slot` and its `location_slot`
   filters (`20261114140000_locations_daily_standings`).
+- **Broj kola is the whole night's** (your call, 17 Nov 2026). A night's `rounds_per_night` (Bela's DECISIONS #94) is
+  one number for both places: each place plays that many Kola on the night's shared numbers. Novo kolo at a place
+  counts and numbers that place's own published Kola and offers the ones still missing there (`publishedTonight` and
+  `tonightRoundsDefault` take the slot); Tu smo's last round is per place, as before; and the night is over for
+  Potvrda dolaska only when every place has finished that many (`nightRounds` in `_lib/service/league/arrival.ts`; a
+  place that plays fewer ends the night at 06:00). The night form (`GatheringForm.tsx`) has Broj kola beside Lokacija
+  and Druga lokacija, and no Vrati na zadano (Treseta's form dropped it): a Broj kola equal to the league's is the
+  league's again.
 - **The shared files below** are merged around the place code, as for a small edit. Every query of a night's tables
   stays per place: a (date, round_number) group keys on `location_slot`, and a route that reads or writes a night's
   rounds takes `?slot=`. When a Bela change can't be merged that way (Bela reworks Novo kolo, Skica, publishing or a
@@ -390,7 +405,7 @@ New files (Treseta only):
 | `_hooks/useNightPlaces.ts`, `_ui/league/PlacePicker.tsx` | Tonight's places in Novo kolo and Skica: the header's Lokacija menu on the computer, the segment on the phone |
 | `_hooks/useLocationFilter.ts`, `_ui/league/LocationFilter.tsx` | Dnevni poredak's Sve / place choice, kept per league for the session |
 | `_lib/homeCard.ts`, `_ui/home/TonightCards.tsx` | Početna's card on a league night, which one shows (a table, Kraj večeri, a bye or the next table, the night, nothing), and the cards for waiting, Sljedeći stol, Pauza, a quiet night and Nema zakazane večeri |
-| `_lib/__tests__/locations.test.ts`, `_lib/__tests__/db/split.test.ts`, `_lib/__tests__/db/arrivalPlaces.test.ts`, `_lib/__tests__/db/placeRounds.test.ts`, `_lib/__tests__/db/dailyPlaces.test.ts`, `_lib/__tests__/db/homeTonight.test.ts` | Their tests: Podjela's helpers, the shared Kolo numbers, "Kolo 1/3", Početna's card; against Postgres the split, Tu smo per place, two places' Novo kolo, Skica and Objavi, Dnevni poredak per place, Početna's evening |
+| `_lib/__tests__/locations.test.ts`, `_lib/__tests__/db/split.test.ts`, `_lib/__tests__/db/arrivalPlaces.test.ts`, `_lib/__tests__/db/placeRounds.test.ts`, `_lib/__tests__/db/dailyPlaces.test.ts`, `_lib/__tests__/db/homeTonight.test.ts`, `_lib/__tests__/db/nightRoundsPlaces.test.ts` | Their tests: Podjela's helpers, the shared Kolo numbers, "Kolo 1/3", Početna's card; against Postgres the split, Tu smo per place, two places' Novo kolo, Skica and Objavi, Dnevni poredak per place, Početna's evening, and Broj kola at two places (each place's last Kolo, the night over when both have played theirs) |
 | `prisma/migrations/20261114120000_locations`, `prisma/migrations/20261114140000_locations_daily_standings`, `prisma/migrations/20261115120000_locations_drop_text` (root) | The `Location` table, the new columns and keys, and the places written so far made into Lokacije (the same name is one place); Dnevni poredak per place; the text columns dropped |
 
 Shared files with Treseta's place code, by area:
