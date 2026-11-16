@@ -11,9 +11,11 @@ import {
   canSave,
   clearPoints,
   clearZvanja,
+  dostaAskHand,
   EntryState,
   entryZvanjaPoints,
   fromPadHand,
+  handPlace,
   manualFields,
   levelAtTarget,
   setActive,
@@ -253,8 +255,9 @@ function MatchPhone({
   const [handSheet, setHandSheet] = useState<PadHand | null>(null);
   const [askDelete, setAskDelete] = useState(false);
   const [manual, setManual] = useState<{hand: PadHand | null; a: string; b: string} | null>(null);
-  // after a custom hand: ask about "s ovim dosta" on the match's last hand (null: the hand just added)
-  const [askDosta, setAskDosta] = useState<{hand: number | null} | null>(null);
+  // after a custom hand: ask about "s ovim dosta" on the match's last hand (position: the corrected hand's place, null:
+  // the hand just added; dostaAskHand)
+  const [askDosta, setAskDosta] = useState<{position: number | null} | null>(null);
   const [dostaError, setDostaError] = useState<string | null>(null);
   // a change that leaves a finished match without a winner, waiting for the admin's Spremi svejedno (Odustani goes
   // back to what was entered)
@@ -349,7 +352,7 @@ function MatchPhone({
         setSaving(false);
       }
     };
-    const handNumber = editing ? match.hands.findIndex((h) => h.id === editing.id) + 1 : match.hands.length + 1;
+    const handNumber = editing ? handPlace(match.hands, editing.id) : match.hands.length + 1;
     const wizard = (children: React.ReactNode) => (
       <Screen fill gap={0} sx={{pt: "calc(22px + env(safe-area-inset-top))"}}>
         {children}
@@ -422,7 +425,7 @@ function MatchPhone({
     }
     setFinishing(false);
   };
-  const handIndex = (h: PadHand) => match.hands.findIndex((x) => x.id === h.id) + 1;
+  const handIndex = (h: PadHand) => handPlace(match.hands, h.id);
   const openSheet = (id: number) => {
     const h = match.hands.find((x) => x.id === id);
     if (!h) return;
@@ -434,15 +437,14 @@ function MatchPhone({
   const saveManual = () => {
     if (!manual || !fields?.points || saving) return;
     const hand = {custom: true as const, points1: fields.points[0], points2: fields.points[1]};
-    const editedId = manual.hand?.id ?? null;
-    runSheet((allow) => (manual.hand ? updateHandAPI(match.kind, manual.hand.id, hand, allow) : addHandAPI(pad.roundId, target, hand, allow)), "Igra nije spremljena.", () => setAskDosta({hand: editedId}));
+    const position = manual.hand ? handIndex(manual.hand) : null;
+    runSheet((allow) => (manual.hand ? updateHandAPI(match.kind, manual.hand.id, hand, allow) : addHandAPI(pad.roundId, target, hand, allow)), "Igra nije spremljena.", () => setAskDosta({position}));
   };
   // the teams that reached the target with that custom hand (none: nothing to ask)
-  const askHand = match.hands[match.hands.length - 1];
-  const dostaTeams: DostaTeam[] =
-    askDosta && askHand?.custom && !askHand.dosta && (askDosta.hand == null || askDosta.hand === askHand.id)
-      ? dostaCallers(padPlayedHands(match), THRESHOLD, pad.matchEnd).map((side) => ({side, name: names[side - 1], color: teamColor[side - 1]}))
-      : [];
+  const askHand = askDosta ? dostaAskHand(match.hands, askDosta.position) : null;
+  const dostaTeams: DostaTeam[] = askHand
+    ? dostaCallers(padPlayedHands(match), THRESHOLD, pad.matchEnd).map((side) => ({side, name: names[side - 1], color: teamColor[side - 1]}))
+    : [];
   const pickDosta = async (side: Side) => {
     if (!askHand) return;
     setSaving(true);
