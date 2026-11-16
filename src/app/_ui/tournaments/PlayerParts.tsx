@@ -637,9 +637,11 @@ export function TodayCard({t}: {t: TournamentCard}) {
   );
 }
 
-// What the day card says under the team: out of the tournament, not playing, waiting, joining, or the next Kolo
+// What the day card says under the team: watching (not in it), out of the tournament, not playing, waiting, joining, or the next Kolo
 function todayLine(t: TournamentCard): string {
   const me = t.me;
+  // a visitor or a player whose team isn't in it: the tournament is shown, Poredak i rezultati is under the card
+  if (!me) return t.live_kolo ? `Igra se Kolo ${t.live_kolo}. Rezultati su u Poretku i rezultatima.` : "Turnir je u tijeku. Sljedeće kolo kreće kad svi stolovi završe.";
   if (me?.excluded) return "Isključeni ste iz turnira. Na stranici turnira piše zašto.";
   if (me?.status === "WAITING") return `Na listi čekanja · ${me.position}. Ulazite čim se mjesto oslobodi.`;
   if (me && !me.active) return "Ekipa ne igra: niste potvrdili dolazak ili ste otišli. Na stranici turnira možete uskočiti.";
