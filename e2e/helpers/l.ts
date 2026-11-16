@@ -8,7 +8,7 @@
 // and runs the same after midnight. tonight is read once per test: a test running across 06:00 isn't supported. Everything is removed before and after each test, with
 // the places a test added ("L · …").
 import type {APIRequestContext} from "@playwright/test";
-import {leagueDateString, leagueNightString} from "@/app/_lib/dates";
+import {leagueNightString} from "@/app/_lib/dates";
 import type {Db} from "./db";
 import {expect, test as base} from "./fixtures";
 
@@ -68,7 +68,7 @@ export function nightLabel(iso: string): string {
 // Between 00:00 and 06:00 the league night is still yesterday's while the calendar has moved on to today. Datumi
 // counts the calendar day by design; Početna should still show tonight (Bela's DECISIONS #63 and #73) but on Treseta's
 // master it doesn't yet (see AFTER_MIDNIGHT_BUG)
-export const afterMidnight = () => leagueNightString() !== leagueDateString();
+export {afterMidnight} from "./db";
 // BUG: mySchedule's "today" is the calendar day (src/app/_lib/service/league/schedule.ts: leagueDateString), so after
 // midnight Početna drops tonight's card, with Tu smo and Pauza, for next week's night. Shared code: Bela fixed it in
 // 1f7d51e (mySchedule's today = leagueNightString), which bela-sync already has; it comes to master with the sync.

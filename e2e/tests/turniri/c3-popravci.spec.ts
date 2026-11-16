@@ -40,9 +40,6 @@ test("the live tournament's Kolo 2 offers Uredi ishod and Vrati stol on the tabl
 });
 
 test("the live tournament's Kolo 2 has the no-show its manifest names (\"Kolo 2 nedolazak\"), with Uredi ishod and Vrati stol", async ({as, world}) => {
-  // BUG (the generator, not the app): e2e/seed/scenarios/tournamentPlay.ts moves Kolo 2's published_at 12 minutes back and
-  // then answers "Ne, nisu došli"; past the 10-minute skip the app skips that table instead, so the world has no no-show
-  test.fail();
   const {kind} = await liveKolo2(as, world.tournaments.live.id);
   const noShow = kind("Nedolazak");
   await expect(noShow).toHaveCount(1);

@@ -301,11 +301,15 @@ export async function seedTodayTournaments(ctx: Ctx, people: People, pool: TeamP
   });
   await makeKoloDraft(live);
   await publishKolo(live, 2);
-  // Kolo 2 went out 12 minutes ago, so its no-show question has been answerable and the skip is due
-  await prisma.round.updateMany({
-    where: {tournamentRounds: {some: {tournament_id: live}}, round_number: 2},
-    data: {published_at: new Date(ctx.now.getTime() - 12 * 60_000)},
-  });
+  // Kolo 2 went out 7 minutes ago: "Ne, nisu došli" can be answered (from 6 minutes) and nothing is skipped yet (10).
+  // The app answers by the real clock, so the no-show is answered now and the Kolo moved to 12 minutes after it,
+  // when the table nobody answered is due to be skipped.
+  const koloAge = (minutes: number) =>
+    prisma.round.updateMany({
+      where: {tournamentRounds: {some: {tournament_id: live}}, round_number: 2},
+      data: {published_at: new Date(ctx.now.getTime() - minutes * 60_000)},
+    });
+  await koloAge(7);
   const second = (await kolo(2)).filter((r) => r.team2_id !== BYE_TEAM_ID);
   const [noShow, skipped, finished, ...playingTables] = second;
   await playTable(finished, {finished: 1});
@@ -321,7 +325,9 @@ export async function seedTodayTournaments(ctx: Ctx, people: People, pool: TeamP
       };
     }
   }
-  await answerAttendance(noShow.id, {id: pool.activeRosters.get(noShow.team1_id)![0], player_role: "PLAYER"}, "NO_SHOW");
+  const answer = await answerAttendance(noShow.id, {id: pool.activeRosters.get(noShow.team1_id)![0], player_role: "PLAYER"}, "NO_SHOW");
+  if (answer !== "NO_SHOW") throw new Error(`Kolo 2's no-show was answered as ${answer}`);
+  await koloAge(12);
   await skipDueTables(live, ctx.now);
   await setTableOutcome(live, skipped.id, "TEAM1", admin);
   ctx.catalog.tournaments.live = {id: live, name: "Subotnji turnir uživo", state: "Uživo: Kolo 1 odigrano; Kolo 2 nedolazak, dodijeljena pobjeda, odigran stol i stolovi u igri"};

@@ -45,6 +45,25 @@ async function login(request: APIRequestContext, world: World["catalog"], who: s
   expect(res.ok(), `login as ${username}: ${res.status()} ${await res.text()}`).toBeTruthy();
 }
 
+// Prijava stores the logged-in user (src/app/_store/authStore.ts, persisted as "auth-store") before any page opens.
+// A context logged in through the API has the cookie only, so on its first load refreshUser finds no stored user and
+// drops the stored match and round: when /api/auth/me answers after the scorepad fetched its match, the board shows no
+// hands until its next refresh (C2, once in 20 runs). So the context stores the user as Prijava would, on a load that
+// finds no store yet; after Odjava the store is there with no user, and stays so.
+async function storeUser(context: BrowserContext, headers: Record<string, string>) {
+  const res = await context.request.get("/api/auth/me", {headers});
+  expect(res.ok(), `/api/auth/me after login: ${res.status()}`).toBeTruthy();
+  const {user} = (await res.json()) as {user: unknown};
+  // every document of the context runs it, also ones without storage (an opaque origin), where localStorage throws
+  await context.addInitScript((u) => {
+    try {
+      if (localStorage.getItem("auth-store") == null) localStorage.setItem("auth-store", JSON.stringify({state: {user: u}, version: 0}));
+    } catch {
+      // no storage in this document: nothing to store
+    }
+  }, user);
+}
+
 export const test = base.extend<Fixtures>({
   app: async ({}, use) => {
     await use(appInfo());
@@ -68,7 +87,10 @@ export const test = base.extend<Fixtures>({
       // Treseta's install sheet slides over Početna on every phone visit in the browser (src/app/_ui/install/
       // InstallSheet.tsx): the tests are the app opened from the home screen, as most players use it
       await context.addInitScript(() => Object.defineProperty(navigator, "standalone", {get: () => true}));
-      if (who !== "guest") await login(context.request, world, who, address);
+      if (who !== "guest") {
+        await login(context.request, world, who, address);
+        await storeUser(context, address);
+      }
       const page = await context.newPage();
       watches.set(page, watch(page));
       return page;

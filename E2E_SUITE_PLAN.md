@@ -69,10 +69,10 @@ Pitanje: adminov mobitel ne može dopisati igru završenom meču, iako upozorenj
 predlaže (C5). Čeka odluku.
 
 Suite i generator (S3):
-- `fixtures.as()` prijavi kroz API, a `refreshUser` na Početnoj zna isprazniti ploču kad je `/api/auth/me` spor (C2):
-  fixture treba spremiti korisnika.
-- Generatorov nedolazak u Kolu 2 turnira uživo odgovori se u 12. minuti, pa svijet ima preskočen stol, ne nedolazak
-  (C3 `test.fail`).
+- ~~`fixtures.as()` prijavi kroz API, a `refreshUser` zna isprazniti ploču kad je `/api/auth/me` spor (C2)~~: `as()`
+  sprema korisnika kao Prijava (16.11.).
+- ~~Generatorov nedolazak u Kolu 2 turnira uživo odgovori se u 12. minuti, pa svijet ima preskočen stol~~: odgovori se u
+  7. minuti, a kolo se zatim pomakne na 12 (16.11.).
 - `/api/cron/tick` zatvara svaki istekli meč u bazi; `c4.ts` ga zove samo za svoj stol, ostali neka rade isto.
 
 ## 6. Rizici

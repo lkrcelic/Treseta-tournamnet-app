@@ -57,14 +57,11 @@ const keypadOf = (page: Page) => page.getByRole("group", {name: "Bodovi igre"});
 export const userStored = (page: Page) =>
   page.evaluate(() => (JSON.parse(localStorage.getItem("auth-store") ?? "null") as {state?: {user?: {id?: number} | null}} | null)?.state?.user?.id ?? null);
 
-// Opens the match's board as a phone that logged in through Prijava. as() logs in through the API, so the app's first
-// load finds no stored user, and refreshUser then drops the stored match: when /api/auth/me answers after the board
-// fetched it, the board shows no hands until its next refresh, 15 s later (once in 20 runs here). Prijava stores the
-// user before any board opens, so: the first load until the user is stored, then the board again. Belongs in as().
+// Opens the match's board as a phone that logged in through Prijava: as() stores the user as Prijava does
+// (fixtures.ts storeUser), so refreshUser keeps the stored match on this first load and the board shows its hands
 export async function openBoard(page: Page, matchId: number) {
   await page.goto(`/ongoing-match/${matchId}`);
-  await expect.poll(() => userStored(page)).not.toBeNull();
-  await page.reload();
+  expect(await userStored(page)).not.toBeNull();
 }
 
 // Upiši igru on the board: resolves on the entry's first step

@@ -5,7 +5,6 @@
 // (ads.*) are only read.
 import {expect, type APIRequestContext, type Page} from "@playwright/test";
 import type {Prisma} from "@prisma/client";
-import {leagueDateString, leagueNightString} from "@/app/_lib/dates";
 import type {Db} from "./db";
 import {test as base} from "./fixtures";
 
@@ -13,7 +12,7 @@ import {test as base} from "./fixtures";
 // starts then). Burza should count the night being played, as Bela does since 1f7d51e (Bela #19): tonight's substitute ads
 // stay up and Trebam zamjenu still starts at Večeras. On Treseta's master Burza still counts the calendar day
 // (leagueDateString in _lib/service/burza/burza.ts, burza/ui/BurzaForms.tsx, burza/moji/page.tsx).
-export const afterMidnight = () => leagueNightString() !== leagueDateString();
+export {afterMidnight} from "./db";
 export const AFTER_MIDNIGHT_BUG =
   "BUG: after midnight Burza counts the calendar day, so tonight's substitute ads are expired and Trebam zamjenu starts at next week's night (Bela 1f7d51e, comes with the sync)";
 
