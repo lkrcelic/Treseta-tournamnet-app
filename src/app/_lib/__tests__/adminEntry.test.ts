@@ -13,6 +13,7 @@ import {
   fromPadHand,
   handPlace,
   levelAtTarget,
+  phoneBoardAction,
   setActive,
   switchMode,
   toAdminHand,
@@ -189,4 +190,15 @@ test("a hand's place is its number in the match, 1 for the first; a hand not in 
   assert.equal(handPlace(hands, 99), 0);
   // a correction of a hand that is no longer in the match asks nothing
   assert.equal(dostaAskHand(hands, handPlace(hands, 99)), null);
+});
+
+test("the admin's phone offers Upiši igru on a finished match too, and Završi meč only on the match being played once it is won", () => {
+  // a finished match takes the hands that were played, with a winner or without one ("Meč ostaje bez pobjednika?"); it
+  // had no row (null) until 16 Nov 2026
+  assert.equal(phoneBoardAction({kind: "finished", id: 7, winner: 1}), "add");
+  assert.equal(phoneBoardAction({kind: "finished", id: 7, winner: null}), "add");
+  assert.equal(phoneBoardAction({kind: "ongoing", id: 8, winner: 2}), "finish");
+  assert.equal(phoneBoardAction({kind: "ongoing", id: 8, winner: null}), "add");
+  // a match not started yet (no id): its first hand
+  assert.equal(phoneBoardAction({kind: "ongoing", id: 0, winner: null}), "add");
 });
