@@ -1,6 +1,7 @@
 "use client";
 
 import {createOngoingResultAPI} from "@/app/_fetchers/ongoingResult/create";
+import {getOngoingMatchAPI, OngoingMatchGoneError} from "@/app/_fetchers/ongoingMatch/getOne";
 import {getOngoingResultAPI} from "@/app/_fetchers/ongoingResult/getOne";
 import {updateOngoingResultAPI} from "@/app/_fetchers/ongoingResult/updateOne";
 import useResultStore from "@/app/_store/game/resultStore";
@@ -65,6 +66,28 @@ export async function callDosta(matchId: number, resultId: number, points: [numb
   const [team1_game_points, team2_game_points] = points;
   const data = {match_id: matchId, team1_game_points, team2_game_points, ...NO_HAND_ZVANJA, custom: true, dosta_side: side};
   await updateOngoingResultAPI({resultId: String(resultId), result: data});
+}
+
+// A hand that wasn't saved: is the match over (Vrijeme partije ran out, or a teammate finished it)? Reading it closes
+// it when its time is up (Bela's a0686e1).
+export async function matchClosed(matchId: number): Promise<boolean> {
+  try {
+    await getOngoingMatchAPI(matchId);
+    return false;
+  } catch (error) {
+    return error instanceof OngoingMatchGoneError;
+  }
+}
+
+export const MATCH_CLOSED_TEXT = "Meč je već završen, pa ova igra nije spremljena.";
+
+// What the Igra step shows when Spremi was refused. closed: the match is over (Vrijeme partije ran out, or a teammate
+// finished it), so the step says the hand wasn't saved and Na meč leads to the board, which has followed the match to
+// the next one or the table's result (Bela's a0686e1 and e721909, DECISIONS #83). Otherwise the server's message, and
+// Spremi stays. isClosed: how the match is checked (a test passes its own).
+export async function saveRefusal(matchId: number, error: unknown, isClosed = matchClosed): Promise<{closed: boolean; message: string}> {
+  if (await isClosed(matchId)) return {closed: true, message: MATCH_CLOSED_TEXT};
+  return {closed: false, message: error instanceof Error ? error.message : "Spremanje nije uspjelo."};
 }
 
 // Remembers which hand was just added or edited, so the scoreboard can animate it when it loads again, and the

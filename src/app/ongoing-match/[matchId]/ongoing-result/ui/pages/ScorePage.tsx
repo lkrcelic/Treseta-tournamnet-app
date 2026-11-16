@@ -4,8 +4,8 @@ import {handError, zvanjaError} from "@/app/_lib/game/scoring";
 import useResultStore from "@/app/_store/game/resultStore";
 import useRoundStore from "@/app/_store/RoundStore";
 import {color, font, shadow} from "@/app/_styles/tokens";
-import {ActionPair, buttonBase, ErrorNote} from "@/app/_ui/sp";
-import {discardHand, saveHand, takeEntryOrigin} from "@/app/ongoing-match/ui/handFlow";
+import {ActionPair, buttonBase, ErrorNote, PrimaryButton} from "@/app/_ui/sp";
+import {discardHand, MATCH_CLOSED_TEXT, saveHand, saveRefusal, takeEntryOrigin} from "@/app/ongoing-match/ui/handFlow";
 import {Box} from "@mui/material";
 import {useParams} from "next/navigation";
 import {navigateWithTransition, useTransitionRouter} from "@/app/_lib/viewTransitions";
@@ -25,6 +25,8 @@ export default function ScorePage({actionType}: ActionProps) {
   const {setGamePoints, resetScore, toggleCustom, setKaput} = useResultStore.getState();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // the match was closed before the hand was saved (saveRefusal): the player is told, and Na meč drops the hand
+  const [closed, setClosed] = useState(false);
 
   const declarations = useRoundStore((s) => s.roundData?.declarations) ?? true;
   const naProlaz = useRoundStore((s) => s.roundData?.match_end) === "NA_PROLAZ";
@@ -34,16 +36,22 @@ export default function ScorePage({actionType}: ActionProps) {
   const scoreboard = `/ongoing-match/${params.matchId}`;
   const base = `/ongoing-match/${params.matchId}/ongoing-result/${actionType === "CREATE" ? "new" : params.resultId}`;
 
+  const toBoard = () => {
+    if (takeEntryOrigin(Number(params.matchId))) navigateWithTransition(() => window.history.go(-1), "back");
+    else router.replace(scoreboard, "back");
+  };
+
   const save = async () => {
     if (saving || invalid) return;
     setSaving(true);
     setError(null);
     try {
       await saveHand(Number(params.matchId), actionType === "UPDATE" ? params.resultId : null);
-      if (takeEntryOrigin(Number(params.matchId))) navigateWithTransition(() => window.history.go(-1), "back");
-      else router.replace(scoreboard, "back");
+      toBoard();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Spremanje nije uspjelo.");
+      const refusal = await saveRefusal(Number(params.matchId), e);
+      if (refusal.closed) setClosed(true);
+      else setError(refusal.message);
       setSaving(false);
     }
   };
@@ -130,8 +138,20 @@ export default function ScorePage({actionType}: ActionProps) {
           {result.custom ? "Ručni unos: bodovi svake ekipe upisuju se posebno" : ""}
         </Box>
       </Box>
+      {closed && <ErrorNote sx={{mb: "10px"}}>{MATCH_CLOSED_TEXT}</ErrorNote>}
       {error && <ErrorNote sx={{mb: "10px"}}>{error}</ErrorNote>}
-      <ActionPair onBack={back} nextLabel="Spremi" onNext={save} nextDisabled={invalid} nextLoading={saving} />
+      {closed ? (
+        <PrimaryButton
+          onClick={() => {
+            discardHand();
+            toBoard();
+          }}
+        >
+          Na meč
+        </PrimaryButton>
+      ) : (
+        <ActionPair onBack={back} nextLabel="Spremi" onNext={save} nextDisabled={invalid} nextLoading={saving} />
+      )}
     </>
   );
 }
