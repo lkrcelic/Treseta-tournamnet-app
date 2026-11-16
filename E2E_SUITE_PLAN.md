@@ -37,7 +37,7 @@ Belu) ili Tresetin.
 | **S−1 Generator** (ja) | Tresetin `e2e/seed/`, `seed:e2e`, `seed:verify` | ~~`seed:verify` zelen~~ (15.11.: 17 pravila, jedno je poznat bug aplikacije, dolje) |
 | **S0 Baza** (ja) | Belina baza s Tresetinim portovima, bazama, tajnama i install sheetom; briefovi (i K, L) | ~~smoke zelen `--repeat-each=5`~~ (15.11.: 15/15); `tsc -p e2e` čist |
 | **S1 Pilot C1** (1 agent) | ligaška večer s Tresetinim upisom igre; `helpers/scorepad.ts` | ~~C1 zelen `--repeat-each=5`~~ (15.11.: 30/30, spojen) |
-| **S2 Ostali** (12 agenata, u dva vala) | val 1: C2–C5, K, L (Tresetini briefovi); val 2: A, B, C6–C9, od Belinih predanih sekcija | svaka sekcija zelena `--repeat-each=5`, izvještaj predan (16.11.: val 1 spojen; C6, C8, C9 rade; A, B, C7 čekaju Belu) |
+| **S2 Ostali** (12 agenata, u dva vala) | val 1: C2–C5, K, L (Tresetini briefovi); val 2: A, B, C6–C9, od Belinih predanih sekcija | svaka sekcija zelena `--repeat-each=5`, izvještaj predan (16.11.: val 1 spojen; C6, C8, C9 spojeni; A, B, C7 čekaju Belu) |
 | **S3 Spajanje** (ja) | spojim grane, `FLOWS.md`, issuei za nađene bugove, cijeli suite `--repeat-each=5` | suite zelen (osim `test.fail` s issueom) |
 | **S4 Master** | merge `e2e-suite` → `master`; noćni run (`rutine/treseta-e2e-nightly.md`) ga počne vrtjeti | na masteru |
 
@@ -56,7 +56,11 @@ Bugovi aplikacije (testovi su `test.fail` s `// BUG:` dok popravak ne stigne):
 | Bye bez pobjednika: `createByeMatches` (`round/insertPairRounds.ts`) piše bye meč bez `winner_side`, a Treseta taj stupac čita kao "meč bez pobjednika" | generator (`seed:verify` `!`), C3 | Tresetin | popravljeno na masteru (`19361b22`, s backfillom); čeka spajanje mastera u `e2e-suite` |
 | Drugi brzi dodir na Završi meč otvara upis igre (Bela #74) | C1 | zajednički | Belin `e721909`, dolazi sa syncom |
 | Ista igra s dva telefona upiše se dvaput (Bela #57) | C2 | zajednički | Belin `3efe0f4`, na `bela-sync` kao `a03b1ade`; čeka merge na master |
-| Poslije ponoći Početna ispusti večerašnju kartu (Tu smo, Pauza) za sljedeću večer: `mySchedule` broji "danas" po kalendaru | L | zajednički | Belin `1f7d51e`, već na `bela-sync` |
+| Poslije ponoći Početna ispusti večerašnju kartu (Tu smo, Pauza) za sljedeću večer, a Burza večerašnje zamjene broji kao istekle: "danas" po kalendaru (`mySchedule`, `burza.ts`, `BurzaForms`, Moji oglasi) | L, C8 | zajednički | Belin `1f7d51e`, već na `bela-sync` |
+| Gost na Burzi vidi broj svakog oglasa (`/api/burza`, stranica oglasa; Bela #11) | C8 | zajednički | Belin `3eb80df`, već na `bela-sync` |
+| Korisnička imena su privatna: Moje ekipe i stranica ekipe pokazuju ime, suigrač ne vidi `@username` (Belin DECISIONS #88) | C9 | zajednički | Belin `5defdb6`, već na `bela-sync` |
+| Gost s Objavi → Prijava: prijava unutar 30 s ostavi ga na Prijavi s vrtuljkom; Nextov router cache još drži preusmjeravanje middlewarea, a `login/page.tsx` radi `router.replace(next)` | C8 | zajednički (i Belin `development`) | otvoreno, za Belin issue |
+| Moje ekipe pokazuje staru sliku dok se stranica ne učita ponovo (`useMyTeams` se ne osvježi nakon Spremi) | C9 | zajednički (Belin C9 ga ima kao `test.fail`) | otvoreno, za Belin issue |
 | Nakon što admin vrati meč u igru, njegov mobitel ne pita "s ovim dosta" na 41 : 41 (`reopenMatch` kopira igre s novim id-jevima, a TablePhone traži stari) | C5 | Tresetin (`467ea599`) | otvoreno |
 | Spremi odbijen jer je vrijeme isteklo ostavlja mobitel na koraku Igra; u Beli vraća na stol, koji je prešao na Meč 2 (Belin DECISIONS #83) | C4 | Tresetin (`ScorePage`, `handFlow`; port `a0686e1` bez provjere `matchClosed`) | otvoreno |
 | Rate limiter: prozor se pomiče sa svakim zahtjevom, pa se nikad ne isprazni | fixtures (svaki kontekst svoj `X-Forwarded-For`) | zajednički | komentar na Belin issue #4 |
