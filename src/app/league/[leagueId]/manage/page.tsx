@@ -48,7 +48,7 @@ import DatesView, {gatheringDefaults} from "./DatesView";
 import RoundsView from "./RoundsView";
 import useLeagueRounds from "@/app/_hooks/useLeagueRounds";
 import DraftView from "./DraftView";
-import {draftNight, publishedTonight, DraftNightTab} from "@/app/_lib/ui/adminTonight";
+import {draftNight, nightRounds, publishedTonight, DraftNightTab} from "@/app/_lib/ui/adminTonight";
 import {isIsoDate, nextNightIndex} from "@/app/_lib/nights";
 import useNightSplit from "@/app/_hooks/useNightSplit";
 import SplitDesktop from "@/app/_ui/league/split/SplitDesktop";
@@ -481,7 +481,8 @@ function ManageLeagueDesktop() {
             setShownNight(date);
             setView("draft");
           }}
-          defaultRounds={leagues.find((l) => l.id === leagueId)?.roundsPerNight}
+          // tonight's Broj kola (Datumi), else the league's Kola po večeri
+          defaultRounds={nightRounds(leagueNights.nights, tonight, leagues.find((l) => l.id === leagueId)?.roundsPerNight)}
           defaultSmokingTables={leagues.find((l) => l.id === leagueId)?.smokingTables}
           published={tonightPublished}
           waiting={

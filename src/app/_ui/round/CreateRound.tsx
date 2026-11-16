@@ -11,7 +11,7 @@ import {leagueClock} from "@/app/_lib/dates";
 import {CreateRoundDraft, isPlaying, MAX_ROUNDS, MAX_WINDOW, switchTeams} from "@/app/_lib/createRoundDraft";
 import {onBeforeLogout} from "@/app/_utils/beforeLogout";
 import {smokingSummary} from "@/app/_lib/ui/smoking";
-import {newRoundsLabel, publishedLabel, PublishedTonight, waitingLabel} from "@/app/_lib/ui/adminTonight";
+import {newRoundsLabel, publishedLabel, PublishedTonight, tonightRoundsDefault, waitingLabel} from "@/app/_lib/ui/adminTonight";
 import {count, matchesQuery, NOUN, plural} from "@/app/_lib/ui/text";
 import {color, font, shadow, tint} from "@/app/_styles/tokens";
 import {buttonBase, Card, EmptyState, ErrorNote, LoadingRows, OutlineButton, PrimaryButton, SearchInput, SectionLabel, SolidButton, Stepper, SwitchRow, SwitchTrack, TeamLabel} from "@/app/_ui/sp";
@@ -532,7 +532,7 @@ export function CreateRoundView({
   // tonight's rounds already published: the new ones go on after them
   published?: PublishedTonight | null;
 }) {
-  const cr = useCreateRound(leagueId, teams, onCreated, published ? 1 : defaultRounds, defaultSmokingTables, {waiting, onDraftWaiting, place, published});
+  const cr = useCreateRound(leagueId, teams, onCreated, tonightRoundsDefault(defaultRounds, published), defaultSmokingTables, {waiting, onDraftWaiting, place, published});
   if (cr.blocked) {
     return (
       <Card component="section" aria-label="Novo kolo" sx={{flex: 1, minHeight: 0, overflow: "hidden", borderRadius: "24px"}}>

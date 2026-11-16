@@ -1,12 +1,13 @@
 "use client";
 
+import useLeagueNights from "@/app/_hooks/useLeagueNights";
 import useLeagueRounds from "@/app/_hooks/useLeagueRounds";
 import useLeagueTeams from "@/app/_hooks/useLeagueTeams";
 import useLeagues from "@/app/_hooks/useLeagues";
 import useNavStack from "@/app/_hooks/useNavStack";
 import {MAX_ROUNDS, MAX_WINDOW} from "@/app/_lib/createRoundDraft";
 import {leagueNightString} from "@/app/_lib/dates";
-import {draftNight, newRoundsLabel, publishedTonight} from "@/app/_lib/ui/adminTonight";
+import {draftNight, newRoundsLabel, nightRounds, publishedTonight, tonightRoundsDefault} from "@/app/_lib/ui/adminTonight";
 import useNightPlaces from "@/app/_hooks/useNightPlaces";
 import {Slot} from "@/app/_lib/locations";
 import {PlaceSegment} from "@/app/_ui/league/PlacePicker";
@@ -74,15 +75,17 @@ function CreateRoundAt({
   const teams = !np.loaded || (place && !np.split) ? {teams: null, error: np.error ?? np.splitError, loading: true, reload: np.split ? leagueTeams.reload : np.reloadSplit} : leagueTeams;
   const slotQs = place ? `&slot=${place.slot}` : "";
   const tonightDraft = draftNight((leagueRounds.rounds ?? []).filter((r) => r.date === tonight), tonight, place?.slot ?? null);
-  // tonight's kola already published (at the place picked): the new ones are extra kola of the same night, one at a
-  // time by default
+  // tonight's kola already published (at the place picked): the new ones are extra kola of the same night, the ones still
+  // missing at that place by default
   const published = publishedTonight(leagueRounds.rounds, tonight, place?.slot ?? null);
+  // tonight's Broj kola (Datumi), else the league's Kola po večeri
+  const {nights} = useLeagueNights(leagueId);
   const cr = useCreateRound(
     leagueId,
     teams,
     // the next page is Skica kola, in Novo kolo's place: Back from it goes to Upravljanje ligom
     (date) => router.replace(`/league/${leagueId}/manage?view=draft&date=${date}${slotQs}`),
-    published ? 1 : league?.roundsPerNight,
+    tonightRoundsDefault(nightRounds(nights, tonight, league?.roundsPerNight), published),
     league?.smokingTables,
     {
       waiting:

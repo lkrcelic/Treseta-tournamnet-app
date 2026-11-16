@@ -104,6 +104,18 @@ export function publishedTonight(rounds: (RoundSummary & {roundNumber: number})[
   return {published: night.length, live: night.filter((r) => r.status === "live").length, next: Math.max(...night.map((r) => r.roundNumber)) + 1};
 }
 
+// How many rounds Novo kolo offers to create: tonight's Broj kola (the night's own, or the league's Kola po večeri), and
+// once some are published, the ones still missing, one at least (an extra round after the night's last stays possible)
+export function tonightRoundsDefault(planned: number | null | undefined, published: PublishedTonight | null): number | undefined {
+  if (!published) return planned ?? undefined;
+  return planned == null ? 1 : Math.max(1, planned - published.published);
+}
+
+// A night's Broj kola: its own, else the league's Kola po večeri (undefined while the league isn't loaded)
+export function nightRounds(nights: {date: string; rounds_per_night: number | null}[] | null, date: string, leagueRounds: number | undefined): number | undefined {
+  return nights?.find((n) => n.date === date)?.rounds_per_night ?? leagueRounds;
+}
+
 // "Večeras su već objavljena 3 kola (1 u tijeku)"
 export function publishedLabel({published, live}: PublishedTonight): string {
   const verb = plural(published, "je već objavljeno", "su već objavljena", "je već objavljeno");

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {draftNight, inKolaRow, kolaRows, newRoundsLabel, placesTonight, placeStatus, publishedLabel, publishedTonight, tonightEyebrow, tonightState, waitingLabel} from "../ui/adminTonight";
+import {draftNight, inKolaRow, kolaRows, newRoundsLabel, nightRounds, placesTonight, placeStatus, publishedLabel, publishedTonight, tonightEyebrow, tonightRoundsDefault, tonightState, waitingLabel} from "../ui/adminTonight";
 
 const r = (date: string, status: "draft" | "approved" | "played" | "live" | "new") => ({date, status});
 
@@ -144,4 +144,33 @@ test("at a place of a two-place night, Novo kolo counts and numbers that place's
   assert.deepEqual(publishedTonight(rounds, "2026-11-19", 2), {published: 1, live: 1, next: 8});
   // a place with nothing published yet starts its part of the night
   assert.equal(publishedTonight([k("2026-11-19", 1, 7, "played")], "2026-11-19", 2), null);
+});
+
+test("Novo kolo offers tonight's Broj kola, and once some are published the ones still missing", () => {
+  const nights = [
+    {date: "2026-11-18", rounds_per_night: 3},
+    {date: "2026-11-25", rounds_per_night: null},
+  ];
+  // the night's own, else the league's
+  assert.equal(nightRounds(nights, "2026-11-18", 4), 3);
+  assert.equal(nightRounds(nights, "2026-11-25", 4), 4);
+  assert.equal(nightRounds(nights, "2026-12-02", 4), 4);
+  assert.equal(nightRounds(null, "2026-11-18", 4), 4);
+  assert.equal(tonightRoundsDefault(3, null), 3);
+  assert.equal(tonightRoundsDefault(4, {published: 1, live: 1, next: 2}), 3);
+  // after the night's last round an extra one is still offered
+  assert.equal(tonightRoundsDefault(3, {published: 3, live: 0, next: 4}), 1);
+  assert.equal(tonightRoundsDefault(undefined, {published: 2, live: 0, next: 3}), 1);
+});
+
+test("at a place of a two-place night, Novo kolo offers the night's Broj kola less that place's own published Kola", () => {
+  // tonight plays 3 Kola (its own Broj kola; the league plays 2); Kartaš (1) has published 2, Lanterna (2) 1
+  const nights = [{date: "2026-11-19", rounds_per_night: 3}];
+  const rounds = [k("2026-11-19", 1, 7, "played"), k("2026-11-19", 1, 8, "live"), k("2026-11-19", 2, 7, "live"), k("2026-11-19", 2, 8, "draft", 2, "A")];
+  const planned = nightRounds(nights, "2026-11-19", 2);
+  assert.equal(tonightRoundsDefault(planned, publishedTonight(rounds, "2026-11-19", 1)), 1);
+  // Lanterna's Skica doesn't count: 3 less its one published Kolo
+  assert.equal(tonightRoundsDefault(planned, publishedTonight(rounds, "2026-11-19", 2)), 2);
+  // a place with nothing published yet starts with the whole Broj kola
+  assert.equal(tonightRoundsDefault(planned, publishedTonight([k("2026-11-19", 1, 7, "played")], "2026-11-19", 2)), 3);
 });
