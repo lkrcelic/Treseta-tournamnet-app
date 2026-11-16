@@ -36,8 +36,8 @@ Belu) ili Tresetin.
 | --- | --- | --- |
 | **S−1 Generator** (ja) | Tresetin `e2e/seed/`, `seed:e2e`, `seed:verify` | ~~`seed:verify` zelen~~ (15.11.: 17 pravila, jedno je poznat bug aplikacije, dolje) |
 | **S0 Baza** (ja) | Belina baza s Tresetinim portovima, bazama, tajnama i install sheetom; briefovi (i K, L) | ~~smoke zelen `--repeat-each=5`~~ (15.11.: 15/15); `tsc -p e2e` čist |
-| **S1 Pilot C1** (1 agent) | ligaška večer s Tresetinim upisom igre; `helpers/scorepad.ts` | C1 zelen `--repeat-each=5`; pregledam pomoćnike i spojim |
-| **S2 Ostali** (12 agenata paralelno) | A, B, C2–C9, K, L | svaka sekcija zelena `--repeat-each=5`, izvještaj predan |
+| **S1 Pilot C1** (1 agent) | ligaška večer s Tresetinim upisom igre; `helpers/scorepad.ts` | ~~C1 zelen `--repeat-each=5`~~ (15.11.: 30/30, spojen) |
+| **S2 Ostali** (12 agenata, u dva vala) | val 1: C2–C5, K, L (Tresetini briefovi); val 2: A, B, C6–C9, od Belinih predanih sekcija | svaka sekcija zelena `--repeat-each=5`, izvještaj predan (16.11.: val 1 spojen; C6, C8, C9 rade; A, B, C7 čekaju Belu) |
 | **S3 Spajanje** (ja) | spojim grane, `FLOWS.md`, issuei za nađene bugove, cijeli suite `--repeat-each=5` | suite zelen (osim `test.fail` s issueom) |
 | **S4 Master** | merge `e2e-suite` → `master`; noćni run (`rutine/treseta-e2e-nightly.md`) ga počne vrtjeti | na masteru |
 
@@ -47,12 +47,29 @@ Briefovi su u [`e2e/sekcije/`](e2e/sekcije/README.md). Belinih 11 su Belini, s T
 Custom i "s ovim dosta", izjednačeno → do 51; C3: nedolazak 5 : 0 i stol "na prolaz"; C4: 45 minuta; C5: pobjednik po
 igrama i "s ovim dosta"), a K i L su novi.
 
-## 5. Što je generator već našao
+## 5. Što su generator i sekcije našli
 
-- **Bye bez pobjednika.** `createByeMatches` (`_lib/service/round/insertPairRounds.ts`, Tresetina mala izmjena) piše
-  bye meč bez `winner_side`, a Treseta taj stupac čita kao "meč bez pobjednika". Migracija `s_ovim_dosta` (14.10.)
-  popunila je stare mečeve, pa su od tada novi byevi (liga s neparnim brojem ekipa, turnir) drukčiji od starih.
-  `seed:verify` ga javlja kao poznat bug (`!`) i ne staje. Popravak je Tresetin (Bela nema `winner_side`).
+Bugovi aplikacije (testovi su `test.fail` s `// BUG:` dok popravak ne stigne):
+
+| Bug | Gdje | Kod | Stanje |
+| --- | --- | --- | --- |
+| Bye bez pobjednika: `createByeMatches` (`round/insertPairRounds.ts`) piše bye meč bez `winner_side`, a Treseta taj stupac čita kao "meč bez pobjednika" | generator (`seed:verify` `!`), C3 | Tresetin | popravljeno na masteru (`19361b22`, s backfillom); čeka spajanje mastera u `e2e-suite` |
+| Drugi brzi dodir na Završi meč otvara upis igre (Bela #74) | C1 | zajednički | Belin `e721909`, dolazi sa syncom |
+| Ista igra s dva telefona upiše se dvaput (Bela #57) | C2 | zajednički | Belin `3efe0f4`, na `bela-sync` kao `a03b1ade`; čeka merge na master |
+| Poslije ponoći Početna ispusti večerašnju kartu (Tu smo, Pauza) za sljedeću večer: `mySchedule` broji "danas" po kalendaru | L | zajednički | Belin `1f7d51e`, već na `bela-sync` |
+| Nakon što admin vrati meč u igru, njegov mobitel ne pita "s ovim dosta" na 41 : 41 (`reopenMatch` kopira igre s novim id-jevima, a TablePhone traži stari) | C5 | Tresetin (`467ea599`) | otvoreno |
+| Spremi odbijen jer je vrijeme isteklo ostavlja mobitel na koraku Igra; u Beli vraća na stol, koji je prešao na Meč 2 (Belin DECISIONS #83) | C4 | Tresetin (`ScorePage`, `handFlow`; port `a0686e1` bez provjere `matchClosed`) | otvoreno |
+| Rate limiter: prozor se pomiče sa svakim zahtjevom, pa se nikad ne isprazni | fixtures (svaki kontekst svoj `X-Forwarded-For`) | zajednički | komentar na Belin issue #4 |
+
+Pitanje: adminov mobitel ne može dopisati igru završenom meču, iako upozorenje "Meč ostaje bez pobjednika?" to
+predlaže (C5). Čeka odluku.
+
+Suite i generator (S3):
+- `fixtures.as()` prijavi kroz API, a `refreshUser` na Početnoj zna isprazniti ploču kad je `/api/auth/me` spor (C2):
+  fixture treba spremiti korisnika.
+- Generatorov nedolazak u Kolu 2 turnira uživo odgovori se u 12. minuti, pa svijet ima preskočen stol, ne nedolazak
+  (C3 `test.fail`).
+- `/api/cron/tick` zatvara svaki istekli meč u bazi; `c4.ts` ga zove samo za svoj stol, ostali neka rade isto.
 
 ## 6. Rizici
 
