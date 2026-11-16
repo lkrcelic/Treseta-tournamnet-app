@@ -11,11 +11,14 @@ import {
   canSave,
   clearPoints,
   clearZvanja,
+  dostaAskHand,
   EntryState,
   entryZvanjaPoints,
   fromPadHand,
+  handPlace,
   manualFields,
   levelAtTarget,
+  phoneBoardAction,
   setActive,
   toAdminHand,
   typeDigit,
@@ -93,9 +96,9 @@ function matchSlot(pad: TablePad, n: number): PadMatch | null {
 
 // The table's scorepad on the admin's phone (Mobilni ekrani 14s–14ab, admin-mobile 23–29), at the address of the
 // desktop's scorepad. A tap on a table in the round opens it straight on its board, as the players' scoreboard plus:
-// Meč 1 · Meč 2 (a finished match too), a tap on a hand to correct it on the keypad, as Custom or to delete it, Custom
-// for a new hand typed freely (then "s ovim dosta" is asked), and Tko igra. A table nobody has started yet asks Tko
-// igra first.
+// Meč 1 · Meč 2 (a finished match too), a tap on a hand to correct it on the keypad, as Custom or to delete it, Upiši
+// igru and Custom for a new hand (on a finished match too; after a custom one "s ovim dosta" is asked), and Tko igra.
+// A table nobody has started yet asks Tko igra first.
 //   (none) | ?mec=N   the board of the current match, or of match N
 //   &igra=new|ID&korak=2  entering or correcting a hand: its zvanja (2), then the players' keypad (3)
 //   ?kraj=1           Kraj kola, after the second match is finished
@@ -253,8 +256,9 @@ function MatchPhone({
   const [handSheet, setHandSheet] = useState<PadHand | null>(null);
   const [askDelete, setAskDelete] = useState(false);
   const [manual, setManual] = useState<{hand: PadHand | null; a: string; b: string} | null>(null);
-  // after a custom hand: ask about "s ovim dosta" on the match's last hand (null: the hand just added)
-  const [askDosta, setAskDosta] = useState<{hand: number | null} | null>(null);
+  // after a custom hand: ask about "s ovim dosta" on the match's last hand (position: the corrected hand's place, null:
+  // the hand just added; dostaAskHand)
+  const [askDosta, setAskDosta] = useState<{position: number | null} | null>(null);
   const [dostaError, setDostaError] = useState<string | null>(null);
   // a change that leaves a finished match without a winner, waiting for the admin's Spremi svejedno (Odustani goes
   // back to what was entered)
@@ -349,7 +353,7 @@ function MatchPhone({
         setSaving(false);
       }
     };
-    const handNumber = editing ? match.hands.findIndex((h) => h.id === editing.id) + 1 : match.hands.length + 1;
+    const handNumber = editing ? handPlace(match.hands, editing.id) : match.hands.length + 1;
     const wizard = (children: React.ReactNode) => (
       <Screen fill gap={0} sx={{pt: "calc(22px + env(safe-area-inset-top))"}}>
         {children}
@@ -408,7 +412,8 @@ function MatchPhone({
   // Meč 1 · Meč 2 once the second match is there (or the round is over)
   const showTabs = pad.done || pad.matches.some((m) => m.kind === "finished");
   const viewDone = match.kind === "finished";
-  const finishable = match.kind === "ongoing" && match.id !== 0 && match.winner != null;
+  const action = phoneBoardAction(match);
+  const finishable = action === "finish";
   const finish = async () => {
     setFinishing(true);
     setError(null);
@@ -422,7 +427,7 @@ function MatchPhone({
     }
     setFinishing(false);
   };
-  const handIndex = (h: PadHand) => match.hands.findIndex((x) => x.id === h.id) + 1;
+  const handIndex = (h: PadHand) => handPlace(match.hands, h.id);
   const openSheet = (id: number) => {
     const h = match.hands.find((x) => x.id === id);
     if (!h) return;
@@ -434,15 +439,14 @@ function MatchPhone({
   const saveManual = () => {
     if (!manual || !fields?.points || saving) return;
     const hand = {custom: true as const, points1: fields.points[0], points2: fields.points[1]};
-    const editedId = manual.hand?.id ?? null;
-    runSheet((allow) => (manual.hand ? updateHandAPI(match.kind, manual.hand.id, hand, allow) : addHandAPI(pad.roundId, target, hand, allow)), "Igra nije spremljena.", () => setAskDosta({hand: editedId}));
+    const position = manual.hand ? handIndex(manual.hand) : null;
+    runSheet((allow) => (manual.hand ? updateHandAPI(match.kind, manual.hand.id, hand, allow) : addHandAPI(pad.roundId, target, hand, allow)), "Igra nije spremljena.", () => setAskDosta({position}));
   };
   // the teams that reached the target with that custom hand (none: nothing to ask)
-  const askHand = match.hands[match.hands.length - 1];
-  const dostaTeams: DostaTeam[] =
-    askDosta && askHand?.custom && !askHand.dosta && (askDosta.hand == null || askDosta.hand === askHand.id)
-      ? dostaCallers(padPlayedHands(match), THRESHOLD, pad.matchEnd).map((side) => ({side, name: names[side - 1], color: teamColor[side - 1]}))
-      : [];
+  const askHand = askDosta ? dostaAskHand(match.hands, askDosta.position) : null;
+  const dostaTeams: DostaTeam[] = askHand
+    ? dostaCallers(padPlayedHands(match), THRESHOLD, pad.matchEnd).map((side) => ({side, name: names[side - 1], color: teamColor[side - 1]}))
+    : [];
   const pickDosta = async (side: Side) => {
     if (!askHand) return;
     setSaving(true);
@@ -487,7 +491,8 @@ function MatchPhone({
         {dostaTeams.length === 0 && (levelAtTarget(pad, match) ? <LevelFlag /> : match.threshold > THRESHOLD && <TargetFlag target={match.threshold} />)}
       </Box>
       <HandList rows={match.hands.map((h) => ({id: h.id, left: h.total1, right: h.total2}))} onOpen={openSheet} sx={{mt: "14px"}} />
-      {!viewDone && (
+      {/* Upiši igru (Završi meč once the match being played is won) and Custom: a finished match takes hands too */}
+      {action && (
         <Box sx={{flex: "none", pt: "14px", display: "flex", flexDirection: "column", gap: "10px"}}>
           {error && !handSheet && !manual && <ErrorNote>{error}</ErrorNote>}
           <Box sx={{display: "flex", gap: "10px"}}>

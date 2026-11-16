@@ -78,10 +78,9 @@ test("the next match already has a hand: Meč 1 can't be played again, the warni
   expect(round.ongoingMatches.map((m) => [m.id, m.results.length])).toEqual([[secondMatch, 1]]);
 });
 
-// BUG: the admin's phone adds no hand to a finished match (Upiši igru and Custom are only on the match being played:
-// TablePhone.tsx `!viewDone`), though the warning tells the admin to add the hands that were played and the computer
-// does (c5-ispravak.racunalo.spec.ts). Decided 16.11.: the phone adds them too. Treseta's own (the warning is
-// 467ea599's); red at Upiši igru.
+// The warning tells the admin to add the hands that were played, and the phone adds them as the computer does
+// (c5-ispravak.racunalo.spec.ts): Upiši igru and Custom on a finished match too, decided 16.11. (6333400c). Before, the
+// phone had them only on the match being played.
 test("a match left without a winner on the phone gets the hand that was played added again, and its winner back, as the warning says", async ({
   as,
   api,
@@ -89,7 +88,6 @@ test("a match left without a winner on the phone gets the hand that was played a
   night,
   healthy,
 }) => {
-  test.fail();
   const {table, firstMatch} = await ownTable(night, db, api);
   const {home, away, byTeam, bySide, homeSide} = table;
   // Meč 1 home's 41 : 14; Meč 2 has started, so Meč 1 can't be played again

@@ -8,16 +8,21 @@ import {
   canSave,
   clearPoints,
   clearZvanja,
+  dostaAskHand,
   entryZvanjaPoints,
   fromPadHand,
+  handPlace,
   levelAtTarget,
+  phoneBoardAction,
   setActive,
   switchMode,
   toAdminHand,
   typeDigit,
 } from "../ui/adminEntry";
 import {normalizeResult} from "../validation/validateResult";
-import {NO_ZVANJA} from "../game/scoring";
+import {matchState, NO_ZVANJA} from "../game/scoring";
+import {padPlayedHands} from "../tableOverview";
+import {PadHand} from "../../_interfaces/adminHand";
 
 // The admin scorepad's hand entry (normal and custom)
 
@@ -143,4 +148,57 @@ test("na prolaz: the board's flag for a level score at or above the target", () 
   assert.equal(levelAtTarget({matchEnd: "NA_PROLAZ"}, m), true);
   assert.equal(levelAtTarget({matchEnd: "S_OVIM_DOSTA"}, m), false);
   assert.equal(levelAtTarget({matchEnd: "NA_PROLAZ"}, {...m, score1: 30, score2: 30}), false);
+});
+
+// a hand on the scorepad: its id, its totals, custom and its call
+const padHand = (id: number, [total1, total2]: [number, number], custom = false, dosta: 1 | 2 | null = null): PadHand =>
+  ({id, total1, total2, points1: total1, points2: total2, zvanja1: NO_ZVANJA, zvanja2: NO_ZVANJA, custom, dosta});
+// a match's score and winner, replayed from its hands by the rules
+const pick = (s: {score1: number; score2: number; winner: 1 | 2 | null}) => ({score: [s.score1, s.score2], winner: s.winner});
+
+test("\"s ovim dosta\" is asked about the custom hand just saved when it is the match's last: added, or corrected", () => {
+  const hands = [padHand(1, [8, 3]), padHand(2, [3, 8]), padHand(3, [6, 5], true)];
+  assert.equal(dostaAskHand(hands, null)?.id, 3);
+  assert.equal(dostaAskHand(hands, 3)?.id, 3);
+  // an earlier hand corrected, even while the last hand is custom without a call: nothing to ask
+  assert.equal(dostaAskHand(hands, 2), null);
+  assert.equal(dostaAskHand([...hands, padHand(4, [8, 3])], 3), null);
+  // a last hand that is no custom one, or already has its call: nothing to ask
+  assert.equal(dostaAskHand([...hands.slice(0, 2), padHand(3, [6, 5])], null), null);
+  assert.equal(dostaAskHand([...hands.slice(0, 2), padHand(3, [6, 5], true, 1)], 3), null);
+  assert.equal(dostaAskHand([], null), null);
+});
+
+test("a correction that puts a won match back in play still asks \"s ovim dosta\": the corrected hand is at its place, with a new id", () => {
+  // Treseta #1: Meč 1 won 41 : 43 by team 1's call in Igra 8, a custom 6 : 5
+  const played: [number, number][] = [[8, 3], [3, 8], [8, 3], [3, 8], [6, 5], [5, 6]];
+  const won = [...played.map((p, i) => padHand(i + 1, p)), padHand(7, [2, 5], true), padHand(8, [6, 5], true, 1)];
+  assert.deepEqual(pick(matchState(padPlayedHands({hands: won}))), {score: [41, 43], winner: 1});
+  // the admin corrects Igra 8 to a custom 6 : 3 without the call: 41 : 41, no winner, so the match goes back in play
+  // with its eight hands copied in their order, with new ids (101 … 108)
+  const reopened = [...won.slice(0, 7).map((h) => ({...h, id: h.id + 100})), padHand(108, [6, 3], true)];
+  assert.deepEqual(pick(matchState(padPlayedHands({hands: reopened}))), {score: [41, 41], winner: null});
+  const corrected = handPlace(won, 8);
+  assert.equal(corrected, 8);
+  assert.equal(dostaAskHand(reopened, corrected)?.id, 108);
+});
+
+test("a hand's place is its number in the match, 1 for the first; a hand not in the match has none", () => {
+  const hands = [padHand(11, [8, 3]), padHand(12, [3, 8]), padHand(13, [6, 5], true)];
+  assert.equal(handPlace(hands, 11), 1);
+  assert.equal(handPlace(hands, 13), 3);
+  assert.equal(handPlace(hands, 99), 0);
+  // a correction of a hand that is no longer in the match asks nothing
+  assert.equal(dostaAskHand(hands, handPlace(hands, 99)), null);
+});
+
+test("the admin's phone offers Upiši igru on a finished match too, and Završi meč only on the match being played once it is won", () => {
+  // a finished match takes the hands that were played, with a winner or without one ("Meč ostaje bez pobjednika?"); it
+  // had no row (null) until 16 Nov 2026
+  assert.equal(phoneBoardAction({kind: "finished", id: 7, winner: 1}), "add");
+  assert.equal(phoneBoardAction({kind: "finished", id: 7, winner: null}), "add");
+  assert.equal(phoneBoardAction({kind: "ongoing", id: 8, winner: 2}), "finish");
+  assert.equal(phoneBoardAction({kind: "ongoing", id: 8, winner: null}), "add");
+  // a match not started yet (no id): its first hand
+  assert.equal(phoneBoardAction({kind: "ongoing", id: 0, winner: null}), "add");
 });

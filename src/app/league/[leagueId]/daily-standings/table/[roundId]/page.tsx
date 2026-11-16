@@ -8,7 +8,7 @@ import TablePhone from "@/app/_ui/admin/TablePhone";
 import {NoWinnerAsk, NoWinnerConfirm} from "@/app/_ui/admin/NoWinnerConfirm";
 import useIsDesktop from "@/app/_hooks/useIsDesktop";
 import useShortWindow from "@/app/_hooks/useShortWindow";
-import {blankEntry, EntryState, fromPadHand, levelAtTarget, toAdminHand} from "@/app/_lib/ui/adminEntry";
+import {blankEntry, dostaAskHand, EntryState, fromPadHand, handPlace, levelAtTarget, toAdminHand} from "@/app/_lib/ui/adminEntry";
 import {dostaCallers, MATCH_THRESHOLD, Side} from "@/app/_lib/game/scoring";
 import {padPlayedHands} from "@/app/_lib/tableOverview";
 import {leaveRoundPages, lineupPassed} from "@/app/_lib/ui/lineupPass";
@@ -61,7 +61,7 @@ function TableScorepadDesktop() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // after a custom hand: ask about "s ovim dosta" on the match's last hand (null: the hand just added)
-  const [askDosta, setAskDosta] = useState<{match: number; hand: number | null} | null>(null);
+  const [askDosta, setAskDosta] = useState<{match: number; position: number | null} | null>(null);
   const [dostaError, setDostaError] = useState<string | null>(null);
   // a change that leaves a finished match without a winner, waiting for the admin's Spremi svejedno
   const [noWinner, setNoWinner] = useState<NoWinnerAsk | null>(null);
@@ -131,7 +131,9 @@ function TableScorepadDesktop() {
   const save = () => {
     if (!match || saving) return;
     const hand = toAdminHand(entry);
-    const ask = hand.custom ? () => setAskDosta({match: match.number, hand: editing?.id ?? null}) : undefined;
+    // the question finds the hand by its place: a correction that puts the match back in play gives its hands new ids
+    const position = editing ? handPlace(match.hands, editing.id) : null;
+    const ask = hand.custom ? () => setAskDosta({match: match.number, position}) : undefined;
     if (editing) return run((allow) => updateHandAPI(match.kind, editing.id, hand, allow), "Igra nije spremljena.", ask);
     const target: HandTarget = match.kind === "finished" ? {kind: "finished", matchId: match.id} : {kind: "ongoing"};
     return run((allow) => addHandAPI(roundId, target, hand, allow), "Igra nije spremljena.", ask);
@@ -150,11 +152,9 @@ function TableScorepadDesktop() {
 
   // the teams that reached the target with that custom hand (none: nothing to ask)
   const askMatch = askDosta ? matches.find((m) => m.number === askDosta.match) : undefined;
-  const askHand = askMatch?.hands[askMatch.hands.length - 1];
+  const askHand = askMatch && askDosta ? dostaAskHand(askMatch.hands, askDosta.position) : null;
   const dostaTeams: DostaTeam[] =
-    askMatch && askHand?.custom && !askHand.dosta && (askDosta?.hand == null || askDosta.hand === askHand.id)
-      ? dostaCallers(padPlayedHands(askMatch), THRESHOLD, pad?.matchEnd).map((side) => ({side, name: names[side - 1], color: teamColor[side - 1]}))
-      : [];
+    askMatch && askHand ? dostaCallers(padPlayedHands(askMatch), THRESHOLD, pad?.matchEnd).map((side) => ({side, name: names[side - 1], color: teamColor[side - 1]})) : [];
   const pickDosta = async (side: Side) => {
     if (!askMatch || !askHand) return;
     setSaving(true);
@@ -285,7 +285,7 @@ function TableScorepadDesktop() {
             entry={entry}
             onChange={setEntry}
             names={names}
-            title={editing ? `Uredi igru ${match.hands.findIndex((h) => h.id === editing.id) + 1}` : `Igra ${match.hands.length + 1}`}
+            title={editing ? `Uredi igru ${handPlace(match.hands, editing.id)}` : `Igra ${match.hands.length + 1}`}
             editing={editing != null}
             saving={saving}
             error={noWinner ? null : error}

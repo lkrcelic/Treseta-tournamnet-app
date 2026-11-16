@@ -46,6 +46,26 @@ export function typeDigit(s: EntryState, digit: number): EntryState {
 export const levelAtTarget = (pad: Pick<TablePad, "matchEnd">, m: Pick<PadMatch, "score1" | "score2" | "threshold" | "winner">): boolean =>
   pad.matchEnd === "NA_PROLAZ" && m.winner == null && m.score1 === m.score2 && m.score1 >= m.threshold;
 
+// A hand's place in its match, as the scorepads number it ("Igra 3"): 1 for its first hand, 0 when it isn't there
+export const handPlace = (hands: Pick<PadHand, "id">[], id: number): number => hands.findIndex((h) => h.id === id) + 1;
+
+// The row under a match's hands on the admin's phone, with Custom beside its button: Završi meč once a team has won the
+// match being played, else Upiši igru, on a finished match too, as on the computer: after "Meč ostaje bez pobjednika?"
+// the admin adds the hands that were played (noWinnerAddHandsWarning). null: no row (no match has none today; until 16
+// Nov 2026 a finished match had none).
+export const phoneBoardAction = (m: Pick<PadMatch, "kind" | "id" | "winner">): "finish" | "add" | null =>
+  m.kind === "ongoing" && m.id !== 0 && m.winner != null ? "finish" : "add";
+
+// The hand "Je li netko zvao „s ovim dosta”?" is asked about once a custom hand is saved: the match's last hand, when
+// it is custom without a call and it is the hand saved. position: the saved hand's place in the match (1 for its first
+// hand), null for a hand just added, which is the last. By its place, not its id: a correction that puts a finished
+// match back in play copies its hands, in their order, with new ids (reopenMatch in service/admin/hands.ts).
+export function dostaAskHand(hands: PadHand[], position: number | null): PadHand | null {
+  const last = hands[hands.length - 1];
+  if (!last?.custom || last.dosta != null) return null;
+  return position == null || position === hands.length ? last : null;
+}
+
 export const setActive = (s: EntryState, side: Side): EntryState => ({...s, active: side, fresh: true});
 export const clearPoints = (s: EntryState): EntryState => ({...s, points: [0, 0], fresh: true});
 

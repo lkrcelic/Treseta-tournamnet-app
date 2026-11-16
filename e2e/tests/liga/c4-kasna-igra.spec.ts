@@ -57,23 +57,19 @@ test("a hand saved after the time is up is refused and doesn't count, and the ma
   await healthy(page);
 });
 
-// BUG (Treseta #2): Spremi refused after the time stays on the Igra step with "Vrijeme partije je isteklo. Partija se zatvara s
-// upisanim rezultatom." and Spremi still on, so the player has to find Nazad twice to reach the table: Treseta's own
-// ScorePage.tsx shows the refusal, where Bela's a0686e1 (DECISIONS #83) sends the phone back to the board, which
-// follows the closed match (Bela's e721909 later first says the hand wasn't saved, with Na meč).
-test("Spremi refused after the time takes the phone back to the table, which has moved on to Meč 2 (Bela DECISIONS #83)", async ({as, api, db, night}) => {
-  test.fail();
+// Spremi refused after the time: the Igra step says the hand wasn't saved, and Na meč takes the phone to the table, which
+// follows the closed match (Bela's a0686e1, DECISIONS #83, and e721909; in Treseta's own ScorePage since Treseta #2,
+// 15efc6a7). Before, the step kept the server's refusal and Spremi.
+test("Spremi refused after the time says the hand wasn't saved, and Na meč takes the phone to the table, which has moved on to Meč 2 (Bela DECISIONS #83)", async ({as, api, db, night}) => {
   const {matchId, home, away, phone} = await setup(api, db, night);
   const page = await as(phone);
   await lateHand(page, db, matchId, away);
 
   await page.getByRole("button", {name: "Spremi", exact: true}).click();
-  // straight to the table (Bela #83), or first the note that the hand wasn't saved, with Na meč (Bela e721909)
-  const onward = page.getByRole("button", {name: "Na meč"});
-  const board = page.getByText("Meč 2 od 2");
-  await expect(onward.or(board)).toBeVisible();
-  if (await onward.isVisible()) await onward.click();
-  await expect(board).toBeVisible();
+  await expect(page.getByText("Meč je već završen, pa ova igra nije spremljena.")).toBeVisible();
+  await expect(page.getByRole("button", {name: "Spremi", exact: true})).toBeHidden();
+  await page.getByRole("button", {name: "Na meč"}).click();
+  await expect(page.getByText("Meč 2 od 2")).toBeVisible();
   await expect(page.getByText("Još nema upisanih igara")).toBeVisible();
   await expectWins(page, home.name, 1);
   await expectWins(page, away.name, 0);

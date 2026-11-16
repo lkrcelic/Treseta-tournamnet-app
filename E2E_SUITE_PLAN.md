@@ -61,13 +61,13 @@ Bugovi aplikacije (testovi su `test.fail` s `// BUG:` dok popravak ne stigne):
 | Korisnička imena su privatna: Moje ekipe i stranica ekipe pokazuju ime, suigrač ne vidi `@username` (Belin DECISIONS #88) | C9 | zajednički | Belin `5defdb6`, već na `bela-sync` |
 | Gost s Objavi → Prijava: prijava unutar 30 s ostavi ga na Prijavi s vrtuljkom; Nextov router cache još drži preusmjeravanje middlewarea, a `login/page.tsx` radi `router.replace(next)` | C8 | zajednički (i Belin `development`) | Bela #79 |
 | Moje ekipe pokazuje staru sliku dok se stranica ne učita ponovo (`useMyTeams` se ne osvježi nakon Spremi) | C9 | zajednički (Belin C9 ga ima kao `test.fail`) | Bela #80 |
-| Nakon što admin vrati meč u igru, njegov mobitel ne pita "s ovim dosta" na 41 : 41 (`reopenMatch` kopira igre s novim id-jevima, a TablePhone traži stari) | C5 | Tresetin (`467ea599`) | Treseta #1 |
-| Spremi odbijen jer je vrijeme isteklo ostavlja mobitel na koraku Igra; u Beli vraća na stol, koji je prešao na Meč 2 (Belin DECISIONS #83) | C4 | Tresetin (`ScorePage`, `handFlow`; port `a0686e1` bez provjere `matchClosed`) | Treseta #2 |
+| Nakon što admin vrati meč u igru, njegov mobitel ne pita "s ovim dosta" na 41 : 41 (`reopenMatch` kopira igre s novim id-jevima, a TablePhone traži stari) | C5 | Tresetin (`467ea599`) | Treseta #1, popravljeno na masteru (`ea1458ba`, 16.11.) |
+| Spremi odbijen jer je vrijeme isteklo ostavlja mobitel na koraku Igra; u Beli vraća na stol, koji je prešao na Meč 2 (Belin DECISIONS #83) | C4 | Tresetin (`ScorePage`, `handFlow`; port `a0686e1` bez provjere `matchClosed`) | Treseta #2, popravljeno na masteru (`15efc6a7`, 16.11.) |
 | Rate limiter: prozor se pomiče sa svakim zahtjevom, pa se nikad ne isprazni | fixtures (svaki kontekst svoj `X-Forwarded-For`) | zajednički | komentar na Belin issue #4 |
 
 Pitanje iz C5 (adminov mobitel ne može dopisati igru završenom meču, iako upozorenje "Meč ostaje bez pobjednika?" to
-predlaže): **odluka 16.11.: mobitel dopisuje kao računalo.** Test je u `c5-bez-pobjednika.spec.ts` kao `test.fail`
-(Tresetin kod: `TablePhone` pokazuje Upiši igru i Custom samo na meču u igri); issue još nije otvoren.
+predlaže): **odluka 16.11.: mobitel dopisuje kao računalo.** Napravljeno na masteru (`6333400c`, 16.11.), test u
+`c5-bez-pobjednika.spec.ts`.
 
 Suite i generator (S3):
 - ~~`fixtures.as()` prijavi kroz API, a `refreshUser` zna isprazniti ploču kad je `/api/auth/me` spor (C2)~~: `as()`
