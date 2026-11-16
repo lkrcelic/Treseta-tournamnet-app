@@ -194,7 +194,8 @@ function fakeDb(rounds: number, nights: string[] = [FUTURE], saved: {location_id
   const created: Record<string, unknown>[] = [];
   // the Podjela rows taken away (deleteMany)
   const splitGone: unknown[] = [];
-  const league = {start_time: "19:30", gathering_time: "19:00", ...KARTAS};
+  // the league plays 3 Kola a night (Kola po večeri)
+  const league = {start_time: "19:30", gathering_time: "19:00", rounds_per_night: 3, ...KARTAS};
   const has = (night: Date | undefined) => !!night && nights.includes(night.toISOString().slice(0, 10));
   const db = {
     leagueNight: {
@@ -347,12 +348,13 @@ test("Dodaj večer adds a night with its own time and place, or the league's", a
   const {db, created} = fakeDb(0, []);
   await withDb(db, async () => {
     const {addLeagueNight} = await import("../service/league/nights");
-    await addLeagueNight(1, {date: "2026-11-05", start_time: "20:00", gathering_time: "19:30", location_id: 2});
+    await addLeagueNight(1, {date: "2026-11-05", start_time: "20:00", gathering_time: "19:30", rounds_per_night: 4, location_id: 2});
     assert.deepEqual(created[0], {
       league_id: 1,
       night: new Date("2026-11-05T00:00:00.000Z"),
       start_time: "20:00",
       gathering_time: "19:30",
+      rounds_per_night: 4,
       location_id: 2,
       second_location_id: null,
     });
@@ -362,6 +364,7 @@ test("Dodaj večer adds a night with its own time and place, or the league's", a
       night: new Date("2026-11-12T00:00:00.000Z"),
       start_time: null,
       gathering_time: null,
+      rounds_per_night: null,
       location_id: null,
       second_location_id: null,
     });
@@ -404,6 +407,13 @@ test("Uredi večer adds a second place, refuses the first one again, and taking 
     assert.deepEqual(gone, [{where: {league_id: 1, night: new Date(`${FUTURE}T00:00:00.000Z`)}}]);
     assert.equal(saved.length, 2);
   });
+});
+
+test("a night's own Broj kola is 1 to 6, and null goes back to the league's Kola po večeri", () => {
+  assert.equal(LeagueNightUpdateRequestValidation.parse({rounds_per_night: 4}).rounds_per_night, 4);
+  assert.equal(LeagueNightUpdateRequestValidation.parse({rounds_per_night: null}).rounds_per_night, null);
+  assert.equal(LeagueNightUpdateRequestValidation.safeParse({rounds_per_night: 0}).success, false);
+  assert.equal(LeagueNightUpdateRequestValidation.safeParse({rounds_per_night: 7}).success, false);
 });
 
 test("Dodaj večer starts on the league's play day after its last night, today at the earliest", () => {
@@ -449,4 +459,19 @@ test("a night's own time equal to the league's isn't kept; places compare by all
   // places of Lokacije compare by id: an edited place is still the same one
   assert.equal(sameLocation({id: 4, ...a}, {id: 4, ...a, address: "Vlaška 5"}), true);
   assert.equal(sameLocation({id: 4, ...a}, {id: 5, ...a}), false);
+});
+
+test("Uredi večer sets a night's own Broj kola beside its second place, and null goes back to the league's", async () => {
+  const {db, updates} = fakeDb(0);
+  await withDb(db, async () => {
+    const {updateLeagueNight} = await import("../service/league/nights");
+    // tonight plays 4 Kola at Kartaš and Lanterna, both places together
+    const night = await updateLeagueNight(1, FUTURE, {rounds_per_night: 4, second_location_id: 3});
+    assert.deepEqual(updates[0].data, {start_time: undefined, rounds_per_night: 4, second_location_id: 3});
+    assert.deepEqual([night?.rounds_per_night, night?.planned_rounds, night?.second_location?.name], [4, 4, "Lanterna"]);
+    // back to the league's 3, the second place stays as it is
+    const back = await updateLeagueNight(1, FUTURE, {rounds_per_night: null});
+    assert.deepEqual(updates[1].data, {start_time: undefined, rounds_per_night: null});
+    assert.deepEqual([back?.rounds_per_night, back?.planned_rounds], [null, 3]);
+  });
 });

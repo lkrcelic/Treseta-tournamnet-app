@@ -343,6 +343,10 @@ model LeagueNight {
   // league's, as "Zadano lige"), and a second place played at the same time (null: a one-place night)
   location_id        Int?
   second_location_id Int?
+  // this night's own Broj kola, when it differs from the league's rounds_per_night (null: the league's). When that many
+  // rounds of the night are finished (at every place of a two-place night), the night is over for Potvrda dolaska
+  // (CHECK 1..6 in the migration script)
+  rounds_per_night   Int?
 
   league         League            @relation(fields: [league_id], references: [league_id], onDelete: Cascade)
   location       Location?         @relation("NightLocation", fields: [location_id], references: [location_id], onDelete: Restrict)

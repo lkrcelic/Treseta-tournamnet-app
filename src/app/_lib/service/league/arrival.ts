@@ -2,7 +2,7 @@ import {Prisma} from "@prisma/client";
 import {prisma} from "@/app/_lib/prisma";
 import {leagueClock, leagueNightString} from "@/app/_lib/dates";
 import {effectiveTime} from "@/app/_lib/nights";
-import {arrivalEffect, asksAdmin, isHere, LeagueArrivalAction, lastRoundOut, leagueArrivalPhase, leagueArrivalWindow, LeagueArrivalWindow} from "@/app/_lib/leagueArrival";
+import {arrivalEffect, asksAdmin, isHere, LeagueArrivalAction, lastRoundOut, leagueArrivalPhase, leagueArrivalWindow, LeagueArrivalWindow, nightPlayedOut} from "@/app/_lib/leagueArrival";
 import {isSlot, Slot} from "@/app/_lib/locations";
 import {LeagueArrivals, LeagueArrivalTimes, LeagueArrivalView, MyLeagueArrival} from "@/app/_interfaces/leagueArrival";
 import {displayName} from "@/app/_lib/players/names";
@@ -57,26 +57,46 @@ async function tonightPlaces(entries: {league_id: number; team_id: number}[], ni
   return {two, slots: new Map(rows.flatMap((r) => (isSlot(r.slot) ? [[teamKey(r.league_id, r.team_id), r.slot] as [string, Slot]] : [])))};
 }
 
-// The places whose last round of the night (Kola po večeri) is published, as "league_id|slot" (0: a one-place night,
-// counting every round of the league that night): Tu smo can't bring a team in there any more. Each place of a
-// two-place night counts its own rounds.
-async function lastRoundPlaces(places: {league_id: number; slot: Slot | null}[], night: string, db: Db): Promise<Set<string>> {
+// Where the night's rounds stand against its Broj kola (the night's own, or the league's Kola po večeri; #94).
+// lastRound, as "league_id|slot" (0: a one-place night, counting every round of the league that night): the place's last
+// round is published, so Tu smo can't bring a team in there any more; each place of a two-place night counts its own
+// rounds. over, league ids: that many rounds are finished (every table closed) at every place of the night, so the
+// night is over for Potvrda dolaska before 06:00; a two-place night is over only when both places have played theirs.
+type NightRounds = {lastRound: Set<string>; over: Set<number>};
+
+async function nightRounds(places: {league_id: number; slot: Slot | null}[], night: string, db: Db): Promise<NightRounds> {
   const ids = Array.from(new Set(places.map((p) => p.league_id)));
-  if (ids.length === 0) return new Set();
-  const [leagues, rounds] = await Promise.all([
-    db.league.findMany({where: {league_id: {in: ids}}, select: {league_id: true, rounds_per_night: true}}),
+  if (ids.length === 0) return {lastRound: new Set(), over: new Set()};
+  const [leagues, tables] = await Promise.all([
+    db.league.findMany({
+      where: {league_id: {in: ids}},
+      select: {league_id: true, rounds_per_night: true, nights: {where: {night: nightValue(night)}, select: {rounds_per_night: true, second_location_id: true}}},
+    }),
     db.leagueRound.findMany({
       where: {league_id: {in: ids}, round: {round_date: nightValue(night), status: "PUBLISHED"}},
-      select: {league_id: true, round: {select: {round_number: true, location_slot: true}}},
+      select: {league_id: true, round: {select: {round_number: true, location_slot: true, open: true}}},
     }),
   ]);
-  const perNight = new Map(leagues.map((l) => [l.league_id, l.rounds_per_night]));
-  const out = new Set<string>();
+  // a place's published rounds and how many of them are finished (slot null: every round of the league that night)
+  const at = (leagueId: number, slot: Slot | null) => {
+    const open = new Map<number | null, boolean>();
+    for (const t of tables) {
+      if (t.league_id !== leagueId || (slot != null && t.round.location_slot !== slot)) continue;
+      open.set(t.round.round_number, (open.get(t.round.round_number) ?? false) || t.round.open);
+    }
+    return {published: open.size, finished: Array.from(open.values()).filter((o) => !o).length};
+  };
+  const planned = new Map(leagues.map((l) => [l.league_id, l.nights[0]?.rounds_per_night ?? l.rounds_per_night]));
+  const lastRound = new Set<string>();
   for (const p of places) {
-    const numbers = new Set(rounds.filter((r) => r.league_id === p.league_id && (p.slot == null || r.round.location_slot === p.slot)).map((r) => r.round.round_number));
-    if (lastRoundOut(numbers.size, perNight.get(p.league_id) ?? Number.MAX_SAFE_INTEGER)) out.add(placeKey(p.league_id, p.slot));
+    if (lastRoundOut(at(p.league_id, p.slot).published, planned.get(p.league_id) ?? Number.MAX_SAFE_INTEGER)) lastRound.add(placeKey(p.league_id, p.slot));
   }
-  return out;
+  const over = new Set<number>();
+  for (const l of leagues) {
+    const slots: (Slot | null)[] = l.nights[0]?.second_location_id != null ? [1, 2] : [null];
+    if (slots.every((slot) => nightPlayedOut(at(l.league_id, slot).finished, planned.get(l.league_id)!))) over.add(l.league_id);
+  }
+  return {lastRound, over};
 }
 
 // Tu smo refused: the night has two places and the team isn't at either yet
@@ -106,7 +126,7 @@ function view(r: ArrivalRow): LeagueArrivalView {
 
 // Početna · Večeras for the player's teams whose league plays tonight with Potvrda dolaska (start and gathering: the
 // night's Početak and Okupljanje, "HH:MM"): the window and the team's arrival. Keyed "league_id|team_id"; a night that
-// is over isn't in it.
+// is over (06:00, or its Broj kola finished at every place) isn't in it.
 export async function myTonight(
   entries: {league_id: number; team_id: number; start: string | null; gathering?: string | null}[],
   now = new Date(),
@@ -117,25 +137,25 @@ export async function myTonight(
     .map((e) => ({...e, window: leagueArrivalWindow(night, e.start, e.gathering)}))
     .filter((e): e is typeof e & {window: LeagueArrivalWindow} => e.window != null && leagueArrivalPhase(e.window, now) !== "over");
   if (open.length === 0) return new Map();
-  const [rows, places] = await Promise.all([
-    db.leagueArrival.findMany({
-      where: {night: nightValue(night), OR: open.map((e) => ({league_id: e.league_id, team_id: e.team_id}))},
-      select: arrivalSelect,
-    }),
-    tonightPlaces(open, night, db),
-  ]);
+  const places = await tonightPlaces(open, night, db);
   const slotOf = (e: {league_id: number; team_id: number}) => places.slots.get(teamKey(e.league_id, e.team_id)) ?? null;
-  const last = await lastRoundPlaces(open.map((e) => ({league_id: e.league_id, slot: slotOf(e)})), night, db);
+  const state = await nightRounds(open.map((e) => ({league_id: e.league_id, slot: slotOf(e)})), night, db);
+  const playing = open.filter((e) => !state.over.has(e.league_id));
+  if (playing.length === 0) return new Map();
+  const rows = await db.leagueArrival.findMany({
+    where: {night: nightValue(night), OR: playing.map((e) => ({league_id: e.league_id, team_id: e.team_id}))},
+    select: arrivalSelect,
+  });
   const arrivals = new Map(rows.map((r) => [teamKey(r.league_id, r.team_id), r]));
   return new Map(
-    open.map((e) => {
+    playing.map((e) => {
       const row = arrivals.get(teamKey(e.league_id, e.team_id));
       const slot = slotOf(e);
       const card: MyLeagueArrival = {
         night,
         ...timesOf(e.window),
         arrival: row ? view(row) : null,
-        last_round: last.has(placeKey(e.league_id, slot)),
+        last_round: state.lastRound.has(placeKey(e.league_id, slot)),
         two_places: places.two.has(e.league_id),
         slot,
       };
@@ -161,8 +181,11 @@ export async function teamArrivalAction(leagueId: number, teamId: number, viewer
     const row = await tx.leagueArrival.findUnique({where: key, select: {left_at: true}});
     const places = await tonightPlaces([{league_id: leagueId, team_id: teamId}], tonight.night, tx);
     const slot = places.slots.get(teamKey(leagueId, teamId)) ?? null;
-    const lastRound = action === "confirm" && (await lastRoundPlaces([{league_id: leagueId, slot}], tonight.night, tx)).has(placeKey(leagueId, slot));
-    const effect = arrivalEffect(leagueArrivalPhase(tonight.window, now), action, isHere(row), lastRound, asksAdmin(places.two.has(leagueId), slot));
+    const rounds = await nightRounds([{league_id: leagueId, slot}], tonight.night, tx);
+    // a night whose Broj kola are all finished (at every place) is over, as at 06:00
+    const phase = rounds.over.has(leagueId) ? "over" : leagueArrivalPhase(tonight.window, now);
+    const lastRound = action === "confirm" && rounds.lastRound.has(placeKey(leagueId, slot));
+    const effect = arrivalEffect(phase, action, isHere(row), lastRound, asksAdmin(places.two.has(leagueId), slot));
     if (effect === "no_place") throw new InvalidResultError(NO_PLACE_ERROR);
     if (effect === "not_open") throw new InvalidResultError(`Potvrda dolaska otvara se u ${leagueClock(tonight.window.opens)}.`);
     if (effect === "over") throw new InvalidResultError("Večer je završila.");
@@ -186,7 +209,7 @@ async function myTonightFor(tx: Tx, leagueId: number, teamId: number, night: str
     tonightPlaces([{league_id: leagueId, team_id: teamId}], night, tx),
   ]);
   const slot = places.slots.get(teamKey(leagueId, teamId)) ?? null;
-  const last = await lastRoundPlaces([{league_id: leagueId, slot}], night, tx);
+  const last = (await nightRounds([{league_id: leagueId, slot}], night, tx)).lastRound;
   return {night, ...timesOf(window), arrival: row ? view(row) : null, last_round: last.has(placeKey(leagueId, slot)), two_places: places.two.has(leagueId), slot};
 }
 
