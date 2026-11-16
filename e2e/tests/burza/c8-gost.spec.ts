@@ -31,7 +31,7 @@ test("a guest reads every open ad of the public Burza, has no Moji oglasi, and i
 });
 
 test("a guest sent to Prijava from Objavi comes back to the form once logged in", async ({as, world}) => {
-  // BUG: logging in within 30 s of the redirect leaves the player on Prijava with Prijavi se spinning: Next's client
+  // BUG (Bela #79): logging in within 30 s of the redirect leaves the player on Prijava with Prijavi se spinning: Next's client
   // router cache still holds the middleware's redirect for /burza/novi/dostupan, so login/page.tsx's
   // router.replace(next) lands on Prijava again (shared code; after 30 s it works)
   test.fail();

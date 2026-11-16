@@ -125,6 +125,8 @@ same commit; on `bela-sync` that is as soon as it's rebased onto a `master` that
 | `3efe0f4` (on `bela-sync` as `a03b1ade`: the same hand from two phones, #57) | `tests/liga/c2-dva-telefona.spec.ts`, its two `test.fail` tests |
 | `1f7d51e` (the league night lasts until 06:00 on Početna and Burza; already on `bela-sync`) | `tests/liga/l-igraci.spec.ts` › Tu smo on Početna … and … sees Pauza …; `tests/burza/c8-gost.spec.ts` › a guest reads every open ad …, `c8-moji.spec.ts` › Burza's tabs …, `c8-objava.spec.ts` › Trebam zamjenu: Objavi oglas waits … (all `test.fail(afterMidnight(), …)`, red only between 00:00 and 06:00) |
 | `3eb80df` (a guest gets no phone numbers on Burza, #11; already on `bela-sync`) | `tests/burza/c8-gost.spec.ts` › a guest gets no phone number … (Bela #11) |
+| not fixed yet (Bela #79: a guest's login from Objavi stays on Prijava for 30 s) | `tests/burza/c8-gost.spec.ts` › a guest sent to Prijava from Objavi comes back to the form once logged in |
+| not fixed yet (Bela #80: Moje ekipe keeps the old photo) | `tests/profil/c9-slika.spec.ts` › a new photo shows in Moje ekipe at once, as on the avatar above it |
 | `5defdb6` (usernames public, #88; already on `bela-sync`) | `tests/profil/c9-podaci.spec.ts` › … name every player by @username …; and in `e2e/helpers/c9.ts` drop `chipLabel`'s first-name branch and find `myRow` by `@username`, as Bela's C9 does |
 
 ## Differences from Bela

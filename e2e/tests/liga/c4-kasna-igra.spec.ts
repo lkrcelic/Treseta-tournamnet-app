@@ -57,7 +57,7 @@ test("a hand saved after the time is up is refused and doesn't count, and the ma
   await healthy(page);
 });
 
-// BUG: Spremi refused after the time stays on the Igra step with "Vrijeme partije je isteklo. Partija se zatvara s
+// BUG (Treseta #2): Spremi refused after the time stays on the Igra step with "Vrijeme partije je isteklo. Partija se zatvara s
 // upisanim rezultatom." and Spremi still on, so the player has to find Nazad twice to reach the table: Treseta's own
 // ScorePage.tsx shows the refusal, where Bela's a0686e1 (DECISIONS #83) sends the phone back to the board, which
 // follows the closed match (Bela's e721909 later first says the hand wasn't saved, with Na meč).

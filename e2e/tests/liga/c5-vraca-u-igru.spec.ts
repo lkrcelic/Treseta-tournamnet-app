@@ -193,7 +193,7 @@ test('a "s ovim dosta" win whose calling hand is corrected below 41: the call no
   expect(byTeam(round.ongoingMatches[0].player_pair1_score, round.ongoingMatches[0].player_pair2_score)).toEqual([38, 40]);
 });
 
-// BUG: after a reopen the admin's phone asks no "s ovim dosta" (it looks for the corrected hand by its old id).
+// BUG (Treseta #1): after a reopen the admin's phone asks no "s ovim dosta" (it looks for the corrected hand by its old id).
 // Treseta's own (467ea599: the reopened hands get new ids, TablePhone's askDosta.hand === askHand.id); red at the
 // question, the board shows "Do 51" straight away.
 test('a "s ovim dosta" win corrected to 41 : 41 is played again to 51, and the admin is asked "s ovim dosta" as after any custom hand', async ({as, api, db, night, healthy}) => {

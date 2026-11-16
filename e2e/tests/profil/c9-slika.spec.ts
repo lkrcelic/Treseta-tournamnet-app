@@ -134,7 +134,7 @@ test("Odustani in Pomakni i zumiraj keeps the photo; Makni sliku in the player's
   expect(await mate.evaluate((u) => fetch(u, {cache: "no-store"}).then((r) => r.status), url)).toBe(404);
 });
 
-// BUG: Moje ekipe keeps the player's old avatar (here the initials) until the page is loaded again: Moj profil reads
+// BUG (Bela #80): Moje ekipe keeps the player's old avatar (here the initials) until the page is loaded again: Moj profil reads
 // the teams once (useMyTeams) and a saved photo updates only the avatar above them (profile/page.tsx). Shared code,
 // Bela's C9 marks it too; red at the last line, the chip still shows the initials.
 test("a new photo shows in Moje ekipe at once, as on the avatar above it", async ({as, me}) => {

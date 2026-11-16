@@ -28,7 +28,7 @@ import {
   standingsOf,
   test,
 } from "../../helpers/c5";
-import {escape, expectWins, handRows} from "../../helpers/scorepad";
+import {enterHand, escape, expectWins, handRows} from "../../helpers/scorepad";
 
 // the warning's sentence: the score after the change, the target nobody has, and why the match stays closed
 const cantReopen = (score: [number, number], target: number, why: string) =>
@@ -75,6 +75,50 @@ test("the next match already has a hand: Meč 1 can't be played again, the warni
   const round = await db.round.findUniqueOrThrow({where: {id: table.roundId}, include: {matches: {include: {results: true}}, ongoingMatches: {include: {results: true}}}});
   expect([round.open, round.team1_wins, round.team2_wins]).toEqual([true, 0, 0]);
   expect(round.matches.map((m) => [...byTeam(m.player_pair1_score, m.player_pair2_score), m.winner_side, m.results.length])).toEqual([[32, 12, null, 4]]);
+  expect(round.ongoingMatches.map((m) => [m.id, m.results.length])).toEqual([[secondMatch, 1]]);
+});
+
+// BUG: the admin's phone adds no hand to a finished match (Upiši igru and Custom are only on the match being played:
+// TablePhone.tsx `!viewDone`), though the warning tells the admin to add the hands that were played and the computer
+// does (c5-ispravak.racunalo.spec.ts). Decided 16.11.: the phone adds them too. Treseta's own (the warning is
+// 467ea599's); red at Upiši igru.
+test("a match left without a winner on the phone gets the hand that was played added again, and its winner back, as the warning says", async ({
+  as,
+  api,
+  db,
+  night,
+  healthy,
+}) => {
+  test.fail();
+  const {table, firstMatch} = await ownTable(night, db, api);
+  const {home, away, byTeam, bySide, homeSide} = table;
+  // Meč 1 home's 41 : 14; Meč 2 has started, so Meč 1 can't be played again
+  await play(table, firstMatch, [[8, 3], [8, 3], [8, 3], [8, 3], [9, 2]]);
+  const secondMatch = (await finishOpenMatch(night.admin, table.roundId))!;
+  await play(table, secondMatch, [[6, 5]]);
+
+  const page = await as("admin");
+  await openAdminTable(page, night.league.id, table.roundId);
+  await pickMatch(page, 1);
+  // Obriši igru 5 → 32 : 12, Obriši svejedno: Meč 1 without a winner
+  await deleteHand(page, 5);
+  await noWinnerSheet(page).getByRole("button", {name: "Obriši svejedno"}).click();
+  await expect(noWinnerSheet(page)).toBeHidden();
+  await expectBoard(page, {[home.name]: 32, [away.name]: 12}, 4);
+
+  // the hand that was played, home's 9 : 2, added to the finished Meč 1: 41 : 14 and home's again, asked nothing
+  const row = await enterHand(page, {team: home.name, points: 9});
+  await expect(row).toHaveAccessibleName(new RegExp(`^Igra 5: ${bySide(9, 2).join(" prema ")}, ukupno ${bySide(41, 14).join(" prema ")}, `));
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(matchTab(page, 1)).toBeChecked();
+  await expect(finishedNote(page)).toHaveText("Meč 1 je završen. Izmjene mijenjaju rezultat i poredak.");
+  await expectBoard(page, {[home.name]: 41, [away.name]: 14}, 5);
+  await expectWins(page, home.name, 1);
+  await healthy(page);
+
+  const round = await db.round.findUniqueOrThrow({where: {id: table.roundId}, include: {matches: {include: {results: true}}, ongoingMatches: {include: {results: true}}}});
+  expect(round.matches.map((m) => [...byTeam(m.player_pair1_score, m.player_pair2_score), m.winner_side, m.results.length])).toEqual([[41, 14, homeSide, 5]]);
+  expect([round.open, ...byTeam(round.team1_wins, round.team2_wins)]).toEqual([true, 1, 0]);
   expect(round.ongoingMatches.map((m) => [m.id, m.results.length])).toEqual([[secondMatch, 1]]);
 });
 
