@@ -106,6 +106,11 @@ async function main() {
   await seedTodayTournaments(ctx, people, pool, [...busyTonight, ...scenarioTeams]);
   await seedUpcomingTournaments(ctx, people, pool);
   ctx.log(`tournaments done · ${lap()}`);
+  // The open matches were started at seed time, and Vrijeme partije (45 min) would close each one on the first read
+  // after its deadline while a section is still working. They carry no deadline, as matches started before the limit
+  // came in (gameTime.ts); a test that needs the clock gives its match one (helpers/scorepad.ts freshClock).
+  const unclocked = await ctx.prisma.ongoingMatch.updateMany({where: {ends_at: {not: null}}, data: {ends_at: null}});
+  ctx.log(`open matches without a deadline: ${unclocked.count}`);
 
   // 5. the rest of the app
   await seedSponsors(ctx, current.league.league_id);

@@ -294,9 +294,9 @@ export async function addHands(api: APIRequestContext, matchId: number, hands: A
   return ids;
 }
 
-// The world's open matches were started when it was seeded, and Vrijeme partije closes a match on the first read after
-// its deadline (its scorepad, /api/cron/tick). A test on one gives it a fresh clock first, as if it had just started:
-// call it before any page or request reads the match.
+// Vrijeme partije: a match started now, with a deadline `minutes` away. The seeded open matches carry no deadline (the
+// generator drops it, so nothing closes by time while a section works); a test that looks at the clock, or closes a
+// match by time, gives its match one first. A match closed meanwhile throws.
 export async function freshClock(db: Db, matchId: number, minutes = 45) {
   const now = new Date();
   const {count} = await db.ongoingMatch.updateMany({where: {id: matchId}, data: {started_at: now, ends_at: new Date(now.getTime() + minutes * 60_000)}});

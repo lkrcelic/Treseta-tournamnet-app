@@ -202,10 +202,15 @@ export async function seedScenarioLeagues(ctx: Ctx, people: People, freeTeams: T
   const pool = rng.shuffle(freeTeams.filter((t) => (people.activeRosters.get(t.team_id) ?? []).length >= 2));
   // nobody plays two tables tonight: no player of these leagues is in the current league or in another of them
   const used = new Set(current.teams.flatMap((t) => people.rosters.get(t.team_id) ?? []));
-  const take = (n: number) => {
+  // `three`: how many of the n teams have three active players (Tko igra then asks which two play)
+  const take = (n: number, three = 0) => {
     const out: Team[] = [];
-    for (const team of [...pool]) {
+    const active = (team: Team) => (people.activeRosters.get(team.team_id) ?? []).length;
+    const order = [...pool.filter((t) => active(t) >= 3), ...pool.filter((t) => active(t) < 3)];
+    for (const team of three ? order : [...pool]) {
       if (out.length === n) break;
+      if (three && out.length < three && active(team) < 3) throw new Error(`no free team with three active players for a scenario league`);
+      if (three && out.length >= three && active(team) >= 3) continue;
       const ids = people.rosters.get(team.team_id) ?? [];
       if (ids.some((id) => used.has(id))) continue;
       ids.forEach((id) => used.add(id));
@@ -218,7 +223,8 @@ export async function seedScenarioLeagues(ctx: Ctx, people: People, freeTeams: T
   const accounts = async (teamId: number) => usernames(ctx, people.rosters, teamId);
 
   // Novo kolo → Skica → Objavi, by the admin; no start time, so no arrival: every active team plays
-  const newRound = await scenarioLeague(ctx, people, "newRound", "E2E · Novo kolo", take(8), null);
+  const newRoundTeams = take(8, 1);
+  const newRound = await scenarioLeague(ctx, people, "newRound", "E2E · Novo kolo", newRoundTeams, null);
   ctx.catalog.leagues.newRound.tonight = ctx.tonightString;
 
   // Tu smo, by a player: 20:00 start, half the teams already here
@@ -256,6 +262,13 @@ export async function seedScenarioLeagues(ctx: Ctx, people: People, freeTeams: T
     ctx.catalog.tables[key] = {roundId: r.id, matchId: live.openMatchId ?? undefined, note, team1: await accounts(r.team1_id), team2: await accounts(r.team2_id)};
   }
   ctx.catalog.leagues.scorepad.tonight = ctx.tonightString;
+
+  // Each scenario team has a player who opens Početna without the birth-date or "Pušiš li?" sheet, so a test can log
+  // that team in on Početna: its first active player finishes onboarding (the generated ones are like production,
+  // ~60% with a birth date, ~45% answered)
+  const firstActive = [...newRoundTeams, ...arrivalTeams, ...scorepadTeams].map((t) => (people.activeRosters.get(t.team_id) ?? [])[0]).filter((id) => id != null);
+  await ctx.prisma.player.updateMany({where: {id: {in: firstActive}, birth_date: null}, data: {birth_date: new Date("1986-05-14")}});
+  await ctx.prisma.player.updateMany({where: {id: {in: firstActive}, smoker_answered: false}, data: {smoker_answered: true, smoker: false}});
   ctx.log(`scenario leagues: newRound, arrival, scorepad (${tables.length} tables)`);
   return pool;
 }

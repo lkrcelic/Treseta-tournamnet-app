@@ -25,6 +25,24 @@ You write one section of the Treseta Playwright suite. Your section file (`e2e/s
 - **Repeatable:** every spec must pass `--repeat-each=5` in one run against your server without a new seed between repetitions. A test that changes the world either makes its own piece first (a league night, a table, an ad, through the app's API or Prisma in a fixture) or puts back what it changed.
 - Phone first: player and admin flows run on the `mobitel` project (390×844, touch). A spec meant for the desktop too is named `*.racunalo.spec.ts`. Landscape is not supported: never test it.
 
+## From the merged sections
+
+C1 (the pilot) built the fixtures and `e2e/helpers/scorepad.ts`; C1–C5, K and L are merged, and their specs show them in use. Bela's suite has the same section ids: when a Bela section is committed (`git -C ../Bela-Treseta-Tournamnet-app show e2e/<id>:e2e/tests/…`), start from its specs and change what Treseta does differently, rather than writing them again.
+
+- **Setup through the app:** `api(who)` is a logged-in request context with no page. Make your own piece through the app's routes with it, as the admin or a phone would (scorepad.ts: `publishTable` → `startMatch` → `addHands`). Afterwards remove your own Kolo with the admin's `DELETE /api/admin/leagues/<id>/rounds?date=…&round_number=…`; `removeNight` removes every Kolo of a night and is only for a league your section owns. The server recounts the standings and replays the ratings.
+- **The scorepad helper** names teams, never left/right (the viewer's own team is on the left): `enterHand(page, {team, points, zvanja: {[team]: [3, 4]}})` and `enterCustom(page, {points: {[team]: n}, dosta})` on the players' board, `openHand`, `correctHand`, `finishMatch`, `handRow(page, n)`. The hand rows' accessible names ("Igra n: L prema R, ukupno …") are the steadiest assertions.
+- **Shared seeded tables:** on `leagues.scorepad` and the current league, take a fresh table with `publishTable` rather than reuse a seeded one; a corrected seeded hand goes back with `savedHand`/`putHand`.
+- **Clocks:** the seeded open matches have no Vrijeme partije, so nothing closes by time while you work. A test about the clock gives its match one with `freshClock(db, matchId, minutes)` and then moves `ends_at`. `/api/cron/tick` closes every due match in the database, other sections' too: call it only as `e2e/helpers/c4.ts` does, with every other due match's deadline set aside. Other states are relative to the seed's "now" (the arrival window, start times, Kolo publish times): for a state as seeded, `app.sh start` again or move its times in the database.
+- **After midnight:** until 06:00 the league night is still yesterday's (`leagueNightString`), while Datumi counts the calendar day. On master Početna drops tonight's card after midnight (shared code; Bela's `1f7d51e` comes with the sync): `helpers/l.ts` has `afterMidnight()` for a `test.fail` on it. The nightly run starts before 06:00.
+- **Players:** a player who isn't onboarded gets the birth-date or "Pušiš li?" sheet over Početna (never on the scorepad, Tko igra or /round/). Pick one with `ONBOARDED` (db.ts); every scenario team has one. Teams of "E2E · Novo kolo" include one with three active players, so Tko igra asks which two play.
+- **Rate limit:** each `as()`/`api()` context has its own X-Forwarded-For, because the app counts /api requests per address and the window never empties while requests keep coming (Bela #4). Keep it that way: reuse contexts, never strip the header.
+- **App quirks (seen in Bela, shared code):**
+  - textContent drops the spaces between spans ("8 / 8ekipa igra večeras"): use `\s*` in text regexes.
+  - Standings use a real minus "−". Dnevni poredak rows start with the team's initial (an avatar letter).
+  - The admin's table opens on Tko igra every time.
+  - The players' Početna "Dnevni poredak" tile points at the selected league, so go to `/league/<id>/…` directly.
+  - A tap right after a save can land during a view transition: use locator actions (they wait), or `tap({trial: true})` before a raw touchscreen tap.
+
 ## When the app is wrong
 
 Leave the app alone. Keep the test as it should be, mark it `test.fail()` with a comment `// BUG: <one line>`, and put the bug in your report (steps, expected, actual, the screenshot path). Say whether the code is shared with Bela (not listed in `BELA_SYNC.md`; the fix belongs in Bela) or Treseta's own. The lead checks it and opens the issue. A flake you can't explain is a finding too: report it, don't hide it behind a retry.
