@@ -9,7 +9,7 @@ own; everything else is kept identical to Bela.
 | | |
 |---|---|
 | Bela branch | `development`, read through the remote `bela` (the local Bela repo). Only commits come over, never Bela's uncommitted work |
-| Last synced Bela commit | `b3443b9` (12 Nov 2026) |
+| Last synced Bela commit | `0d48380` (14 Nov 2026) |
 | Target branch | `master` |
 | Sync branch | `bela-sync` in the repo itself (no worktree): created from `master`, or rebased onto it, by every run |
 
@@ -77,7 +77,7 @@ Treseta directly only for what has to differ, and add it below.
 
 ## Bela's work waiting to come over
 
-Every Bela commit up to `b3443b9` (12 Nov 2026) came over or was skipped by 13 Nov 2026, including the range
+Every Bela commit up to `0d48380` (14 Nov 2026) came over or was skipped by 17 Nov 2026, including the range
 `88425c3..d2a0b98` whose tournament files had been copied by hand on 10 Nov: a commit whose files were already here
 was skipped, and one that was partly here came with only the part the copy missed. Decisions for Bela work that touches
 Treseta's differences before it comes over go here.
@@ -96,13 +96,6 @@ commits when Bela's `master` reaches them:
   copied until Treseta has its own generator ([E2E_PLAN.md](E2E_PLAN.md)); its `.gitignore` line comes over.
 - `c9b8d6b` (Bela's old documents to `docs/arhiva/`): not copied, Treseta archived its own the same day; its comment
   change in `_lib/googleAuth.ts` comes over.
-
-**Uživo, Nadolazeći and Završeni came by hand on 14 Nov 2026** as Treseta's `8eb3b56` (Bela's `10f5167`), first
-without `entries_hidden` (`7378fda`), which came back with Sakrij broj prijava (Bela's `97c6bed`) when bela-sync was
-rebased on 17 Nov. Bela's `433c54c` (a tournament being played on the top card for everyone) came with only its day-card
-line, since Uživo shows it to everyone. What the sync does with `10f5167` and `0d48380` (the top card as in Treseta):
-they apply to the same end state or come up empty; where they conflict, take Bela's side for `mainTournament` moving
-to `_lib/tournaments.ts`, which picks the same tournament as Treseta's `TournamentsOverview.tsx` does now.
 
 ## Differences from Bela
 
@@ -154,7 +147,7 @@ custom hand at such a table). The admin's screens keep Ručni unos (Custom) for 
 | `_lib/ui/adminEntry.ts`, `league/[leagueId]/daily-standings/table/AdminEntryPanel.tsx` | same paths | The admin scorepad: Normal and Custom, where Bela has "Ručni unos"; Custom's hint names "s ovim dosta" ("za ispravak" at a table "na prolaz": the panel's `naProlaz`; no Kaput for the admin). `levelAtTarget` for the "na prolaz" flag; `dostaAskHand`, the hand the "s ovim dosta" question is about (by its place in the match, `handPlace`, see Turniri · A corrected match goes back in play); `phoneBoardAction`, the phone board's Upiši igru or Završi meč. Zvanja as Bela's shape (`addZvanje`, `clearZvanja`) with 3 and 4 and Treseta's check, and the row hidden at a table "bez zvanja". `manualFields` (the phone's Custom sheet) takes 0 to `CUSTOM_HAND_MAX` (Bela: 0 to 9999). `adminEntry.ts` also holds `roundBackBy` (Natrag na kolo after a reload), which Bela keeps in the not copied `_lib/ui/tableScope.ts` |
 | `_ui/admin/TablePhone.tsx` | same path | The admin's phone scorepad on Bela's board and sheets: Bela's korak 2 (zvanja: 3 and 4) and korak 3 (the keypad, the 11-split) without its korak 1 (the trump caller, opened as 2); a table "bez zvanja" opens on 3 (Bela's redirect from a Korak 2 or 3 without a hand isn't here); Natrag na kolo reads `roundBackBy` from `adminEntry.ts`; Custom (0 to 99, a custom hand) where Bela has Ručno and Ručni unos; after a custom hand the "s ovim dosta" question (`DostaPrompt`, through `runSheet`'s `after`, before Bela's `anyway` and `allow`; the hand by its place, `dostaAskHand`), and the "Do 51" flag on the board, or `LevelFlag` (`levelAtTarget`); `dostaCallers` gets the pad's `matchEnd` (no question "na prolaz"); Upiši igru and Custom on a finished match too, as on the computer, since "Meč ostaje bez pobjednika?" tells the admin to add the hands that were played (`phoneBoardAction`; decided 16 Nov 2026, Bela's phone has them only on the match being played and Otključaj partiju instead) |
 | `_bootstrap/refreshUser.ts`, `_utils/resetStores.ts` | same paths | No announcement store |
-| `_lib/__tests__/`: `scoring`, `serverHand`, `handEntryStores`, `scoreboardMatch`, `adminEntry`, `tableOverview`, `roundClose`, `finishedMatchEdit`, `tableLock` tests, `db/roundClose`, `db/finishedMatchEdit`, `db/tournamentNaProlaz`, `db/unlock`, `db/doubleHand`, `db/byeWinner` and `refusedHand` (Treseta only), `helpers/handEntry.ts` | same names | Tests of Treseta's rules (`tableOverview`: Treseta's hands, 41 and Custom's 0–99; the `db/` tests play custom hands to 41 and a bye worth `2 × BYE_MATCH_POINTS`; `byeWinner`: a league night's and a Kolo's bye give each match to the real team as its `winner_side`, and the migration `20261115140000_bye_winner_side` gives it to the byes written before; `roundClose` has no tournament table of one match; `tableLock` and `db/unlock` a Nedolazak of `NO_SHOW_SCORE` and a resumed match with a zvanje and a custom hand; `db/doubleHand` Treseta's hands through `createResult`) |
+| `_lib/__tests__/`: `scoring`, `serverHand`, `handEntryStores`, `scoreboardMatch`, `adminEntry`, `tableOverview`, `roundClose`, `finishedMatchEdit`, `tableLock` tests, `db/roundClose`, `db/finishedMatchEdit`, `db/tournamentNaProlaz`, `db/unlock`, `db/doubleHand`, `db/standings`, `db/byeWinner` and `refusedHand` (Treseta only), `helpers/handEntry.ts` | same names | Tests of Treseta's rules (`tableOverview`: Treseta's hands, 41 and Custom's 0–99; the `db/` tests play custom hands to 41 and a bye worth `2 × BYE_MATCH_POINTS`; `byeWinner`: a league night's and a Kolo's bye give each match to the real team as its `winner_side`, and the migration `20261115140000_bye_winner_side` gives it to the byes written before; `roundClose` has no tournament table of one match; `tableLock` and `db/unlock` a Nedolazak of `NO_SHOW_SCORE` and a resumed match with a zvanje and a custom hand; `db/doubleHand` Treseta's hands through `createResult`; `db/standings` Bela's two nights with each match one custom hand to 41) |
 
 ### Shared files with a small edit
 
@@ -169,7 +162,6 @@ custom hand at such a table). The admin's screens keep Ručni unos (Custom) for 
 | `_store/ongoingMatchStore.ts` | The hands field is `results` (Bela: `belaResults`) |
 | `_lib/service/admin/recalc.ts` | `RATINGS_FROM` = 1 Aug 2025, so the whole Treseta history is rated (Bela: 7 Oct 2025) |
 | `_lib/rating/glicko2.ts` | One comment: "for teams of two" (Bela: "for Bela teams of two") |
-| `ongoing-match/ui/BoardParts.tsx` | `ScorePanel`'s `onPick` button presses to `tint.navy[4]` (Bela: a raw `rgba(14,27,51,.05)`, which the tokens test refuses); back to Bela's once Bela uses a token |
 | `public/static/kalkulator-turnira-bc05b74508.html` (root) | Kalkulator turnirskih formata: its two texts say a Kolo is one match "do 41" (Bela: "do 1001") |
 | `next.config.mjs` (root) | Redirects the old `/match/:id` to `/` |
 | `package.json`, `package-lock.json` (root) | The name `treseta-tournament-app`, and `build` runs `node scripts/previewAdmin.js` after the migrations; without Bela's `seed:e2e` and `seed:verify` (Not copied). On a lock file conflict, take Bela's lock file and put the two names back |
@@ -275,7 +267,10 @@ The database part (the `Conference` table and `LeagueTeam.conference_id`) is und
   `_store/guestSheetStore.ts` or "Sjedni za stol." sheet. A later Bela change to them is dropped; a change to a shared
   file that only follows from them is left out too: `requireUser` on `api/leagues/route.ts`,
   `api/leagues/[id]/standings/route.ts` and `api/leagues/[id]/daily-standings/route.ts`; Početna's guest branch
-  (`page.tsx`); the guest's return path `?next=` (`authHref` in `_lib/publicPaths.ts`, `login/page.tsx`, and
+  (`page.tsx`); the page gate's open paths (`isOpenPath` in `_lib/pageGate.ts`: Početna needs a login, the season
+  table of any league is open; `_lib/__tests__/pageGate.test.ts` and `session.test.ts` follow them); the guest's
+  return path `?next=` (`loginUrl` in `_lib/pageGate.ts` sets it only for a Burza form; `authHref` in
+  `_lib/publicPaths.ts`, `login/page.tsx`, and
   `signup/page.tsx`, whose Registracija s Googleom came over going back to `/login` and Google to `/`); `seasonGlance`
   in `_lib/nights.ts` and its test in `_lib/__tests__/nightTimes.test.ts`; `shadow.playingCard` in
   `_styles/tokens.ts`; and Burza's "Prijavi se da vidiš broj" (`burza/[id]/page.tsx`), which goes to `/login` where
@@ -465,3 +460,4 @@ The nightly sync adds a row when it brings something over or stops.
 | 11 Nov 2026 | `a0686e1..88425c3` (merged) | The four commits the 8 Nov run left on `bela-sync` were rebased onto the tournaments and merged into `master`. Five conflicts, each resolved by keeping both sides: the no-winner warning keeps the organizer's `refuseUnlessMyHand` and takes Bela's `allow_no_winner`, Vidljivost slike keeps the `team.moderate` guard, and the sync state took `88425c3`. The Organizator question the run parked is answered: the tournaments brought the whole role→capability foundation on 10 Nov. Unit tests (552), `tsc`, ESLint and `next build` pass; the `db/` tests were not run, since the repo's generated Prisma client belongs to the `zvanja` branch being built in parallel |
 | 12 Nov 2026 | `88425c3..e7f0047` (42) | 25 came over (13 adapted by hand), 17 skipped. Of `88425c3..d2a0b98` (copied by hand on 10 Nov) only what the copy missed: the team routes' `requireCan`, the public username (#88), Otključaj partiju on Treseta's hands, the 16 px phone fields, the install sheet's week, Burza's number for logged-in players (Prijava instead of the guest sheet), the same hand from two phones (on Treseta's hand entry); 13 skipped as already here (or empty, `6040549`), and `d2a0b98` (`CHANGELOG.md`). After it: Google not linking a password account, the night after midnight, the Kalkulator ("do 41"), the tournament card for non-players, Sakrij broj prijava (migration `20261111180000_hide_entries`), Broj kola po večeri (migration `20261112120000_night_rounds`, without bans), Novo kolo after published rounds; the scorepad card tap only as `ScorePanel`'s prop (Bela's caller). Skipped: `reports/` (2), `CHANGELOG.md` (`fc74fd9`). Migrations tested on a fresh local database only |
 | 13 Nov 2026 | `e7f0047..b3443b9` (1) | Came over adapted: the double-tap guard on Upiši igru only (the team cards stay without `onPick`, no Tko je zvao); `CHANGELOG.md` not copied; no migration |
+| 17 Nov 2026 | `b3443b9..0d48380` (6) | Bela's history was rewritten: `b3443b9` is now `d246ff91` (same subject and date). 4 came over, 2 skipped (`CHANGELOG.md`). Adapted: the page gate (`_lib/pageGate.ts`) with Treseta's open paths and `?next=` only for Burza; `db/standings.test.ts` on Treseta's matches to 41; `10f5167` only two open paths in `pageGate.test.ts` (here since `8eb3b56`); `0d48380` moves `mainTournament` to `_lib/tournaments.ts`. `BoardParts.tsx` is Bela's again. No migration |
