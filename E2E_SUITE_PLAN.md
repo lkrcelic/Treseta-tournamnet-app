@@ -37,7 +37,7 @@ Belu) ili Tresetin.
 | **S−1 Generator** (ja) | Tresetin `e2e/seed/`, `seed:e2e`, `seed:verify` | ~~`seed:verify` zelen~~ (15.11.: 17 pravila, jedno je poznat bug aplikacije, dolje) |
 | **S0 Baza** (ja) | Belina baza s Tresetinim portovima, bazama, tajnama i install sheetom; briefovi (i K, L) | ~~smoke zelen `--repeat-each=5`~~ (15.11.: 15/15); `tsc -p e2e` čist |
 | **S1 Pilot C1** (1 agent) | ligaška večer s Tresetinim upisom igre; `helpers/scorepad.ts` | ~~C1 zelen `--repeat-each=5`~~ (15.11.: 30/30, spojen) |
-| **S2 Ostali** (12 agenata, u dva vala) | val 1: C2–C5, K, L (Tresetini briefovi); val 2: A, B, C6–C9, od Belinih predanih sekcija | svaka sekcija zelena `--repeat-each=5`, izvještaj predan (16.11.: val 1 spojen; C6, C8, C9 spojeni; A, B, C7 čekaju Belu) |
+| **S2 Ostali** (12 agenata, u dva vala) | val 1: C2–C5, K, L (Tresetini briefovi); val 2: A, B, C6–C9, od Belinih predanih sekcija | svaka sekcija zelena `--repeat-each=5`, izvještaj predan (16.11.: val 1 spojen; C6, C8, C9 spojeni. 18.11.: A, B, C7 spojeni; svih 13 sekcija je u `e2e-suite`) |
 | **S3 Spajanje** (ja) | spojim grane, `FLOWS.md`, issuei za nađene bugove, cijeli suite `--repeat-each=5` | suite zelen (osim `test.fail` s issueom) |
 | **S4 Master** | merge `e2e-suite` → `master`; noćni run (`rutine/treseta-e2e-nightly.md`) ga počne vrtjeti | na masteru |
 
@@ -64,6 +64,15 @@ Bugovi aplikacije (testovi su `test.fail` s `// BUG:` dok popravak ne stigne):
 | Nakon što admin vrati meč u igru, njegov mobitel ne pita "s ovim dosta" na 41 : 41 (`reopenMatch` kopira igre s novim id-jevima, a TablePhone traži stari) | C5 | Tresetin (`467ea599`) | Treseta #1, popravljeno na masteru (`ea1458ba`, 16.11.) |
 | Spremi odbijen jer je vrijeme isteklo ostavlja mobitel na koraku Igra; u Beli vraća na stol, koji je prešao na Meč 2 (Belin DECISIONS #83) | C4 | Tresetin (`ScorePage`, `handFlow`; port `a0686e1` bez provjere `matchClosed`) | Treseta #2, popravljeno na masteru (`15efc6a7`, 16.11.) |
 | Rate limiter: prozor se pomiče sa svakim zahtjevom, pa se nikad ne isprazni | fixtures (svaki kontekst svoj `X-Forwarded-For`) | zajednički | komentar na Belin issue #4 |
+| Organizatorov ispravak igre na tuđem stolu dobije 400 umjesto 403: `PUT /api/admin/hands/[kind]/[resultId]` čita tijelo prije `refuseUnlessMyHand` (Bela provjerava prvo od `28d19f2`; Tresetin redoslijed iz `543f6e46`, sync ga ne mijenja) | B | Tresetin | issue još nije otvoren |
+| Organizator: Početna na mobitelu su igračeve, ne njegovi Turniri | A, C7 | zajednički | Belin `52ef6b3`, već na `bela-sync` |
+| Organizator: Nova ekipa, preimenovanje, dodaj i makni igrača traže ulogu admina | B | zajednički | Belin `28d19f2`, već na `bela-sync` |
+| Organizator: Tko igra na stolu svog turnira odbija ga | B, C7 | zajednički | Bela #83, `f0a8b44`, još nije na `bela-sync` |
+| Organizator: Makni ekipu na svom turniru | B, C7 | zajednički | Bela #84 |
+| Organizator na tuđem stolu: „Provjeri vezu” umjesto „Ovo nije tvoj turnir.” | A, C7 | zajednički | Bela #86 |
+| Na računalu se Nova liga, Novi turnir, Upravljanje ligom i njegovi Podaci (s Tresetinim Konferencijama) otvore igraču i organizatoru | A, C7 | zajednički (kartica Konferencije Tresetina) | Bela #87 |
+| Tko nije za stolom dobije njegovu ploču i svaki korak Upiši igru; tek Spremi odbija | A | zajednički | Bela #88 |
+| Organizator vidi Obriši turnir (poslužitelj odbija), a na stranici igrača nema Mobitel | C7 | zajednički | Belin `8db335f` (DECISIONS #99), još nije na `bela-sync` |
 
 Pitanje iz C5 (adminov mobitel ne može dopisati igru završenom meču, iako upozorenje "Meč ostaje bez pobjednika?" to
 predlaže): **odluka 16.11.: mobitel dopisuje kao računalo.** Napravljeno na masteru (`6333400c`, 16.11.), test u
@@ -74,7 +83,10 @@ Suite i generator (S3):
   sprema korisnika kao Prijava (16.11.).
 - ~~Generatorov nedolazak u Kolu 2 turnira uživo odgovori se u 12. minuti, pa svijet ima preskočen stol~~: odgovori se u
   7. minuti, a kolo se zatim pomakne na 12 (16.11.).
-- `/api/cron/tick` zatvara svaki istekli meč u bazi; `c4.ts` ga zove samo za svoj stol, ostali neka rade isto.
+- `/api/cron/tick` zatvara svaki istekli meč u bazi; `c4.ts` ga zove samo za svoj stol, ostali neka rade isto (C7-ov
+  `tableOutFor` vrti sat samo svog turnira).
+- A traži scenarij: liga s konferencijama i večer na dva mjesta s ekipama u Podjeli (sad A vidi samo prazna stanja
+  konferencija, Podjele i filtara Dnevnog poretka).
 
 ## 6. Rizici
 
