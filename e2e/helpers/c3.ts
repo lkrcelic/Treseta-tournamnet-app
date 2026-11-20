@@ -40,6 +40,9 @@ export const clock = (d: Date) => new Intl.DateTimeFormat("hr-HR", {timeZone: "E
 
 export const plusMinutes = (d: Date, minutes: number) => new Date(d.getTime() + minutes * 60_000);
 
+// "2026-11-29": the Zagreb calendar day `days` after today (a tournament's date)
+export const dayAfter = (days: number) => new Date(Date.parse(`${zagrebDay()}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
+
 // The same day a month later, as stored (UTC midnight), or that month's last day when it is shorter (31 January → 28
 // February): how long a Kolo 1 no-show's sign-up ban lasts
 export function monthAfter(day: string): Date {
@@ -135,10 +138,14 @@ export type TournamentOptions = {
   match_end?: MatchEnd;
   max_teams?: number | null;
   auto_publish?: boolean;
+  // a place from Lokacije (world.places)
+  location_id?: number | null;
+  // Sakrij broj prijava (Bela's DECISIONS #93)
+  hide_entries?: boolean;
 };
 
 // Novi turnir as the admin's form sends it: today, no Okupljanje and no start time (so no Tu smo: every team signed up
-// plays), with zvanja, to 41
+// plays), no place, with zvanja, to 41, the count of sign-ups shown. `admin`: whoever makes it (the organizer too)
 export async function createTournament(admin: APIRequestContext, o: TournamentOptions): Promise<number> {
   const res = await admin.post("/api/admin/tournaments", {
     data: {
@@ -146,7 +153,7 @@ export async function createTournament(admin: APIRequestContext, o: TournamentOp
       date: o.date ?? zagrebDay(),
       gathering_time: o.gathering_time ?? null,
       start_time: o.start_time ?? null,
-      location_id: null,
+      location_id: o.location_id ?? null,
       rounds: o.rounds ?? 3,
       matches_per_round: o.matches_per_round ?? 1,
       declarations: true,
@@ -159,6 +166,7 @@ export async function createTournament(admin: APIRequestContext, o: TournamentOp
       game_minutes: GAME_MINUTES_DEFAULT,
       auto_publish: o.auto_publish ?? false,
       open_signups: false,
+      hide_entries: o.hide_entries ?? false,
       organizer_phone: "+385 91 000 0001",
     },
   });
