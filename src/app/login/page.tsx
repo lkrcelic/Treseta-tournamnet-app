@@ -68,7 +68,7 @@ export default function LogIn() {
         <LogInForm onSuccess={onSuccess} onSubmit={clearError} soft />
       </Card>
       <Box sx={{mt: "auto", display: "flex", justifyContent: "center"}}>{signupLink}</Box>
-      <InstallSheet />
+      <InstallSheet ignoreSnooze />
     </AuthFrame>
   );
 }

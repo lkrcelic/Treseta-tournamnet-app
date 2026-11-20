@@ -14,6 +14,8 @@
 /e2e/seed/out/
 # the suite's per-section servers, manifests, reports and traces (e2e/local/app.sh)
 /e2e/local/run/
+# e2e/run.sh's report of the whole suite (run.log, html/, results/)
+/e2e/report/
 
 # next.js
 .next

@@ -14,8 +14,8 @@
 // /api/tournaments/[id] and its /results on the tournament read, here the finished ones, where nothing is due any more.
 // A new route is one row; the last test fails until it has one.
 //
-// Bela's section B (Bela f6c8af3) on Treseta's routes: a hand is /api/ongoing-result, there is no Otključaj partiju,
-// and the routes Bela's f6c8af3 didn't have get rows of their own: conferences (Treseta's only), Lokacije and Podjela
+// Bela's section B (Bela f6c8af3) on Treseta's routes: a hand is /api/ongoing-result (Otključaj partiju came with the
+// sync of 17 Nov 2026, and its row is Bela's), and the routes Bela's f6c8af3 didn't have get rows of their own: conferences (Treseta's only), Lokacije and Podjela
 // (Treseta's, which Bela took over in c80fbb5 after f6c8af3). The season table is public here
 // (BELA_SYNC: Gost i poziv isn't copied). A role the app answers wrongly gets a test of its own, test.fail() with its
 // `bug` line: Bela's issue or the Bela commit that brings the fix with the sync, or a bug of Treseta's own.
@@ -55,9 +55,6 @@ const hand = (matchId: number) => ({match_id: matchId, team1_game_points: 6, tea
 // the same hand as the admin's scorepad sends it (AdminHandValidation)
 const ADMIN_HAND = {custom: false, points1: 6, points2: HAND_POINTS - 6};
 
-// Treseta's team routes before Bela's Organizator commit (28d19f2, on bela-sync) comes with the sync
-const TEAMS_BUG = "Bela 28d19f2, comes with the sync: ";
-
 // The organizer's two finished tournaments' worth of rows for a route of one tournament: on the admin's the
 // organizer is refused by ownership, on their own they get what the admin gets
 function ownership(base: Omit<Row, "note" | "params" | "as">, params: (t: Ids["adminTournament"]) => Record<string, string | number>): Row[] {
@@ -81,10 +78,8 @@ const ROWS: Row[] = [
   {method: "DELETE", route: "/api/admin/bans/[id]", note: "a ban already lifted", params: (i) => ({id: i.liftedBan}), guard: "admin", allowed: status(204)},
 
   // ---------- the scorepad: the admin on a league night, the organizer on their own tournament ----------
-  // BUG: Treseta's PUT parses the hand before refuseUnlessMyHand (its tournament port 543f6e46), so the organizer's
-  // malformed hand at a table that isn't theirs is a 400 instead of the refusal. Bela checks whose table it is first
-  // (Bela 28d19f2), but the sync won't bring it: bela-sync has Treseta's order too. The two rows after these show the
-  // refusal with a hand that parses.
+  // whose table it is comes before the hand is read (Bela 28d19f2; Treseta's order since 8c883c9b): a malformed hand at a
+  // table that isn't the organizer's is refused, not a 400
   {
     method: "PUT",
     route: "/api/admin/hands/[kind]/[resultId]",
@@ -94,7 +89,6 @@ const ROWS: Row[] = [
     guard: MANAGE,
     allowed: status(400),
     as: {organizer: DENIED},
-    bug: {role: "organizer", text: "the hand is parsed before refuseUnlessMyHand (Treseta 543f6e46; Bela 28d19f2 refuses first), so the organizer's malformed hand at a league table is 400 Igra nije spremljena., not 403"},
   },
   {
     method: "PUT",
@@ -105,7 +99,6 @@ const ROWS: Row[] = [
     guard: MANAGE,
     allowed: status(400),
     as: {organizer: NOT_MINE},
-    bug: {role: "organizer", text: "the hand is parsed before refuseUnlessMyHand (Treseta 543f6e46; Bela 28d19f2 refuses first), so the organizer's malformed hand on the admin's tournament is 400 Igra nije spremljena., not 403 Ovo nije tvoj turnir."},
   },
   {method: "PUT", route: "/api/admin/hands/[kind]/[resultId]", note: "the organizer's own tournament", params: (i) => ({kind: "finished", resultId: i.ownTournament.hand}), body: INVALID, guard: MANAGE, allowed: status(400)},
   // a hand that parses reaches the ownership check on Treseta too: refused to the organizer at a table that isn't
@@ -139,6 +132,11 @@ const ROWS: Row[] = [
   ),
   ...scorepad(
     {method: "POST", route: "/api/admin/tables/[roundId]/hands", body: INVALID, guard: MANAGE, allowed: status(400)},
+    (i) => ({roundId: i.playerTable.round}),
+    (t) => ({roundId: t.table})
+  ),
+  ...scorepad(
+    {method: "PATCH", route: "/api/admin/tables/[roundId]/unlock", body: INVALID, guard: MANAGE, allowed: status(400)},
     (i) => ({roundId: i.playerTable.round}),
     (t) => ({roundId: t.table})
   ),
@@ -327,22 +325,20 @@ const ROWS: Row[] = [
   {method: "DELETE", route: "/api/tournaments/[id]/registrations/[teamId]", note: "someone else's team", params: (i) => ({id: i.openTournament.id, teamId: i.openTournament.team}), guard: "user", allowed: refused(400, "Možeš odjaviti samo ekipu u kojoj igraš."), as: {admin: SKIP}},
 
   // ---------- teams: Nova ekipa and its players for the admin and the organizer (team.create, team.edit) ----------
-  // BUG (Bela 28d19f2): the map gives the organizer team.create and team.edit, but Treseta's team routes still ask the
-  // ADMIN role (requireAdmin, isAdminRole), as before the organizer came: Bela's Organizator commit turns them into
-  // requireCan and comes with the sync (on bela-sync). The organizer's test of each such row is test.fail().
+  // the organizer has team.create and team.edit (Bela's 28d19f2, on master since the sync of 17 Nov 2026)
   {method: "GET", route: "/api/teams", guard: "user", allowed: status(200)},
-  {method: "POST", route: "/api/teams", body: INVALID, guard: {can: "team.create"}, allowed: status(400), bug: {role: "organizer", text: `${TEAMS_BUG}Nova ekipa is requireAdmin, so the organizer (team.create) gets 403 Nemaš ovlasti za ovu radnju.`}},
+  {method: "POST", route: "/api/teams", body: INVALID, guard: {can: "team.create"}, allowed: status(400)},
   {method: "GET", route: "/api/teams/[id]", params: (i) => ({id: i.playerTeam.id}), guard: "user", allowed: status(200)},
   {method: "PATCH", route: "/api/teams/[id]", params: (i) => ({id: i.playerTeam.id}), body: INVALID, guard: "user", allowed: status(400)},
   // renaming is team.edit (to the name it has: nothing changes)
-  {method: "PATCH", route: "/api/teams/[id]", note: "rename to its own name", params: (i) => ({id: i.playerTeam.id}), body: (i: Ids) => ({team_name: i.playerTeam.name}), guard: "user", allowed: status(200), as: {player: refused(403, "Ime ekipe mijenja admin.")}, keep: keepTeam((i) => i.playerTeam.id), bug: {role: "organizer", text: `${TEAMS_BUG}renaming asks the ADMIN role, so the organizer (team.edit) gets 403 Ime ekipe mijenja admin.`}},
+  {method: "PATCH", route: "/api/teams/[id]", note: "rename to its own name", params: (i) => ({id: i.playerTeam.id}), body: (i: Ids) => ({team_name: i.playerTeam.name}), guard: "user", allowed: status(200), as: {player: refused(403, "Ime ekipe mijenja admin.")}, keep: keepTeam((i) => i.playerTeam.id)},
   // Zabrani novu sliku is team.moderate, the admin's alone (to what it is: nothing changes)
   {method: "PATCH", route: "/api/teams/[id]", note: "Zabrani novu sliku", params: (i) => ({id: i.playerTeam.id}), body: {photo_blocked: false}, guard: "user", allowed: refused(403, "Samo admin može zabraniti sliku."), as: {admin: status(200)}, keep: keepTeam((i) => i.playerTeam.id)},
   // who sees the photo is the team's players' choice, not the admin's (to what it is: nothing changes)
   {method: "PATCH", route: "/api/teams/[id]", note: "who sees the photo", params: (i) => ({id: i.playerTeam.id}), body: {photo_visibility: "ALL"}, guard: "user", allowed: refused(403, "Tko vidi sliku ekipe biraju njezini igrači."), as: {player: status(200)}, keep: keepTeam((i) => i.playerTeam.id)},
   {method: "DELETE", route: "/api/teams/[id]", note: "a team that has played", params: (i) => ({id: i.playerTeam.id}), guard: "admin", allowed: status(400)},
   {method: "GET", route: "/api/teams/[id]/overview", params: (i) => ({id: i.playerTeam.id}), guard: "user", allowed: status(200)},
-  {method: "POST", route: "/api/teams/[id]/players", params: (i) => ({id: i.playerTeam.id}), body: INVALID, guard: {can: "team.edit"}, allowed: status(400), bug: {role: "organizer", text: `${TEAMS_BUG}Dodaj igrača is requireAdmin, so the organizer (team.edit) gets 403 Nemaš ovlasti za ovu radnju.`}},
+  {method: "POST", route: "/api/teams/[id]/players", params: (i) => ({id: i.playerTeam.id}), body: INVALID, guard: {can: "team.edit"}, allowed: status(400)},
   {
     method: "DELETE",
     route: "/api/teams/[id]/players/[playerId]",
@@ -350,7 +346,6 @@ const ROWS: Row[] = [
     params: (i) => ({id: i.playerTeam.id, playerId: NONE}),
     guard: {can: "team.edit"},
     allowed: refused(404, "Igrač nije u ovoj ekipi."),
-    bug: {role: "organizer", text: `${TEAMS_BUG}Makni igrača is requireAdmin, so the organizer (team.edit) gets 403 Nemaš ovlasti za ovu radnju.`},
   },
   {method: "GET", route: "/api/teams/[id]/photo", params: (i) => ({id: i.teamPhotoForAll}), guard: "user", allowed: status(200)},
   // a team's photo is set by its players alone, the admin included

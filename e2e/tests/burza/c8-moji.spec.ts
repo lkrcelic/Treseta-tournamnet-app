@@ -8,7 +8,7 @@
 // Bela's spec: e2e/tests/burza/c8-moji.spec.ts (ba24386).
 import type {Page} from "@playwright/test";
 import {expect, test} from "../../helpers/c8";
-import {addDays, AFTER_MIDNIGHT_BUG, afterMidnight, dayMonth, escape, insertAd, isoDay, nightLabel, zagrebDay} from "../../helpers/c8";
+import {addDays, dayMonth, escape, insertAd, isoDay, nightLabel, zagrebDay} from "../../helpers/c8";
 
 const hours = (n: number) => new Date(Date.now() - n * 3_600_000);
 // the ads a tab panel lists, by their links
@@ -124,7 +124,6 @@ test("Burza's tabs list the open ads of their kind, never an expired or closed o
   world,
   healthy,
 }) => {
-  test.fail(afterMidnight(), AFTER_MIDNIGHT_BUG);
   const seeded = Object.values(world.ads);
   expect([world.ads.substituteExpired.open, world.ads.partnerExpired.open]).toEqual([false, false]);
   const rows = await db.marketPost.findMany({where: {id: {in: seeded.map((a) => a.id)}}, include: {team: true, player: true}});

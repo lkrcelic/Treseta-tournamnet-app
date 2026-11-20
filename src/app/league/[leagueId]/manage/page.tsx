@@ -48,7 +48,7 @@ import DatesView, {gatheringDefaults} from "./DatesView";
 import RoundsView from "./RoundsView";
 import useLeagueRounds from "@/app/_hooks/useLeagueRounds";
 import DraftView from "./DraftView";
-import {draftNight, DraftNightTab} from "@/app/_lib/ui/adminTonight";
+import {draftNight, nightRounds, publishedTonight, DraftNightTab} from "@/app/_lib/ui/adminTonight";
 import {isIsoDate, nextNightIndex} from "@/app/_lib/nights";
 import useNightSplit from "@/app/_hooks/useNightSplit";
 import SplitDesktop from "@/app/_ui/league/split/SplitDesktop";
@@ -156,6 +156,8 @@ function ManageLeagueDesktop() {
   const draftPlaces = draft ? placesAt(draft.date) : null;
   // tonight's rounds still in Skica (at the place picked): Novo kolo creates new ones once they are published or discarded
   const tonightDraft = draftNight((leagueRounds.rounds ?? []).filter((r) => r.date === tonight), tonight, tonightPlaces ? place : null);
+  // tonight's Kola already published (at the place picked): the new ones go on after them, one at a time by default
+  const tonightPublished = publishedTonight(leagueRounds.rounds, tonight, tonightPlaces ? place : null);
   // the place picker's places: how many teams each has (Podjela) and how its Kola go
   const placeOptions = (date: string, places: NonNullable<ReturnType<typeof placesAt>>): PlaceOption[] =>
     SLOTS.map((slot) => {
@@ -479,8 +481,10 @@ function ManageLeagueDesktop() {
             setShownNight(date);
             setView("draft");
           }}
-          defaultRounds={leagues.find((l) => l.id === leagueId)?.roundsPerNight}
+          // tonight's Broj kola (Datumi), else the league's Kola po večeri
+          defaultRounds={nightRounds(leagueNights.nights, tonight, leagues.find((l) => l.id === leagueId)?.roundsPerNight)}
           defaultSmokingTables={leagues.find((l) => l.id === leagueId)?.smokingTables}
+          published={tonightPublished}
           waiting={
             tonightDraft && tonightDraft.waiting > 0
               ? {

@@ -210,7 +210,7 @@ export function PlayersDirectoryPhone() {
                 href: `/players/${p.id}`,
                 name: p.name,
                 src: p.photo_url,
-                sub: [teams || `@${p.username}`, sort === "newest" ? joinedLabel(p) : p.rating != null ? `rejting ${p.rating}` : null].filter(Boolean).join(" · "),
+                sub: [teams || (p.username ? `@${p.username}` : ""), sort === "newest" ? joinedLabel(p) : p.rating != null ? `rejting ${p.rating}` : null].filter(Boolean).join(" · "),
                 tag: !p.active ? ("inactive" as const) : p.admin ? ("admin" as const) : undefined,
               };
             })

@@ -18,8 +18,10 @@ export const NIGHT_ENDS_AT_HOUR = 6;
 
 // The league night (YYYY-MM-DD, league time) a moment belongs to: before 06:00 it is still the night before. The night
 // tonight's rounds are on: new rounds are created on it, and Novo kolo, Skica, Večer lige, Dnevni poredak's "večeras"
-// and the live dot follow it, so a night that runs past midnight stays one night. A plain calendar day (a birth date,
-// Burza, Raspored, Datumi) is leagueDateString.
+// and the live dot follow it, so a night that runs past midnight stays one night. The player's screens of the night
+// being played follow it too, so at 02:00 tonight is still "Večeras" and not "Odigrano": Raspored, Početna's Sljedeća
+// večer card and Burza's nights and ad expiry (#19). A plain calendar day (a birth date, the admin's Datumi, a
+// tournament's date) is leagueDateString.
 export function leagueNightString(moment: Date = new Date()): string {
   return leagueDateString(new Date(moment.getTime() - NIGHT_ENDS_AT_HOUR * 60 * 60 * 1000));
 }

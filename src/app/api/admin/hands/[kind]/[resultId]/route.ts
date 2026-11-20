@@ -18,8 +18,8 @@ export async function PUT(request: NextRequest, {params}: Params) {
   if (auth.response) return auth.response;
   try {
     const kind = HandKindValidation.parse(params.kind);
-    const hand = AdminHandValidation.parse(await request.json());
     await refuseUnlessMyHand(kind, Number(params.resultId), auth.user);
+    const hand = AdminHandValidation.parse(await request.json());
     await updateHand(kind, Number(params.resultId), hand, allowNoWinner(request));
     return NextResponse.json({ok: true}, {status: STATUS.OK});
   } catch (error) {

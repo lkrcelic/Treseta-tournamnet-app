@@ -5,7 +5,10 @@ import {Adapter} from "@auth/core/adapters";
 import Google from "next-auth/providers/google";
 import {googleSessionCookieOptions, SESSION_MAX_AGE_SECONDS} from "@/app/_lib/sessionConfig";
 import {anyCase} from "@/app/_lib/helpers/query/anyCase";
-import {ACCOUNT_DEACTIVATED_CODE} from "@/app/_interfaces/login";
+import {ACCOUNT_DEACTIVATED_CODE, PASSWORD_ACCOUNT_CODE} from "@/app/_interfaces/login";
+import {GoogleLinkDecision, googleLinkDecision} from "@/app/_lib/auth/googleLink";
+import {extractCookieWithoutSignature} from "@/app/_lib/service/auth/signCookie";
+import {cookies} from "next/headers";
 
 // Usernames are unique, so "ivan" from ivan@gmail.com becomes "ivan2" when "ivan" is already taken
 async function availableUsername(base: string): Promise<string> {
@@ -102,12 +105,16 @@ function CustomPrismaAdapter() {
       // Add missing methods from the standard adapter with ID conversion
       linkAccount: async (data) => {
         // Convert the userId from string to number
+        const userId = parseInt(data.userId, 10);
         await prisma.account.create({
           data: {
             ...data,
-            userId: parseInt(data.userId, 10),
+            userId,
           },
         });
+        // Google reports the email it has verified, so from this link on the row's email is a confirmed one (the email
+        // typed at a password sign-up never is: _lib/auth/googleLink.ts)
+        await prisma.player.updateMany({where: {id: userId, emailVerified: null}, data: {emailVerified: new Date()}});
         // Return void as expected by NextAuth
       },
   
@@ -155,21 +162,53 @@ function CustomPrismaAdapter() {
   
   const customAdapter = CustomPrismaAdapter();
 
-// Whether the player this Google login opens may log in: the one linked to this Google account, else the one NextAuth
-// links by email (ignoring case, the oldest first, as getUserByEmail). A new email makes a new player, which may.
-// A deleted player's email was replaced and their Google link removed, so their Google login starts a new account.
+// The player logged in with a password in this browser, if any. The signIn callback runs inside the NextAuth route
+// handler, so the request's own cookies are readable there; a Google login started outside a request (or a cookie that
+// no longer belongs to a session) is no proof, so it answers null and nothing is linked.
+// The session row is read straight from the database, not through `lucia`: this file is also imported by the
+// middleware, which runs on the edge, and the Lucia instance reaches into the Prisma client as it is built.
+async function passwordSessionPlayerId(): Promise<number | null> {
+  try {
+    const signed = cookies().get(process.env.AUTH_COOKIE);
+    if (!signed?.value) return null;
+    const sessionId = extractCookieWithoutSignature(signed)?.value;
+    if (!sessionId) return null;
+    const session = await prisma.luciaSession.findUnique({where: {id: sessionId}, select: {userId: true, expiresAt: true}});
+    if (!session || session.expiresAt <= new Date()) return null;
+    return session.userId;
+  } catch {
+    return null;
+  }
+}
+
+// What this Google login may do: open the player linked to this Google account, else the one NextAuth links by email
+// (ignoring case, the oldest first, as getUserByEmail) — see _lib/auth/googleLink.ts for which links are made.
 // A database error is thrown: NextAuth turns it into AccessDenied, which Prijava shows as a failed Google login.
-async function googleLoginAllowed(account: {provider: string; providerAccountId: string} | null, email: string | null | undefined) {
+async function googleLoginDecision(
+  account: {provider: string; providerAccountId: string} | null,
+  email: string | null | undefined,
+): Promise<GoogleLinkDecision> {
   const linked = account
     ? await prisma.account.findUnique({
         where: {provider_providerAccountId: {provider: account.provider, providerAccountId: account.providerAccountId}},
         select: {user: {select: {active: true}}},
       })
     : null;
-  const player =
-    linked?.user ??
-    (email ? await prisma.player.findFirst({where: {email: anyCase(email)}, orderBy: {id: "asc"}, select: {active: true}}) : null);
-  return player?.active !== false;
+  const byEmail =
+    !linked?.user && email
+      ? await prisma.player.findFirst({
+          where: {email: anyCase(email)},
+          orderBy: {id: "asc"},
+          select: {id: true, active: true, password_hash: true},
+        })
+      : null;
+  const needsProof = !linked?.user && byEmail?.active === true && byEmail.password_hash !== "";
+  return googleLinkDecision({
+    linked: linked?.user ?? null,
+    byEmail: byEmail ? {id: byEmail.id, active: byEmail.active, hasPassword: byEmail.password_hash !== ""} : null,
+    // only read when it can decide anything, so an ordinary Google login costs no extra query
+    sessionPlayerId: needsProof ? await passwordSessionPlayerId() : null,
+  });
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -179,7 +218,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     // A player who signed up with a password and later uses Google with the same email gets into the same account
     // instead of an "account not linked" error. Google verifies its emails; the email given at a password sign-up
-    // is not verified (see BACKEND_REVIEW.md, G).
+    // is not verified (see BACKEND_REVIEW.md, G), so the signIn callback below decides which of those links is made
+    // (_lib/auth/googleLink.ts) — NextAuth on its own would link by email alone.
     allowDangerousEmailAccountLinking: true,
   })],
   session: {
@@ -193,10 +233,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
   },
   callbacks: {
-    // a deactivated player can't log in with Google either: back to Prijava with its own code (not AccessDenied, which
-    // NextAuth also gives for any error in this callback), which shows "Račun je deaktiviran…"
-    signIn: async ({account, user}) =>
-      (await googleLoginAllowed(account, user.email)) || `/login?error=${ACCOUNT_DEACTIVATED_CODE}`,
+    // a deactivated player can't log in with Google either, and neither does a Google email that belongs to a password
+    // account nobody has logged into here: back to Prijava with the app's own code (not AccessDenied, which NextAuth
+    // also gives for any error in this callback), which shows "Račun je deaktiviran…" / "Prijavi se lozinkom…"
+    signIn: async ({account, user}) => {
+      const decision = await googleLoginDecision(account, user.email);
+      if (decision === "allow") return true;
+      return `/login?error=${decision === "deactivated" ? ACCOUNT_DEACTIVATED_CODE : PASSWORD_ACCOUNT_CODE}`;
+    },
   },
   // failed or refused Google logins come back to the app's own login page with ?error= (not NextAuth's pages)
   pages: {signIn: "/login", error: "/login"},

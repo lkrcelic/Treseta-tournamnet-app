@@ -4,7 +4,8 @@ import {LeagueCreateRequestValidation, MAX_NIGHTS_ERROR} from "../../_interfaces
 import {NETWORK_ERROR, networkError} from "../../_fetchers/errorMessage";
 import {zodMessage} from "../validation/zodMessage";
 import {z} from "zod";
-import {lookupErrorResponse} from "../apiErrors";
+import {errorResponse, lookupErrorResponse} from "../apiErrors";
+import {FORBIDDEN, ForbiddenError} from "../auth/forbidden";
 
 test("an API's zod error message is ours (Croatian) or the route's fallback, never zod's English", () => {
   const fallback = "Liga nije napravljena.";
@@ -51,4 +52,16 @@ test("a GET of one row (e.g. GET /api/teams/[id]) answers a server fault with a 
     assert.deepEqual(await response.json(), {error: fallback});
   }
   assert.equal(logged.mock.callCount(), 2);
+});
+
+test("a refusal is a 403 with its reason, not a logged 500 (DECISIONS #86)", async () => {
+  const forbidden = errorResponse(new ForbiddenError("Ovo nije tvoj turnir."), "Promjene nisu spremljene.");
+  assert.equal(forbidden.status, 403);
+  assert.deepEqual(await forbidden.json(), {error: "Ovo nije tvoj turnir."});
+  // the default wording, for a refusal with nothing more to say
+  assert.deepEqual(await errorResponse(new ForbiddenError(), "x").json(), {error: FORBIDDEN});
+  // a GET of one row too
+  assert.equal(lookupErrorResponse(new ForbiddenError(), "x").status, 403);
+  // anything else is still the server's fault: a 500 with the route's fallback
+  assert.equal(errorResponse(new Error("boom"), "Promjene nisu spremljene.").status, 500);
 });

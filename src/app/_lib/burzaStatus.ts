@@ -130,3 +130,25 @@ export function twinFields(ad: TwinAd): Partial<TwinAd> & {kind: BurzaKind} {
   if (ad.kind === "PARTNER") return {kind: ad.kind, league_id: ad.league_id};
   return {kind: ad.kind};
 }
+
+// Who sees an ad's phone number. The ads themselves are public (#29, #75), the numbers are not: without a login
+// nobody gets a number, so `GET /api/burza` can't be read for every player's number at once. Its author always sees
+// it, anyone else only while the ad is up.
+export type PhoneViewer = {
+  signedIn: boolean; // somebody is logged in
+  mine: boolean; // the viewer is the ad's author
+  closed: boolean; // the ad is closed, its night has passed or its league has ended
+};
+
+export function phoneForViewer(phone: string | null, who: PhoneViewer): string | null {
+  if (phone == null) return null;
+  if (who.mine) return phone;
+  if (!who.signedIn || who.closed) return null;
+  return phone;
+}
+
+// The ad has a number, but the viewer has to log in for it: the ad's page then offers Prijavi se instead of the
+// number. A closed ad says it is closed, which is reason enough for no number.
+export function phoneNeedsLogin(phone: string | null, who: PhoneViewer): boolean {
+  return phone != null && !who.signedIn && !who.mine && !who.closed;
+}

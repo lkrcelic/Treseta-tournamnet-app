@@ -23,7 +23,7 @@ Take the lock (README); held: ⏸ "lock held by <owner>", write your routine rep
 Record each as ✓ or ✗, with the names of the failing tests (at most 10) and the first error line of each.
 
 ## 4. Playwright
-When T has `e2e/run.sh`: `e2e/run.sh --sha <T> --data seed` (the whole suite, `retries: 1`; it builds the stack, seeds, runs and takes the stack down). Record passed, failed (test, error, screenshot and trace paths from `e2e/report/`) and flaky (passed only on retry). No `e2e/run.sh` on T: "Playwright: no suite yet".
+When T has `e2e/run.sh`: in T's worktree, sandbox off, `e2e/run.sh --sha <T> --data seed`, started in the background (it takes longer than a foreground command may wait; a killed run.sh takes its stack down and leaves no counts) and waited for until it exits. One target at a time, M before S: every run uses the same id, port and database, so a second run would stop the first one's server and drop its world. It builds T, starts it on a fresh generated world (id `nightly`, port 4040, database `treseta_e2e_nightly` in `bela-e2e-pg`), runs the whole suite on both projects with `retries: 1`, and takes the server and the database down again; about 25 minutes. It needs Chromium (`npx playwright install chromium` once, when Playwright says it is missing). Its report is `e2e/report/`: `run.log` (the counts at its end), `results/` (each failed test's screenshot, trace and error), `html/`, `build.log`, `server.log`. Record passed, failed (test, first error line, screenshot and trace paths) and flaky (passed only on its retry). A failed build or world is a ✗ with the log's first error. No `e2e/run.sh` on T: "Playwright: no suite yet".
 
 ## 5. Where each failure belongs
 For every failing check or test, one line:

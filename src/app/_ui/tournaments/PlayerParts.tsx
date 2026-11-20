@@ -17,6 +17,7 @@ import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import EmojiEventsRoundedIcon from "@mui/icons-material/EmojiEventsRounded";
 import EventRoundedIcon from "@mui/icons-material/EventRounded";
+import EventSeatRoundedIcon from "@mui/icons-material/EventSeatRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import GridViewRoundedIcon from "@mui/icons-material/GridViewRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
@@ -101,6 +102,41 @@ export function TeamsCount({t, onNavy = false, max}: {t: Pick<TournamentCard, "a
   );
 }
 
+// Sakrij broj prijava (DECISIONS #93): what the navy cards say where the count was. A limit says sign-ups go in turn
+// and the waiting list is told at the sign-up; without one there is room for every team.
+export function SeatsNote({t}: {t: Pick<TournamentCard, "max_teams">}) {
+  const limited = t.max_teams != null;
+  return (
+    <Box sx={{display: "flex", alignItems: "center", gap: "12px", p: "12px 14px", borderRadius: "16px", background: tint.creamOnNavy[16]}}>
+      <Box aria-hidden sx={{flex: "none", width: 40, height: 40, borderRadius: "12px", background: tint.creamOnNavy[24], color: color.cream, display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 22}}}>
+        <EventSeatRoundedIcon />
+      </Box>
+      <Box sx={{minWidth: 0, display: "flex", flexDirection: "column", gap: "2px"}}>
+        <Box component="span" sx={{fontSize: 16, fontWeight: 700}}>
+          {limited ? "Broj mjesta je ograničen" : "Mjesta ima za sve"}
+        </Box>
+        <Box component="span" sx={{fontSize: 13.5, lineHeight: 1.4, color: color.cream}}>
+          {limited ? "Prijave idu redom. Ako je turnir pun, odmah ti javimo koji ste na listi čekanja." : "Turnir nema ograničen broj ekipa."}
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
+// The same on a card's light band (UpcomingCard), in place of the bubbles and the count
+function SeatsChip({t}: {t: Pick<TournamentCard, "max_teams">}) {
+  return (
+    <Box sx={{display: "flex", alignItems: "center", gap: "8px", minWidth: 0, fontSize: 14, fontWeight: 600, color: color.ink2}}>
+      <Box aria-hidden sx={{flex: "none", width: 30, height: 30, borderRadius: "50%", background: color.lineFill, color: color.navy, display: "flex", alignItems: "center", justifyContent: "center", "& svg": {fontSize: 18}}}>
+        <EventSeatRoundedIcon />
+      </Box>
+      <Box component="span" sx={ellipsis}>
+        {t.max_teams != null ? "Mjesta ograničena" : "Mjesta za sve"}
+      </Box>
+    </Box>
+  );
+}
+
 // the viewer first among a team's players, as the sign-up sheet lists them
 function meFirst<P extends {id: number}>(players: P[], meId: number | null): P[] {
   return meId == null ? players : [...players].sort((a, b) => Number(b.id === meId) - Number(a.id === meId));
@@ -171,7 +207,7 @@ export function SignUpCard({t, meId, onSignUp, signedIn}: {t: TournamentDetail; 
           <LockRoundedIcon aria-hidden sx={{fontSize: 20, color: color.cream}} />
         )}
       </Box>
-      <TeamsCount t={t} onNavy />
+      {t.entries_hidden ? <SeatsNote t={t} /> : <TeamsCount t={t} onNavy />}
       {open && signedIn && t.my_ban ? (
         <BannedSignUp until={t.my_ban.until} />
       ) : open ? (
@@ -518,7 +554,8 @@ export function MyMatchesCard({matches, tournamentId}: {matches: MyMatch[]; tour
 
 // The navy card of the next tournament (S2, S3; "Potvrda dolaska" C1–C3): the whole card opens the tournament's page
 // (› in its head). Signed up: the team, where and when, and Potvrda dolaska with Tu smo on the day; waiting; or how many
-// have signed up and Stranica turnira across the card, for a guest too (its sign-up is on the page).
+// have signed up (with Sakrij broj prijava, SeatsNote instead) and Stranica turnira across the card, for a guest too
+// (its sign-up is on the page).
 export function NextTournamentCard({t, arrival}: {t: TournamentCard; arrival?: {busy: ArrivalAction | null; onAction: (a: ArrivalAction) => void}}) {
   const router = useTransitionRouter();
   const place = t.location.name ? {name: t.location.name, address: t.location.address, url: t.location.url} : null;
@@ -587,7 +624,7 @@ export function NextTournamentCard({t, arrival}: {t: TournamentCard; arrival?: {
       ) : (
         // under the count, Stranica turnira across the card, as SignUpCard's Prijavi se
         <>
-          {signedUp}
+          {t.entries_hidden ? <SeatsNote t={t} /> : signedUp}
           <Box
             component="span"
             sx={{height: 56, borderRadius: "16px", background: color.white, color: color.navy, display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", fontSize: 17, fontWeight: 700, "& svg": {fontSize: 22}}}
@@ -637,9 +674,11 @@ export function TodayCard({t}: {t: TournamentCard}) {
   );
 }
 
-// What the day card says under the team: out of the tournament, not playing, waiting, joining, or the next Kolo
+// What the day card says under the team: watching (not in it), out of the tournament, not playing, waiting, joining, or the next Kolo
 function todayLine(t: TournamentCard): string {
   const me = t.me;
+  // a visitor or a player whose team isn't in it: the tournament is shown, Poredak i rezultati is under the card
+  if (!me) return t.live_kolo ? `Igra se Kolo ${t.live_kolo}. Rezultati su u Poretku i rezultatima.` : "Turnir je u tijeku. Sljedeće kolo kreće kad svi stolovi završe.";
   if (me?.excluded) return "Isključeni ste iz turnira. Na stranici turnira piše zašto.";
   if (me?.status === "WAITING") return `Na listi čekanja · ${me.position}. Ulazite čim se mjesto oslobodi.`;
   if (me && !me.active) return "Ekipa ne igra: niste potvrdili dolazak ili ste otišli. Na stranici turnira možete uskočiti.";
@@ -689,7 +728,7 @@ export function UpcomingCard({t}: {t: TournamentCard}) {
       </Box>
       {/* on a narrow phone Vidi stranicu goes under the teams, on the right */}
       <Box sx={{display: "flex", alignItems: "center", flexWrap: "wrap", justifyContent: "space-between", gap: "8px 10px", p: "8px 8px 8px 12px", borderRadius: "16px", background: color.paper2}}>
-        <TeamsCount t={t} max={2} />
+        {t.entries_hidden ? <SeatsChip t={t} /> : <TeamsCount t={t} max={2} />}
         {t.me ? (
           <Box component="span" sx={{display: "flex", alignItems: "center", gap: "5px", fontSize: 14, fontWeight: 700, color: t.me.status === "WAITING" ? color.medal[0] : color.green, "& svg": {fontSize: 19}}}>
             {t.me.status === "WAITING" ? <HourglassTopRoundedIcon aria-hidden /> : <CheckCircleRoundedIcon aria-hidden />}

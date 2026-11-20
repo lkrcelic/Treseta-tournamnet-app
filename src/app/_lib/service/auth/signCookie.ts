@@ -17,13 +17,20 @@ export function signCookie(cookie: Cookie): void {
   cookie.value = `${cookieData}.${signedCookie}`;
 }
 
-export async function verifyCookie(cookie: Cookie): Promise<Cookie | null> {
-  if (!cookie) {
+// The signed value is "<cookie as JSON>.<hex signature>". The signature never has a dot but the JSON may (an expiry
+// date's milliseconds), so it is split at the last dot.
+function splitSigned(value: string): [string, string] {
+  const dot = value.lastIndexOf(".");
+  return dot < 0 ? [value, ""] : [value.slice(0, dot), value.slice(dot + 1)];
+}
+
+export async function verifyCookie(cookie: Pick<Cookie, "value"> | null | undefined): Promise<Cookie | null> {
+  if (!cookie?.value) {
     return null;
   }
 
   // Extract session data and the signature from the cookie
-  const [cookieData, providedSignature] = cookie.value.split(".");
+  const [cookieData, providedSignature] = splitSigned(cookie.value);
 
   if (!cookieData || !providedSignature) {
     return null; // Invalid cookie format
@@ -40,7 +47,7 @@ export async function verifyCookie(cookie: Cookie): Promise<Cookie | null> {
 }
 
 export function extractCookieWithoutSignature(signedCookie: RequestCookie): Cookie {
-  const [cookieData] = signedCookie.value.split(".");
+  const [cookieData] = splitSigned(signedCookie.value);
   return JSON.parse(cookieData) as Cookie;
 }
 

@@ -19,6 +19,19 @@ export class NoWinnerWarning extends InvalidResultError {
 
 export const NO_WINNER_CODE = "no_winner";
 
+// A hand was saved from another phone at the table while this one was entering its own (the request's expected_hands
+// doesn't match the hands the match holds): not an error, a question for the player (the wizard asks and sends the
+// same hand again without expected_hands). The API answers it with 409 and code "hands_changed".
+export class HandsChangedWarning extends InvalidResultError {
+  constructor(message: string, readonly hands: number) {
+    super(message);
+    this.name = "HandsChangedWarning";
+  }
+}
+
+export const HANDS_CHANGED_CODE = "hands_changed";
+export const HANDS_CHANGED = "Igra je u međuvremenu upisana s druge naprave. Je li ovo nova igra?";
+
 // A hand's zvanja as the client sent them, or null when it sent none of the four (a phone from before zvanja): a new
 // hand then has none, and a corrected one keeps its own. Any count left out of a hand that sends some is 0.
 export function sentZvanja(result: ResultCreateRequest): HandZvanja | null {

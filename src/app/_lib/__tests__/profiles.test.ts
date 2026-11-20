@@ -182,7 +182,7 @@ test("a name's longest word counts letters, not bytes, and a hyphen ends a part"
   assert.equal(longestWord(""), 0);
 });
 
-const row = (id: number, rank: number, rating: number, rounds: number): RatingRow => ({id, rank, name: `Igrač ${id}`, team: null, rating, change: 12, rounds, provisional: rounds < 8});
+const row = (id: number, rank: number, rating: number, rounds: number): RatingRow => ({id, rank, name: `Igrač ${id}`, username: `igrac${id}`, team: null, rating, change: 12, rounds, provisional: rounds < 8});
 
 test("a rating summary is the player's Rejting row; a player who isn't listed is unranked and provisional", () => {
   const list = [row(7, 1, 1620, 25), row(8, 2, 1540, 3)];
@@ -205,13 +205,14 @@ test("a team's chips on the Player page follow the team's rating order; anyone n
   );
 });
 
-test("Osobni podaci: first and last name for everyone, all seven rows for the player and admins", () => {
-  const other = {id: 7, first_name: "Ivan", last_name: "Perić", name: "Ivan Perić", active: true};
+test("Osobni podaci: name and username for everyone (#88), all seven rows for the player and admins", () => {
+  const other = {id: 7, first_name: "Ivan", last_name: "Perić", name: "Ivan Perić", username: "iperic", active: true};
   assert.deepEqual(personalRows(other, false), [
     {key: "Ime", value: "Ivan"},
     {key: "Prezime", value: "Perić"},
+    {key: "Korisničko ime", value: "@iperic"},
   ]);
-  const full = {...other, username: "iperic", email: "ivan@example.com", phone: "091 234 5678", birth_date: "1988-04-12", smoker: true, is_admin: false};
+  const full = {...other, email: "ivan@example.com", phone: "091 234 5678", birth_date: "1988-04-12", smoker: true, is_admin: false};
   assert.deepEqual(
     personalRows(full, true).map((r) => `${r.key}: ${r.value}`),
     ["Ime: Ivan", "Prezime: Perić", "Korisničko ime: @iperic", "Email: ivan@example.com", "Mobitel: 091 234 5678", "Datum rođenja: 12.04.1988.", "Pušač: Da"]

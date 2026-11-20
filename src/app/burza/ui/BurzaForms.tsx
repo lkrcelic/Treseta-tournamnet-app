@@ -5,7 +5,7 @@ import {invalidateBurza} from "@/app/_hooks/useBurza";
 import {invalidateMyBurza} from "@/app/_hooks/useMyBurza";
 import {LeagueOption} from "@/app/_hooks/useLeagues";
 import {BurzaCreateRequest, BurzaKind, BurzaPost, MyLeague} from "@/app/_interfaces/burza";
-import {leagueDateString} from "@/app/_lib/dates";
+import {leagueNightString} from "@/app/_lib/dates";
 import {nextNightIndex, nightLabel} from "@/app/_lib/nights";
 import {isValidPhone, savesToProfile} from "@/app/_lib/phone";
 import {substituteRoster} from "@/app/_lib/ui/burza";
@@ -70,7 +70,8 @@ export function SubstituteForm({
   preset,
   ...props
 }: FormProps & {leagues: MyLeague[]; preset: {league?: number; team?: number; night?: string; with?: number; note?: string}}) {
-  const today = leagueDateString();
+  // the night being played (until 06:00 still last evening's), so tonight is still the first choice under Večer (#19)
+  const today = leagueNightString();
   // the leagues where the player's team is active and has nights left
   const options = leagues.filter((l) => l.active && nextNightIndex(l.nights, today) >= 0);
   // the given league (and team, when the player's two teams play in it), else the first
@@ -188,7 +189,8 @@ function RadioDot({on}: {on: boolean}) {
 
 // Tražim partnera: a running league → the ad's text → phone; the player's rating goes with it
 export function PartnerForm({leagues, preset, me, ...props}: FormProps & {leagues: LeagueOption[]; preset: {league?: number}; me: {name: string; rating: number | null; photo_url?: string | null}}) {
-  const today = leagueDateString();
+  // the night being played, as createPartner checks the league's end date (#19)
+  const today = leagueNightString();
   // leagues whose season isn't over
   const options = leagues.filter((l) => !l.endDate || l.endDate >= today);
   // until one is picked: the given league, the one being played now, or the first (the list may still be loading)

@@ -209,7 +209,7 @@ export default function ProfilePage() {
         team_id: t.team_id,
         team_name: t.team_name,
         players: (t.teamPlayers ?? []).flatMap(({player: p}) =>
-          p?.id == null ? [] : [{id: p.id, first_name: p.first_name ?? "", last_name: p.last_name ?? "", photo_url: p.photo_url}]
+          p?.id == null ? [] : [{id: p.id, first_name: p.first_name ?? "", last_name: p.last_name ?? "", username: p.username ?? "", photo_url: p.photo_url}]
         ),
       }))}
     />

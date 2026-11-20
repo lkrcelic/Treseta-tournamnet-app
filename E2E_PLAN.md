@@ -17,8 +17,9 @@ Treseta mora imati svoje.
 
 ## 2. Što dolazi iz Bele kako jest
 
-`compose.e2e.yml`, `app.Dockerfile`, `run.sh`, `playwright.config.ts`, pomoćnici za prijavu i pomak vremena, i
-testovi koji ne upisuju igru: A (prolaz kroz stranice), B (dozvole), dio C3 (prijave, lista čekanja, Tu smo,
+`playwright.config.ts`, pomoćnici za prijavu i pomak vremena, i testovi koji ne upisuju igru (Belin compose stack,
+`compose.e2e.yml` i `app.Dockerfile`, nije napravljen ni u Beli: suite vrti lokalni `e2e/local/app.sh`, a noćni run
+Tresetin `e2e/run.sh` na njemu, 18.11.): A (prolaz kroz stranice), B (dozvole), dio C3 (prijave, lista čekanja, Tu smo,
 Nedolazak, Vrati stol), C6 (prijava u aplikaciju), C7 (organizator), C8 (Burza) i C9 (profil).
 
 ## 3. Što je Tresetino

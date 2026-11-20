@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {LeagueRow, LeagueTable, needsHeadToHead, rankLeague} from "@/app/_lib/leagueOrder";
+import {leaguePoints, LeagueRow, LeagueTable, needsHeadToHead, rankLeague} from "@/app/_lib/leagueOrder";
 import {rankMovement} from "@/app/_lib/movement";
 
 // The league's order (Ukupni and Dnevni poredak): points, difference, the head-to-head of the teams still level, the name
@@ -70,4 +70,13 @@ test("+/−: the place after the previous night counts the head-to-head of the t
   const plain = rankMovement(now, before);
   assert.equal(plain.get(1), 0);
   assert.equal(plain.get(2), 0);
+});
+
+test("a table is worth 2 points won, 1 drawn, 0 lost, also a bye's 2:0", () => {
+  assert.deepEqual([leaguePoints(2, 0), leaguePoints(1, 1), leaguePoints(0, 2), leaguePoints(0, 0)], [2, 1, 0, 1]);
+});
+
+test("level on points and difference with no tables between them: the name in Croatian order (C, Č, Ć, … Z, Ž)", () => {
+  const rows = [row(1, "Žabe", 4, 10), row(2, "Ćuk", 4, 10), row(3, "Zec", 4, 10), row(4, "Čelik", 4, 10), row(5, "Crni", 4, 10)];
+  assert.deepEqual(order(rows), ["Crni", "Čelik", "Ćuk", "Zec", "Žabe"]);
 });

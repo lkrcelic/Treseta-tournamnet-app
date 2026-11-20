@@ -28,11 +28,13 @@ export default function EntriesPage({id}: {id: number}) {
         </Display>
         {t && (
           <Box component="span" sx={{fontSize: 14, color: color.ink2}}>
-            {t.name} · {count(t.teams, NOUN.ekipa)}
+            {t.entries_hidden ? t.name : `${t.name} · ${count(t.teams, NOUN.ekipa)}`}
           </Box>
         )}
       </Box>
-      <SearchInput variant="white" height={50} placeholder="Traži ekipu ili igrača" aria-label="Traži ekipu ili igrača" value={query} onChange={(e) => setQuery(e.target.value)} onClear={() => setQuery("")} />
+      {!t?.entries_hidden && (
+        <SearchInput variant="white" height={50} placeholder="Traži ekipu ili igrača" aria-label="Traži ekipu ili igrača" value={query} onChange={(e) => setQuery(e.target.value)} onClear={() => setQuery("")} />
+      )}
       {notFound ? (
         <Card>
           <EmptyState>Ovaj turnir ne postoji.</EmptyState>
@@ -45,7 +47,10 @@ export default function EntriesPage({id}: {id: number}) {
         </ScrollCard>
       ) : list.length === 0 ? (
         <Card>
-          <EmptyState>{query ? "Nema ekipe ni igrača s tim imenom." : "Još nema prijavljenih ekipa."}</EmptyState>
+          <EmptyState>
+            {/* Sakrij broj prijava (DECISIONS #93): the list shows from Kolo 1, in Poredak i rezultati */}
+            {t.entries_hidden ? "Popis prijavljenih ekipa vidi se od 1. kola." : query ? "Nema ekipe ni igrača s tim imenom." : "Još nema prijavljenih ekipa."}
+          </EmptyState>
         </Card>
       ) : (
         <ScrollCard component="ul" sx={{listStyle: "none", m: 0, p: 0, borderRadius: "22px"}}>

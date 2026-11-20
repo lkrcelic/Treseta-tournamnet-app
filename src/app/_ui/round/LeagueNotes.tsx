@@ -2,7 +2,7 @@
 
 import {getLeagueNotesAPI, saveLeagueNotesAPI} from "@/app/_fetchers/league/leagues";
 import {color, shadow} from "@/app/_styles/tokens";
-import {mergeSx, SectionLabel} from "@/app/_ui/sp";
+import {fieldFont, mergeSx, SectionLabel} from "@/app/_ui/sp";
 import CloudDoneRoundedIcon from "@mui/icons-material/CloudDoneRounded";
 import CloudOffRoundedIcon from "@mui/icons-material/CloudOffRounded";
 import SyncRoundedIcon from "@mui/icons-material/SyncRounded";
@@ -108,7 +108,7 @@ export default function LeagueNotes({leagueId, label = "Bilješke", sx}: {league
           background: color.white,
           p: "14px 16px",
           fontFamily: "inherit",
-          fontSize: 15,
+          ...fieldFont(15),
           lineHeight: 1.5,
           color: color.ink,
           outline: "none",

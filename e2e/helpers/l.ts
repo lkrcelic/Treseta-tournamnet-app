@@ -65,14 +65,6 @@ export function nightLabel(iso: string): string {
   return `${WEEKDAYS[d.getUTCDay()]} ${d.getUTCDate()}. ${d.getUTCMonth() + 1}.`;
 }
 
-// Between 00:00 and 06:00 the league night is still yesterday's while the calendar has moved on to today. Datumi
-// counts the calendar day by design; Početna should still show tonight (Bela's DECISIONS #63 and #73) but on Treseta's
-// master it doesn't yet (see AFTER_MIDNIGHT_BUG)
-export {afterMidnight} from "./db";
-// BUG: mySchedule's "today" is the calendar day (src/app/_lib/service/league/schedule.ts: leagueDateString), so after
-// midnight Početna drops tonight's card, with Tu smo and Pauza, for next week's night. Shared code: Bela fixed it in
-// 1f7d51e (mySchedule's today = leagueNightString), which bela-sync already has; it comes to master with the sync.
-export const AFTER_MIDNIGHT_BUG = "BUG: after midnight Početna shows next week's night instead of tonight's (schedule.ts today = leagueDateString; Bela 1f7d51e)";
 
 // Croatian counts as the app writes them: 1 liga, 2 lige, 5 liga
 export function count(n: number, [one, few, many]: [string, string, string]): string {

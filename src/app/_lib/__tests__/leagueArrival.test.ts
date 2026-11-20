@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {arrivalEffect, asksAdmin, isHere, lastRoundOut, leagueArrivalPhase, leagueArrivalWindow} from "@/app/_lib/leagueArrival";
+import {arrivalEffect, asksAdmin, isHere, lastRoundOut, leagueArrivalPhase, leagueArrivalWindow, nightPlayedOut} from "@/app/_lib/leagueArrival";
 
 // Potvrda dolaska in the league: the window and what each button does
 
@@ -80,4 +80,15 @@ test("on a night at two places only a team Podjela placed presses Tu smo; the ot
   // a team that came and was taken out of the Podjela since keeps its way out
   assert.equal(arrivalEffect("started", "leave", true, false, true), "leave");
   assert.equal(arrivalEffect("over", "confirm", false, false, true), "over");
+});
+
+test("the night is over once its Broj kola are finished: neither Odlazimo nor Tu smo works then", () => {
+  assert.equal(nightPlayedOut(2, 3), false);
+  assert.equal(nightPlayedOut(3, 3), true);
+  // a night that played more than planned is over too
+  assert.equal(nightPlayedOut(4, 3), true);
+  // a night with its own Broj kola of 4 still runs after 3
+  assert.equal(nightPlayedOut(3, 4), false);
+  assert.equal(arrivalEffect("over", "leave", true), "over");
+  assert.equal(arrivalEffect("over", "confirm", false), "over");
 });

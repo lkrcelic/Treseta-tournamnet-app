@@ -15,6 +15,7 @@ import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
 import ChatRoundedIcon from "@mui/icons-material/ChatRounded";
 import EventBusyRoundedIcon from "@mui/icons-material/EventBusyRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
 import {Box} from "@mui/material";
 import {useParams} from "next/navigation";
@@ -158,7 +159,7 @@ function PostBody({post, desktop, closing, onClose, notice, error}: {post: Burza
           {notice}
         </Box>
       )}
-      {post.phone && (
+      {(post.phone || post.phone_hidden) && (
         <>
           <SectionLabel id="contact">Kontakt</SectionLabel>
           <Card aria-labelledby="contact" sx={{p: "14px 16px", display: "flex", flexDirection: "column", gap: "12px"}}>
@@ -166,11 +167,17 @@ function PostBody({post, desktop, closing, onClose, notice, error}: {post: Burza
               <Box component="span" sx={{fontSize: 15, color: color.muted}}>
                 {post.mine ? "Tvoj oglas" : postContact(post)}
               </Box>
-              <Box component="span" sx={{fontSize: 20, fontWeight: 700, letterSpacing: ".01em", ...tabular}}>
-                {post.phone}
-              </Box>
+              {post.phone ? (
+                <Box component="span" sx={{fontSize: 20, fontWeight: 700, letterSpacing: ".01em", ...tabular}}>
+                  {post.phone}
+                </Box>
+              ) : (
+                <Box component="span" sx={{fontSize: 15, lineHeight: 1.4, color: color.ink, textWrap: "pretty"}}>
+                  Broj vide igrači s računom.
+                </Box>
+              )}
             </Box>
-            {!post.mine && !post.closed && (
+            {post.phone && !post.mine && !post.closed && (
               <Box sx={{display: "flex", gap: "10px"}}>
                 <ContactLink href={telHref(post.phone)} icon={<CallRoundedIcon />} primary>
                   Nazovi
@@ -179,6 +186,12 @@ function PostBody({post, desktop, closing, onClose, notice, error}: {post: Burza
                   WhatsApp
                 </ContactLink>
               </Box>
+            )}
+            {/* Treseta has no guest sheet ("Gost i poziv" isn't copied): Prijava, as Prijavi se on a tournament */}
+            {post.phone_hidden && (
+              <ContactLink href="/login" icon={<LockRoundedIcon />} primary>
+                Prijavi se da vidiš broj
+              </ContactLink>
             )}
           </Card>
         </>
@@ -200,12 +213,12 @@ function PostBody({post, desktop, closing, onClose, notice, error}: {post: Burza
   );
 }
 
-// Nazovi / WhatsApp: links styled as the design's buttons
-function ContactLink({href, icon, primary = false, external = false, children}: {href: string; icon: React.ReactNode; primary?: boolean; external?: boolean; children: React.ReactNode}) {
+// Nazovi / WhatsApp: links styled as the design's buttons. With onClick instead of href ("Prijavi se da vidiš broj")
+// the same button opens the guest sheet.
+function ContactLink({href, onClick, icon, primary = false, external = false, children}: {href?: string; onClick?: () => void; icon: React.ReactNode; primary?: boolean; external?: boolean; children: React.ReactNode}) {
   return (
     <Box
-      component="a"
-      href={href}
+      {...(onClick ? {component: "button" as const, type: "button" as const, onClick} : {component: "a" as const, href})}
       {...(external ? {target: "_blank", rel: "noopener noreferrer"} : {})}
       sx={{
         ...buttonBase,

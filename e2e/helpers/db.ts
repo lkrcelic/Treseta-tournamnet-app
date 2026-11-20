@@ -14,7 +14,7 @@ export const minutesFromNow = (minutes: number) => new Date(Date.now() + minutes
 
 // Between 00:00 and 06:00 the league night is still yesterday's (leagueNightString) while the calendar has moved on to
 // today (leagueDateString). The nightly run starts then, so a test whose screen depends on "tonight" says what happens
-// after midnight, e.g. test.fail(afterMidnight(), …) while the app still counts the calendar day there
+// after midnight, e.g. test.fail(afterMidnight(), …) for a screen that still counts the calendar day
 export const afterMidnight = () => leagueNightString() !== leagueDateString();
 
 // The cron route runs what is due (tournament clocks, closing tables); app.sh starts the server with this secret

@@ -95,25 +95,22 @@ export function photoOf(scope: Page | Locator, playerId: number): Locator {
   return scope.locator(`img[src^="/api/players/${playerId}/photo?v="]`);
 }
 
-// How a player's chip in a Moje ekipe card ends: on Treseta's master with the first name, after Bela's 5defdb6 (the
-// username is public, DECISIONS #88; on bela-sync, comes with the sync) with "@username". Either is the player, so the
-// photo tests run the same before and after the sync; c9-podaci.spec.ts asserts the username itself. Once the sync
-// brings 5defdb6 to master, the first-name branch goes (and that test's test.fail()), back to Bela's "@username".
-export function chipLabel(p: {first_name: string; last_name: string; username: string}): RegExp {
-  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`(@${esc(p.username)}|${esc(p.first_name || p.last_name)})$`);
+// How a player's chip in a Moje ekipe card ends: "@username", which is public (Bela's 5defdb6, DECISIONS #88, on master
+// since the sync of 17 Nov 2026)
+export function chipLabel(p: {username: string}): RegExp {
+  return new RegExp(`@${p.username.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
 }
 
 // The player's chip in the Moje ekipe card of their team
 export function myChip(page: Page, me: Me): Locator {
-  const label = chipLabel({first_name: me.firstName, last_name: me.lastName, username: me.username});
+  const label = chipLabel({username: me.username});
   return page.getByRole("article", {name: me.team.name}).getByRole("list", {name: "Igrači"}).getByRole("listitem").filter({hasText: label});
 }
 
-// The player's row on the team's page. Its second line is "@username" for the player and an admin, and for everyone
-// else the team's name until Bela's 5defdb6 (#88) comes with the sync, so the row is found by the full name alone
+// The player's row on the team's page: "<name> @<username>" for everyone, a teammate too (Bela's 5defdb6, DECISIONS #88,
+// on master since the sync of 17 Nov 2026), as Bela's C9 finds it
 export function myRow(page: Page, me: Me): Locator {
-  return page.getByRole("region", {name: "Igrači"}).getByRole("link", {name: new RegExp(`^${me.name} `)});
+  return page.getByRole("region", {name: "Igrači"}).getByRole("link", {name: new RegExp(`^${me.name} @${me.username.replace(/\./g, "\\.")}`)});
 }
 
 // The size the browser decoded an <img> to (0 when it didn't load)

@@ -2,10 +2,9 @@
 // Klub Dubrava, H not placed). Početna and Raspored show the team's own place, or both and "Još niste raspoređeni";
 // Tu smo is the placed team's, counts at its own place, and a team without a place is sent to the admin (Javi se
 // adminu) while the server refuses it; the player's table says which of its place's Kola it is ("Kolo 1/2"), and a bye
-// at a place of three teams is Pauza there. The tests of Početna's tonight card are marked to fail between 00:00 and
-// 06:00, when master's Početna drops tonight for next week (a shared bug, AFTER_MIDNIGHT_BUG); the rest use next week's
-// night or the routes and run the same at any hour.
-import {afterMidnight, AFTER_MIDNIGHT_BUG, AT_FIRST, AT_SECOND, expect, KEYS, SPLIT, test} from "../../helpers/l";
+// at a place of three teams is Pauza there. Početna's tonight card holds between 00:00 and 06:00 too (it counts the
+// league night since Bela's 1f7d51e, with the sync of 17 Nov 2026), so every test runs the same at any hour.
+import {AT_FIRST, AT_SECOND, expect, KEYS, SPLIT, test} from "../../helpers/l";
 import {escape} from "../../helpers/scorepad";
 
 test("Početna and Raspored show the team's own place on a two-place night, and both places before Podjela", async ({as, liga, healthy}) => {
@@ -100,8 +99,6 @@ test("the server takes Tu smo only from a placed team and counts it at its own p
 });
 
 test("Tu smo on Početna: a placed team comes in at its place, one without a place sees Javi se adminu", async ({as, db, liga, healthy}) => {
-  // BUG: between 00:00 and 06:00 Početna drops tonight's card (schedule.ts today = leagueDateString; Bela 1f7d51e)
-  test.fail(afterMidnight(), AFTER_MIDNIGHT_BUG);
   const {pitanik, dubrava, tonight, teams} = liga;
   await liga.night(tonight, {second: true, split: SPLIT});
 
@@ -171,8 +168,6 @@ test("the player's table says which of its place's Kola it is", async ({as, db, 
 });
 
 test("a team that sits its place's Kolo out sees Pauza at that place", async ({as, liga, healthy}) => {
-  // BUG: between 00:00 and 06:00 Početna drops tonight's card (schedule.ts today = leagueDateString; Bela 1f7d51e)
-  test.fail(afterMidnight(), AFTER_MIDNIGHT_BUG);
   const {dubrava, tonight, teams} = liga;
   await liga.night(tonight, {second: true, split: SPLIT, arrived: [...AT_FIRST, ...AT_SECOND]});
   // two Kola a night: Klub Dubrava's first one isn't its last

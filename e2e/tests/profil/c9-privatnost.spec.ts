@@ -58,8 +58,7 @@ async function expectSeen(page: Page, me: Me, url: string, tournament: number, s
 
   for (const list of LISTS(me, tournament)) {
     const data = await page.evaluate((u) => fetch(u).then((r) => r.text()), list);
-    // the player is in it: by name, by first and last name apart (a team's players, which on master carry the
-    // username only for the player and an admin, until Bela's 5defdb6 comes with the sync), or by username
+    // the player is in it: by name, by first and last name apart (a team's players), or by username
     const named = [me.name, `"first_name":"${me.firstName}","last_name":"${me.lastName}"`, `"username":"${me.username}"`];
     expect(named.some((n) => data.includes(n)), list).toBe(true);
     if (sees) expect(data, list).toContain(url);

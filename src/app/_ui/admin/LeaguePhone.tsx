@@ -598,12 +598,13 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
           <NightGatheringForm
             key="new"
             isNew
-            night={{date: ld.suggestedDate, start_time: null, gathering_time: null, location: null, second_location: null}}
+            night={{date: ld.suggestedDate, start_time: null, gathering_time: null, rounds_per_night: null, location: null, second_location: null}}
             onCancel={() => setCreating(false)}
             today={ld.today}
             taken={ld.taken}
             leagueTime={defaults.time}
             leagueGathering={defaults.gathering ?? null}
+            leagueRounds={defaults.rounds ?? 3}
             leaguePlace={defaults.location}
             settingsTab="Postavke"
             splitHint="Ekipe raspoređuješ u Podjeli ekipa (Večer lige)."
@@ -612,6 +613,7 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
                 date: night.date!,
                 start_time: night.start_time,
                 gathering_time: night.gathering_time,
+                rounds_per_night: night.rounds_per_night,
                 location_id: night.location_id,
                 second_location_id: night.second_location_id,
               });
@@ -642,6 +644,7 @@ function DatesTab({leagueId, defaults}: {leagueId: number; defaults: GatheringDe
             taken={ld.taken}
             leagueTime={defaults.time}
             leagueGathering={defaults.gathering ?? null}
+            leagueRounds={defaults.rounds ?? 3}
             leaguePlace={defaults.location}
             settingsTab="Postavke"
             splitHint="Ekipe raspoređuješ u Podjeli ekipa (Večer lige)."

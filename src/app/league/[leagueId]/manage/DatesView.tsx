@@ -48,16 +48,17 @@ const PILL: Record<NightStatus, {bg: string; ink: string}> = {
   upcoming: {bg: color.paper, ink: color.ink2},
 };
 
-// The league's default Početak (time), Okupljanje (gathering) and place (Podaci), which a night without its own follows,
-// and its play day (0 = Monday), which Dodaj večer's date starts on
-export type GatheringDefaults = {time: string | null; gathering?: string | null; location: NightLocation | null; playDay?: number | null};
+// The league's default Početak (time), Okupljanje (gathering), Kola po večeri (rounds) and place (Podaci), which a night
+// without its own follows, and its play day (0 = Monday), which Dodaj večer's date starts on
+export type GatheringDefaults = {time: string | null; gathering?: string | null; rounds?: number; location: NightLocation | null; playDay?: number | null};
 
 // The league's defaults from the cached league list (Upravljanje ligom on the desktop and the phone)
 export const gatheringDefaults = (
-  l: {startTime?: string | null; gatheringTime?: string | null; location?: NightLocation | null; playDay?: number | null} | undefined
+  l: {startTime?: string | null; gatheringTime?: string | null; roundsPerNight?: number; location?: NightLocation | null; playDay?: number | null} | undefined
 ): GatheringDefaults => ({
   time: l?.startTime ?? null,
   gathering: l?.gatheringTime ?? null,
+  rounds: l?.roundsPerNight,
   location: l?.location ?? null,
   playDay: l?.playDay ?? null,
 });
@@ -96,6 +97,7 @@ export function useLeagueDates(leagueId: number, defaults: GatheringDefaults, da
     ...n,
     time: effectiveTime(n.start_time, defaultTime),
     gathering: effectiveTime(n.gathering_time, defaultGathering),
+    planned_rounds: n.rounds_per_night ?? defaults.rounds ?? n.planned_rounds,
     place: n.location ?? defaults.location,
   }));
   // the league's last night tells whether its season is over (the status under Ukupni poredak opened from a team)
@@ -122,7 +124,21 @@ export function useLeagueDates(leagueId: number, defaults: GatheringDefaults, da
       const location = cachedLocation(night.location_id);
       const second_location = cachedLocation(night.second_location_id);
       // its time, gathering and place are worked out again in list, from the league's current defaults
-      const row = {date: night.date, played: false, rounds: 0, start_time, time: null, gathering_time, gathering: null, location, place: null, second_location};
+      const rounds_per_night = night.rounds_per_night ?? null;
+      const row = {
+        date: night.date,
+        played: false,
+        rounds: 0,
+        start_time,
+        time: null,
+        gathering_time,
+        gathering: null,
+        rounds_per_night,
+        planned_rounds: rounds_per_night ?? 0,
+        location,
+        place: null,
+        second_location,
+      };
       setNights((prev) => [...(prev ?? []), row].sort(byDate));
       return true;
     } catch (err) {
@@ -183,7 +199,15 @@ export function useLeagueDates(leagueId: number, defaults: GatheringDefaults, da
           prev
             ?.map((n) =>
               n.date === date
-                ? {...n, date: night.date, start_time: night.start_time, gathering_time: night.gathering_time, location: night.location, second_location: night.second_location}
+                ? {
+                    ...n,
+                    date: night.date,
+                    start_time: night.start_time,
+                    gathering_time: night.gathering_time,
+                    rounds_per_night: night.rounds_per_night,
+                    location: night.location,
+                    second_location: night.second_location,
+                  }
                 : n
             )
             .sort(byDate) ?? prev
@@ -404,12 +428,13 @@ export default function DatesView({
             <NightGatheringForm
               key="new"
               isNew
-              night={{date: ld.suggestedDate, start_time: null, gathering_time: null, location: null, second_location: null}}
+              night={{date: ld.suggestedDate, start_time: null, gathering_time: null, rounds_per_night: null, location: null, second_location: null}}
               onCancel={() => setCreating(false)}
               today={today}
               taken={ld.taken}
               leagueTime={defaultTime}
               leagueGathering={defaults.gathering ?? null}
+              leagueRounds={defaults.rounds ?? 3}
               leaguePlace={defaults.location}
               settingsTab="Podaci"
               onSave={async (night) => {
@@ -417,6 +442,7 @@ export default function DatesView({
                   date: night.date!,
                   start_time: night.start_time,
                   gathering_time: night.gathering_time,
+                  rounds_per_night: night.rounds_per_night,
                   location_id: night.location_id,
                   second_location_id: night.second_location_id,
                 });
@@ -439,6 +465,7 @@ export default function DatesView({
               taken={ld.taken}
               leagueTime={defaultTime}
               leagueGathering={defaults.gathering ?? null}
+              leagueRounds={defaults.rounds ?? 3}
               leaguePlace={defaults.location}
               settingsTab="Podaci"
               onSave={async (change) => {

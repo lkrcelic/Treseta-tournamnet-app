@@ -141,8 +141,7 @@ test("Moje ekipe: the player's teams with their players, each opening the team's
   await expect(moje.getByRole("article")).toHaveCount(teams.length);
   for (const t of teams) {
     const players = moje.getByRole("article", {name: t.team_name}).getByRole("list", {name: "Igrači"}).getByRole("listitem");
-    // in name order, each by their first name or, once Bela's 5defdb6 is here, @username (after the avatar's initials,
-    // when there is no photo; the username itself is the test.fail test below)
+    // in name order, each by their @username (after the avatar's initials, when there is no photo)
     const names = [...t.teamPlayers].sort((a, b) => `${a.player.first_name} ${a.player.last_name}`.localeCompare(`${b.player.first_name} ${b.player.last_name}`, "hr"));
     await expect(players).toHaveText(names.map((tp) => chipLabel(tp.player)));
   }
@@ -161,11 +160,8 @@ test("Moje ekipe: the player's teams with their players, each opening the team's
   await healthy(loner);
 });
 
-// BUG: the username is private on master, so Moje ekipe's chips show first names and a teammate's row on the team's
-// page the team's name. Bela made it public (5defdb6, DECISIONS #88; on bela-sync), which comes with the sync. Red at
-// the chips: "Petar" where "@player" should be.
+// The username is public (Bela's 5defdb6, DECISIONS #88, on master since the sync of 17 Nov 2026): a teammate sees it too
 test("Moje ekipe and the team's page name every player by @username, for a teammate too (DECISIONS #88)", async ({as, db, me}) => {
-  test.fail();
   const players = await db.player.findMany({where: {teamPlayers: {some: {team_id: me.team.id}}}});
   players.sort((a, b) => `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`, "hr"));
   const page = await as(me.username);

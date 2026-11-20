@@ -1,12 +1,12 @@
 import {NextRequest, NextResponse} from "next/server";
-import {requireAdmin} from "@/app/_lib/service/auth/requireUser";
+import {requireCan} from "@/app/_lib/service/auth/requireUser";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {errorResponse} from "@/app/_lib/apiErrors";
 import {removePlayerFromTeam} from "@/app/_lib/service/team/addPlayer";
 
 // Remove a teammate (admin). The team keeps its results; the player just no longer plays for it.
 export async function DELETE(request: NextRequest, {params}: {params: {id: string; playerId: string}}) {
-  const auth = await requireAdmin(request);
+  const auth = await requireCan(request, "team.edit");
   if (auth.response) return auth.response;
 
   try {

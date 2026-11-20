@@ -1,6 +1,9 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    // ES5 would downlevel `class X extends Error`, and `instanceof NotFoundError` / `ForbiddenError` would be false
+    // under ts-node though it is true in the app (Next compiles to modern JS)
+    "target": "ES2020",
     "module": "commonjs",
     "moduleResolution": "node",
     "jsx": "react-jsx",

@@ -6,12 +6,14 @@ import {isAdminRole} from "./admin";
 import {fullName} from "./names";
 
 // Who sees which personal data of a player (handoff §6 "Privacy", enforced on the server), in three steps
-// (DECISIONS #86):
-//   public          id, name, whether the account is active ("Neaktivan" is shown to all), and the role
+// (DECISIONS #86, #88):
+//   public          id, name, the username, whether the account is active ("Neaktivan" is shown to all), and the role
 //   player.contact  + the phone number                              (admin, organizer)
-//   player.private  + the username, email, birth date, smoker flag  (the player themselves, admin)
+//   player.private  + email, birth date, smoker flag                (the player themselves, admin)
 // The role is on purpose in the public part: a label says who runs the league and who runs tournaments, so a player
-// knows whom they are talking to. Everything further up is left out of the response altogether.
+// knows whom they are talking to. So is the username (#88): it is how a player is known in the league and how the
+// admin finds them, so everyone sees it, logged-out visitors of the public pages included. Everything further up is
+// left out of the response altogether.
 // Rating, teams and results are public and come from their own queries. Framework free so it can be unit tested.
 
 // The logged-in player looking at the page
@@ -54,12 +56,12 @@ export function playerView(p: PrivatePlayer, viewer: Viewer | null): PlayerView 
     last_name: p.last_name,
     name: fullName(p),
     active: p.active,
+    username: p.username,
     ...(publicRole(p) && {role: publicRole(p)}),
   };
   if (!fullAccess(viewer, p.id)) return contactAccess(viewer, p.id) ? {...view, phone: p.phone} : view;
   return {
     ...view,
-    username: p.username,
     email: p.email,
     phone: p.phone,
     birth_date: isoDay(p.birth_date),
@@ -68,31 +70,21 @@ export function playerView(p: PrivatePlayer, viewer: Viewer | null): PlayerView 
   };
 }
 
-// The username on a team roster row: for an admin and the player themselves; null for everyone else
-export function rosterUsername(viewer: Viewer | null, playerId: number, username: string): string | null {
-  return fullAccess(viewer, playerId) ? username : null;
-}
-
 // photo_url: the avatar, already filtered for the viewer (photos.ts)
 export type RosterPlayer = {id: number; first_name: string; last_name: string; username: string; photo_url?: string | null};
-// username: present only where rosterUsername allows it (the key is left out otherwise)
-export type RosterEntry = {id: number; first_name: string; last_name: string; username?: string; photo_url?: string | null};
+export type RosterEntry = RosterPlayer;
 
 // A team's players as the viewer gets them (GET /api/teams, /api/teams/[id]): in Croatian name order, which the
-// database's collation doesn't give ("Č" after "Z", lowercase after every capital), and with the username only for
-// an admin and the player themselves
-export function rosterView(viewer: Viewer | null, players: RosterPlayer[]): RosterEntry[] {
-  return players
-    .map(({username, ...p}) => {
-      const shown = rosterUsername(viewer, p.id, username);
-      return shown == null ? p : {...p, username: shown};
-    })
-    .sort((a, b) => fullName(a).localeCompare(fullName(b), "hr"));
+// database's collation doesn't give ("Č" after "Z", lowercase after every capital). The username is public (#88), so
+// every row carries it.
+export function rosterView(players: RosterPlayer[]): RosterEntry[] {
+  return [...players].sort((a, b) => fullName(a).localeCompare(fullName(b), "hr"));
 }
 
-// A round's lineup (GET /api/rounds/[id]/lineup) lists both teams with their usernames, for Tko igra ovu rundu?, which
+// A round's lineup (GET /api/rounds/[id]/lineup) lists both teams with their players, for Tko igra ovu rundu?, which
 // opens while the round is still to be played: a player of the round gets it only then (the route checks that they
-// play it), an admin always. A finished round's rosters would give away the opponents' usernames for every past round.
+// play it), an admin always. Usernames are public now (#88), so that isn't the reason any more; what keeps it is the
+// screen itself — its button confirms who played, and for a finished round only an admin may save that (saveLineup).
 export function lineupVisible(viewer: Viewer, round: {open: boolean}): boolean {
   return round.open || isAdminRole(viewer);
 }

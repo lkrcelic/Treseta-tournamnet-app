@@ -15,9 +15,10 @@ import {Viewer} from "@/app/_lib/players/privacy";
 import {playerPhotoUrls} from "@/app/_lib/service/players/photos";
 
 // Player ratings across all leagues: everyone on a team or with a rated round, highest rating first. Deleted players
-// aren't listed (their rounds still count for everyone else's rating); usernames are private, so they aren't sent.
+// aren't listed (their rounds still count for everyone else's rating); the username is public (#88), so the search
+// matches it and the detail shows it.
 
-type Row = {id: number; first_name: string; last_name: string; rating: number; team: string | null; rounds: number; change: number | null};
+type Row = {id: number; first_name: string; last_name: string; username: string; rating: number; team: string | null; rounds: number; change: number | null};
 
 export async function listRatings(viewer: Viewer): Promise<RatingsList> {
   const list = await allRatings();
@@ -29,7 +30,7 @@ export async function listRatings(viewer: Viewer): Promise<RatingsList> {
 // that needs it twice passes it on.
 export async function allRatings(): Promise<RatingRow[]> {
   const rows = await prisma.$queryRaw<Row[]>`
-      SELECT p.id, p.first_name, p.last_name, p.rating,
+      SELECT p.id, p.first_name, p.last_name, p.username, p.rating,
              team.team_name                AS team,
              COALESCE(h.rounds, 0)::int    AS rounds,
              h.change
@@ -67,6 +68,7 @@ export async function allRatings(): Promise<RatingRow[]> {
       id: p.id,
       rank,
       name: p.name,
+      username: p.username,
       team: p.team,
       rating: p.rating,
       change: p.change,

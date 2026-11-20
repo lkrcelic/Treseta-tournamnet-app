@@ -16,9 +16,13 @@ export const ResultCreateRequestValidation = z.object({
   team2_zvanja4: z.number().int().min(0).optional(),
   custom: z.boolean().optional().default(false),
   dosta_side: TeamSideValidation.nullable().optional(),
+  // How many hands the match held when this entry was opened. Several phones follow the same match, so a hand saved
+  // on another one in the meantime means this one may be the same hand twice: the save is held back (409) and the
+  // phone asks. Left out (an admin's hand, or a re-send the player confirmed) means "save it whatever happened".
+  expected_hands: z.number().int().nonnegative().optional().nullable(),
 });
 
-export const ResultResponseValidation = ResultCreateRequestValidation.extend({
+export const ResultResponseValidation = ResultCreateRequestValidation.omit({expected_hands: true}).extend({
   result_id: z.number().int().nullable(),
 });
 

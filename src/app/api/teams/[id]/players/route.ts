@@ -1,5 +1,5 @@
 import {NextRequest, NextResponse} from "next/server";
-import {requireAdmin} from "@/app/_lib/service/auth/requireUser";
+import {requireCan} from "@/app/_lib/service/auth/requireUser";
 import {STATUS} from "@/app/_lib/statusCodes";
 import {errorResponse} from "@/app/_lib/apiErrors";
 import {TeamPlayerAddValidation} from "@/app/_interfaces/team";
@@ -7,7 +7,7 @@ import {addPlayerToTeam} from "@/app/_lib/service/team/addPlayer";
 
 // Add a teammate (admin). Adding someone who is already in the team is a no-op.
 export async function POST(request: NextRequest, {params}: {params: {id: string}}) {
-  const auth = await requireAdmin(request);
+  const auth = await requireCan(request, "team.edit");
   if (auth.response) return auth.response;
 
   try {

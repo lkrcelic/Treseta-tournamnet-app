@@ -14,7 +14,7 @@ import {
   TeamUpdateValidation,
 } from "@/app/_interfaces/team";
 import {PHOTO_BLOCK_ADMIN_ONLY} from "@/app/_interfaces/player";
-import {isAdminRole} from "@/app/_lib/players/admin";
+import {can} from "@/app/_lib/auth/permissions";
 import {isByeTeam} from "@/app/_lib/bye";
 import {renameTeam} from "@/app/_lib/service/team/update";
 import {deleteTeam} from "@/app/_lib/service/team/delete";
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest, {params}: { params: { id: string
                 team_id: teamId,
             },
             // the response includes the players, so load them (without this every request failed validation);
-            // rosterView below drops the usernames others may not see and puts the players in Croatian name order
+            // rosterView below puts the players in Croatian name order (the username is public, #88)
             include: {
                 teamPlayers: {select: {player: {select: {id: true, first_name: true, last_name: true, username: true, ...PLAYER_PHOTO}}}},
                 leagueTeams: {select: {active: true, league: {select: {league_id: true, league_name: true}}}},
@@ -54,7 +54,6 @@ export async function GET(request: NextRequest, {params}: { params: { id: string
             ...dbTeam,
             photo_url: photos.team(dbTeam),
             teamPlayers: rosterView(
-                auth.user,
                 dbTeam.teamPlayers.map(({player: {photo_updated_at, photo_visibility, ...p}}) => ({...p, photo_url: photos.player({id: p.id, photo_updated_at, photo_visibility})}))
             ).map((player) => ({player})),
         });
@@ -66,8 +65,8 @@ export async function GET(request: NextRequest, {params}: { params: { id: string
     }
 }
 
-// Rename a team (admin), choose who sees its photo (any of its players: ALL or TEAMMATES) and/or switch "Zabrani novu
-// sliku" (admin)
+// Rename a team (whoever may edit teams: admin or organizer), choose who sees its photo (any of its players: ALL or
+// TEAMMATES) and/or switch "Zabrani novu sliku" (the admin's: it overrules the team)
 export async function PATCH(request: NextRequest, {params}: { params: { id: string } }) {
   const auth = await requireUser(request);
   if (auth.response) return auth.response;
@@ -76,9 +75,8 @@ export async function PATCH(request: NextRequest, {params}: { params: { id: stri
     const {team_name, photo_visibility, photo_blocked} = TeamUpdateValidation.parse(await request.json());
     const teamId = Number(params.id);
     if (!isDbId(teamId) || isByeTeam(teamId)) return teamNotFound();
-    const admin = isAdminRole(auth.user);
-    if (team_name !== undefined && !admin) return NextResponse.json({error: TEAM_RENAME_ADMIN_ONLY}, {status: STATUS.Forbidden});
-    if (photo_blocked !== undefined && !admin) return NextResponse.json({error: PHOTO_BLOCK_ADMIN_ONLY}, {status: STATUS.Forbidden});
+    if (team_name !== undefined && !can(auth.user, "team.edit")) return NextResponse.json({error: TEAM_RENAME_ADMIN_ONLY}, {status: STATUS.Forbidden});
+    if (photo_blocked !== undefined && !can(auth.user, "team.moderate")) return NextResponse.json({error: PHOTO_BLOCK_ADMIN_ONLY}, {status: STATUS.Forbidden});
     if (photo_visibility !== undefined) {
       const member = await prisma.teamPlayer.findUnique({where: {team_id_player_id: {team_id: teamId, player_id: auth.user.id}}, select: {team_id: true}});
       if (!member) return NextResponse.json({error: TEAM_PHOTO_VISIBILITY_MEMBERS_ONLY}, {status: STATUS.Forbidden});

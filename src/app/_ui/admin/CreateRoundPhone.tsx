@@ -1,12 +1,13 @@
 "use client";
 
+import useLeagueNights from "@/app/_hooks/useLeagueNights";
 import useLeagueRounds from "@/app/_hooks/useLeagueRounds";
 import useLeagueTeams from "@/app/_hooks/useLeagueTeams";
 import useLeagues from "@/app/_hooks/useLeagues";
 import useNavStack from "@/app/_hooks/useNavStack";
 import {MAX_ROUNDS, MAX_WINDOW} from "@/app/_lib/createRoundDraft";
 import {leagueNightString} from "@/app/_lib/dates";
-import {draftNight} from "@/app/_lib/ui/adminTonight";
+import {draftNight, newRoundsLabel, nightRounds, publishedTonight, tonightRoundsDefault} from "@/app/_lib/ui/adminTonight";
 import useNightPlaces from "@/app/_hooks/useNightPlaces";
 import {Slot} from "@/app/_lib/locations";
 import {PlaceSegment} from "@/app/_ui/league/PlacePicker";
@@ -14,7 +15,7 @@ import {nightLabel} from "@/app/_lib/nights";
 import {count, NOUN, plural} from "@/app/_lib/ui/text";
 import {useTransitionRouter} from "@/app/_lib/viewTransitions";
 import {color, font, tint} from "@/app/_styles/tokens";
-import {CreatePlace, DraftWaitingNote, OUT_LABEL, TeamChipBadge, useCreateRound} from "@/app/_ui/round/CreateRound";
+import {CreatePlace, DraftWaitingNote, OUT_LABEL, PublishedNote, TeamChipBadge, useCreateRound} from "@/app/_ui/round/CreateRound";
 import LeagueNotes from "@/app/_ui/round/LeagueNotes";
 import {SmokingTablesCard} from "@/app/_ui/round/SmokingTables";
 import {adminCardSx, adminLabelSx, PhoneStepper} from "./AdminParts";
@@ -74,12 +75,17 @@ function CreateRoundAt({
   const teams = !np.loaded || (place && !np.split) ? {teams: null, error: np.error ?? np.splitError, loading: true, reload: np.split ? leagueTeams.reload : np.reloadSplit} : leagueTeams;
   const slotQs = place ? `&slot=${place.slot}` : "";
   const tonightDraft = draftNight((leagueRounds.rounds ?? []).filter((r) => r.date === tonight), tonight, place?.slot ?? null);
+  // tonight's kola already published (at the place picked): the new ones are extra kola of the same night, the ones still
+  // missing at that place by default
+  const published = publishedTonight(leagueRounds.rounds, tonight, place?.slot ?? null);
+  // tonight's Broj kola (Datumi), else the league's Kola po večeri
+  const {nights} = useLeagueNights(leagueId);
   const cr = useCreateRound(
     leagueId,
     teams,
     // the next page is Skica kola, in Novo kolo's place: Back from it goes to Upravljanje ligom
     (date) => router.replace(`/league/${leagueId}/manage?view=draft&date=${date}${slotQs}`),
-    league?.roundsPerNight,
+    tonightRoundsDefault(nightRounds(nights, tonight, league?.roundsPerNight), published),
     league?.smokingTables,
     {
       waiting:
@@ -88,6 +94,7 @@ function CreateRoundAt({
           : null,
       onDraftWaiting: leagueRounds.reload,
       place,
+      published,
     }
   );
 
@@ -103,15 +110,16 @@ function CreateRoundAt({
       ) : (
         <>
           <ScrollArea bleed sx={{gap: "12px"}}>
+            {published && <PublishedNote published={published} />}
             <Box component="section" aria-label="Kola i prozor" sx={cardSx}>
               <Box component="span" id="cr-rounds" sx={labelSx}>
-                Broj kola večeras
+                {published ? "Još kola večeras" : "Broj kola večeras"}
               </Box>
               <Segmented<number>
                 items={Array.from({length: MAX_ROUNDS}, (_, i) => ({key: i + 1, label: String(i + 1)}))}
                 value={cr.rounds}
                 onChange={cr.setRounds}
-                label="Broj kola večeras"
+                label={published ? "Još kola večeras" : "Broj kola večeras"}
                 variant="track"
                 asTabs={false}
               />
@@ -239,7 +247,7 @@ function CreateRoundAt({
               <DraftWaitingNote waiting={cr.waiting} />
             ) : (
               <PrimaryButton icon={<AddCircleRoundedIcon />} onClick={cr.create} disabled={cr.playing < 2} loading={cr.creating}>
-                {cr.creating ? "Kreiram kola…" : `Kreiraj ${count(cr.rounds, NOUN.kolo)} · ${count(cr.tableCount, NOUN.stol)}`}
+                {cr.creating ? "Kreiram kola…" : `Kreiraj ${published ? newRoundsLabel(published.next, cr.rounds) : count(cr.rounds, NOUN.kolo)} · ${count(cr.tableCount, NOUN.stol)}`}
               </PrimaryButton>
             )}
           </Box>

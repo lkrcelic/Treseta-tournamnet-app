@@ -41,6 +41,8 @@ export function tournamentRequest(over: Partial<TournamentRequest> & {name: stri
     game_minutes: GAME_MINUTES_DEFAULT,
     auto_publish: true,
     open_signups: false,
+    // Sakrij broj prijava (Bela's, with the sync of 17 Nov 2026): the world's tournaments show their count
+    hide_entries: false,
     organizer_phone: "+385 91 000 0001",
     ...over,
   };

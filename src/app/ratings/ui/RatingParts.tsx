@@ -48,7 +48,8 @@ export function PlayerCard({detail, desktop = false}: {detail: PlayerRatingDetai
           {player.name}
         </Box>
         <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px"}}>
-          <Box sx={{minWidth: 0, fontSize: 15, color: color.ink2}}>{[player.team, roundsLabel(player.rounds)].filter(Boolean).join(" · ")}</Box>
+          {/* the handle first: the username is public (#88) */}
+          <Box sx={{minWidth: 0, fontSize: 15, color: color.ink2}}>{[`@${player.username}`, player.team, roundsLabel(player.rounds)].filter(Boolean).join(" · ")}</Box>
           <ChipLink
             href={`/players/${player.id}`}
             height={desktop ? 32 : 30}

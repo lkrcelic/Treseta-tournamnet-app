@@ -34,8 +34,8 @@ test("the form opens with the player's details; missing ones are empty", () => {
     smoker: true,
     role: "PLAYER" as const,
   });
-  const bare = playerDraft({id: 8, first_name: "Ana", last_name: "", name: "Ana", active: false, phone: null, birth_date: null});
-  assert.deepEqual(bare, {first_name: "Ana", last_name: "", username: "", email: "", phone: "", birth_date: "", smoker: false, role: "PLAYER" as const});
+  const bare = playerDraft({id: 8, first_name: "Ana", last_name: "", name: "Ana", username: "ana", active: false, phone: null, birth_date: null});
+  assert.deepEqual(bare, {first_name: "Ana", last_name: "", username: "ana", email: "", phone: "", birth_date: "", smoker: false, role: "PLAYER" as const});
 });
 
 test("Spremi sends only what changed", () => {

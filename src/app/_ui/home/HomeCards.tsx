@@ -163,8 +163,14 @@ export function NextNightCard({
         {league.players.map((p) => (
           <Box component="li" key={p.id} sx={{display: "flex", alignItems: "center", gap: "10px", fontSize: 15, minWidth: 0}}>
             <InitialsAvatar name={p.name} src={p.photo_url} size={32} sx={{fontSize: 11}} />
-            <Box component="span" sx={ellipsis}>
-              {p.name}
+            {/* the name and, under it, the handle: the username is public (#88) */}
+            <Box sx={{minWidth: 0, display: "flex", flexDirection: "column"}}>
+              <Box component="span" sx={ellipsis}>
+                {p.name}
+              </Box>
+              <Box component="span" sx={{fontSize: 12.5, color: tint.creamOnNavy[55], ...ellipsis}}>
+                @{p.username}
+              </Box>
             </Box>
             {p.me && (
               <Box component="span" sx={{color: color.cream, flex: "none"}}>

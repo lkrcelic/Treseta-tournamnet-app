@@ -7,7 +7,7 @@
 // Burza is Bela's code (BELA_SYNC.md lists no difference in it).
 // Bela's spec: e2e/tests/burza/c8-objava.spec.ts (ba24386).
 import {expect, test as base} from "../../helpers/c8";
-import {AFTER_MIDNIGHT_BUG, afterMidnight, day, escape, myAds, nightLabel, PHONE_ERROR, PHONE_HINT, phoneField, pickKind, publishButton} from "../../helpers/c8";
+import {day, escape, myAds, nightLabel, PHONE_ERROR, PHONE_HINT, phoneField, pickKind, publishButton} from "../../helpers/c8";
 
 const test = base.extend<{dropNight: (night: string) => Promise<void>}>({
   // takes one of the current league's nights off its schedule, as an admin would in Datumi, and puts it back after
@@ -32,7 +32,6 @@ test("Trebam zamjenu: Objavi oglas waits for a whole number, then the ad goes up
   me,
   healthy,
 }) => {
-  test.fail(afterMidnight(), AFTER_MIDNIGHT_BUG);
   const page = await as("player");
   await page.goto("/burza");
   await pickKind(page, "Objavi", "Trebam zamjenu");

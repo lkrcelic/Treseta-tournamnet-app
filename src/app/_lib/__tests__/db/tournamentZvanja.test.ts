@@ -35,6 +35,7 @@ const request = (declarations: boolean): TournamentRequest => ({
   game_minutes: 45,
   auto_publish: false,
   open_signups: false,
+  hide_entries: false,
   organizer_phone: "0931234567",
 });
 

@@ -43,10 +43,8 @@ test("the organizer's Turniri list only the tournaments they made, under a bar o
 });
 
 test("Početna opens the organizer's phone on their own Turniri, not on the players' Početna", async ({as}) => {
-  // BUG (Bela 52ef6b3, on bela-sync as ebe5b954): Početna on an organizer's phone is the players' (Turniri · Liga, with an
-  // Admin button), because page.tsx sends only a league admin's phone elsewhere (Večer lige); Bela opens a phone that
-  // runs tournaments but not the league on its Turniri, the screen its bar starts from (DECISIONS #86). Comes with the sync.
-  test.fail();
+  // a phone that runs tournaments but not the league opens on its Turniri, the screen its bar starts from (Bela's 52ef6b3,
+  // DECISIONS #86, on master since the sync of 17 Nov 2026)
   const page = await as("organizer");
   await page.goto("/");
   await expect(page.getByRole("heading", {name: "Turniri", level: 1})).toBeVisible();

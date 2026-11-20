@@ -98,17 +98,19 @@ test("a player's data comes in three steps: public, the phone, the private field
     smoker: true,
     player_role: "PLAYER",
   };
-  // Bela's #88 (a public username) hasn't come here, so the username is still private
-  const PRIVATE = ["username", "email", "birth_date", "smoker"] as const;
+  // the username left this list in #88: it is public now
+  const PRIVATE = ["email", "birth_date", "smoker"] as const;
 
-  // a player looking at someone else: the name, nothing else
+  // a player looking at someone else: the name and the username, nothing else
   const asPlayer = playerView(marko, player);
   assert.equal(asPlayer.phone, undefined);
+  assert.equal(asPlayer.username, marko.username);
   for (const key of PRIVATE) assert.equal(asPlayer[key], undefined, key);
 
   // an organizer: the phone, so they can call the teams of their tournament — and nothing further
   const asOrganizer = playerView(marko, organizer);
   assert.equal(asOrganizer.phone, marko.phone);
+  assert.equal(asOrganizer.username, marko.username);
   for (const key of PRIVATE) assert.equal(asOrganizer[key], undefined, key);
 
   // an admin, and the player themselves: everything

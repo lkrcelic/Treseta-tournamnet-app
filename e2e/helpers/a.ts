@@ -400,12 +400,8 @@ export const PAGES: Row[] = [
     route: "/",
     path: () => "/",
     player: per(button("Moj profil"), h((ids) => `Dobrodošao, ${ids.firstName.player}`)),
-    // BUG (Bela 52ef6b3): on master an organizer's phone opens on the player's Početna; Bela's organizer opens on their
-    // Turniri (DECISIONS #86), which bela-sync has and comes with the sync
-    organizer: per(
-      bug("Bela 52ef6b3: on the phone an organizer opens on the player's Početna instead of their Turniri; comes with the sync", h("Turniri")),
-      h((ids) => `Dobrodošao, ${ids.firstName.organizer}`),
-    ),
+    // the organizer's phone opens on their Turniri (Bela's 52ef6b3, on master since the sync of 17 Nov 2026)
+    organizer: per(h("Turniri"), h((ids) => `Dobrodošao, ${ids.firstName.organizer}`)),
     admin: per(h("Večer lige"), h((ids) => `Dobrodošao, ${ids.firstName.admin}`)),
   },
   {route: "/login", path: () => "/login", public: true, all: shows(PRIJAVA)},

@@ -129,7 +129,7 @@ const T = (c: Ctx) => `/api/admin/tournaments/${c.id}`;
 const HAND = {custom: false, points1: 7, points2: 4};
 
 // every organizer action on a tournament, by the route it sends (src/app/api/admin/tournaments, admin/tables, admin/hands).
-// Treseta has no Otključaj partiju (BELA_SYNC.md · Turniri, "Still out"), so not its route either; Uredi ishod and Vrati
+// Otključaj partiju is Bela's (it came with the sync of 17 Nov 2026), with Treseta's 45 minutes; Uredi ishod and Vrati
 // stol are Treseta's own (the admin or the tournament's organizer).
 const ACTIONS: Action[] = [
   {name: "Upravljanje turnirom (read)", method: "get", path: T},
@@ -157,6 +157,7 @@ const ACTIONS: Action[] = [
   {name: "Ukloni stol", method: "delete", path: (c) => `/api/admin/tables/${c.table!.id}`, tables: true},
   {name: "Upiši igru", method: "post", path: (c) => `/api/admin/tables/${c.table!.id}/hands`, data: () => ({target: {kind: "ongoing"}, hand: HAND}), tables: true},
   {name: "Završi meč", method: "post", path: (c) => `/api/admin/tables/${c.table!.id}/finish`, tables: true},
+  {name: "Otključaj partiju", method: "patch", path: (c) => `/api/admin/tables/${c.table!.id}/unlock`, data: () => ({minutes: 45}), tables: true},
   {name: "Ispravi igru (match being played)", method: "put", path: (c) => `/api/admin/hands/ongoing/${c.hand}`, data: () => HAND, tables: true},
   {name: "Obriši igru (match being played)", method: "delete", path: (c) => `/api/admin/hands/ongoing/${c.hand}`, tables: true},
   {name: "Ispravi igru (played match)", method: "put", path: (c) => `/api/admin/hands/finished/${c.playedHand}?allow_no_winner=1`, data: () => HAND, tables: true},

@@ -21,7 +21,9 @@ case "$ID" in
   # Treseta's own sections: conferences and places
   k) PORT=4031 ;;
   l) PORT=4032 ;;
-  *) echo "app.sh: unknown section id '$ID' (smoke, a, b, c1 … c9, k, l)" >&2; exit 2 ;;
+  # the whole suite on one target (e2e/run.sh, the nightly run)
+  nightly) PORT=4040 ;;
+  *) echo "app.sh: unknown section id '$ID' (smoke, a, b, c1 … c9, k, l, nightly)" >&2; exit 2 ;;
 esac
 
 HERE=$(git rev-parse --show-toplevel)

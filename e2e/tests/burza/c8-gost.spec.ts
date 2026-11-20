@@ -6,12 +6,10 @@
 // Bela's spec: e2e/tests/burza/c8-gost.spec.ts (ba24386).
 import {expect, test} from "../../helpers/fixtures";
 import {PASSWORD} from "../../helpers/fixtures";
-import {AFTER_MIDNIGHT_BUG, afterMidnight} from "../../helpers/c8";
 
 type Post = {id: number; phone: string | null; phone_hidden: boolean};
 
 test("a guest reads every open ad of the public Burza, has no Moji oglasi, and is sent to Prijava to publish", async ({as, world, healthy}) => {
-  test.fail(afterMidnight(), AFTER_MIDNIGHT_BUG);
   const open = Object.values(world.ads)
     .filter((a) => a.open)
     .map((a) => `/burza/${a.id}`)
@@ -55,8 +53,6 @@ test("a guest gets no phone number, and Prijavi se da vidiš broj leads to Prija
   world,
   healthy,
 }) => {
-  // BUG: a guest's GET /api/burza and an ad's page carry every open ad's phone number (Bela #11; Bela 3eb80df, comes with the sync)
-  test.fail();
   // the seeded availability ad with a number of its own
   const ad = world.ads.availablePartner;
   const row = await db.marketPost.findUniqueOrThrow({where: {id: ad.id}, include: {player: true}});

@@ -23,7 +23,8 @@ export function visibleRatings(
   keep: readonly (number | null | undefined)[] = []
 ): {shown: RatingRow[]; matched: number; left: number} {
   const searching = query.trim() !== "";
-  const matches = searching ? list.filter((p) => matchesQuery(p.name, query)) : list;
+  // by name or username (both public, #88)
+  const matches = searching ? list.filter((p) => matchesQuery(`${p.name} ${p.username}`, query)) : list;
   // the place of the lowest kept row on the list (players with the same rating share a rank, so the place, not the rank)
   const reach = searching ? 0 : Math.max(0, ...keep.map((id) => (id == null ? 0 : list.findIndex((p) => p.id === id) + 1)));
   const first = Math.max(RATINGS_PAGE, Math.ceil(reach / 10) * 10);

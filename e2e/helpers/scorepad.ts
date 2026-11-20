@@ -41,10 +41,11 @@ export async function expectTotal(page: Page, team: string, points: number) {
   await expect(page.getByText(new RegExp(`^${escape(team)}: ${points} bod(a|ova)?(, pobjeda)?$`))).toHaveCount(1);
 }
 
-// The team's round wins on the board: the pips next to its name ("1 od 2 u kolu")
+// The team's round wins on the board: the pips next to its name ("1 od 2 pobjede u kolu", Bela's label since the sync of
+// 17 Nov 2026; "1 od 2 u kolu" before)
 export async function expectWins(page: Page, team: string, wins: number, of = 2) {
   const nameRow = page.getByRole("heading", {name: team, exact: true}).locator("xpath=..");
-  await expect(nameRow.getByRole("img", {name: /^\d+ od \d+ u kolu$/})).toHaveAccessibleName(`${wins} od ${of} u kolu`);
+  await expect(nameRow.getByRole("img", {name: /^\d+ od \d+ pobjede u kolu$/})).toHaveAccessibleName(`${wins} od ${of} pobjede u kolu`);
 }
 
 // The question after a custom hand that took a team to the target

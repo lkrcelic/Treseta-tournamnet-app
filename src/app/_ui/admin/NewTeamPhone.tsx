@@ -120,7 +120,7 @@ export default function NewTeamPhone({leagueId}: {leagueId: number | null}) {
                       {p.name}
                     </Box>
                     <Box component="span" sx={{fontSize: 13, color: color.muted, ...ellipsis}}>
-                      {p.rating != null ? `Rejting ${p.rating}` : `@${p.username}`}
+                      {p.rating != null ? `Rejting ${p.rating}` : p.username ? `@${p.username}` : ""}
                     </Box>
                   </Box>
                   <IconCircleButton label={`Makni ${p.name}`} size={44} onClick={() => setRoster((r) => r.filter((x) => x !== p.id))} sx={{boxShadow: "none", color: color.muted, "& svg": {fontSize: 22}}}>

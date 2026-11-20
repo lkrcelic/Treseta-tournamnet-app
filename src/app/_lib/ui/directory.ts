@@ -12,7 +12,7 @@ import {matchesQuery} from "@/app/_lib/ui/text";
 // ---------- the lists ----------
 
 // photo_url: the avatar as the server filtered it for the viewer (null or absent = the initials or the team's letter)
-export type DirectoryMember = {id: number; first_name: string; last_name: string; username?: string; photo_url?: string | null};
+export type DirectoryMember = {id: number; first_name: string; last_name: string; username: string; photo_url?: string | null};
 export type DirectoryLeague = {id: number; name: string};
 export type DirectoryTeam = {id: number; name: string; players: DirectoryMember[]; leagues: DirectoryLeague[]; photo_url?: string | null};
 
@@ -48,7 +48,7 @@ export function filterTeams(teams: DirectoryTeam[], query: string): DirectoryTea
 
 // Traži igrače: the name and the username
 export function filterPlayers(players: AdminPlayerRow[], query: string): AdminPlayerRow[] {
-  return players.filter((p) => matchesQuery(`${p.name} ${p.username}`, query));
+  return players.filter((p) => matchesQuery(`${p.name} ${p.username ?? ""}`, query));
 }
 
 // The Igrači directory's order: by name (as the server sends it) or the newest accounts first ("Najnoviji")
@@ -75,14 +75,16 @@ export function joinedLabel(p: Pick<AdminPlayerRow, "created_at">): string | nul
 }
 
 // A directory row's second line: "3 igrača · 2 lige" for a team; "@iperic · Dalmatinci" for a player (all their teams;
-// only the username for a player in none)
+// only the username for a player in none). Without a username (an organizer doesn't get them) the teams stand alone,
+// and a player in none has no second line.
 export function teamDirectorySub(t: DirectoryTeam): string {
   return teamSubline(t.players.length, t.leagues.length);
 }
 
 export function playerDirectorySub(p: Pick<AdminPlayerRow, "username" | "teams">): string {
   const teams = p.teams.map((t) => t.team_name).join(", ");
-  return teams ? `@${p.username} · ${teams}` : `@${p.username}`;
+  const at = p.username ? `@${p.username}` : "";
+  return [at, teams].filter(Boolean).join(" · ");
 }
 
 // The directory shows a page of rows at a time ("Učitaj još")
@@ -194,7 +196,7 @@ export function playerTeamFromDirectory(team: DirectoryTeam, player: DirectoryMe
     team_id: team.id,
     team_name: team.name,
     leagues: [...team.leagues].sort((a, b) => b.id - a.id).map((l) => ({league_id: l.id, league_name: l.name})),
-    players: members.map((p) => ({id: p.id, first_name: p.first_name, last_name: p.last_name, photo_url: p.photo_url ?? null})),
+    players: members.map((p) => ({id: p.id, first_name: p.first_name, last_name: p.last_name, username: p.username, photo_url: p.photo_url ?? null})),
     photo_url: team.photo_url ?? null,
   };
 }

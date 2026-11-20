@@ -80,3 +80,13 @@ test("a bye in Kartaš's last Kolo of the night ends the evening", async () => {
   assert.equal(e?.lastKoloOut, true);
   assert.equal(homeCard({openTable: false, tonight: {started: true, here: true, lastTable: {kolo: e!.lastTable!.kolo, bye: true}, lastKoloOut: true}, nextNight: true}), "end");
 });
+
+test("the night's own Broj kola, not the league's, says when its last Kolo is out", async () => {
+  // tonight plays 3 Kola (Datumi), the league 2: after Kartaš's Kolo 8 (its 2nd) the evening goes on
+  await prisma.leagueNight.update({where: {league_id_night: {league_id: leagueId, night: tonight}}, data: {rounds_per_night: 3}});
+  const e = await evening();
+  assert.equal(e?.kola, 2);
+  assert.equal(e?.lastKoloOut, false);
+  await prisma.leagueNight.update({where: {league_id_night: {league_id: leagueId, night: tonight}}, data: {rounds_per_night: null}});
+  assert.equal((await evening())?.lastKoloOut, true);
+});

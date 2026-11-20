@@ -27,6 +27,7 @@ import {
   koloRemovalWarns,
   joinsAsPresent,
   signUpsCloseWithSwitch,
+  entriesHidden,
   signUpsOpenNow,
   removesResults,
   tableWasPlayed,
@@ -499,6 +500,25 @@ test("the tournament form's switch reaches the server: open_signups survives the
   assert.equal(TournamentRequestValidation.safeParse({...body, score_threshold: 61}).success, false);
 });
 
+test("Sakrij broj prijava: hidden from players only before Kolo 1, never from whoever runs it, and it reaches the server", () => {
+  assert.equal(entriesHidden({hideEntries: true, phase: "upcoming", manager: false}), true);
+  // the admin and the organizer see every sign-up and the waiting list
+  assert.equal(entriesHidden({hideEntries: true, phase: "upcoming", manager: true}), false);
+  // from Kolo 1 the standings list every team anyway
+  assert.equal(entriesHidden({hideEntries: true, phase: "active", manager: false}), false);
+  assert.equal(entriesHidden({hideEntries: true, phase: "finished", manager: false}), false);
+  assert.equal(entriesHidden({hideEntries: false, phase: "upcoming", manager: false}), false);
+  const body = {
+    name: "Kafić", date: "2026-12-01", gathering_time: null, start_time: null,
+    location_name: null, location_address: null, location_url: null,
+    rounds: 3, matches_per_round: 2, declarations: true, max_teams: 16, entry_fee: 0,
+    rules_url: null, prizes: [], game_minutes: 35, auto_publish: false, open_signups: false, organizer_phone: "0931234567",
+  };
+  assert.equal(TournamentRequestValidation.parse({...body, hide_entries: true}).hide_entries, true);
+  // left out: the count shows, as for every tournament made before this
+  assert.equal(TournamentRequestValidation.parse(body).hide_entries, false);
+});
+
 test("Otvorene prijave: who counts as present, and what switching the setting off does", () => {
   // a team that comes in once the day's switch has run is here: that starts at the start time, not at Kolo 1
   assert.equal(joinsAsPresent({openSignups: true, dayClosed: true}), true);
@@ -558,6 +578,29 @@ test("a played Kolo whose tables don't say when they closed shows no timer", () 
   // e.g. rounds from before, or only a close from before its publishing (a draft's bye)
   assert.deepEqual(koloTimes([{published_at: at("19:00"), open: false, closed_at: null}]), {started_at: null, ended_at: null});
   assert.deepEqual(koloTimes([{published_at: at("19:00"), open: false, closed_at: at("18:30")}]), {started_at: null, ended_at: null});
+});
+
+test("the card on top: the viewer's own tournament being played, else the soonest coming up (as Treseta)", async () => {
+  const {mainTournament} = await import("@/app/_lib/tournaments");
+  type T = {id: number; phase: "upcoming" | "active" | "finished" | "cancelled"; date: string; me: {status: "REGISTERED" | "WAITING"} | null};
+  const today = "2026-11-11";
+  const live: T = {id: 1, phase: "active", date: today, me: null};
+  const next: T = {id: 2, phase: "upcoming", date: "2026-11-18", me: null};
+  // someone not playing doesn't get the tournament being played on top (it is under Uživo), but the next one
+  assert.equal(mainTournament([live], today), null);
+  assert.equal(mainTournament([next, live], today)?.id, 2);
+  // nor does a team on the waiting list
+  const waiting: T = {...live, id: 3, me: {status: "WAITING"}};
+  assert.equal(mainTournament([live, waiting, next], today)?.id, 2);
+  // the viewer's own table comes first
+  const playing: T = {...live, id: 4, me: {status: "REGISTERED"}};
+  assert.equal(mainTournament([waiting, playing, next], today)?.id, 4);
+  // the viewer's own one starting today (Tu smo) before someone else's on the same day
+  const mineToday: T = {id: 5, phase: "upcoming", date: today, me: {status: "REGISTERED"}};
+  assert.equal(mainTournament([live, {id: 8, phase: "upcoming", date: today, me: null}, mineToday], today)?.id, 5);
+  // finished or passed ones never
+  assert.equal(mainTournament([next, {id: 6, phase: "finished", date: "2026-11-01", me: null}], today)?.id, 2);
+  assert.equal(mainTournament([{id: 7, phase: "upcoming", date: "2026-11-10", me: null}], today), null);
 });
 
 test("Uživo and Nadolazeći: the lists behind Početna's rows and their pages", async () => {

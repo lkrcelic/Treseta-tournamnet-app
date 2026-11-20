@@ -55,18 +55,18 @@ Bugovi aplikacije (testovi su `test.fail` s `// BUG:` dok popravak ne stigne):
 | --- | --- | --- | --- |
 | Bye bez pobjednika: `createByeMatches` (`round/insertPairRounds.ts`) piše bye meč bez `winner_side`, a Treseta taj stupac čita kao "meč bez pobjednika" | generator (`seed:verify` `!`), C3 | Tresetin | popravljeno na masteru (`6536637b`, `19361b22` s backfillom), spojeno u `e2e-suite` 16.11. |
 | Drugi brzi dodir na Završi meč otvara upis igre (Bela #74) | C1 | zajednički | Belin `e721909`, dolazi sa syncom |
-| Ista igra s dva telefona upiše se dvaput (Bela #57) | C2 | zajednički | Belin `3efe0f4`, na `bela-sync` kao `a03b1ade`; čeka merge na master |
-| Poslije ponoći Početna ispusti večerašnju kartu (Tu smo, Pauza) za sljedeću večer, a Burza večerašnje zamjene broji kao istekle: "danas" po kalendaru (`mySchedule`, `burza.ts`, `BurzaForms`, Moji oglasi) | L, C8 | zajednički | Belin `1f7d51e`, već na `bela-sync` |
-| Gost na Burzi vidi broj svakog oglasa (`/api/burza`, stranica oglasa; Bela #11) | C8 | zajednički | Belin `3eb80df`, već na `bela-sync` |
-| Korisnička imena su privatna: Moje ekipe i stranica ekipe pokazuju ime, suigrač ne vidi `@username` (Belin DECISIONS #88) | C9 | zajednički | Belin `5defdb6`, već na `bela-sync` |
+| Ista igra s dva telefona upiše se dvaput (Bela #57) | C2 | zajednički | Belin `3efe0f4`, na masteru od synca 17.11. |
+| Poslije ponoći Početna ispusti večerašnju kartu (Tu smo, Pauza) za sljedeću večer, a Burza večerašnje zamjene broji kao istekle: "danas" po kalendaru (`mySchedule`, `burza.ts`, `BurzaForms`, Moji oglasi) | L, C8 | zajednički | Belin `1f7d51e`, na masteru od synca 17.11. |
+| Gost na Burzi vidi broj svakog oglasa (`/api/burza`, stranica oglasa; Bela #11) | C8 | zajednički | Belin `3eb80df`, na masteru od synca 17.11. |
+| Korisnička imena su privatna: Moje ekipe i stranica ekipe pokazuju ime, suigrač ne vidi `@username` (Belin DECISIONS #88) | C9 | zajednički | Belin `5defdb6`, na masteru od synca 17.11. |
 | Gost s Objavi → Prijava: prijava unutar 30 s ostavi ga na Prijavi s vrtuljkom; Nextov router cache još drži preusmjeravanje middlewarea, a `login/page.tsx` radi `router.replace(next)` | C8 | zajednički (i Belin `development`) | Bela #79 |
 | Moje ekipe pokazuje staru sliku dok se stranica ne učita ponovo (`useMyTeams` se ne osvježi nakon Spremi) | C9 | zajednički (Belin C9 ga ima kao `test.fail`) | Bela #80 |
 | Nakon što admin vrati meč u igru, njegov mobitel ne pita "s ovim dosta" na 41 : 41 (`reopenMatch` kopira igre s novim id-jevima, a TablePhone traži stari) | C5 | Tresetin (`467ea599`) | Treseta #1, popravljeno na masteru (`ea1458ba`, 16.11.) |
 | Spremi odbijen jer je vrijeme isteklo ostavlja mobitel na koraku Igra; u Beli vraća na stol, koji je prešao na Meč 2 (Belin DECISIONS #83) | C4 | Tresetin (`ScorePage`, `handFlow`; port `a0686e1` bez provjere `matchClosed`) | Treseta #2, popravljeno na masteru (`15efc6a7`, 16.11.) |
 | Rate limiter: prozor se pomiče sa svakim zahtjevom, pa se nikad ne isprazni | fixtures (svaki kontekst svoj `X-Forwarded-For`) | zajednički | komentar na Belin issue #4 |
-| Organizatorov ispravak igre na tuđem stolu dobije 400 umjesto 403: `PUT /api/admin/hands/[kind]/[resultId]` čita tijelo prije `refuseUnlessMyHand` (Bela provjerava prvo od `28d19f2`; Tresetin redoslijed iz `543f6e46`, sync ga ne mijenja) | B | Tresetin | issue još nije otvoren |
-| Organizator: Početna na mobitelu su igračeve, ne njegovi Turniri | A, C7 | zajednički | Belin `52ef6b3`, već na `bela-sync` |
-| Organizator: Nova ekipa, preimenovanje, dodaj i makni igrača traže ulogu admina | B | zajednički | Belin `28d19f2`, već na `bela-sync` |
+| Organizatorov ispravak igre na tuđem stolu dobije 400 umjesto 403: `PUT /api/admin/hands/[kind]/[resultId]` čita tijelo prije `refuseUnlessMyHand` (Bela provjerava prvo od `28d19f2`; Tresetin redoslijed iz `543f6e46`, sync ga ne mijenja) | B | Tresetin | popravljeno na masteru (`8c883c9b`, 18.11.) |
+| Organizator: Početna na mobitelu su igračeve, ne njegovi Turniri | A, C7 | zajednički | Belin `52ef6b3`, na masteru od synca 17.11. |
+| Organizator: Nova ekipa, preimenovanje, dodaj i makni igrača traže ulogu admina | B | zajednički | Belin `28d19f2`, na masteru od synca 17.11. |
 | Organizator: Tko igra na stolu svog turnira odbija ga | B, C7 | zajednički | Bela #83, `f0a8b44`, još nije na `bela-sync` |
 | Organizator: Makni ekipu na svom turniru | B, C7 | zajednički | Bela #84 |
 | Organizator na tuđem stolu: „Provjeri vezu” umjesto „Ovo nije tvoj turnir.” | A, C7 | zajednički | Bela #86 |
@@ -85,6 +85,8 @@ Suite i generator (S3):
   7. minuti, a kolo se zatim pomakne na 12 (16.11.).
 - `/api/cron/tick` zatvara svaki istekli meč u bazi; `c4.ts` ga zove samo za svoj stol, ostali neka rade isto (C7-ov
   `tableOutFor` vrti sat samo svog turnira).
+- Sync 17.11. donio je Otključaj partiju i Sakrij broj prijava (Belin DECISIONS #93) bez Tresetinih testova: port
+  Belinog `c5-otkljucaj.spec.ts` (Tresetine igre, 45 minuta) i Belina dva testa Sakrij broj prijava iz `c3-prijave`.
 - A traži scenarij: liga s konferencijama i večer na dva mjesta s ekipama u Podjeli (sad A vidi samo prazna stanja
   konferencija, Podjele i filtara Dnevnog poretka).
 

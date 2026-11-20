@@ -19,10 +19,10 @@ test("on the phone the league's management and Nova liga stay the admin's, and S
     await expect(page.getByRole("tablist")).toHaveCount(0);
     for (const action of ["Novo kolo", "Kreiraj ligu", "Dodaj večer", "Spremi promjene"]) await expect(page.getByRole("button", {name: action})).toHaveCount(0);
   }
-  // Početna, without a sponsor's controls (that Početna is the organizer's Turniri is c7-svoj-turnir's, Bela 52ef6b3)
+  // Početna, which for the organizer is their Turniri (Bela's 52ef6b3), without a sponsor's controls
   await page.goto("/sponzori");
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole("main").getByRole("heading", {level: 1})).toBeVisible();
+  await expect(page.getByRole("heading", {name: "Turniri", level: 1})).toBeVisible();
   for (const action of ["Novi sponzor", "Dodaj sponzora"]) await expect(page.getByRole("button", {name: action})).toHaveCount(0);
   await healthy(page);
 });

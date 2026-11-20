@@ -1,7 +1,7 @@
 import {ResultCreateRequest} from "@/app/_interfaces/result";
 import {prisma} from "@/app/_lib/prisma";
 import {transformResult} from "@/app/_lib/helpers/databaseHelpers";
-import {assertZvanja, InvalidResultError, newHandZvanja, normalizeResult} from "@/app/_lib/validation/validateResult";
+import {assertZvanja, HANDS_CHANGED, HandsChangedWarning, InvalidResultError, newHandZvanja, normalizeResult} from "@/app/_lib/validation/validateResult";
 import {handTotals} from "@/app/_lib/game/scoring";
 import {assertCallStands, assertPlayersHand, ongoingMatchState} from "./matchState";
 import type {MatchEnd} from "@/app/_lib/game/scoring";
@@ -16,6 +16,9 @@ export const TIME_UP = "Vrijeme partije je isteklo. Partija se zatvara s upisani
 //
 // Vrijeme partije: a hand entered after the time is refused, unless the score is level — that one more hand is played,
 // and the match ends with it (`admin`: an admin's correction is never refused for being late).
+// `expected_hands`: how many hands the phone's board held when the entry was opened. Several phones follow the same
+// match, so if another one saved a hand meanwhile the two may be the same hand entered twice — the save is held back
+// (HandsChangedWarning) and the phone asks the player. Counted inside the lock, so two saves at once can't both pass.
 export async function createResult(
     resultData: ResultCreateRequest,
     normalize: (r: ResultCreateRequest) => ResultCreateRequest = normalizeResult,
@@ -39,6 +42,10 @@ export async function createResult(
         const before = await ongoingMatchState(tx, result.match_id, match.score_threshold);
         if (before.winner !== null) {
             throw new InvalidResultError("Meč je gotov – završi ga umjesto da dodaješ igru.");
+        }
+        if (result.expected_hands != null) {
+            const hands = await tx.ongoingResult.count({where: {match_id: result.match_id}});
+            if (hands !== result.expected_hands) throw new HandsChangedWarning(HANDS_CHANGED, hands);
         }
         const timing = admin ? "on_time" : handTiming({now: new Date(), endsAt: match.ends_at, tied: before.score1 === before.score2});
         if (timing === "too_late") {

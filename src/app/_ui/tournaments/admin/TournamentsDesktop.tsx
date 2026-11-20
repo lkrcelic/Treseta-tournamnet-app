@@ -62,7 +62,7 @@ export default function TournamentsDesktop() {
     finished: tournamentsOf(tournaments ?? [], "finished").length,
   };
   const grid = {flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) 380px", [NARROW_DESKTOP]: {gridTemplateColumns: "minmax(0,1fr) 330px"}, gap: "20px"} as const;
-  const cols = "minmax(0,1.6fr) minmax(0,1fr) 84px 190px";
+  const cols = "minmax(0,1.6fr) minmax(0,1fr) 84px 176px";
 
   return (
     <DesktopShell
@@ -99,9 +99,7 @@ export default function TournamentsDesktop() {
             <Box component="span" sx={{textAlign: "center"}}>
               Ekipe
             </Box>
-            <Box component="span" sx={{textAlign: "right"}}>
-              Prijave
-            </Box>
+            <span>Prijave</span>
           </Box>
           {error ? (
             <ErrorNote onRetry={reload} sx={{m: "14px"}}>
@@ -160,8 +158,8 @@ export default function TournamentsDesktop() {
                       <Box component="span" sx={{textAlign: "center", fontSize: 16, fontWeight: 700, fontVariantNumeric: "tabular-nums"}}>
                         {capacityLabel(t.teams, t.max_teams)}
                       </Box>
-                      <Box sx={{display: "flex", justifyContent: "flex-end"}}>
-                        <StatusChip status={statusOf(t)} sx={{alignSelf: "center"}} />
+                      <Box sx={{display: "flex", justifyContent: "flex-start", minWidth: 0}}>
+                        <StatusChip status={statusOf(t)} height={30} sx={{alignSelf: "center"}} />
                       </Box>
                     </Box>
                     <Box

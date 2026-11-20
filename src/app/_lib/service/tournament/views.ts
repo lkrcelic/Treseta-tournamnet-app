@@ -18,7 +18,7 @@ import {
   TournamentWinner,
 } from "@/app/_interfaces/tournament";
 import {waitingList} from "@/app/_lib/tournamentEntries";
-import {draftIsStale, koloTimes, lastKoloMade, signUpsOpenNow} from "@/app/_lib/tournaments";
+import {draftIsStale, entriesHidden, koloTimes, lastKoloMade, signUpsOpenNow} from "@/app/_lib/tournaments";
 import {leagueClock} from "@/app/_lib/dates";
 import {displayName} from "@/app/_lib/players/names";
 import {arrivalPhase, DayEntry, isTournamentDay, startSwitch} from "@/app/_lib/tournamentDay";
@@ -146,6 +146,8 @@ export function cardView(s: Snapshot, viewer: Viewer | null): TournamentCard {
     : null;
   const now = new Date();
   const place = mine && mine.status === "REGISTERED" && s.phase === "finished" ? s.standings.findIndex((r) => r.team_id === mine.team_id) + 1 : 0;
+  // Sakrij broj prijava: nothing that tells how full it is leaves the server (DECISIONS #93)
+  const hidden = isHidden(s);
   return {
     id: t.tournament_id,
     name: t.tournament_name,
@@ -162,10 +164,10 @@ export function cardView(s: Snapshot, viewer: Viewer | null): TournamentCard {
     max_teams: t.max_teams,
     registrations_open: t.registrations_open,
     phase: s.phase,
-    teams: registered.length,
-    waiting: s.entries.length - registered.length,
-    players: new Set(registered.flatMap((e) => e.players.map((p) => p.id))).size,
-    avatars: registered.flatMap((e) => e.players).slice(0, 3).map((p) => ({name: p.name, photo_url: p.photo_url})),
+    teams: hidden ? 0 : registered.length,
+    waiting: hidden ? 0 : s.entries.length - registered.length,
+    players: hidden ? 0 : new Set(registered.flatMap((e) => e.players.map((p) => p.id))).size,
+    avatars: hidden ? [] : registered.flatMap((e) => e.players).slice(0, 3).map((p) => ({name: p.name, photo_url: p.photo_url})),
     completed_kolos: s.completed,
     live_kolo: s.live,
     winner: winnerOf(s),
@@ -174,6 +176,8 @@ export function cardView(s: Snapshot, viewer: Viewer | null): TournamentCard {
     game_minutes: t.game_minutes,
     auto_publish: t.auto_publish,
     open_signups: t.open_signups,
+    hide_entries: t.hide_entries,
+    entries_hidden: hidden,
     // whether a team can still sign up right now: before the start as ever, and during a tournament with Otvorene
     // prijave until its last Kolo is made (DECISIONS #88)
     signups_open_now: signUpsOpenNow({
@@ -190,8 +194,12 @@ export function cardView(s: Snapshot, viewer: Viewer | null): TournamentCard {
   };
 }
 
+// Sakrij broj prijava for this snapshot's viewer (s.admin: whoever runs this tournament)
+const isHidden = (s: Snapshot) => entriesHidden({hideEntries: s.tournament.hide_entries, phase: s.phase, manager: s.admin});
+
 // The teams in: the viewer's first, then by rating, then by name
 export function entriesList(s: Snapshot, viewer: Viewer | null): TournamentEntryView[] {
+  if (isHidden(s)) return [];
   return s.entries
     .filter((e) => e.status === "REGISTERED")
     .map((e) => entryView(s, e, viewer))

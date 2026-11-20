@@ -68,15 +68,14 @@ async function sameHandOnBoth(first: Page, second: Page, {matchId, hands}: TwoPh
   await expectRows(first, [...hands.map(totalsOf), total]);
 }
 
-// BUG (Bela #57): the same hand saved from two phones is counted twice (red at the hand count: 4, not 3).
-// Treseta's own createResult has no hand count yet (Bela 3efe0f4); unmark when bela-sync's a03b1ade reaches master.
+// Bela #57: the wizard sends how many hands its board had, so a second save of the same hand asks first (Bela 3efe0f4, in
+// Treseta's own hand entry with the sync of 17 Nov 2026)
 test("the same hand saved from both phones of a team is saved once: the second phone is asked „Je li ovo nova igra?” (Bela #57)", async ({
   as,
   db,
   twoPhones,
   healthy,
 }) => {
-  test.fail();
   const {matchId, phones, team1, hands} = twoPhones;
   const [first, second] = [await as(phones[0]), await as(phones[1])];
   // team1 7 and a 3, team2 the other 4 → 10 : 4
@@ -99,14 +98,12 @@ test("the same hand saved from both phones of a team is saved once: the second p
   await healthy(second);
 });
 
-// BUG (Bela #57): as above, no question and the hand counted twice; red where the question should be.
 test("after the question, Odustani shows the other phone's hand on the board, and the phone goes on with the next hand (Bela #57)", async ({
   as,
   db,
   twoPhones,
   healthy,
 }) => {
-  test.fail();
   const {matchId, phones, team1, team2, hands} = twoPhones;
   const seeded = hands.map(totalsOf);
   const [first, second] = [await as(phones[0]), await as(phones[1])];

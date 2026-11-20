@@ -37,7 +37,7 @@ function ratingList(n: number, names: (i: number) => string = (i) => `Igrač ${i
   for (let i = 0; i < n; i++) {
     const prev = rows[i - 1];
     const r = rating(i);
-    rows.push({id: 100 + i, rank: prev && prev.rating === r ? prev.rank : i + 1, name: names(i), team: null, rating: r, change: 0, rounds: 9, provisional: false});
+    rows.push({id: 100 + i, rank: prev && prev.rating === r ? prev.rank : i + 1, name: names(i), username: `igrac${100 + i}`, team: null, rating: r, change: 0, rounds: 9, provisional: false});
   }
   return rows;
 }

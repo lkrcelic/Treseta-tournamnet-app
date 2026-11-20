@@ -1,5 +1,6 @@
 // Potvrda dolaska in the league (DECISIONS #73): on a night of the league that has a start time, a team says it has
-// come (Tu smo) from Okupljanje (without one, half an hour before the start; #80) until the night is over at 06:00. Novo kolo pairs the teams that
+// come (Tu smo) from Okupljanje (without one, half an hour before the start; #80) until the night is over: when its
+// Broj kola are all finished (#94), at 06:00 at the latest. Novo kolo pairs the teams that
 // are here, and the admin's switches there mark a team here or not (a team without a phone). Before the start a team
 // takes its confirmation back (Ipak otkazujemo), after it it leaves (Odlazimo) and is out of the next Novo kolo; Tu smo
 // again brings it back. Framework free so it can be unit tested.
@@ -43,8 +44,12 @@ export function leagueArrivalPhase(w: {opens: Moment; start: Moment; closes: Mom
   return "over";
 }
 
-// The night's published rounds reach its Kola po večeri: its last round is out
+// The night's published rounds reach its Broj kola: its last round is out
 export const lastRoundOut = (publishedRounds: number, roundsPerNight: number): boolean => publishedRounds >= roundsPerNight;
+
+// The night's finished rounds (every table closed) reach its Broj kola: the night is over for Potvrda dolaska before
+// 06:00, so no team sees Odlazimo or Tu smo · Želimo uskočiti any more
+export const nightPlayedOut = (finishedRounds: number, roundsPerNight: number): boolean => finishedRounds >= roundsPerNight;
 
 // A team is here: it came (a row) and hasn't left since
 export const isHere = (a: {left_at: Moment | null} | null | undefined): boolean => a != null && a.left_at == null;

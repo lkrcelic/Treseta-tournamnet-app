@@ -50,6 +50,7 @@ function fields(r: TournamentRequest) {
     game_minutes: r.game_minutes,
     auto_publish: r.auto_publish,
     open_signups: r.open_signups,
+    hide_entries: r.hide_entries,
     organizer_phone: normalizePhone(r.organizer_phone),
   };
 }

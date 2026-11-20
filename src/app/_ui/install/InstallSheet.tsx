@@ -3,6 +3,7 @@
 import useReducedMotion from "@/app/_hooks/useReducedMotion";
 import {BRAND} from "@/app/_lib/brand";
 import {chromeIntentUrl, installEnvLabel, type InstallEnv} from "@/app/_lib/installPlatform";
+import {installSnoozed, rememberInstallDismissed} from "@/app/_lib/installSnooze";
 import {useInstallPrompt} from "@/app/_lib/installPrompt";
 // osBlue: the system blue of each OS, as in its own menus
 import {color, ease, font, platform as osBlue, shadow, tint} from "@/app/_styles/tokens";
@@ -164,7 +165,9 @@ function variantFor({os, browser}: InstallEnv, canPrompt: boolean): Variant {
   return {...base, steps: ANDROID_OTHER_STEPS, extra: "chrome", arrow: "top"}; // A6
 }
 
-export default function InstallSheet() {
+// `ignoreSnooze`: the login page offers the install however often it is opened; everywhere else a dismissal is
+// remembered for a week (installSnooze.ts), so Početna doesn't cover Započni igru after every round.
+export default function InstallSheet({ignoreSnooze = false}: {ignoreSnooze?: boolean} = {}) {
   const {env, standalone, canPrompt, installed, prompt} = useInstallPrompt();
   const reduce = useReducedMotion();
   const titleId = useId();
@@ -173,10 +176,10 @@ export default function InstallSheet() {
 
   const offered = env != null && env.os !== "other" && !standalone;
   useEffect(() => {
-    if (!offered) return;
+    if (!offered || (!ignoreSnooze && installSnoozed())) return;
     const t = window.setTimeout(() => setOpen(true), OPEN_DELAY_MS);
     return () => window.clearTimeout(t);
-  }, [offered]);
+  }, [offered, ignoreSnooze]);
 
   if (!offered) return null;
   // after the browser's own install; not Samsung, where an accepted install can still end in Play Protect's block
@@ -185,6 +188,11 @@ export default function InstallSheet() {
   const ios = env.os === "ios";
   const v = variantFor(env, canPrompt);
   const blue = ios ? osBlue.ios : osBlue.android;
+  // closed by hand: the sheet stays away on the next visits (the login page's still opens)
+  const dismiss = () => {
+    rememberInstallDismissed();
+    setOpen(false);
+  };
   const install = async () => {
     setBusy(true);
     const accepted = await prompt();
@@ -200,7 +208,7 @@ export default function InstallSheet() {
       <Drawer
         anchor="bottom"
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={dismiss}
         transitionDuration={{enter: 260, exit: 200}}
         SlideProps={{easing: {enter: ease, exit: "cubic-bezier(.4,0,.6,1)"}}}
         slotProps={{backdrop: {sx: {background: tint.scrim[42]}}}}
@@ -262,7 +270,7 @@ export default function InstallSheet() {
             {v.extra === "copyChromeLink" && <CopyLink target="Chrome" quiet />}
           </>
         )}
-        <Box component="button" type="button" onClick={() => setOpen(false)} sx={{...buttonBase, height: 48, borderRadius: "14px", background: "transparent", color: color.ink2, fontSize: 16, fontWeight: 600}}>
+        <Box component="button" type="button" onClick={dismiss} sx={{...buttonBase, height: 48, borderRadius: "14px", background: "transparent", color: color.ink2, fontSize: 16, fontWeight: 600}}>
           Nastavi u pregledniku
         </Box>
       </Drawer>

@@ -61,6 +61,10 @@ export type PadMatch = {
   hands: PadHand[];
 };
 
+// Why a table is locked, for Otključaj partiju (DECISIONS #89): no_show (Nedolazak), skipped (Preskočen),
+// time_expired (Vrijeme isteklo) or done (played to the end). null: it isn't locked.
+export type PadLock = "no_show" | "skipped" | "time_expired" | "done";
+
 export type TablePad = {
   roundId: number;
   // the league the table is in (0: none, a tournament's table)
@@ -85,6 +89,11 @@ export type TablePad = {
   bye: boolean;
   // who plays is confirmed (an open table without a lineup goes through the lineup screen first)
   hasLineup: boolean;
+  // what locked the table (null: it is open), with the team that didn't come for a Nedolazak; unlockable only for a
+  // tournament's table
+  lock: {kind: PadLock; absent: string | null} | null;
+  // Vrijeme partije at this table now, in minutes: the table's own, else its tournament's or league's
+  gameMinutes: number;
   matches: PadMatch[];
 };
 

@@ -6,6 +6,8 @@ import {
   endsOn,
   nightGone,
   partnerError,
+  phoneForViewer,
+  phoneNeedsLogin,
   postStatus,
   RepostFacts,
   repostError,
@@ -31,6 +33,7 @@ import {
   rasporedPill,
   sortNights,
 } from "../nights";
+import {leagueDateString, leagueNightString} from "../dates";
 import {isValidPhone, normalizePhone, phoneInput, savesToProfile, telHref, whatsappHref} from "../phone";
 import {
   adCount,
@@ -227,6 +230,7 @@ const base: BurzaPost = {
   as_partner: false,
   note: "",
   phone: "+385 91 555 1234",
+  phone_hidden: false,
   mine: false,
   can_close: false,
   busy_team: null,
@@ -468,7 +472,7 @@ test("Moji oglasi says what each ad is and when it closes", () => {
 });
 
 test("Tko traži zamjenu? lists the player first, then the active teammates", () => {
-  const p = (id: number, me = false, active = true) => ({id, name: `Igrač ${id}`, rating: 1500, me, active});
+  const p = (id: number, me = false, active = true) => ({id, name: `Igrač ${id}`, username: `igrac${id}`, rating: 1500, me, active});
   assert.deepEqual(substituteRoster([p(1), p(2, false, false), p(3, true), p(4)]).map((x) => x.id), [3, 1, 4]);
   assert.deepEqual(substituteRoster([]), []);
 });
@@ -491,4 +495,53 @@ test("a partner ad whose league has ended can't go up again", () => {
   assert.equal(repostBlocked({...minePartner, status: "CLOSED", ends_on: "2026-12-15"}, today), null);
   assert.equal(repostBlocked({...minePartner, status: "CLOSED", ends_on: null}, today), null);
   assert.equal(repostBlocked({...mine, status: "EXPIRED", ends_on: "2026-09-29"}, today), null);
+});
+
+test("an ad's number needs a login: a guest gets none, its author always sees it", () => {
+  const number = "+385 91 555 1234";
+  const open = {signedIn: true, mine: false, closed: false};
+  // a logged-in player on an open ad: the number, as before
+  assert.equal(phoneForViewer(number, open), number);
+  assert.equal(phoneNeedsLogin(number, open), false);
+  // nobody logged in: no number, and the ad's page offers Prijavi se (GET /api/burza can't be harvested)
+  const guest = {...open, signedIn: false};
+  assert.equal(phoneForViewer(number, guest), null);
+  assert.equal(phoneNeedsLogin(number, guest), true);
+  // a closed ad: only its author, and no login prompt (the page says it is closed)
+  const closed = {...open, closed: true};
+  assert.equal(phoneForViewer(number, closed), null);
+  assert.equal(phoneForViewer(number, {...closed, mine: true}), number);
+  assert.equal(phoneNeedsLogin(number, {...closed, signedIn: false}), false);
+  // an availability ad without any number: nothing to hide, nothing to offer
+  assert.equal(phoneForViewer(null, open), null);
+  assert.equal(phoneNeedsLogin(null, guest), false);
+});
+
+// #19: at 02:00 the Tuesday night is still being played, so the player's screens count "today" as that night
+// (leagueNightString), not the calendar day — Raspored, Početna and Burza all take their "today" from it.
+test("after midnight tonight's league night is still today for Raspored and Burza", () => {
+  // 02:00 Wednesday in Zagreb (CET, so 01:00 UTC), with the Tuesday night's rounds still open
+  const at = new Date("2026-10-28T01:00:00Z");
+  const night = leagueNightString(at);
+  assert.equal(night, "2026-10-27");
+  // the calendar day has already moved on, which is what made the night look played
+  assert.equal(leagueDateString(at), "2026-10-28");
+
+  const nights = ["2026-10-20", "2026-10-27", "2026-11-03"];
+  // Raspored's card and pill: the Tuesday is the next night and says Večeras, not Odigrano with next week's date
+  assert.equal(nextNightIndex(nights, night), 1);
+  assert.equal(rasporedPill("2026-10-27", true, false, night, true), "tonight");
+  assert.equal(RASPORED_PILL[rasporedPill("2026-10-27", true, false, night, true)!], "Večeras");
+  assert.equal(nightStatus("2026-10-27", true, night, true), "next");
+  // by the calendar day it was the week after, and the night counted as played
+  assert.equal(nextNightIndex(nights, leagueDateString(at)), 2);
+  assert.equal(rasporedPill("2026-10-27", false, false, leagueDateString(at), true), "played");
+
+  // Burza: an ad for tonight is still up while the night is played
+  const ad: StatusPost = {kind: "SUBSTITUTE", closed: false, league_id: 3, night: "2026-10-27", league_end: null};
+  const ctx = {today: night, nights: new Set(["3|2026-10-27", "3|2026-11-03"])};
+  assert.equal(nightGone(ad, ctx), false);
+  assert.equal(postStatus(ad, ctx), "ACTIVE");
+  // a night that has really passed still expires
+  assert.equal(nightGone({...ad, night: "2026-10-20"}, ctx), true);
 });

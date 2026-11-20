@@ -8,6 +8,7 @@ import {buttonBase, ErrorNote, Eyebrow, mergeSx, OutlineButton, Segmented, Solid
 import {LocationPicker} from "@/app/_ui/locations/LocationPicker";
 import AddLocationAltRoundedIcon from "@mui/icons-material/AddLocationAltRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import {PhoneStepper} from "@/app/_ui/admin/AdminParts";
 import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
 import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
 import TableRestaurantRoundedIcon from "@mui/icons-material/TableRestaurantRounded";
@@ -85,8 +86,25 @@ export function timesHelp(gathering: string, start: string, leagueGathering: str
   return `${league ? `Zadano za ligu: ${league}.` : "Liga nema zadano vrijeme."}${own ? " Ova večer ima svoje vrijeme." : ""}`;
 }
 
-// The night's date, times and places being edited (second_location: its Druga lokacija, null at one place)
-export type NightForGathering = {date: string; start_time: string | null; gathering_time: string | null; location: NightLocation | null; second_location: NightLocation | null};
+// Under a night's Broj kola: the league's number and, when the night has its own, that it does; then what it is for
+export function roundsHelp(rounds: number, leagueRounds: number): string {
+  const own = rounds !== leagueRounds ? " Ova večer ima svoj broj kola." : "";
+  return `Zadano za ligu: ${count(leagueRounds, NOUN.kolo)}.${own} Kad se toliko kola odigra, igrači više ne vide Tu smo ni Odlazimo.`;
+}
+
+// The night's date, times, Broj kola and places being edited (second_location: its Druga lokacija, null at one place)
+export type NightForGathering = {
+  date: string;
+  start_time: string | null;
+  gathering_time: string | null;
+  rounds_per_night: number | null;
+  location: NightLocation | null;
+  second_location: NightLocation | null;
+};
+
+// A night's Broj kola: 1 to 6, as the league's Kola po večeri
+const MIN_ROUNDS = 1;
+const MAX_ROUNDS = 6;
 
 // Why a night can't go on the date typed (null: it can). A new night may be a past one (one played but not added); an
 // existing one moves only to today or later.
@@ -96,15 +114,17 @@ export function nightDateError(date: string, today: string, taken: (date: string
   return taken(date) ? NIGHT_TAKEN : null;
 }
 
-// A night's date and its own Okupljanje, Početak and place, and a second place played at the same time (Datumi: the
-// desktop's card on the right, a sheet on the admin's phone; Claude Design 04 A). The times start as the night's (its
-// own or the league's), the same at both places; the place is the league's or the night's own, so a new night starts
+// A night's date and its own Okupljanje, Početak, Broj kola and place, and a second place played at the same time
+// (Datumi: the desktop's card on the right, a sheet on the admin's phone; Claude Design 04 A). The times start as the
+// night's (its own or the league's), the same at both places; Broj kola is the night's, both places together (the
+// night is over when every place has played them); the place is the league's or the night's own, so a new night starts
 // with the league's (Podaci). Druga lokacija is added with Dodaj drugu lokaciju once the night has a place, and taken
-// away with its ×. Uredi večer (an existing night): Spremi sends only what changed (a time equal to the league's and
-// "Zadano lige" go back to the league's). Dodaj večer (isNew): Odustani and Dodaj večer, which sends the whole night.
-// Give it key={night.date}, so another night starts afresh; savedAtStart: it opens as just saved (the night moved, so
-// it came back under its new date). scrollFields: the form fills a tall sheet (the admin's phone), its fields scroll
-// and the buttons stay under them, so Drugo mjesto, an error or the keyboard can't push Spremi off the sheet.
+// away with its ×. Uredi večer (an existing night): Spremi sends only what changed (a time or a Broj kola equal to the
+// league's and "Zadano lige" go back to the league's). Dodaj večer (isNew): Odustani and Dodaj večer, which sends the
+// whole night. Give it key={night.date}, so another night starts afresh; savedAtStart: it opens as just saved (the
+// night moved, so it came back under its new date). scrollFields: the form fills a tall sheet (the admin's phone), its
+// fields scroll and the buttons stay under them, so Drugo mjesto, an error or the keyboard can't push Spremi off the
+// sheet.
 export function NightGatheringForm({
   night,
   isNew = false,
@@ -113,6 +133,7 @@ export function NightGatheringForm({
   taken,
   leagueTime,
   leagueGathering,
+  leagueRounds,
   leaguePlace,
   settingsTab,
   splitHint = "Ekipe na lokacije raspoređuješ na kartici Podjela.",
@@ -136,6 +157,8 @@ export function NightGatheringForm({
   // the league's Početak and Okupljanje
   leagueTime: string | null;
   leagueGathering: string | null;
+  // the league's Kola po večeri, which a night without its own Broj kola plays
+  leagueRounds: number;
   leaguePlace: NightLocation | null;
   // where the league's own time and place are changed: "Podaci" (desktop) or "Postavke" (phone)
   settingsTab: string;
@@ -155,6 +178,7 @@ export function NightGatheringForm({
   const [date, setDate] = useState(night.date);
   const [time, setTime] = useState(effectiveTime(night.start_time, leagueTime) ?? "");
   const [gathering, setGathering] = useState(effectiveTime(night.gathering_time, leagueGathering) ?? "");
+  const [rounds, setRounds] = useState(night.rounds_per_night ?? leagueRounds);
   const [mode, setMode] = useState<Mode>(night.location ? "own" : "league");
   const [place, setPlace] = useState<NightLocation | null>(night.location);
   const [second, setSecond] = useState<NightLocation | null>(night.second_location);
@@ -171,12 +195,15 @@ export function NightGatheringForm({
   const timeError = timesError(gathering || leagueGathering, time || leagueTime);
   const wantedPlace = mode === "own" ? place : null;
   const timeChanged = ownTime !== (night.start_time ?? null) || ownGathering !== (night.gathering_time ?? null);
+  // the league's number is none of its own, so the night follows a later change in Podaci
+  const ownRounds = rounds === leagueRounds ? null : rounds;
+  const roundsChanged = ownRounds !== (night.rounds_per_night ?? null);
   const placeChanged = mode === "own" ? !place || !sameLocation(place, night.location) : night.location != null;
   // where the night is played: its own place or the league's
   const firstPlace = mode === "own" ? place : leaguePlace;
   const secondChanged = !sameLocation(second, night.second_location);
   const secondError = secondPlaceError(firstPlace?.id, second?.id);
-  const dirty = dateChanged || timeChanged || placeChanged || secondChanged;
+  const dirty = dateChanged || timeChanged || roundsChanged || placeChanged || secondChanged;
   // Drugo mjesto needs a place picked
   const canSave = dirty && isIsoDate(date) && !dateError && !timeError && (mode === "league" || place != null) && !secondError && !saving;
 
@@ -188,13 +215,21 @@ export function NightGatheringForm({
   const save = async () => {
     if (!canSave) return;
     if (isNew) {
-      await onSave({date, start_time: ownTime, gathering_time: ownGathering, location_id: wantedPlace?.id ?? null, second_location_id: second?.id ?? null});
+      await onSave({
+        date,
+        start_time: ownTime,
+        gathering_time: ownGathering,
+        rounds_per_night: ownRounds,
+        location_id: wantedPlace?.id ?? null,
+        second_location_id: second?.id ?? null,
+      });
       return;
     }
     const change: LeagueNightUpdate = {};
     if (dateChanged) change.date = date;
     if (ownTime !== (night.start_time ?? null)) change.start_time = ownTime;
     if (ownGathering !== (night.gathering_time ?? null)) change.gathering_time = ownGathering;
+    if (roundsChanged) change.rounds_per_night = ownRounds;
     if (placeChanged) change.location_id = wantedPlace?.id ?? null;
     if (secondChanged) change.second_location_id = second?.id ?? null;
     if (await onSave(change)) setSaved(true);
@@ -240,6 +275,17 @@ export function NightGatheringForm({
             {timesHelp(gathering, time, leagueGathering, leagueTime)}
             {second && " Vrijeme je isto na obje lokacije."}
           </Box>
+        </Box>
+        <Box sx={{display: "flex", flexDirection: "column", gap: "6px"}}>
+          <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px"}}>
+            <Box id={`rounds-${night.date}`} sx={{fontSize: 14, fontWeight: 600, color: color.ink2, pl: "4px"}}>
+              Broj kola
+            </Box>
+            <Box sx={{width: 180, flex: "none"}}>
+              <PhoneStepper label="Broj kola" value={rounds} onChange={changed(setRounds)} min={MIN_ROUNDS} max={MAX_ROUNDS} less="Manje kola" more="Više kola" />
+            </Box>
+          </Box>
+          <Box sx={{fontSize: 13, lineHeight: 1.4, color: color.muted, pl: "4px"}}>{roundsHelp(rounds, leagueRounds)}</Box>
         </Box>
         <Box role="group" aria-labelledby={`place-${night.date}`} sx={{display: "flex", flexDirection: "column", gap: "8px"}}>
           <Box id={`place-${night.date}`} sx={{fontSize: 14, fontWeight: 600, color: color.ink2, pl: "4px"}}>

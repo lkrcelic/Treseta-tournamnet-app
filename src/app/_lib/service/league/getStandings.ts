@@ -2,7 +2,7 @@ import {prisma} from "@/app/_lib/prisma";
 import {Prisma, TeamScore} from "@prisma/client";
 import {BYE_TEAM_ID} from "@/app/_lib/bye";
 import {leagueDateString} from "@/app/_lib/dates";
-import {LeagueRow, LeagueTable, needsHeadToHead, rankLeague} from "@/app/_lib/leagueOrder";
+import {LEAGUE_DRAW_POINTS, LEAGUE_WIN_POINTS, LeagueRow, LeagueTable, needsHeadToHead, rankLeague} from "@/app/_lib/leagueOrder";
 import {movementShown, rankMovement, TeamTotals} from "@/app/_lib/movement";
 import {getRoundDatesByLeagueId} from "@/app/_lib/service/league/getRoundDatesById";
 
@@ -116,7 +116,8 @@ export async function getLeagueStandingsWithMovement(league_id: number): Promise
 type Totals = Omit<TeamTotals, "team_id" | "name">;
 
 // The season table as it was after a night: what TeamScore holds (update_team_score), counting only the published
-// rounds closed on or before that date. A round without a date counts as earlier, as it counts in TeamScore.
+// rounds closed on or before that date. A round without a date counts as earlier, as it counts in TeamScore. Points by
+// LEAGUE_WIN_POINTS / LEAGUE_DRAW_POINTS, as update_team_score counts them (db/standings.test.ts compares the two).
 export async function standingsUntil(league_id: number, night: string): Promise<Map<number, Totals>> {
   const rows = await prisma.$queryRaw<(Totals & {team_id: number})[]>`
       WITH closed AS (SELECT r.id, r.team1_id, r.team2_id, r.team1_wins, r.team2_wins
@@ -137,7 +138,8 @@ export async function standingsUntil(league_id: number, night: string): Promise<
                      GROUP BY c.id)
       SELECT s.team_id,
              COUNT(*)::int                                                                        AS rounds_played,
-             (2 * COUNT(*) FILTER (WHERE s.won > s.lost) + COUNT(*) FILTER (WHERE s.won = s.lost))::int AS score,
+             (${LEAGUE_WIN_POINTS}::int * COUNT(*) FILTER (WHERE s.won > s.lost)
+                 + ${LEAGUE_DRAW_POINTS}::int * COUNT(*) FILTER (WHERE s.won = s.lost))::int        AS score,
              COALESCE(SUM(s.sign * d.diff), 0)::int                                               AS point_difference
       FROM sides s
                LEFT JOIN diffs d ON d.id = s.id

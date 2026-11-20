@@ -101,28 +101,39 @@ export function secondPlaceError(first: number | null | undefined, second: numbe
   return first === second ? SECOND_PLACE_SAME : null;
 }
 
-// Upravljanje ligom · Datumi (Dodaj večer): add a night, with its own Početak, Okupljanje and place or (left out or
-// null) the league's, and a second place or none
+// A night's own Broj kola (null: the league's Kola po večeri)
+const nightRounds = z.number().int().min(1).max(6).nullable().optional();
+
+// Upravljanje ligom · Datumi (Dodaj večer): add a night, with its own Početak, Okupljanje, Broj kola and place or (left
+// out or null) the league's, and a second place or none
 export const LeagueNightAddRequestValidation = z.object({
   date: z.string().refine(isIsoDate, DATE_FORMAT_ERROR),
   start_time: startTime.optional(),
   gathering_time: startTime.optional(),
+  rounds_per_night: nightRounds,
   location_id: nightLocation,
   second_location_id: secondLocation,
 });
 
-// Upravljanje ligom · Datumi (Uredi večer): a night's date, its own Početak, Okupljanje and place, and its second place.
-// Any can be left out (it stays as it is); null goes back to the league's (a null second place: one place).
+// Upravljanje ligom · Datumi (Uredi večer): a night's date, its own Početak, Okupljanje, Broj kola and place, and its
+// second place. Any can be left out (it stays as it is); null goes back to the league's (a null second place: one place).
 export const LeagueNightUpdateRequestValidation = z
   .object({
     date: z.string().refine(isIsoDate, DATE_FORMAT_ERROR).optional(),
     start_time: startTime.optional(),
     gathering_time: startTime.optional(),
+    rounds_per_night: nightRounds,
     location_id: nightLocation,
     second_location_id: secondLocation,
   })
   .refine(
-    (b) => b.date !== undefined || b.start_time !== undefined || b.gathering_time !== undefined || b.location_id !== undefined || b.second_location_id !== undefined,
+    (b) =>
+      b.date !== undefined ||
+      b.start_time !== undefined ||
+      b.gathering_time !== undefined ||
+      b.rounds_per_night !== undefined ||
+      b.location_id !== undefined ||
+      b.second_location_id !== undefined,
     "Nema promjene."
   );
 
@@ -136,8 +147,9 @@ export const MOVE_TO_PAST_ERROR = "Večer se može premjestiti samo na današnji
 
 // A league night and its published rounds (played: it has some). start_time: its own Početak (null: the league's);
 // time: when it starts, its own or the league's (null: no time). gathering_time and gathering: the same for
-// Okupljanje. location: its own place (null: the league's); place: where it is played, its own or the league's (null:
-// nowhere set). second_location: its Druga lokacija, played at the same time (null: a one-place night).
+// Okupljanje. rounds_per_night: its own Broj kola (null: the league's); planned_rounds: how many rounds it plays, its own
+// or the league's. location: its own place (null: the league's); place: where it is played, its own or the league's
+// (null: nowhere set). second_location: its Druga lokacija, played at the same time (null: a one-place night).
 export type LeagueNightRow = {
   date: string;
   played: boolean;
@@ -146,6 +158,8 @@ export type LeagueNightRow = {
   time: string | null;
   gathering_time: string | null;
   gathering: string | null;
+  rounds_per_night: number | null;
+  planned_rounds: number;
   location: NightLocation | null;
   place: NightLocation | null;
   second_location: NightLocation | null;

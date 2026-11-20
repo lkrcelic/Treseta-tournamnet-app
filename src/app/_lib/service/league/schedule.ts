@@ -3,7 +3,7 @@ import {BYE_TEAM_ID} from "@/app/_lib/bye";
 import {isSlot, Slot} from "@/app/_lib/locations";
 import {nightKolo} from "@/app/_lib/roundStatus";
 import {MyLeagueTonight} from "@/app/_interfaces/burza";
-import {leagueDateString, leagueNightString} from "@/app/_lib/dates";
+import {leagueNightString} from "@/app/_lib/dates";
 import {myTonight} from "@/app/_lib/service/league/arrival";
 import {effectiveLocation, effectiveTime, LOCATION_SELECT, nextNightIndex, NightLocation, secondLocationOf} from "@/app/_lib/nights";
 import {prisma} from "@/app/_lib/prisma";
@@ -21,13 +21,15 @@ const LOCATION = {location: LOCATION_SELECT} as const;
 // leagues whose season is over come last.
 export async function mySchedule(viewer: Viewer): Promise<MySchedule> {
   const playerId = viewer.id;
-  const today = leagueDateString();
+  // the night being played, not the calendar day: until 06:00 tonight's night is still the next one, so Raspored and
+  // Početna say "Večeras" while its rounds are played instead of "Odigrano" and next week's date (#19)
+  const today = leagueNightString();
   const teams = await prisma.team.findMany({
     where: {team_id: {not: BYE_TEAM_ID}, teamPlayers: {some: {player_id: playerId}}},
     select: {
       team_id: true,
       team_name: true,
-      teamPlayers: {select: {player: {select: {id: true, first_name: true, last_name: true, rating: true, active: true, ...PLAYER_PHOTO}}}},
+      teamPlayers: {select: {player: {select: {id: true, first_name: true, last_name: true, username: true, rating: true, active: true, ...PLAYER_PHOTO}}}},
       // Podjela: the team's place on the nights played at two places
       nightPlaces: {select: {league_id: true, night: true, slot: true}},
       leagueTeams: {
@@ -41,7 +43,7 @@ export async function mySchedule(viewer: Viewer): Promise<MySchedule> {
               gathering_time: true,
               rounds_per_night: true,
               ...LOCATION,
-              nights: {select: {night: true, start_time: true, gathering_time: true, ...LOCATION, secondLocation: LOCATION_SELECT}, orderBy: {night: "asc"}},
+              nights: {select: {night: true, start_time: true, gathering_time: true, rounds_per_night: true, ...LOCATION, secondLocation: LOCATION_SELECT}, orderBy: {night: "asc"}},
             },
           },
         },
@@ -85,6 +87,8 @@ export async function mySchedule(viewer: Viewer): Promise<MySchedule> {
           .map(({player}) => ({
             id: player.id,
             name: displayName(player),
+            // the username is public (#88): under the name on Početna and Raspored
+            username: player.username,
             rating: player.rating,
             me: player.id === playerId,
             active: player.active,
@@ -104,8 +108,8 @@ export async function mySchedule(viewer: Viewer): Promise<MySchedule> {
     })
   );
 
-  // Potvrda dolaska for the leagues that play tonight (until 06:00 still last evening's night)
-  const tonight = leagueNightString();
+  // Potvrda dolaska for the leagues that play tonight (`today` is that night)
+  const tonight = today;
   const arrivals = await myTonight(
     leagues
       .filter((l) => l.nights.includes(tonight))
@@ -115,8 +119,13 @@ export async function mySchedule(viewer: Viewer): Promise<MySchedule> {
     const arrival = arrivals.get(`${l.league_id}|${l.team_id}`);
     if (arrival) l.arrival = arrival;
   }
-  // the evening so far, for Početna's cards
-  const perNight = new Map(teams.flatMap((t) => t.leagueTeams.map(({league}) => [league.league_id, league.rounds_per_night] as [number, number])));
+  // the evening so far, for Početna's cards; its last Kolo is the night's Broj kola (its own, else the league's Kola po
+  // večeri), at each place of a two-place night
+  const perNight = new Map(
+    teams.flatMap((t) =>
+      t.leagueTeams.map(({league}) => [league.league_id, league.nights.find((n) => isoDate(n.night) === tonight)?.rounds_per_night ?? league.rounds_per_night] as [number, number])
+    )
+  );
   const evenings = await tonightOf(leagues.filter((l) => l.nights.includes(tonight)), tonight, perNight);
   for (const l of leagues) {
     const evening = evenings.get(`${l.league_id}|${l.team_id}`);

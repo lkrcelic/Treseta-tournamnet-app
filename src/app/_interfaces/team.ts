@@ -46,13 +46,13 @@ export const TeamPlayerAddValidation = z.object({
   player_id: z.number().int(),
 });
 
-// A player on a team's roster; the username is only sent to admins and the player themselves (handoff §6 "Privacy",
-// _lib/players/privacy.ts rosterView)
+// A player on a team's roster; the username is public (#88), so every row carries it (_lib/players/privacy.ts
+// rosterView, which only sorts the roster)
 const TeamMemberValidation = z.object({
   id: z.number().int(),
   first_name: z.string(),
   last_name: z.string(),
-  username: z.string().optional(),
+  username: z.string(),
   // the avatar; null = the initials (no photo, or the viewer may not see it)
   photo_url: z.string().nullable().optional(),
 });

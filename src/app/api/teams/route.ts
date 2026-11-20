@@ -6,7 +6,7 @@ import {Prisma} from "@prisma/client";
 import {errorResponse} from "@/app/_lib/apiErrors";
 import {NextRequest, NextResponse} from "next/server";
 import {STATUS} from "@/app/_lib/statusCodes";
-import {requireAdmin, requireUser} from "@/app/_lib/service/auth/requireUser";
+import {requireCan, requireUser} from "@/app/_lib/service/auth/requireUser";
 import {createTeam} from "@/app/_lib/service/team/create";
 import {BYE_TEAM_ID} from "@/app/_lib/bye";
 import {escapeLike} from "@/app/_lib/helpers/query/anyCase";
@@ -27,8 +27,8 @@ export async function GET(request: NextRequest) {
         ...(search ? {team_name: {contains: escapeLike(search), mode: "insensitive"}} : {}),
       },
       include: {
-        // only the fields the response shows (not emails or password hashes); rosterView below drops the usernames
-        // others may not see and puts the players in Croatian name order
+        // only the fields the response shows (not emails or password hashes); rosterView below puts the players in
+        // Croatian name order (the username is public, #88)
         teamPlayers: {select: {player: {select: {id: true, first_name: true, last_name: true, username: true, ...PLAYER_PHOTO}}}},
         leagueTeams: {
           select: {active: true, league: {select: {league_id: true, league_name: true}}},
@@ -44,7 +44,6 @@ export async function GET(request: NextRequest) {
         ...t,
         photo_url: photos.team(t),
         teamPlayers: rosterView(
-          auth.user,
           t.teamPlayers.map(({player: {photo_updated_at, photo_visibility, ...p}}) => ({...p, photo_url: photos.player({id: p.id, photo_updated_at, photo_visibility})}))
         ).map((player) => ({player})),
       }))
@@ -56,8 +55,9 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Nova ekipa (admin or organizer)
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin(request);
+  const auth = await requireCan(request, "team.create");
   if (auth.response) return auth.response;
 
   try {

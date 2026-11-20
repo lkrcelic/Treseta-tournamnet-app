@@ -200,6 +200,9 @@ model Tournament {
   // Otvorene prijave: ekipe se mogu prijaviti i dok turnir traje, do zadnjeg kola (DECISIONS #88). A team that signs
   // up then counts as arrived and plays from the next Kolo. False = the start time closes sign-ups, as before.
   open_signups       Boolean   @default(false)
+  // Sakrij broj prijava: until the tournament starts a player sees neither how many teams signed up nor which; a team
+  // over the limit learns it is on the waiting list when it signs up (DECISIONS #93). Admins and the organizer see all.
+  hide_entries       Boolean   @default(false)
   // Telefon organizatora: required for a new tournament (the old ones have none); the players call it or write on
   // WhatsApp from the tournament's page
   organizer_phone    String?   @db.VarChar(30)
@@ -340,6 +343,10 @@ model LeagueNight {
   // league's, as "Zadano lige"), and a second place played at the same time (null: a one-place night)
   location_id        Int?
   second_location_id Int?
+  // this night's own Broj kola, when it differs from the league's rounds_per_night (null: the league's). When that many
+  // rounds of the night are finished (at every place of a two-place night), the night is over for Potvrda dolaska
+  // (CHECK 1..6 in the migration script)
+  rounds_per_night   Int?
 
   league         League            @relation(fields: [league_id], references: [league_id], onDelete: Cascade)
   location       Location?         @relation("NightLocation", fields: [location_id], references: [location_id], onDelete: Restrict)

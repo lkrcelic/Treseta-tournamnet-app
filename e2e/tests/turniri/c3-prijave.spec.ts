@@ -81,7 +81,11 @@ test("a full tournament takes new teams on the waiting list in sign-up order, an
   await expect(full).toContainText("Turnir je pun: nova prijava ide na listu čekanja.");
   await full.getByRole("button", {name: "Prijavi se na listu čekanja"}).click();
   await page.getByRole("dialog", {name: "Koju ekipu prijavljuješ?"}).getByRole("button", {name: `Prijavi ekipu ${team.name}`}).click();
-  await page.getByRole("dialog", {name: `${team.name} su prijavljeni`}).getByRole("button", {name: "Na stranicu turnira"}).click();
+  // the sheet says the team's place on the list (Bela's DECISIONS #93, with the sync of 17 Nov 2026)
+  const waitingSheet = page.getByRole("dialog", {name: "Na listi čekanja ste"});
+  await expect(waitingSheet).toContainText(/4\.\s*mjesto/);
+  await expect(waitingSheet).toContainText("4. na listi čekanja");
+  await waitingSheet.getByRole("button", {name: "U redu"}).click();
   const onList = page.getByRole("region", {name: "Na listi čekanja"});
   await expect(onList.getByRole("heading", {name: "Na listi čekanja · 4."})).toBeVisible();
   expect((await db.tournamentTeam.findUniqueOrThrow({where: {tournament_id_team_id: {tournament_id: id, team_id: team.id}}})).status).toBe("WAITING");

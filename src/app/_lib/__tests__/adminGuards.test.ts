@@ -134,6 +134,20 @@ function missingOwnership(handlers: Handler[]): string[] {
     .map((h) => `${h.file} ${h.method}`);
 }
 
+// A handler of one tournament that reads the request's body before it checks whose tournament it is: someone else's
+// table would answer a body that doesn't parse with 400 instead of 403 (Bela checks first since 28d19f2)
+const READS_BODY = /\.(json|formData|text)\(\)/;
+function ownershipAfterBody(handlers: Handler[]): string[] {
+  return handlers
+    .filter((h) => OWNED_DIRS.some((dir) => h.file.startsWith(dir)) && h.body.includes("requireCan("))
+    .filter((h) => {
+      const owner = h.body.search(OWNERSHIP);
+      const body = h.body.search(READS_BODY);
+      return owner !== -1 && body !== -1 && body < owner;
+    })
+    .map((h) => `${h.file} ${h.method}`);
+}
+
 function missingAdmin(handlers: Handler[]): string[] {
   return handlers
     .filter((h) => !GUARD.test(h.body))
@@ -220,6 +234,30 @@ test("every handler of one tournament, table or hand checks whose it is", () => 
   const handlers = scan(routeFiles(join(API, "admin")));
   for (const dir of OWNED_DIRS) assert.ok(handlers.some((h) => h.file.startsWith(dir)), `no routes found under api/${dir}`);
   assert.deepEqual(missingOwnership(handlers), []);
+});
+
+test("the order scan names a handler that reads the body before it checks whose it is, and only that one", () => {
+  const source = [
+    `export async function PUT(request, {params}) {`,
+    `  const auth = await requireCan(request, "tournament.manage.own");`,
+    `  const hand = AdminHandValidation.parse(await request.json());`,
+    `  await refuseUnlessMyHand(kind, id, auth.user);`,
+    `}`,
+    `export async function POST(request, {params}) {`,
+    `  const auth = await requireCan(request, "tournament.manage.own");`,
+    `  await refuseUnlessMyTable(id, auth.user);`,
+    `  const body = await request.json();`,
+    `  return NextResponse.json({ok: true});`,
+    `}`,
+  ].join("\n");
+  assert.deepEqual(ownershipAfterBody(handlersIn(source, "admin/hands/[kind]/[resultId]/route.ts")), ["admin/hands/[kind]/[resultId]/route.ts PUT"]);
+});
+
+test("every handler of one tournament, table or hand checks whose it is before it reads the request's body", () => {
+  const handlers = scan(routeFiles(join(API, "admin")));
+  // a body read the scan no longer recognises must not make this pass with nothing to check
+  assert.ok(handlers.some((h) => OWNED_DIRS.some((dir) => h.file.startsWith(dir)) && h.body.includes("requireCan(") && READS_BODY.test(h.body)), "no handler in scope reads the request's body");
+  assert.deepEqual(ownershipAfterBody(handlers), []);
 });
 
 test("the allowlist only names handlers that exist", () => {

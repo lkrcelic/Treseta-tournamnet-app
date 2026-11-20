@@ -6,7 +6,7 @@ import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {Box, SxProps, Theme} from "@mui/material";
 import React, {useCallback, useId, useRef, useState} from "react";
-import {buttonBase, mergeSx} from "./base";
+import {buttonBase, fieldFont, mergeSx} from "./base";
 
 // iOS Safari gives a date input its own minimum width and ignores width: 100%, so on a narrow phone it runs past
 // its card; without the native look it takes the given width, and the date stays left-aligned like other text
@@ -211,7 +211,7 @@ const SEARCH_VARIANT = {
   // white, no border, a card's shadow: on the phone's paper background (Rejting 8a)
   white: {border: "none", background: color.white, boxShadow: shadow.card, fontSize: 16, "&:focus": {background: color.white}, "&:focus-visible": {boxShadow: `${shadow.card}, ${borderlessFocus}`}},
   // paper, no border: inside a white card on the desktop (Rejting 8k, the Ekipe and Igrači lists)
-  paper: {border: "none", background: color.paper, fontSize: 15, "&:focus": {background: color.paper}, "&:focus-visible": {boxShadow: borderlessFocus}},
+  paper: {border: "none", background: color.paper, ...fieldFont(15), "&:focus": {background: color.paper}, "&:focus-visible": {boxShadow: borderlessFocus}},
 } as const;
 
 type SearchInputProps = InputProps & {
