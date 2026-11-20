@@ -85,8 +85,9 @@ Suite i generator (S3):
   7. minuti, a kolo se zatim pomakne na 12 (16.11.).
 - `/api/cron/tick` zatvara svaki istekli meč u bazi; `c4.ts` ga zove samo za svoj stol, ostali neka rade isto (C7-ov
   `tableOutFor` vrti sat samo svog turnira).
-- Sync 17.11. donio je Otključaj partiju i Sakrij broj prijava (Belin DECISIONS #93) bez Tresetinih testova: port
-  Belinog `c5-otkljucaj.spec.ts` (Tresetine igre, 45 minuta) i Belina dva testa Sakrij broj prijava iz `c3-prijave`.
+- Sync 17.11. donio je Otključaj partiju i Sakrij broj prijava (Belin DECISIONS #93) bez Tresetinih testova: ~~port
+  Belinog `c5-otkljucaj.spec.ts` (Tresetine igre, 45 minuta)~~ (C5 gotov 20.11., uz test podignutog cilja kao
+  `test.fail`) i Belina dva testa Sakrij broj prijava iz `c3-prijave`.
 - A traži scenarij: liga s konferencijama i večer na dva mjesta s ekipama u Podjeli (sad A vidi samo prazna stanja
   konferencija, Podjele i filtara Dnevnog poretka).
 
