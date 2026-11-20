@@ -86,7 +86,9 @@ Suite i generator (S3):
 - `/api/cron/tick` zatvara svaki istekli meč u bazi; `c4.ts` ga zove samo za svoj stol, ostali neka rade isto (C7-ov
   `tableOutFor` vrti sat samo svog turnira).
 - Sync 17.11. donio je Otključaj partiju i Sakrij broj prijava (Belin DECISIONS #93) bez Tresetinih testova: port
-  Belinog `c5-otkljucaj.spec.ts` (Tresetine igre, 45 minuta) i Belina dva testa Sakrij broj prijava iz `c3-prijave`.
+  Belinog `c5-otkljucaj.spec.ts` (Tresetine igre, 45 minuta) i ~~Belina dva testa Sakrij broj prijava iz
+  `c3-prijave`~~: C3 ih ima (20.11.), na turnirima koje testovi sami naprave, jer nijedan turnir svijeta ne skriva
+  broj prijava.
 - A traži scenarij: liga s konferencijama i večer na dva mjesta s ekipama u Podjeli (sad A vidi samo prazna stanja
   konferencija, Podjele i filtara Dnevnog poretka).
 

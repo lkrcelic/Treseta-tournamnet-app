@@ -1,13 +1,21 @@
 // C3 · signing up for a tournament on the phone: Prijavi se and Odjavi se (tournaments.open), the waiting list and its
 // order, a team leaving that lets the first waiting one in (tournaments.fullWaiting), sign-ups refused when closed or
-// cancelled (tournaments.closed, tournaments.cancelled), and a tournament played "na prolaz" (tournaments.naProlaz).
-// The tests that sign teams up or off put the tournament's entries back as they were (the `entries` fixture).
+// cancelled (tournaments.closed, tournaments.cancelled), a tournament played "na prolaz" (tournaments.naProlaz), a
+// guest's Prijavi se (tournaments.open), and Sakrij broj prijava: how many teams signed up, and which, only for
+// whoever runs the tournament.
+// The tests that sign teams up or off put the tournament's entries back as they were (the `entries` fixture); the
+// Sakrij broj prijava tests make their own tournament (`own`), since the world's tournaments all show their count.
 // Expected values (Bela's DECISIONS on Turniri, BELA_SYNC.md · Turniri): a full tournament takes new teams on the waiting
 // list, in the order they signed up; a team that was in and signs off frees its place for the first team waiting, which
 // comes in without a notice; closed or cancelled sign-ups are refused with the reason; the rules line of a "na prolaz"
-// tournament reads "41 · zvanja · na prolaz".
-import {expect, test} from "../../helpers/c3";
+// tournament reads "41 · zvanja · na prolaz". Sakrij broj prijava (Bela's DECISIONS #93, with the sync of 17 Nov 2026):
+// before Kolo 1 a guest and a player, also one whose team is in, get no count and no list of teams, neither on the
+// screen nor from the server (teams, waiting, players 0, no avatars, no entries); a limit says "Broj mjesta je
+// ograničen" where the count was, Prijavljene ekipe is left out and /ekipe says the list shows from Kolo 1. The admin
+// and the organizer of that tournament see both; an organizer of another tournament is a player there.
+import {addTeams, createTournament, dayAfter, expect, freeTeams, test} from "../../helpers/c3";
 import {ONBOARDED} from "../../helpers/db";
+import {escape} from "../../helpers/scorepad";
 
 test("Prijavi se signs the player's team up for an open tournament, and Odjavi se takes it off again", async ({as, db, world, entries, healthy}) => {
   const {id} = world.tournaments.open;
@@ -154,4 +162,106 @@ test("a tournament played \"na prolaz\" says so in its rules, with the player's 
   await expect(page.getByRole("region", {name: "O turniru"})).toContainText(/Pravila igre\s*41 · zvanja · na prolaz/);
   await expect(page.getByRole("region", {name: "Prijavljene ekipe"}).getByRole("listitem").filter({hasText: team.name})).toContainText("Petar Igračić (ti)");
   await healthy(page);
+});
+
+// Treseta's own (BELA_SYNC.md · Turniri): Bela opens its guest sheet "Sjedni za stol." here
+test("a guest's Prijavi se on a tournament's page goes to Prijava", async ({as, world, healthy}) => {
+  const {id, name} = world.tournaments.open;
+  const page = await as("guest");
+  await page.goto(`/turniri/${id}`);
+  await expect(page.getByRole("heading", {name, level: 1})).toBeVisible();
+  await page.getByRole("region", {name: "Prijave otvorene"}).getByRole("button", {name: "Prijavi se", exact: true}).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole("heading", {name: "Prijava", exact: true})).toBeVisible();
+  await healthy(page);
+});
+
+test("Sakrij broj prijava: whoever runs the tournament sees how many teams signed up and which; a guest, a player, the team signed up and an organizer who doesn't run it see neither", async ({
+  as,
+  api,
+  db,
+  world,
+  own,
+  healthy,
+}) => {
+  test.setTimeout(90_000);
+  // like Bela's tournaments.hidden (Treseta's world has the "na prolaz" tournament in its place): Tajni turnir in nine
+  // days, made by the admin, 6 of 12 places taken; no team of the organizer's in it
+  const [outsider, ...signedUp] = await freeTeams(db, 7, {exclude: world.accounts.organizer.teams});
+  const [inside] = signedUp;
+  const id = await own.make(
+    {name: "Tajni turnir", date: dayAfter(9), gathering_time: "17:30", start_time: "18:00", location_id: world.places.pitanik.id, hide_entries: true, max_teams: 12},
+    signedUp,
+  );
+  const name = (await db.tournament.findUniqueOrThrow({where: {tournament_id: id}})).tournament_name;
+
+  // a guest, a player of another team, the organizer (not his tournament) and a player whose team is in
+  for (const who of ["guest", outsider.phone, "organizer", inside.phone]) {
+    const page = await as(who);
+    await page.goto(`/turniri/${id}`);
+    await expect(page.getByRole("heading", {name, level: 1})).toBeVisible();
+    const card = page.getByRole("region", {name: "Prijave otvorene"});
+    if (who === inside.phone) {
+      await expect(page.getByRole("region", {name: "Prijavljeni ste"})).toContainText(inside.name);
+    } else {
+      await expect(card).toContainText("Broj mjesta je ograničen");
+      await expect(card.getByRole("button", {name: "Prijavi se", exact: true})).toBeVisible();
+    }
+    await expect(page.getByRole("region", {name: "Prijavljene ekipe"}), who).toHaveCount(0);
+    await expect(page.getByRole("main"), who).not.toContainText(/\d+\s*ekip/);
+    await healthy(page);
+    await page.goto(`/turniri/${id}/ekipe`);
+    await expect(page.getByText("Popis prijavljenih ekipa vidi se od 1. kola."), who).toBeVisible();
+    await expect(page.getByRole("main"), who).not.toContainText(/\d+\s*ekip/);
+    await healthy(page);
+    // and nothing that tells it leaves the server
+    const answer = await (await api(who)).get(`/api/tournaments/${id}`);
+    expect(answer.ok()).toBeTruthy();
+    const body = (await answer.json()) as {teams: number; waiting: number; players: number; avatars: unknown[]; entries: unknown[]};
+    expect({teams: body.teams, waiting: body.waiting, players: body.players, avatars: body.avatars, entries: body.entries}, who).toEqual({
+      teams: 0,
+      waiting: 0,
+      players: 0,
+      avatars: [],
+      entries: [],
+    });
+  }
+
+  // the admin sees all six, on the players' page and in Upravljanje turnirom
+  const page = await as("admin");
+  await page.goto(`/turniri/${id}`);
+  await expect(page.getByRole("region", {name: "Prijavljene ekipe"}).getByRole("heading")).toHaveText("Prijavljene ekipe · 6");
+  await page.goto(`/turniri/${id}/upravljanje`);
+  await expect(page.getByRole("switch", {name: /^Prijave otvorene/})).toHaveAccessibleName("Prijave otvorene 6 od 12 ekipa");
+  await expect(page.getByRole("list", {name: "Prijavljene ekipe"}).getByRole("listitem")).toHaveText(signedUp.map((e) => new RegExp(`^${escape(e.name)}`)));
+  await healthy(page);
+});
+
+test("Sakrij broj prijava on the organizer's own tournament: he sees its teams, a player doesn't", async ({as, api, db, world, own, healthy}) => {
+  const [outsider, ...entered] = await freeTeams(db, 4, {exclude: world.accounts.organizer.teams});
+  const id = await createTournament(await api("organizer"), {
+    name: "Organizatorov tajni kup",
+    date: dayAfter(9),
+    location_id: world.places.pitanik.id,
+    hide_entries: true,
+    max_teams: 12,
+  });
+  expect((await db.tournament.findUniqueOrThrow({where: {tournament_id: id}})).created_by).toBe(world.accounts.organizer.id);
+  await addTeams(own.admin, id, entered);
+
+  const page = await as("organizer");
+  await page.goto(`/turniri/${id}`);
+  await expect(page.getByRole("region", {name: "Prijavljene ekipe"}).getByRole("heading")).toHaveText("Prijavljene ekipe · 3");
+  await page.goto(`/turniri/${id}/upravljanje`);
+  await expect(page.getByRole("switch", {name: /^Prijave otvorene/})).toHaveAccessibleName("Prijave otvorene 3 od 12 ekipa");
+  await expect(page.getByRole("list", {name: "Prijavljene ekipe"}).getByRole("listitem")).toHaveText(entered.map((e) => new RegExp(`^${escape(e.name)}`)));
+  await healthy(page);
+
+  const player = await as(outsider.phone);
+  await player.goto(`/turniri/${id}`);
+  await expect(player.getByRole("region", {name: "Prijave otvorene"})).toContainText("Broj mjesta je ograničen");
+  await expect(player.getByRole("region", {name: "Prijavljene ekipe"})).toHaveCount(0);
+  const answer = (await (await api(outsider.phone)).get(`/api/tournaments/${id}`).then((r) => r.json())) as {teams: number; entries: unknown[]};
+  expect([answer.teams, answer.entries]).toEqual([0, []]);
+  await healthy(player);
 });
