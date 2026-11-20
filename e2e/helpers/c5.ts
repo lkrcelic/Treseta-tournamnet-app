@@ -6,6 +6,9 @@
 //   - The admin's phone scorepad of a league table (/league/<id>/daily-standings/table/<roundId>): Tko igra first, then
 //     the board with Meč 1 · Meč 2; a hand's sheet (Ispravi igru, Custom, Obriši igru) and "Meč ostaje bez pobjednika?".
 //     Correcting a hand on the keypad is scorepad.ts' correctHand.
+//   - A tournament's locked table (/turniri/<id>/stol/<roundId>, the same scorepad): Otključaj partiju, and putting
+//     its match back as it was played after a test changed its deciding hand.
+import type {Result} from "@prisma/client";
 import {expect, type APIRequestContext, type Locator, type Page} from "@playwright/test";
 import {MATCH_THRESHOLD, matchState, type PlayedHand} from "@/app/_lib/game/scoring";
 import {pickTeams, sidesOf, test, type Night, type Side} from "./c1";
@@ -197,4 +200,62 @@ export async function desktopHand(page: Page, team: string, points: number) {
   for (const d of String(points)) await keypad.getByRole("button", {name: d, exact: true}).click();
   await expect(box).toHaveAccessibleName(new RegExp(`^${escape(team)}: ${points} bod(a|ova)?(,|$)`));
   await panel.getByRole("button", {name: /^Spremi (igru|izmjene)$/}).click();
+}
+
+// ---------- a tournament's locked table ----------
+
+// A tournament's table on the admin's phone: the league table's scorepad under /turniri/, Tko je igrao first
+export async function openTournamentTable(page: Page, tournamentId: number, roundId: number) {
+  await page.goto(`/turniri/${tournamentId}/stol/${roundId}`);
+  await expect(page.getByRole("heading", {name: /^Tko (igra|je igrao) ovu rundu\?$/})).toBeVisible();
+  await page.getByRole("button", {name: /^Potvrdi( i nastavi)?$/}).click();
+  await expect(page.getByRole("button", {name: /^Natrag na kolo \d+$/})).toBeVisible();
+}
+
+// A hand as stored, a finished match's (Result) or a played one's (OngoingResult, the same columns)
+export type StoredHand = Pick<Result, "team1_game_points" | "team2_game_points" | "team1_zvanja3" | "team1_zvanja4" | "team2_zvanja3" | "team2_zvanja4" | "custom" | "dosta_side">;
+
+// What a hand is, to compare hands across the two tables: each team's points and zvanja (3s, 4s), custom, the call
+export const handShape = (h: StoredHand) => ({
+  points: [h.team1_game_points, h.team2_game_points],
+  zvanja: [
+    [h.team1_zvanja3, h.team1_zvanja4],
+    [h.team2_zvanja3, h.team2_zvanja4],
+  ],
+  custom: h.custom,
+  dosta: h.dosta_side,
+});
+
+// A stored hand as the admin's scorepad sends it (AdminHandValidation)
+export const adminHand = (h: StoredHand) => ({
+  custom: h.custom,
+  points1: h.team1_game_points,
+  points2: h.team2_game_points,
+  zvanja1: {3: h.team1_zvanja3, 4: h.team1_zvanja4},
+  zvanja2: {3: h.team2_zvanja3, 4: h.team2_zvanja4},
+  dosta: h.dosta_side,
+});
+
+// Puts a one-match table's match back as it was played (`hands`, the deciding one last) after a test deleted or
+// changed its deciding hand, through the admin's routes: into the finished match while it is still finished, or into
+// the match an unlock put back in play, which Završi meč then closes again. allow_no_winner only spares the question
+// on the way: with its deciding hand back the match has its winner again.
+export async function putBackDecidingHand(admin: APIRequestContext, db: Db, roundId: number, hands: StoredHand[]) {
+  const results = {orderBy: {result_id: "asc"}} as const;
+  const finished = await db.match.findFirst({where: {round_id: roundId}, orderBy: {id: "desc"}, include: {results}});
+  const ongoing = finished ? null : await db.ongoingMatch.findFirst({where: {round_id: roundId}, include: {results}});
+  const match = finished ?? ongoing;
+  if (!match) throw new Error(`table ${roundId} has no match to put its deciding hand back into`);
+  const kind = finished ? "finished" : "ongoing";
+  const deciding = hands[hands.length - 1];
+  const now = match.results[hands.length - 1];
+  if (!now) {
+    const target = finished ? {kind, matchId: finished.id} : {kind};
+    const res = await admin.post(`/api/admin/tables/${roundId}/hands?allow_no_winner=1`, {data: {target, hand: adminHand(deciding)}});
+    expect(res.ok(), `put back the deciding hand of table ${roundId}: ${await res.text()}`).toBeTruthy();
+  } else if (JSON.stringify(handShape(now)) !== JSON.stringify(handShape(deciding))) {
+    const res = await admin.put(`/api/admin/hands/${kind}/${now.result_id}?allow_no_winner=1`, {data: adminHand(deciding)});
+    expect(res.ok(), `put back the deciding hand of table ${roundId}: ${await res.text()}`).toBeTruthy();
+  }
+  if (ongoing) await finishOpenMatch(admin, roundId);
 }

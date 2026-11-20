@@ -64,6 +64,7 @@ Bugovi aplikacije (testovi su `test.fail` s `// BUG:` dok popravak ne stigne):
 | Nakon što admin vrati meč u igru, njegov mobitel ne pita "s ovim dosta" na 41 : 41 (`reopenMatch` kopira igre s novim id-jevima, a TablePhone traži stari) | C5 | Tresetin (`467ea599`) | Treseta #1, popravljeno na masteru (`ea1458ba`, 16.11.) |
 | Spremi odbijen jer je vrijeme isteklo ostavlja mobitel na koraku Igra; u Beli vraća na stol, koji je prešao na Meč 2 (Belin DECISIONS #83) | C4 | Tresetin (`ScorePage`, `handFlow`; port `a0686e1` bez provjere `matchClosed`) | Treseta #2, popravljeno na masteru (`15efc6a7`, 16.11.) |
 | Rate limiter: prozor se pomiče sa svakim zahtjevom, pa se nikad ne isprazni | fixtures (svaki kontekst svoj `X-Forwarded-For`) | zajednički | komentar na Belin issue #4 |
+| Otključaj partiju ne broji podignuti cilj: meč izjednačen na 41 (do 51) dobije 45 minuta umjesto 50, pa sat igrača skoči na 50:00 sa sljedećom igrom (`unlock.ts` `resumeMatch` zove `matchDeadline` bez podizanja; `syncDeadline` ih broji) | C5 | Tresetin (podizanja su Tresetina) | issue još nije otvoren |
 | Organizatorov ispravak igre na tuđem stolu dobije 400 umjesto 403: `PUT /api/admin/hands/[kind]/[resultId]` čita tijelo prije `refuseUnlessMyHand` (Bela provjerava prvo od `28d19f2`; Tresetin redoslijed iz `543f6e46`, sync ga ne mijenja) | B | Tresetin | popravljeno na masteru (`8c883c9b`, 18.11.) |
 | Organizator: Početna na mobitelu su igračeve, ne njegovi Turniri | A, C7 | zajednički | Belin `52ef6b3`, na masteru od synca 17.11. |
 | Organizator: Nova ekipa, preimenovanje, dodaj i makni igrača traže ulogu admina | B | zajednički | Belin `28d19f2`, na masteru od synca 17.11. |
@@ -85,10 +86,13 @@ Suite i generator (S3):
   7. minuti, a kolo se zatim pomakne na 12 (16.11.).
 - `/api/cron/tick` zatvara svaki istekli meč u bazi; `c4.ts` ga zove samo za svoj stol, ostali neka rade isto (C7-ov
   `tableOutFor` vrti sat samo svog turnira).
-- Sync 17.11. donio je Otključaj partiju i Sakrij broj prijava (Belin DECISIONS #93) bez Tresetinih testova: port
-  Belinog `c5-otkljucaj.spec.ts` (Tresetine igre, 45 minuta) i ~~Belina dva testa Sakrij broj prijava iz
-  `c3-prijave`~~: C3 ih ima (20.11.), na turnirima koje testovi sami naprave, jer nijedan turnir svijeta ne skriva
-  broj prijava.
+- ~~Sync 17.11. donio je Otključaj partiju i Sakrij broj prijava (Belin DECISIONS #93) bez Tresetinih testova~~:
+  C5 ima Belin `c5-otkljucaj.spec.ts` na Tresetinim igrama i 45 minuta, uz test podignutog cilja kao `test.fail`, a C3
+  Belina dva testa Sakrij broj prijava, na turnirima koje testovi sami naprave, jer nijedan turnir svijeta ne skriva
+  broj prijava (20.11.).
+- C5 traži scenarije: Belin `8224dfb` u `tournamentPlay.ts` (turnir uživo datiran ligaškom večeri; dotad fixture sam
+  pomiče datum stola) i turnir samo za C5 sa zaključanim stolom, da testovi otključavanja ne diraju `tournaments.live`
+  (koji koriste i C3, C7 i A; danas je to sigurno zbog vraćanja i `workers: 1`).
 - A traži scenarij: liga s konferencijama i večer na dva mjesta s ekipama u Podjeli (sad A vidi samo prazna stanja
   konferencija, Podjele i filtara Dnevnog poretka).
 
