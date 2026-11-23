@@ -2,18 +2,20 @@ import {Prisma} from "@prisma/client";
 import {prisma} from "@/app/_lib/prisma";
 import {PadLock} from "@/app/_interfaces/adminHand";
 import {isByeTeam} from "@/app/_lib/bye";
-import {GAME_MINUTES_ERROR, GAME_MINUTES_MAX, GAME_MINUTES_MIN, matchDeadline} from "@/app/_lib/gameTime";
+import {matchDeadline, TARGET_RAISE_MINUTES} from "@/app/_lib/gameTime";
+import {MATCH_THRESHOLD, MatchEnd, matchState} from "@/app/_lib/game/scoring";
 import {ROUND_NOT_PUBLISHED} from "@/app/_lib/roundStatus";
 import {InvalidResultError} from "@/app/_lib/validation/validateResult";
 import {NotFoundError} from "@/app/_lib/service/admin/tables";
 import {replayRatings} from "@/app/_lib/service/admin/recalc";
+import {gameMinutesOf} from "@/app/_lib/service/match/timeLimit";
 import {lockRound} from "@/app/_lib/service/round/finish";
 import {lockTournament} from "@/app/_lib/service/tournament/lock";
 import {lockKind} from "@/app/_lib/tableLock";
 
-// Otključaj partiju (DECISIONS #89): a locked table of a tournament is played on again, with the Vrijeme partije the
-// admin chooses as they unlock it (the table's own limit from then on, gameMinutesOf). What the lock did is undone with
-// it, so the unlocked table is as it was before:
+// Otključaj partiju (DECISIONS #89 and 102): a locked table of a tournament is played on again, always with the
+// tournament's Vrijeme partije counted from the unlock (nothing to pick; the next match at the table has the same time,
+// as every match). What the lock did is undone with it, so the unlocked table is as it was before:
 //   - Nedolazak (NO_SHOW): the matches the answer wrote (NO_SHOW_SCORE, scored as a bye) are deleted (a match an admin has since entered hands
 //     into is real play and stays), the team that didn't come is back in the tournament and the app's own ban from
 //     Kolo 1 is lifted. The table is new again: Započni igru starts the game.
@@ -41,6 +43,8 @@ const tableSelect = {
   attendance: true,
   attendance_team_id: true,
   matches_per_round: true,
+  // "s ovim dosta" or "na prolaz", for the raises in a resumed match's hands
+  match_end: true,
   matches: {
     orderBy: {id: "asc"},
     select: {
@@ -114,8 +118,15 @@ async function liftAutoBans(tx: Tx, tournamentId: number, teamIds: number[], by:
   return ids.length;
 }
 
-// A match played is the match being played again, with its hands, from now until the new deadline
-async function resumeMatch(tx: Tx, m: TableMatch, roundId: number, now: Date, minutes: number) {
+// A match played is the match being played again, with its hands, from now until the new deadline: the tournament's
+// minutes from now, whatever the hands hold.
+// Treseta's own (BELA_SYNC.md): syncDeadline counts every hand's deadline as started_at + minutes + 5 per raise of the
+// target in the hands (gameTime.ts), so the raises the match already had are put before now: started_at is moved back
+// five minutes for each. The deadline is then now + minutes at the unlock and at every hand after it, and only a raise
+// after the unlock adds five more.
+async function resumeMatch(tx: Tx, m: TableMatch, roundId: number, now: Date, minutes: number, end: MatchEnd) {
+  const {extensions} = matchState(m.results, m.score_threshold ?? MATCH_THRESHOLD, end);
+  const startedAt = new Date(now.getTime() - extensions * TARGET_RAISE_MINUTES * 60_000);
   await tx.ongoingMatch.create({
     data: {
       round_id: roundId,
@@ -124,8 +135,8 @@ async function resumeMatch(tx: Tx, m: TableMatch, roundId: number, now: Date, mi
       score_threshold: m.score_threshold,
       match_date: now,
       start_time: now,
-      started_at: now,
-      ends_at: matchDeadline(now, minutes),
+      started_at: startedAt,
+      ends_at: matchDeadline(startedAt, minutes, extensions),
       // Treseta's hands as they were, zvanja and "s ovim dosta" with them (the match's state is replayed from them)
       results: {create: m.results.map((r) => ({...r}))},
     },
@@ -144,8 +155,7 @@ async function recountWins(tx: Tx, roundId: number) {
   });
 }
 
-export async function unlockTable(roundId: number, minutes: number, by: number | null = null): Promise<Unlocked> {
-  if (!Number.isInteger(minutes) || minutes < GAME_MINUTES_MIN || minutes > GAME_MINUTES_MAX) throw new InvalidResultError(GAME_MINUTES_ERROR);
+export async function unlockTable(roundId: number, by: number | null = null): Promise<Unlocked> {
   const link = await prisma.tournamentRound.findFirst({where: {round_id: roundId}, select: {tournament_id: true}});
   if (!link) {
     const exists = await prisma.round.count({where: {id: roundId}});
@@ -165,12 +175,13 @@ export async function unlockTable(roundId: number, minutes: number, by: number |
     if (!kind) throw new InvalidResultError(NOT_LOCKED);
 
     const now = new Date();
-    // The table answers Tu smo from here on (the admin says the teams are at it): the Vrijeme partije is the table's
-    // own from now on, and the question "Jesu li … za stolom?" can't come back at a table that was just unlocked —
-    // its Kolo went out long ago, so the clock would be past the skip at once and close the table again.
+    const minutes = await gameMinutesOf(tx, roundId);
+    // The table answers Tu smo from here on (the admin says the teams are at it): the question "Jesu li … za stolom?"
+    // can't come back at a table that was just unlocked — its Kolo went out long ago, so the clock would be past the
+    // skip at once and close the table again. A table's own time an earlier unlock wrote is cleared.
     await tx.round.update({
       where: {id: roundId},
-      data: {game_minutes: minutes, open: true, active: false, attendance: "PRESENT", attendance_team_id: table.team1_id, attendance_by: by, attendance_at: now},
+      data: {game_minutes: null, open: true, active: false, attendance: "PRESENT", attendance_team_id: table.team1_id, attendance_by: by, attendance_at: now},
     });
 
     // Nedolazak: the matches its answer wrote (NO_SHOW_SCORE, no hands) are not play and go; one an admin has entered
@@ -185,7 +196,7 @@ export async function unlockTable(roundId: number, minutes: number, by: number |
     const resume = (kind === "time_expired" || kind === "done") && left.length > 0;
     if (resume) {
       const last = table.matches.find((m) => m.id === left[0].id);
-      if (last) await resumeMatch(tx, last, roundId, now, minutes);
+      if (last) await resumeMatch(tx, last, roundId, now, minutes, table.match_end);
       await tx.round.update({where: {id: roundId}, data: {active: true}});
     }
     await recountWins(tx, roundId);

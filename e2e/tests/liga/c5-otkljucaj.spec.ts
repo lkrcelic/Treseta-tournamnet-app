@@ -2,14 +2,15 @@
 // the sync of 17 Nov 2026): a finished match the admin's correction leaves without a winner goes back in play by itself
 // only while nothing came after it (Treseta 467ea599). A table of Kolo 1 when Kolo 2 is out can't: the warning says so,
 // Obriši svejedno leaves the match without a winner and the table locked ("Partija je odigrana do kraja i
-// zaključana."), and Otključaj partiju puts the match back in play with its hands and the minutes the admin picks.
+// zaključana."), and Otključaj partiju puts the match back in play with its hands and the tournament's Vrijeme partije
+// from now, with nothing to pick (Bela's DECISIONS 102).
 // Treseta's own (BELA_SYNC · unlock.ts, gameTime.ts): the hands are Treseta's (11 a hand with zvanja 3 and 4, or
-// Custom, to 41), the sheet starts on the table's 45 minutes, and a match whose hands raised the target (41 → 51 …) has
-// five more minutes for each raise, counted from its hands as on every match.
+// Custom, to 41), the tournament's Vrijeme partije is 45 minutes, and a match whose hands already raised the target
+// (41 → 51 …) gets those 45 minutes too, which its next hand keeps: only a raise after the unlock adds five.
 // The table is the first played table of Kolo 1 of tournaments.live ("Subotnji turnir uživo", one match per Kolo) whose
 // last hand decided its match, as the generator has no tournament of C5's own (asked for in C5's report); the fixture
 // puts the hand back, closes the match again through the admin's routes and gives the table and its match back the
-// fields the unlock wrote (its own Vrijeme partije, Tu smo, the match's times). The match's row is a new one afterwards.
+// fields the unlock wrote (Tu smo, the match's times). The match's row is a new one afterwards.
 import type {Result} from "@prisma/client";
 import {handTotals, MATCH_THRESHOLD} from "@/app/_lib/game/scoring";
 import {leagueNight} from "@/app/_lib/dates";
@@ -101,7 +102,14 @@ const test = base.extend<{locked: Locked}>({
       hands: match.results,
       player: round.roundPlayers[0].player.username,
     });
-    await putBackDecidingHand(await api("admin"), db, round.id, match.results);
+    const admin = await api("admin");
+    // a hand a test played on top of the match's own goes first, also when the test failed before removing it
+    const playedOn = await db.ongoingMatch.findFirst({where: {round_id: round.id}, include: {results: {orderBy: {result_id: "asc"}}}});
+    for (const extra of playedOn?.results.slice(match.results.length) ?? []) {
+      const res = await admin.delete(`/api/admin/hands/ongoing/${extra.result_id}`);
+      expect(res.ok(), `remove hand ${extra.result_id} played on at table ${round.id}: ${await res.text()}`).toBeTruthy();
+    }
+    await putBackDecidingHand(admin, db, round.id, match.results);
     await db.round.update({where: {id: round.id}, data: {...fields, round_date: round.round_date}});
     // the match closed again is a new row with the unlock's and the closing's times: the times it was played at
     const times = {match_date: match.match_date, start_time: match.start_time, end_time: match.end_time, time_expired: match.time_expired};
@@ -109,13 +117,12 @@ const test = base.extend<{locked: Locked}>({
   },
 });
 
-// First of the two, so the next test's check of Kolo 1 sees whether this one's table was put back: a teardown failing
-// here would count as this test's expected failure.
+// First of the two, so the next test's check of Kolo 1 sees whether this one's table was put back.
 // Treseta's own rule (gameTime.ts): every raise of the target gives the match five more minutes, and the deadline is
-// counted from the match's hands (syncDeadline), so a match put back in play whose hands raised it has them too.
-// BUG: Otključaj partiju gives the resumed match only the minutes picked (unlock.ts' resumeMatch: matchDeadline(now,
-// minutes), without the raises), so its clock reads 45:00 and jumps to 50:00 with the next hand, when syncDeadline counts it.
-test.fail("a match level at 41 and played on to 51 goes back in play with the minutes the admin picks and five more for the raised target", async ({
+// counted from the match's hands at every hand (syncDeadline). The unlock gives the tournament's minutes whatever the
+// hands raised (the user: "each unlock puts default time no matter what"), and the next hand keeps that deadline; it
+// used to read 45:00 and jump to 50:00 with the next hand.
+test("a match level at 41 and played on to 51 goes back in play with the tournament's 45 minutes, and its next hand keeps them", async ({
   as,
   api,
   db,
@@ -151,30 +158,37 @@ test.fail("a match level at 41 and played on to 51 goes back in play with the mi
   await expectBoard(page, {[names[0]]: MATCH_THRESHOLD, [names[1]]: MATCH_THRESHOLD}, n);
   await expect(page.getByRole("status", {name: "Izjednačeno, igra se do 51"})).toBeVisible();
 
-  // Otključaj partiju with the table's 45 minutes, as the sheet offers them
+  // Otključaj partiju: the tournament's 45 minutes, nothing to pick
   await page.getByRole("button", {name: "Otključaj partiju"}).click();
   const sheet = page.getByRole("dialog", {name: "Otključaj partiju"});
-  await expect(sheet.getByRole("button", {name: "45 min", exact: true})).toHaveAttribute("aria-pressed", "true");
-  await sheet.getByRole("button", {name: "Otključaj · 45 min"}).click();
+  await expect(sheet).toContainText("Zadnja odigrana partija se nastavlja s upisanim igrama i traje još 45 min od sada (Vrijeme partije turnira).");
+  await sheet.getByRole("button", {name: "Otključaj", exact: true}).click();
   await expect(sheet).toBeHidden();
   await expect(page.getByText(LOCKED)).toHaveCount(0);
   await expect(page.getByRole("status", {name: "Izjednačeno, igra se do 51"})).toBeVisible();
   await healthy(page);
 
-  // 45 minutes from now and 5 for the raise: the deadline the match's hands give, which every later hand keeps
+  // 45 minutes from now, not 50 for the raise the hands already had
   const open = await db.ongoingMatch.findFirstOrThrow({where: {round_id: roundId}});
   const left = minutesLeft(open.ends_at);
-  expect(left, `${left} minutes left`).toBeGreaterThan(49);
-  expect(left).toBeLessThanOrEqual(50);
+  expect(left, `${left} minutes left`).toBeGreaterThan(44);
+  expect(left).toBeLessThanOrEqual(45);
   // and the players' scorepad counts them down
   const phone = await as(player);
   await phone.goto(`/ongoing-match/${open.id}`);
-  await expect(phone.getByRole("timer", {name: /^Do kraja partije (49:\d\d|50:00)$/})).toBeVisible();
+  await expect(phone.getByRole("timer", {name: /^Do kraja partije (44:\d\d|45:00)$/})).toBeVisible();
   await expect(phone.getByText(new RegExp(`^${escape(names[0])}: ${MATCH_THRESHOLD} bod(a|ova)?$`))).toHaveCount(1);
   await healthy(phone);
+
+  // the next hand (6 : 5) raises nothing, and the deadline stays where the unlock put it (the fixture removes the hand)
+  const added = await admin.post(`/api/admin/tables/${roundId}/hands`, {data: {target: {kind: "ongoing"}, hand: {custom: false, points1: 6, points2: 5}}});
+  expect(added.ok(), `the next hand: ${await added.text()}`).toBeTruthy();
+  const next = await db.ongoingMatch.findUniqueOrThrow({where: {id: open.id}});
+  expect([next.player_pair1_score, next.player_pair2_score]).toEqual([MATCH_THRESHOLD + 6, MATCH_THRESHOLD + 5]);
+  expect(next.ends_at?.getTime()).toBe(open.ends_at?.getTime());
 });
 
-test("Kolo 1's table when Kolo 2 is out: the warning says why the match can't go back in play, the table stays locked, and Otključaj partiju puts it back in play with the minutes the admin picks", async ({
+test("Kolo 1's table when Kolo 2 is out: the warning says why the match can't go back in play, the table stays locked, and Otključaj partiju puts it back in play with the tournament's Vrijeme partije", async ({
   as,
   db,
   locked: {tournamentId, roundId, names, hands},
@@ -184,6 +198,9 @@ test("Kolo 1's table when Kolo 2 is out: the warning says why the match can't go
   const played = replay(hands);
   const without = replay(hands.slice(0, -1));
   const [last1, last2] = handTotals(hands[n - 1]);
+  // the table has its own 20 minutes, as an unlock wrote them before every unlock took the tournament's (the fixture
+  // puts back what the table had)
+  await db.round.update({where: {id: roundId}, data: {game_minutes: 20}});
   const page = await as("admin");
   await openTournamentTable(page, tournamentId, roundId);
   await expect(page.getByText(LOCKED)).toBeVisible();
@@ -207,15 +224,13 @@ test("Kolo 1's table when Kolo 2 is out: the warning says why the match can't go
   expect([stillLocked.open, stillLocked.team1_wins, stillLocked.team2_wins, await db.ongoingMatch.count({where: {round_id: roundId}})]).toEqual([false, 0, 0, 0]);
   expect(stillLocked.matches.map((m) => [m.player_pair1_score, m.player_pair2_score, m.winner_side])).toEqual([[without.score1, without.score2, null]]);
 
-  // Otključaj partiju: the sheet offers 10 to 45 minutes with the table's 45 (Treseta's Vrijeme partije) picked; 20 min
+  // Otključaj partiju: no minutes to pick, the tournament's 45 from now, not the table's own 20
   await page.getByRole("button", {name: "Otključaj partiju"}).click();
   const sheet = page.getByRole("dialog", {name: "Otključaj partiju"});
-  await expect(sheet).toContainText("Zadnja odigrana partija se nastavlja s upisanim igrama, s novim vremenom od sada.");
-  await expect(sheet.getByRole("button", {name: /^\d+ min$/})).toHaveText(["10 min", "15 min", "20 min", "30 min", "35 min", "45 min"]);
-  await expect(sheet.getByRole("button", {name: "45 min", exact: true})).toHaveAttribute("aria-pressed", "true");
-  await sheet.getByRole("button", {name: "20 min", exact: true}).click();
-  await expect(sheet.getByRole("button", {name: "20 min", exact: true})).toHaveAttribute("aria-pressed", "true");
-  await sheet.getByRole("button", {name: "Otključaj · 20 min"}).click();
+  await expect(sheet).toContainText("Zadnja odigrana partija se nastavlja s upisanim igrama i traje još 45 min od sada (Vrijeme partije turnira).");
+  await expect(sheet.getByRole("spinbutton")).toHaveCount(0);
+  await expect(sheet.getByRole("button", {name: /^\d+ min$/})).toHaveCount(0);
+  await sheet.getByRole("button", {name: "Otključaj", exact: true}).click();
   await expect(sheet).toBeHidden();
 
   // the board: the match being played with its hands, no Meč tabs, no lock and no note on a finished match
@@ -227,15 +242,15 @@ test("Kolo 1's table when Kolo 2 is out: the warning says why the match can't go
   await expect(finishedNote(page)).toHaveCount(0);
   await healthy(page);
 
-  // the database: the match is the one being played (its hands with their zvanja), 20 minutes from now, on a table
-  // that is open again with its own Vrijeme partije and Tu smo
+  // the database: the match is the one being played (its hands with their zvanja), 45 minutes from now, on a table
+  // that is open again with Tu smo and no time of its own
   expect(await db.match.count({where: {round_id: roundId}})).toBe(0);
   const open = await db.ongoingMatch.findFirstOrThrow({where: {round_id: roundId}, include: {results: {orderBy: {result_id: "asc"}}}});
   expect(open.results.map(handShape)).toEqual(hands.slice(0, -1).map(handShape));
   expect([open.player_pair1_score, open.player_pair2_score, open.score_threshold]).toEqual([without.score1, without.score2, MATCH_THRESHOLD]);
   const left = minutesLeft(open.ends_at);
-  expect(left, `${left} minutes left`).toBeGreaterThan(19);
-  expect(left).toBeLessThanOrEqual(20);
+  expect(left, `${left} minutes left`).toBeGreaterThan(44);
+  expect(left).toBeLessThanOrEqual(45);
   const unlocked = await db.round.findUniqueOrThrow({where: {id: roundId}});
-  expect([unlocked.open, unlocked.active, unlocked.game_minutes, unlocked.attendance, unlocked.team1_wins, unlocked.team2_wins]).toEqual([true, true, 20, "PRESENT", 0, 0]);
+  expect([unlocked.open, unlocked.active, unlocked.game_minutes, unlocked.attendance, unlocked.team1_wins, unlocked.team2_wins]).toEqual([true, true, null, "PRESENT", 0, 0]);
 });

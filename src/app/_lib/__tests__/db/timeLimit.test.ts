@@ -153,9 +153,10 @@ test("a tournament's table takes its tournament's Vrijeme partije, not the defau
   });
   assert.equal(await gameMinutesOf(prisma, koloTable.id), TOURNAMENT_MINUTES);
 
-  // a table that was unlocked with its own minutes keeps those, over its tournament's
+  // a table's own minutes, as an unlock wrote them before every unlock took the tournament's (Bela's DECISIONS 102),
+  // aren't read: the tournament's decide
   await prisma.round.update({where: {id: koloTable.id}, data: {game_minutes: 12}});
-  assert.equal(await gameMinutesOf(prisma, koloTable.id), 12);
+  assert.equal(await gameMinutesOf(prisma, koloTable.id), TOURNAMENT_MINUTES);
 });
 
 test("the clock doesn't take a win from the team that called \"s ovim dosta\"", async () => {

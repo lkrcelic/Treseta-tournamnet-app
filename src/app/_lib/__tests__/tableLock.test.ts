@@ -23,17 +23,25 @@ test("a table is locked by its answer, by Vrijeme partije or by being played out
 
 test("the unlock says what it undoes, naming the team that didn't come", () => {
   const teams = {absent: "Purgeri", both: ["Purgeri", "Kvarnerci"] as [string, string]};
-  const noShow = unlockEffects("no_show", teams);
+  const noShow = unlockEffects("no_show", teams, 35);
   assert.equal(noShow.length, 3);
   assert.ok(noShow[0].includes("5 : 0"));
   assert.ok(noShow[1].startsWith("Purgeri se vraćaju u turnir"));
   // without a name the line still reads
-  assert.ok(unlockEffects("no_show", {...teams, absent: null})[1].startsWith("Isključena ekipa"));
+  assert.ok(unlockEffects("no_show", {...teams, absent: null}, 35)[1].startsWith("Isključena ekipa"));
   // a skipped table brings both back
-  const skipped = unlockEffects("skipped", teams);
+  const skipped = unlockEffects("skipped", teams, 35);
   assert.ok(skipped[1].includes("Purgeri i Kvarnerci"));
   // a match that was played carries on, and its win comes off the table's score
-  const expired = unlockEffects("time_expired", teams);
+  const expired = unlockEffects("time_expired", teams, 35);
   assert.equal(expired.length, 2);
   assert.ok(expired[1].includes("skida"));
+});
+
+test("a match played on gets the tournament's Vrijeme partije from the unlock, and the sheet says how many minutes", () => {
+  const teams = {absent: null, both: ["Purgeri", "Kvarnerci"] as [string, string]};
+  assert.equal(unlockEffects("time_expired", teams, 35)[0], "Zadnja partija se nastavlja s upisanim igrama i traje još 35 min od sada (Vrijeme partije turnira).");
+  assert.equal(unlockEffects("done", teams, 45)[0], "Zadnja odigrana partija se nastavlja s upisanim igrama i traje još 45 min od sada (Vrijeme partije turnira).");
+  // a table nobody played at has no time to say: its match starts at Započni igru
+  for (const kind of ["no_show", "skipped"] as const) assert.ok(unlockEffects(kind, teams, 35).every((line) => !line.includes("min od sada")));
 });

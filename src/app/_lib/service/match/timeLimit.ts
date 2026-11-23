@@ -13,23 +13,18 @@ import {afterTableClosed} from "@/app/_lib/service/tournament/kola";
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
-// A table's time limit: the table's own Vrijeme partije (an admin picks it when they unlock the table), else its
-// tournament's or its league's.
+// A table's time limit: its tournament's or its league's Vrijeme partije, for every match at it, an unlocked one too
+// (Bela's DECISIONS #89 and 102). Round.game_minutes, the table's own time Otključaj partiju used to write, is no longer
+// read.
 export async function gameMinutesOf(db: Db, roundId: number): Promise<number> {
   const round = await db.round.findUnique({
     where: {id: roundId},
     select: {
-      game_minutes: true,
       tournamentRounds: {select: {tournament: {select: {game_minutes: true}}}, take: 1},
       leagueRounds: {select: {league: {select: {game_minutes: true}}}, take: 1},
     },
   });
-  return (
-    round?.game_minutes ??
-    round?.tournamentRounds[0]?.tournament.game_minutes ??
-    round?.leagueRounds[0]?.league.game_minutes ??
-    GAME_MINUTES_DEFAULT
-  );
+  return round?.tournamentRounds[0]?.tournament.game_minutes ?? round?.leagueRounds[0]?.league.game_minutes ?? GAME_MINUTES_DEFAULT;
 }
 
 // started_at and ends_at of a match of this table starting now

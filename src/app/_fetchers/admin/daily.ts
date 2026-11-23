@@ -53,9 +53,8 @@ export const updateHandAPI = (kind: HandKind, resultId: number, hand: AdminHand,
 export const deleteHandAPI = (kind: HandKind, resultId: number, allowNoWinner = false) =>
   send(`/api/admin/hands/${kind}/${resultId}${allowing(allowNoWinner)}`, "DELETE", undefined, "Igra nije obrisana.");
 
-// Otključaj partiju: the table is played on again, with this Vrijeme partije (minutes)
-export const unlockTableAPI = (roundId: number, minutes: number) =>
-  send(`/api/admin/tables/${roundId}/unlock`, "PATCH", {minutes}, "Stol nije otključan.");
+// Otključaj partiju: the table is played on again, with the tournament's Vrijeme partije from now
+export const unlockTableAPI = (roundId: number) => send(`/api/admin/tables/${roundId}/unlock`, "PATCH", undefined, "Stol nije otključan.");
 
 export const finishTableMatchAPI = (roundId: number) => send(`/api/admin/tables/${roundId}/finish`, "POST", undefined, "Meč nije završen.");
 

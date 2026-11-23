@@ -92,7 +92,7 @@ export type TablePad = {
   // what locked the table (null: it is open), with the team that didn't come for a Nedolazak; unlockable only for a
   // tournament's table
   lock: {kind: PadLock; absent: string | null} | null;
-  // Vrijeme partije at this table now, in minutes: the table's own, else its tournament's or league's
+  // Vrijeme partije at this table, in minutes: its tournament's or league's (Otključaj partiju gives it too)
   gameMinutes: number;
   matches: PadMatch[];
 };

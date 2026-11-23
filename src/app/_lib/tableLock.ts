@@ -12,8 +12,9 @@ export function lockKind(t: {open: boolean; attendance: string | null; matches: 
   return t.matches.some((m) => m.time_expired) ? "time_expired" : "done";
 }
 
-// What the unlock will do, said to the admin before they confirm it (one line per consequence)
-export function unlockEffects(kind: PadLock, teams: {absent: string | null; both: [string, string]}): string[] {
+// What the unlock will do, said to the admin before they confirm it (one line per consequence). minutes: the
+// tournament's Vrijeme partije, which a match played on gets from the unlock.
+export function unlockEffects(kind: PadLock, teams: {absent: string | null; both: [string, string]}, minutes: number): string[] {
   if (kind === "no_show") {
     const back = teams.absent ? `${teams.absent} se vraćaju u turnir` : "Isključena ekipa se vraća u turnir";
     return [
@@ -30,15 +31,10 @@ export function unlockEffects(kind: PadLock, teams: {absent: string | null; both
     ];
   }
   return [
-    kind === "time_expired"
-      ? "Zadnja partija se nastavlja s upisanim igrama, s novim vremenom od sada."
-      : "Zadnja odigrana partija se nastavlja s upisanim igrama, s novim vremenom od sada.",
+    `${kind === "time_expired" ? "Zadnja partija" : "Zadnja odigrana partija"} se nastavlja s upisanim igrama i traje još ${minutes} min od sada (Vrijeme partije turnira).`,
     "Pobjeda te partije se skida s rezultata stola dok se partija ponovo ne završi.",
   ];
 }
 
 // The warning every unlock carries: Kola already made from this result stay as they are
 export const UNLOCK_KOLO_WARNING = "Kola koja su složena s ovim rezultatom ostaju kakva su. Ako treba, složi ih ponovo.";
-
-// The minutes offered in Vrijeme partije when unlocking, beside the table's own
-export const UNLOCK_MINUTES = [10, 15, 20, 30, 35, 45] as const;

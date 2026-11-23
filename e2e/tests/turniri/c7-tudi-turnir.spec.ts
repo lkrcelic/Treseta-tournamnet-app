@@ -157,7 +157,7 @@ const ACTIONS: Action[] = [
   {name: "Ukloni stol", method: "delete", path: (c) => `/api/admin/tables/${c.table!.id}`, tables: true},
   {name: "Upiši igru", method: "post", path: (c) => `/api/admin/tables/${c.table!.id}/hands`, data: () => ({target: {kind: "ongoing"}, hand: HAND}), tables: true},
   {name: "Završi meč", method: "post", path: (c) => `/api/admin/tables/${c.table!.id}/finish`, tables: true},
-  {name: "Otključaj partiju", method: "patch", path: (c) => `/api/admin/tables/${c.table!.id}/unlock`, data: () => ({minutes: 45}), tables: true},
+  {name: "Otključaj partiju", method: "patch", path: (c) => `/api/admin/tables/${c.table!.id}/unlock`, tables: true},
   {name: "Ispravi igru (match being played)", method: "put", path: (c) => `/api/admin/hands/ongoing/${c.hand}`, data: () => HAND, tables: true},
   {name: "Obriši igru (match being played)", method: "delete", path: (c) => `/api/admin/hands/ongoing/${c.hand}`, tables: true},
   {name: "Ispravi igru (played match)", method: "put", path: (c) => `/api/admin/hands/finished/${c.playedHand}?allow_no_winner=1`, data: () => HAND, tables: true},

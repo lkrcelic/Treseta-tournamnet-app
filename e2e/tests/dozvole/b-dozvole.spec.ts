@@ -135,11 +135,12 @@ const ROWS: Row[] = [
     (i) => ({roundId: i.playerTable.round}),
     (t) => ({roundId: t.table})
   ),
-  ...scorepad(
-    {method: "PATCH", route: "/api/admin/tables/[roundId]/unlock", body: INVALID, guard: MANAGE, allowed: status(400)},
-    (i) => ({roundId: i.playerTable.round}),
-    (t) => ({roundId: t.table})
-  ),
+  // Otključaj partiju reads no body (Bela's DECISIONS 102), so on a tournament's played table (locked: played out) it
+  // would go through for whoever owns it: the admin is SKIP there, and the owners' way through is shown by a league
+  // table (refused, unlocking is a tournament's) and a table that isn't there
+  {method: "PATCH", route: "/api/admin/tables/[roundId]/unlock", note: "a league table", params: (i) => ({roundId: i.playerTable.round}), guard: MANAGE, allowed: refused(400, "Otključavanje je za turnirske stolove."), as: {organizer: DENIED}},
+  {method: "PATCH", route: "/api/admin/tables/[roundId]/unlock", note: "the admin's tournament", params: (i) => ({roundId: i.adminTournament.table}), guard: MANAGE, allowed: status(200), as: {organizer: NOT_MINE, admin: SKIP}},
+  {method: "PATCH", route: "/api/admin/tables/[roundId]/unlock", note: "a table that isn't there", params: () => ({roundId: NONE}), guard: MANAGE, allowed: refused(404, "Stol ne postoji.")},
 
   // ---------- Upravljanje ligom: the admin's ----------
   {method: "GET", route: "/api/admin/leagues/[leagueId]/rounds", params: (i) => ({leagueId: i.league}), guard: "admin", allowed: status(200)},
