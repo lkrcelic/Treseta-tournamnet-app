@@ -182,7 +182,7 @@ test("a name's longest word counts letters, not bytes, and a hyphen ends a part"
   assert.equal(longestWord(""), 0);
 });
 
-const row = (id: number, rank: number, rating: number, rounds: number): RatingRow => ({id, rank, name: `Igrač ${id}`, username: `igrac${id}`, team: null, rating, change: 12, rounds, provisional: rounds < 8});
+const row = (id: number, rank: number, rating: number, rounds: number): RatingRow => ({id, rank, name: `Igrač ${id}`, username: `igrac${id}`, team: null, rating, change: 12, rounds, provisional: rounds < 12});
 
 test("a rating summary is the player's Rejting row; a player who isn't listed is unranked and provisional", () => {
   const list = [row(7, 1, 1620, 25), row(8, 2, 1540, 3)];

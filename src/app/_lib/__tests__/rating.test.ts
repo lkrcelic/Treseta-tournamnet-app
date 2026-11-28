@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {Game, initialRating, PHI0, PlayerRating, ratePeriod} from "@/app/_lib/rating/glicko2";
+import {Game, initialRating, isProvisional, PHI0, PlayerRating, ratePeriod} from "@/app/_lib/rating/glicko2";
 import {RatedRound, replaySeason, roundGames} from "@/app/_lib/rating/season";
 
 const near = (actual: number, expected: number, tolerance: number, what: string) =>
@@ -130,4 +130,12 @@ test("the history has a row per player per night played, with the change and rou
 test("players that no longer exist are left out of a round", () => {
   const {history} = replaySeason([1, 3], [round("2026-01-08", [1, 99], [3], [[1001, 0]])]);
   assert.deepEqual(history.map((h) => h.playerId).sort(), [1, 3]);
+});
+
+test("a rating is Privremeno until the player has 12 rated rounds", () => {
+  assert.equal(isProvisional(0), true);
+  assert.equal(isProvisional(8), true);
+  assert.equal(isProvisional(11), true);
+  assert.equal(isProvisional(12), false);
+  assert.equal(isProvisional(51), false);
 });

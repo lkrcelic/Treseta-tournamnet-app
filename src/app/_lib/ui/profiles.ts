@@ -131,7 +131,7 @@ export function teamTiles(stats: TeamOverview["stats"]): HeroTile[] {
 }
 
 // The Player page's tiles (13g): Mjesto on Rejting ("–" for a player who isn't on it), Odigrano (rounds, "kola ·
-// još privremeno" under 8 rated rounds), Ekipe with their names
+// još privremeno" under 12 rated rounds), Ekipe with their names
 export function playerTiles(rating: PlayerRatingSummary, teams: {team_name: string}[]): HeroTile[] {
   return [
     // "od" takes the genitive, "igrača" for every number (od 1 / 21 / 25 igrača)

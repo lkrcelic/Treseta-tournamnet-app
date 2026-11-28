@@ -1,7 +1,7 @@
 import {prisma} from "@/app/_lib/prisma";
 import {BYE_TEAM_ID} from "@/app/_lib/bye";
 import {ratedPlayerIds} from "@/app/_lib/lineup";
-import {PROVISIONAL_ROUNDS} from "@/app/_lib/rating/glicko2";
+import {isProvisional} from "@/app/_lib/rating/glicko2";
 import {roundGames} from "@/app/_lib/rating/season";
 import {ratedMatch} from "@/app/_lib/game/scoring";
 import {RATINGS_FROM} from "@/app/_lib/service/admin/recalc";
@@ -73,7 +73,7 @@ export async function allRatings(): Promise<RatingRow[]> {
       rating: p.rating,
       change: p.change,
       rounds: p.rounds,
-      provisional: p.rounds < PROVISIONAL_ROUNDS,
+      provisional: isProvisional(p.rounds),
     };
   });
 }

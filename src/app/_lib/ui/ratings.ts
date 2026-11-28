@@ -105,7 +105,7 @@ export const RATING_COLUMNS: [string, string][] = [
   ["Rejting", "Tvoja snaga u bodovima. Svi počinju od 1500; pobjede ga dižu, porazi spuštaju. Pobjeda protiv jače ekipe vrijedi više."],
   ["Promjena", "Koliko se rejting promijenio zadnju večer kad si igrao."],
   ["Kola", "Koliko si kola odigrao. Uz malo kola rejting je još privremen."],
-  ["Privremeno", "Igrač je odigrao malo kola, pa mu se rejting još brzo mijenja."],
+  ["Privremeno", "Igrač je odigrao manje od 12 kola, pa mu se rejting još brzo mijenja."],
 ];
 
 export const RATING_HOW = [

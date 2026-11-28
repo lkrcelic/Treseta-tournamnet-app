@@ -12,7 +12,8 @@ export const SIGMA0 = 0.06; // starting volatility
 // how much the volatility may change per period; 0.3-1.2 per Glickman, lower is steadier
 export const TAU = 0.5;
 // a rating with fewer rated rounds than this is still settling ("Privremeno")
-export const PROVISIONAL_ROUNDS = 8;
+export const PROVISIONAL_ROUNDS = 12;
+export const isProvisional = (rounds: number) => rounds < PROVISIONAL_ROUNDS;
 
 const SCALE = 173.7178;
 const EPSILON = 0.000001;

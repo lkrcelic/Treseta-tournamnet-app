@@ -194,7 +194,7 @@ const PROVISIONAL = {
   lg: {height: 24, fontSize: 12, radius: 8, px: 8}, // the cream cards (Rejting detail, the Player page's rating)
 } as const;
 
-// A rating that is still settling (fewer than 8 rated rounds)
+// A rating that is still settling (fewer than 12 rated rounds)
 export function ProvisionalTag({size = "sm"}: {size?: keyof typeof PROVISIONAL}) {
   const p = PROVISIONAL[size];
   return (
